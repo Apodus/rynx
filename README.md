@@ -2,7 +2,7 @@
 Rynx game engine tech stuff.
 
 # ECS
-The rynx ecs implementation seems to be decisevely faster than EnTT, which I guess is somewhat of a standard as a level of quality.
+The rynx ecs implementation seems to be decisively faster than EnTT, which I guess is somewhat of a standard as a level of quality.
 Iterating over all entities that contain a single type T, EnTT is faster by some margin. But when the query gets more complex,
 rynx ecs gets increasinly faster relative to EnTT. Below is a simple benchmark where data was synthesized such that there are four component types:
 int, float, uint, double
