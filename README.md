@@ -40,10 +40,6 @@ query float int                                         100            2    7.23
                                                    33.26 us    31.332 us     35.61 us
                                                    10.86 us     9.356 us    12.495 us
 
-query float int                                         100            1    4.6982 ms
-                                                  39.265 us      37.1 us    44.452 us
-                                                  16.041 us     7.143 us    30.858 us
-
 query float int uint32                                  100            1    6.3381 ms
                                                   37.457 us     36.23 us    41.384 us
                                                   10.096 us      3.71 us    22.297 us
