@@ -1,7 +1,7 @@
 
 #ifdef _WIN32
 
-#include "../Fiber.hpp"
+#include <rynx/thread/fiber.hpp>
 #include <windows.h>
 
 Fiber::Fiber(void* platformFiber) {

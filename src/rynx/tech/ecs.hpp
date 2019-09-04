@@ -4,11 +4,14 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
 
-// #include <Core/Profiling.h>
+#ifdef WILDSHADE_PROFILING
+#include <Core/Profiling.h>
+#endif
 
 #include <vector>
 #include <type_traits>
 #include <tuple>
+#include <algorithm>
 
 template<typename T> struct remove_first_type {};
 template<typename T, typename... Ts> struct remove_first_type<std::tuple<T, Ts...>> { using type = std::tuple<Ts...>; };
@@ -32,7 +35,7 @@ namespace rynx {
 			Const
 		};
 
-		// NOTE: Since we are using chunks now, it really doesn't matter how far apart the entity ids are.
+		// NOTE: Since we are using categories now, it really doesn't matter how far apart the entity ids are.
 		//       Reusing ids is thus very much not important, unless we get to the point of overflow.
 		//       But still it would be easier to "reset" entity_index between levels or something.
 		class entity_index {
@@ -92,7 +95,7 @@ namespace rynx {
 				m_data.pop_back();
 			}
 
-			// NOTE: This is required for moving entities between chunks reliably.
+			// NOTE: This is required for moving entities between categories reliably.
 			virtual void copyTableTypeTo(type_id_t typeId, unordered_map<type_id_t, std::unique_ptr<itable>>& targetTables) override {
 				targetTables.emplace(typeId, std::make_unique<component_table>());
 			}
@@ -107,6 +110,9 @@ namespace rynx {
 			T& back() { return m_data.back(); }
 			const T& back() const { return m_data.back(); }
 			void pop_back() { m_data.pop_back(); }
+			
+			T* data() { return m_data.data(); }
+			const T* data() const { return m_data.data(); }
 
 			size_t size() const { return m_data.size(); }
 
@@ -117,28 +123,29 @@ namespace rynx {
 			std::vector<std::remove_reference_t<T>> m_data;
 		};
 
-		class chunk;
+		class entity_category;
 		struct migrate_move {
-			migrate_move(entity_id_t id_, index_t newIndex_, chunk* newChunk_) : id(id_), newIndex(newIndex_), newChunk(newChunk_) {}
+			migrate_move(entity_id_t id_, index_t newIndex_, entity_category* new_category_) : id(id_), newIndex(newIndex_), new_category(new_category_) {}
 			entity_id_t id;
 			index_t newIndex;
-			chunk* newChunk;
+			entity_category* new_category;
 		};
 
-		class chunk {
+		class entity_category {
 		public:
-			chunk(dynamic_bitset types, type_index* typeIndex) : m_types(std::move(types)), m_typeIndex(typeIndex) {}
+			entity_category(dynamic_bitset types, type_index* typeIndex) : m_types(std::move(types)), m_typeIndex(typeIndex) {}
 
-			// TODO: this can be optimized to not reserve memory. operate and compare in dynamic_bitset.
-			bool includesAll(const dynamic_bitset& types) const { return (m_types & types) == types; }
-			bool includesNone(const dynamic_bitset& types) const { return (m_types & types) == dynamic_bitset(); }
+			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
+			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
 
 			std::pair<migrate_move, migrate_move> erase(index_t index) {
 				for (auto&& table : m_tables) {
 					table.second->erase(index);
 				}
+
+				rynx_assert(index < m_ids.size(), "out of bounds");
 				auto erasedEntityId = m_ids[index];
-				m_ids[index] = m_ids.back();
+				m_ids[index] = std::move(m_ids.back());
 				m_ids.pop_back();
 				
 				// NOTE: This approach of returning what was done and require caller to react is a little bit sad.
@@ -156,29 +163,29 @@ namespace rynx {
 				return index;
 			}
 
-			// these always operate on the last entity.
+			// these always operate on the last entity, when called directly on a category.
 			template<typename...Components> void insertComponents(Components&& ... components) {
 				(table<Components>().emplace_back(std::forward<Components>(components)), ...);
 			}
 
 			template<typename Component> void eraseComponentFromIndex(index_t index) {
 				auto& t = table<Component>();
-				t[index] = t.back();
+				t[index] = std::move(t.back());
 				t.pop_back();
 			}
 			template<typename...Components> void eraseComponentsFromIndex(index_t index) { (eraseComponentFromIndex<Components>(index), ...); }
 
-			void copyTypesFrom(chunk* other, const dynamic_bitset& types) {
+			void copyTypesFrom(entity_category* other, const dynamic_bitset& types) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					other->m_tables.find(typeId)->second->copyTableTypeTo(typeId, m_tables);
 					typeId = types.nextOne(typeId + 1);
 				}
 			}
-			void copyTypesTo(chunk* other, const dynamic_bitset& types) { other->copyTypesFrom(this, types); }
+			void copyTypesTo(entity_category* other, const dynamic_bitset& types) { other->copyTypesFrom(this, types); }
 
-			void copyTypesFrom(chunk* other) { for (auto&& table : other->m_tables) table.second->copyTableTypeTo(table.first, m_tables); }
-			void copyTypesTo(chunk* other) { other->copyTypesFrom(this); }
+			void copyTypesFrom(entity_category* other) { for (auto&& table : other->m_tables) table.second->copyTableTypeTo(table.first, m_tables); }
+			void copyTypesTo(entity_category* other) { other->copyTypesFrom(this); }
 
 			size_t size() const { return m_ids.size(); }
 
@@ -189,9 +196,17 @@ namespace rynx {
 				return getTables<accessType, ComponentsTuple>()(*this);
 			}
 
+			template<DataAccess accessType, typename ComponentsTuple> auto table_datas() {
+				return getTableDatas<accessType, ComponentsTuple>()(*this);
+			}
+
+			template<DataAccess accessType, typename T> auto table_data() {
+				return getTableData<accessType, T>()(*this);
+			}
+
 			const dynamic_bitset& types() const { return m_types; }
 
-			std::pair<migrate_move, migrate_move> migrateEntity(const dynamic_bitset& types, chunk* source, index_t source_index) {
+			std::pair<migrate_move, migrate_move> migrateEntity(const dynamic_bitset& types, entity_category* source, index_t source_index) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					source->m_tables.find(typeId)->second->moveFromIndexTo(source_index, m_tables.find(typeId)->second.get());
@@ -226,17 +241,40 @@ namespace rynx {
 				return *static_cast<component_table<U>*>(m_tables.emplace(typeIndex, std::make_unique<component_table<U>>()).first->second.get());
 			}
 
-			template<typename T> const auto& table() const { return const_cast<chunk*>(this)->table<T>(); }
+			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 
 		private:
 			template<DataAccess, typename Ts> struct getTables {};
 			template<DataAccess accessType, typename... Ts> struct getTables<accessType, std::tuple<Ts...>> {
-				auto operator()(chunk& tableSource) {
+				auto operator()(entity_category& categorySource) {
 					if constexpr (accessType == DataAccess::Const) {
-						return std::make_tuple(&const_cast<const chunk&>(tableSource).table<Ts>()...);
+						return std::make_tuple(&const_cast<const entity_category&>(categorySource).table<Ts>()...);
 					}
 					else {
-						return std::make_tuple(&tableSource.table<Ts>()...);
+						return std::make_tuple(&categorySource.table<Ts>()...);
+					}
+				}
+			};
+
+			template<DataAccess, typename Ts> struct getTableDatas {};
+			template<DataAccess accessType, typename... Ts> struct getTableDatas<accessType, std::tuple<Ts...>> {
+				auto operator()(entity_category& categorySource) {
+					if constexpr (accessType == DataAccess::Const) {
+						return std::make_tuple(const_cast<const entity_category&>(categorySource).table<Ts>().data()...);
+					}
+					else {
+						return std::make_tuple(categorySource.table<Ts>().data()...);
+					}
+				}
+			};
+
+			template<DataAccess accessType, typename T> struct getTableData {
+				auto operator()(entity_category& categorySource) {
+					if constexpr (accessType == DataAccess::Const) {
+						return const_cast<const entity_category&>(categorySource).table<T>().data();
+					}
+					else {
+						return categorySource.table<T>().data();
 					}
 				}
 			};
@@ -248,106 +286,147 @@ namespace rynx {
 		};
 
 
-		template<DataAccess accessType, typename TableSource, typename F> class iterator {};
-		template<DataAccess accessType, typename TableSource, typename Ret, typename Class, typename... Args>
-		class iterator<accessType, TableSource, Ret(Class::*)(Args...) const> {
+		template<DataAccess accessType, typename category_source, typename F> class iterator {};
+		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
+		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> {
 		public:
-			iterator(TableSource& ecs) : m_ecs(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
-			iterator(const TableSource& ecs) : m_ecs(const_cast<TableSource&>(ecs)) { m_ecs.template componentTypesAllowed<Args...>(); }
+			iterator(category_source& ecs) : m_ecs(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
+			iterator(const category_source& ecs) : m_ecs(const_cast<category_source&>(ecs)) { m_ecs.template componentTypesAllowed<Args...>(); }
 
+#define RYNX_ECS_USE_TUPLE_CALL_IMPL 0
 			template<typename F> void for_each(F&& op) {
-				constexpr bool is_id_query = std::is_same_v<typename std::tuple_element<0, std::tuple<Args...> >::type, id>;
+				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 
+#if RYNX_ECS_USE_TUPLE_CALL_IMPL
 				// remove one type from front if we have id query.
-				using components_tuple_type = typename remove_front_if<is_id_query, std::tuple<Args...>>::type;
+				using components_tuple_type = typename remove_front_if<is_id_query, std::tuple<FArg, Args...>>::type;
 				using components_index_seq_type = decltype(std::make_index_sequence<std::tuple_size<components_tuple_type>::value>());
+#endif
 
-				unpack_types<components_tuple_type>(components_index_seq_type());
+				if constexpr (!is_id_query) {
+					unpack_types<FArg>();
+				}
+				unpack_types<Args...>();
 
-				auto& chunks = m_ecs.chunks();
-				for (auto&& chunk : chunks) {
-					if (chunk.second->includesAll(includeTypes) && chunk.second->includesNone(excludeTypes)) {
-						auto tables = chunk.second->template tables<accessType, components_tuple_type>();
-						auto& ids = chunk.second->ids();
-						for (index_t i = 0; i < ids.size(); ++i) {
-							if constexpr (is_id_query) {
-								make_indexed_call(std::forward<F>(op), i, ids[i].value, tables, components_index_seq_type());
-							}
-							else {
-								make_indexed_call(std::forward<F>(op), i, tables, components_index_seq_type());
-							}
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) && entity_category.second->includesNone(excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						
+#if !RYNX_ECS_USE_TUPLE_CALL_IMPL
+						// NOTE: VS 2019 16.2.3 (Tested 26.8.2019) can optimize this version of the implementation better.
+						if constexpr (is_id_query) {
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
 						}
+						else {
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+						}
+#else
+						auto datas = entity_category.second->template table_datas<accessType, components_tuple_type>();
+						call_user_op_with_data<is_id_query>(std::forward<F>(op), ids, datas, components_index_seq_type());
+#endif
 					}
 				}
 			}
 
-			iterator& include(dynamic_bitset& inTypes) { includeTypes = inTypes; return *this; }
-			iterator& exclude(dynamic_bitset& notInTypes) { excludeTypes = notInTypes; return *this; }
+			iterator& include(dynamic_bitset inTypes) { includeTypes = std::move(inTypes); return *this; }
+			iterator& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
 
 		private:
-			template<typename F, typename... Ts, std::size_t... Is> void make_indexed_call(F&& op, index_t index, entity_id_t entityId, std::tuple<Ts...>& tuple, std::index_sequence<Is...>) { op(id(entityId), std::get<Is>(tuple)->operator[](index)...); }
-			template<typename F, typename... Ts, std::size_t... Is> void make_indexed_call(F&& op, index_t index, std::tuple<Ts...>& tuple, std::index_sequence<Is...>) { op(std::get<Is>(tuple)->operator[](index)...); }
+#if !RYNX_ECS_USE_TUPLE_CALL_IMPL
+			template<bool isIdQuery, typename F, typename T_first, typename... Ts> void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
+				if constexpr (isIdQuery) {
+					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
+						op(entityId, *data_ptrs_first++, (*data_ptrs++)...);
+					});
+				}
+				else {
+					std::for_each(data_ptrs_first, data_ptrs_first + ids.size(), [=](T_first& a) mutable {
+						op(a, (*data_ptrs++)...);
+					});
+				}
+			}
+#endif
+
+#if RYNX_ECS_USE_TUPLE_CALL_IMPL
+			template<bool isIdQuery, typename F, typename... Ts, size_t...Is> void call_user_op_with_data(F&& op, std::vector<id>& ids, std::tuple<Ts*...>& data_ptrs, std::index_sequence<Is...>) {
+				if constexpr (isIdQuery) {
+					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
+						op(entityId, *std::get<Is>(data_ptrs)++...);
+					});
+				}
+				else {
+					// TODO:
+					std::for_each(ids.data(), ids.data() + ids.size(), [=](std::tuple_element<0>(data_ptrs)::type ptr) mutable {
+						op(*std::get<Is>(data_ptrs)++...);
+					});
+				}
+			}
+#endif
+#undef RYNX_ECS_USE_TUPLE_CALL_IMPL
 
 			template<typename TupleType, size_t...Is>
 			void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
+			template<typename... Ts>
+			void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
 
 			dynamic_bitset includeTypes;
 			dynamic_bitset excludeTypes;
-			TableSource& m_ecs;
+			category_source& m_ecs;
 		};
 
 		// TODO: don't use boolean template parameter. use enum class instead.
-		template<typename TableSource, bool allowEditing = false>
+		template<typename category_source, bool allowEditing = false>
 		class entity {
 		public:
-			entity(TableSource& parent, entity_id_t id) : tableSource(&parent), m_id(id) {}
+			entity(category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {}
 
 			template<typename T> T& get() {
-				tableSource->template componentTypesAllowed<T>();
-				auto chunkAndIndex = tableSource->chunk_and_index_for(m_id);
-				rynx_assert(chunkAndIndex.first != nullptr, "referenced entity seems to not exist.");
-				return chunkAndIndex.first->template table<T>()[chunkAndIndex.second];
+				categorySource->template componentTypesAllowed<T>();
+				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
+				rynx_assert(categoryAndIndex.first != nullptr, "referenced entity seems to not exist.");
+				return categoryAndIndex.first->template table<T>()[categoryAndIndex.second];
 			}
 
 			template<typename... Ts> bool has() const {
-				tableSource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
-				auto chunkAndIndex = tableSource->chunk_and_index_for(m_id);
-				if (chunkAndIndex.first) {
-					return true && (chunkAndIndex.first->types().test(tableSource->template typeId<Ts>()) && ...);
+				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
+				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
+				if (categoryAndIndex.first) {
+					return true && (categoryAndIndex.first->types().test(categorySource->template typeId<Ts>()) && ...);
 				}
 				return false;
 			}
 
 			template<typename... Ts> void remove() {
 				static_assert(allowEditing && sizeof...(Ts) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
-				tableSource->template removeFromEntity<Ts...>(m_id);
+				categorySource->template removeFromEntity<Ts...>(m_id);
 			}
 			template<typename T> void add(T&& t) {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
-				tableSource->template attachToEntity<T>(m_id, std::forward<T>(t));
+				categorySource->template attachToEntity<T>(m_id, std::forward<T>(t));
 			}
 			entity_id_t id() const { return m_id; }
 		private:
-			TableSource* tableSource;
+			category_source* categorySource;
 			entity_id_t m_id;
 		};
 
-		template<typename TableSource>
+		template<typename category_source>
 		class const_entity {
 		public:
-			const_entity(const TableSource& parent, entity_id_t id) : tableSource(&parent), m_id(id) {}
+			const_entity(const category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {}
 			template<typename T> const T& get() {
-				tableSource->template componentTypesAllowed<T>();
-				auto chunkAndIndex = tableSource->chunk_and_index_for(m_id);
-				rynx_assert(chunkAndIndex.first != nullptr, "referenced entity seems to not exist.");
-				return chunkAndIndex.first->template table<T>()[chunkAndIndex.second];
+				categorySource->template componentTypesAllowed<T>();
+				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
+				rynx_assert(categoryAndIndex.first != nullptr, "referenced entity seems to not exist.");
+				return categoryAndIndex.first->template table<T>()[categoryAndIndex.second];
 			}
 
 			template<typename... Ts> bool has() const {
-				tableSource->template componentTypesAllowed<Ts...>();
-				auto chunkAndIndex = tableSource->chunk_and_index_for(m_id);
-				if (chunkAndIndex.first) {
-					return true && (chunkAndIndex.first->types().test(tableSource->template typeId<Ts>()) && ...);
+				categorySource->template componentTypesAllowed<Ts...>();
+				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
+				if (categoryAndIndex.first) {
+					return true && (categoryAndIndex.first->types().test(categorySource->template typeId<Ts>()) && ...);
 				}
 				return false;
 			}
@@ -355,28 +434,32 @@ namespace rynx {
 			template<typename... Ts> void remove() { static_assert(sizeof...(Ts) == 1 && sizeof...(Ts) == 2, "can't remove components from const entity"); }
 			template<typename T, typename... Args> void add(Args&& ... args) const { static_assert(sizeof(T) == 1 && sizeof(T) == 2, "can't add components to const entity"); }
 		private:
-			const TableSource* tableSource;
+			const category_source* categorySource;
 			entity_id_t m_id;
 		};
 
-		template<DataAccess accessType, typename TableSource>
+		template<DataAccess accessType, typename category_source>
 		class query_t {
 			dynamic_bitset inTypes;
 			dynamic_bitset notInTypes;
-			TableSource& m_ecs;
+			category_source& m_ecs;
+			bool m_consumed = false;
 
 		public:
-			query_t(TableSource& ecs) : m_ecs(ecs) {}
-			query_t(const TableSource& ecs_) : m_ecs(const_cast<TableSource&>(ecs_)) {}
-
+			query_t(category_source& ecs) : m_ecs(ecs) {}
+			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
+			~query_t() { rynx_assert(m_consumed, "did you forgete to execute query object?"); }
+			
 			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<Ts>()), ...); return *this; }
 			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<Ts>()), ...); return *this; }
 
 			template<typename F>
 			query_t& execute(F&& op) {
-				iterator<accessType, TableSource, decltype(&F::operator())> it(m_ecs);
-				it.include(inTypes);
-				it.exclude(notInTypes);
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
 				it.for_each(std::forward<F>(op));
 				return *this;
 			}
@@ -385,24 +468,24 @@ namespace rynx {
 		ecs() = default;
 		~ecs() {}
 
-		bool exists(entity_id_t id) const { return m_idChunkMap.find(id) != m_idChunkMap.end(); }
+		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }
 		bool exists(id id) const { return exists(id.value); }
 
-		entity<ecs, true> operator[](index_t id) { return entity<ecs, true>(*this, id); }
+		entity<ecs, true> operator[](entity_id_t id) { return entity<ecs, true>(*this, id); }
 		entity<ecs, true> operator[](id id) { return entity<ecs, true>(*this, id.value); }
-		const_entity<ecs> operator[](index_t id) const { return const_entity<ecs>(*this, id); }
+		const_entity<ecs> operator[](entity_id_t id) const { return const_entity<ecs>(*this, id); }
 		const_entity<ecs> operator[](id id) const { return const_entity<ecs>(*this, id.value); }
 
 		template<typename F>
 		void for_each(F&& op) {
-			// PROFILE_SCOPE(Game, "ECS For Each");
+			rynx_profile(Game, "ECS For Each");
 			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
 			it.for_each(std::forward<F>(op));
 		}
 
 		template<typename F>
 		void for_each(F&& op) const {
-			// PROFILE_SCOPE(Game, "ECS For Each");
+			rynx_profile(Game, "ECS For Each");
 			iterator<DataAccess::Const, ecs, decltype(&F::operator())> it(*this);
 			it.for_each(std::forward<F>(op));
 		}
@@ -410,20 +493,19 @@ namespace rynx {
 		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
 		query_t<DataAccess::Const, ecs> query() const { return query_t<DataAccess::Const, ecs>(*this); }
 
-		std::pair<chunk*, index_t> chunk_and_index_for(entity_id_t id) const {
-			auto it = m_idChunkMap.find(id);
-			if (it != m_idChunkMap.end())
-				return it->second;
-			return std::pair<chunk*, index_t>(nullptr, 0);
+		std::pair<entity_category*, index_t> category_and_index_for(entity_id_t id) const {
+			auto it = m_idCategoryMap.find(id);
+			rynx_assert(it != m_idCategoryMap.end(), "requesting category and index for an entity id that does not exist");
+			return it->second;
 		}
 
 		void erase(entity_id_t entityId) {
-			auto it = m_idChunkMap.find(entityId);
-			if (it != m_idChunkMap.end()) {
+			auto it = m_idCategoryMap.find(entityId);
+			if (it != m_idCategoryMap.end()) {
 				auto operations = it->second.first->erase(it->second.second);
-				m_idChunkMap.erase(operations.first.id);
+				m_idCategoryMap.erase(operations.first.id);
 				if (operations.second.id != entity_index::InvalidId) {
-					m_idChunkMap[operations.second.id] = { operations.second.newChunk, operations.second.newIndex };
+					m_idCategoryMap[operations.second.id] = { operations.second.new_category, operations.second.newIndex };
 				}
 			}
 			entities.entityKilled(entityId);
@@ -436,60 +518,60 @@ namespace rynx {
 		template<typename... Components>
 		entity_id_t create(Components&& ... components) {
 			entity_id_t id = entities.generateOne();
-			dynamic_bitset targetChunk;
-			(targetChunk.set(types.id<Components>()), ...);
-			auto chunk_it = m_chunks.find(targetChunk);
-			if (chunk_it == m_chunks.end()) { chunk_it = m_chunks.emplace(targetChunk, std::make_unique<chunk>(targetChunk, &types)).first; }
-			chunk_it->second->insertNew(id, std::forward<Components>(components)...);
-			m_idChunkMap.emplace(id, std::make_pair(chunk_it->second.get(), index_t(chunk_it->second->size() - 1)));
+			dynamic_bitset targetCategory;
+			(targetCategory.set(types.id<Components>()), ...);
+			auto category_it = m_categories.find(targetCategory);
+			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &types)).first; }
+			category_it->second->insertNew(id, std::forward<Components>(components)...);
+			m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(category_it->second->size() - 1)));
 			return id;
 		}
 
 		template<typename... Components>
 		ecs& attachToEntity(entity_id_t id, Components&& ... components) {
-			auto it = m_idChunkMap.find(id);
-			rynx_assert(it != m_idChunkMap.end(), "attachToEntity called for entity that does not exist.");
+			auto it = m_idCategoryMap.find(id);
+			rynx_assert(it != m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
 			const dynamic_bitset& initialTypes = it->second.first->types();
 			dynamic_bitset resultTypes = initialTypes;
 			(resultTypes.set(types.id<Components>()), ...);
 
-			auto destinationChunkIt = m_chunks.find(resultTypes);
-			if (destinationChunkIt == m_chunks.end()) {
-				destinationChunkIt = m_chunks.emplace(resultTypes, std::make_unique<chunk>(resultTypes, &types)).first;
-				destinationChunkIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
+			auto destinationCategoryIt = m_categories.find(resultTypes);
+			if (destinationCategoryIt == m_categories.end()) {
+				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &types)).first;
+				destinationCategoryIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 			}
 
 			// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
-			auto changePair = destinationChunkIt->second->migrateEntity(initialTypes, it->second.first, it->second.second);
-			//                                                          ^types moved, ^source chunk,    ^source index
-			destinationChunkIt->second->insertComponents(std::forward<Components>(components)...);
-			m_idChunkMap[changePair.first.id] = { changePair.first.newChunk, changePair.first.newIndex };
-			if (changePair.second.newChunk)
-				m_idChunkMap[changePair.second.id] = { changePair.second.newChunk, changePair.second.newIndex };
+			auto changePair = destinationCategoryIt->second->migrateEntity(initialTypes, it->second.first, it->second.second);
+			//                                                             ^types moved, ^source category, ^source index
+			destinationCategoryIt->second->insertComponents(std::forward<Components>(components)...);
+			m_idCategoryMap[changePair.first.id] = { changePair.first.new_category, changePair.first.newIndex };
+			if (changePair.second.new_category)
+				m_idCategoryMap[changePair.second.id] = { changePair.second.new_category, changePair.second.newIndex };
 
 			return *this;
 		}
 
 		template<typename... Components>
 		ecs& removeFromEntity(entity_id_t id) {
-			auto it = m_idChunkMap.find(id);
-			rynx_assert(it != m_idChunkMap.end(), "removeFromEntity called for entity that does not exist.");
+			auto it = m_idCategoryMap.find(id);
+			rynx_assert(it != m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
 			const dynamic_bitset& initialTypes = it->second.first->types();
 			dynamic_bitset resultTypes = initialTypes;
 			(resultTypes.reset(types.id<Components>()), ...);
 
-			auto destinationChunkIt = m_chunks.find(resultTypes);
-			if (destinationChunkIt == m_chunks.end()) {
-				destinationChunkIt = m_chunks.emplace(resultTypes, std::make_unique<chunk>(resultTypes, &types)).first;
-				destinationChunkIt->second->copyTypesFrom(it->second.first, resultTypes);
+			auto destinationCategoryIt = m_categories.find(resultTypes);
+			if (destinationCategoryIt == m_categories.end()) {
+				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &types)).first;
+				destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
 			}
 
 			it->second.first->eraseComponentsFromIndex<Components...>(it->second.second);
-			auto changePair = destinationChunkIt->second->migrateEntity(resultTypes, it->second.first, it->second.second);
+			auto changePair = destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second);
 
-			m_idChunkMap[changePair.first.id] = { changePair.first.newChunk, changePair.first.newIndex };
-			if (changePair.second.newChunk)
-				m_idChunkMap[changePair.second.id] = { changePair.second.newChunk, changePair.second.newIndex };
+			m_idCategoryMap[changePair.first.id] = { changePair.first.new_category, changePair.first.newIndex };
+			if (changePair.second.new_category)
+				m_idCategoryMap[changePair.second.id] = { changePair.second.new_category, changePair.second.newIndex };
 			return *this;
 		}
 
@@ -498,8 +580,8 @@ namespace rynx {
 		template<typename... Components> ecs& removeFromEntity(id id) { removeFromEntity<Components...>(id.value); return *this; }
 
 	private:
-		auto& chunks() { return m_chunks; }
-		const auto& chunks() const { return m_chunks; }
+		auto& categories() { return m_categories; }
+		const auto& categories() const { return m_categories; }
 
 	public:
 		// ecs view that operates on Args types only. generates compile errors if trying to access any other data.
@@ -508,8 +590,8 @@ namespace rynx {
 		template<typename...TypeConstraints>
 		class view {
 			template<typename T, bool> friend class rynx::ecs::entity;
-			template<DataAccess accessType, typename TableSource> friend class rynx::ecs::query_t;
-			template<DataAccess accessType, typename TableSource, typename F> friend class rynx::ecs::iterator;
+			template<DataAccess accessType, typename category_source> friend class rynx::ecs::query_t;
+			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::iterator;
 
 			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>(); }
 			template<typename T> static constexpr bool typeConstCorrect() {
@@ -532,14 +614,14 @@ namespace rynx {
 
 			template<typename F>
 			void for_each(F&& op) {
-				// PROFILE_SCOPE(Game, "ECS For Each");
+				rynx_profile(Game, "ECS For Each");
 				iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
 				it.for_each(std::forward<F>(op));
 			}
 
 			template<typename F>
 			void for_each(F&& op) const {
-				// PROFILE_SCOPE(Game, "ECS For Each");
+				rynx_profile(Game, "ECS For Each");
 				iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
 				it.for_each(std::forward<F>(op));
 			}
@@ -557,11 +639,11 @@ namespace rynx {
 			query_t<DataAccess::Const, view> query() const { return query_t<DataAccess::Const, view>(*this); }
 
 		private:
-			auto& chunks() { return m_ecs->chunks(); }
-			const auto& chunks() const { return m_ecs->chunks(); }
+			auto& categories() { return m_ecs->categories(); }
+			const auto& categories() const { return m_ecs->categories(); }
 
 			template<typename T> type_id_t typeId() const { return m_ecs->template typeId<T>(); }
-			auto chunk_and_index_for(entity_id_t id) { return m_ecs->chunk_and_index_for(id); }
+			auto category_and_index_for(entity_id_t id) { return m_ecs->category_and_index_for(id); }
 
 		public:
 			template<typename...Args> operator view<Args...>() const {
@@ -584,24 +666,24 @@ namespace rynx {
 			template<typename... Components>
 			entity_id_t create(Components&& ... components) {
 				componentTypesAllowed<Components...>();
-				return m_ecs->create(std::forward<Components>(components)...);
+				return this->m_ecs->create(std::forward<Components>(components)...);
 			}
 
 			template<typename... Components>
-			view& attachToEntity(entity_id_t id, Components&& ... components) {
+			edit_view& attachToEntity(entity_id_t id, Components&& ... components) {
 				componentTypesAllowed<Components...>();
-				m_ecs->attachToEntity(id, std::forward<Components>(components)...);
+				this->m_ecs->attachToEntity(id, std::forward<Components>(components)...);
 				return *this;
 			}
-			template<typename... Components> view& attachToEntity(id id, Components&& ... components) { return attachToEntity(id.value, std::forward<Components>(components)...); }
+			template<typename... Components> edit_view& attachToEntity(id id, Components&& ... components) { return attachToEntity(id.value, std::forward<Components>(components)...); }
 
 			template<typename... Components>
-			view& removeFromEntity(entity_id_t id) {
+			edit_view& removeFromEntity(entity_id_t id) {
 				componentTypesAllowed<Components...>();
-				m_ecs->removeFromEntity<Components...>(id);
+				this->m_ecs->template removeFromEntity<Components...>(id);
 				return *this;
 			}
-			template<typename... Components> view& removeFromEntity(id id, Components&& ... components) { return removeFromEntity<Components...>(id.value); }
+			template<typename... Components> edit_view& removeFromEntity(id id) { return removeFromEntity<Components...>(id.value); }
 
 			template<typename...Args> operator edit_view<Args...>() const {
 				static_assert((isAny<Args, TypeConstraints...>() && ...), "all requested types must be present in parent view");
@@ -628,8 +710,8 @@ namespace rynx {
 
 		template<typename T> type_id_t typeId() const { return types.template id<T>(); }
 
-		unordered_map<entity_id_t, std::pair<chunk*, index_t>> m_idChunkMap;
-		unordered_map<dynamic_bitset, std::unique_ptr<chunk>, bitset_hash> m_chunks;
+		unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
+		unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
 	};
 
 }

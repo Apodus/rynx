@@ -184,7 +184,22 @@ namespace rynx {
 			}
 		}
 
+		// assumes: entry is not stored prior to insert.
+		std::pair<iterator, bool> insert_unique_(value_type&& value, uint32_t hash) {
+			if (m_capacity - m_size <= m_capacity >> 3) {
+				if (m_capacity == 0)
+					grow_to(64);
+				else
+					grow_to(m_capacity << 1);
+				hash = static_cast<uint32_t>(Hash()(value.first) & (m_capacity - 1));
+			}
+
+			return unchecked_insert_(std::move(value), static_cast<uint32_t>(hash));
+		}
+
 		// this version bumps to back of bucket.
+		// assumes: there is space for new entry.
+		// assumes: entry is not stored prior to this insert.
 		std::pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
 			++m_size;
 			auto slot_forward = next_of_slot(hash);
@@ -372,16 +387,7 @@ namespace rynx {
 			if (it.m_index != dynamic_bitset::npos) {
 				return { end(), false };
 			}
-
-			if (m_capacity - m_size <= m_capacity >> 3) {
-				if (m_capacity == 0)
-					grow_to(64);
-				else
-					grow_to(m_capacity << 1);
-				hash = static_cast<uint32_t>(Hash()(value.first) & (m_capacity - 1));
-			}
-
-			return unchecked_insert_(std::move(value), static_cast<uint32_t>(hash));
+			return insert_unique_(std::move(value), hash);
 		}
 
 		template<class P> std::pair<iterator, typename std::enable_if<std::is_constructible_v<value_type, P&&>, bool>::type> insert(P&& value) { return emplace(value_type(value)); }
@@ -403,9 +409,16 @@ namespace rynx {
 				return { it, false };
 			}
 			else {
-				return insert(value_type(k, std::forward<M>(obj)));
+				return insert_unique_(
+					value_type(
+						k,
+						std::forward<M>(obj)
+					),
+					hash
+				);
 			}
 		}
+		
 		template <class M> std::pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
 			auto it = find(k, hash);
@@ -414,27 +427,48 @@ namespace rynx {
 				return { it, false };
 			}
 			else {
-				return insert(value_type(std::move(k), std::forward<M>(obj)));
+				return insert_unique_(
+					value_type(
+						std::move(k),
+						std::forward<M>(obj)
+					),
+					hash
+				);
 			}
 		}
 
+
 		template <class... Args> std::pair<iterator, bool> try_emplace(const key_type& k, Args&& ... args) {
-			auto it = find(k);
+			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
+			auto it = find(k, hash);
 			if (it != end()) {
 				return { it, false };
 			}
 			else {
-				return emplace(value_type(k, U(std::forward<Args>(args)...)));
+				return insert_unique_(
+					value_type(
+						k,
+						mapped_type(std::forward<Args>(args)...)
+					),
+					hash
+				);
 			}
 		}
 
 		template <class... Args> std::pair<iterator, bool> try_emplace(key_type&& k, Args&& ... args) {
-			auto it = find(k);
+			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
+			auto it = find(k, hash);
 			if (it != end()) {
 				return { it, false };
 			}
 			else {
-				return emplace(value_type(std::move(k), U(std::forward<Args>(args)...)));
+				return insert_unique_(
+					value_type(
+						std::move(k),
+						mapped_type(std::forward<Args>(args)...)
+					),
+					hash
+				);
 			}
 		}
 

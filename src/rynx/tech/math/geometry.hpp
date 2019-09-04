@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/graphics/math/vector.hpp>
+#include <rynx/tech/math/vector.hpp>
 #include <utility>
 #include <vector>
 #include <memory>

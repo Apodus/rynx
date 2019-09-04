@@ -1,9 +1,13 @@
 #pragma once
 
-#include <rynx/graphics/math/vector.hpp>
+#include <rynx/tech/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/math/geometry.hpp>
 #include <vector>
+
+#ifdef WILDSHADE_PROFILING
+#include <Core/Profiling.h>
+#endif
 
 inline float sqr(float x) { return x * x; };
 
@@ -17,7 +21,7 @@ public:
 	using index_t = uint32_t;
 
 private:
-	static constexpr int MaxElementsInNode = 10;
+	static constexpr int MaxElementsInNode = 16;
 	
 	struct entry {
 		entry() = default;
@@ -236,16 +240,18 @@ public:
 		auto it = entryMap.find(entityId);
 		if (it != entryMap.end()) {
 			uint64_t id_of_erased = it->second.first->entity_migrates(it->second.second, this);
-			rynx_assert(id_of_erased == entityId, "mismatch of erased shit");
+			rynx_assert(id_of_erased == entityId, "mismatch of erased entity vs expected");
 			entryMap.erase(it);
 		}
 	}
 
 	void update() {
 		{
+			rynx_profile(Game, "FindBuckets");
 			if (entryMap.empty())
 				return;
 
+			
 			auto it = entryMap.iteratorAt(update_next_index);
 			
 			// NOTE: we are updating 1/32 of all entries per iteration. this is because the update itself is really fucking expensive.
@@ -258,8 +264,10 @@ public:
 
 				auto item = it->second.first->members[it->second.second];
 				auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
-				if (!newLeaf.first || newLeaf.first == it->second.first)
+				if (!newLeaf.first || newLeaf.first == it->second.first) {
+					++it;
 					continue;
+				}
 
 				// move to new bucket.
 				it->second.first->entity_migrates(it->second.second, this);
@@ -272,6 +280,7 @@ public:
 		}
 
 		{
+			rynx_profile(Game, "UpdateNodePositions");
 			root.update_depth_first();
 		}
 	}
@@ -292,7 +301,9 @@ public:
 	}
 
 private:
-	template<typename F> static void collisions_internal(F&& f, node* a) {
+	template<typename F> static void collisions_internal(F&& f, node* rynx_restrict a) {
+		rynx_assert(a != nullptr, "node cannot be null");
+
 		if (a->children.empty()) {
 			for (size_t i = 0; i < a->members.size(); ++i) {
 				auto& m1 = a->members[i];
@@ -312,10 +323,16 @@ private:
 			}
 
 			for (size_t i = 0; i < a->children.size(); ++i) {
+				node* child1 = a->children[i].get();
+				rynx_assert(child1 != nullptr, "node cannot be null");
+				rynx_assert(child1 != a, "nodes must differ");
+
 				for (size_t k = i + 1; k < a->children.size(); ++k) {
-					node* child1 = a->children[i].get();
 					node* child2 = a->children[k].get();
-					if ((child1->pos - child2->pos).lengthApprox() < sqr(child1->radius + child2->radius)) {
+					rynx_assert(child2 != nullptr, "node cannot be null");
+					rynx_assert(child2 != child1, "nodes must differ");
+
+					if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
 						collisions_internal(std::forward<F>(f), child1, child2);
 					}
 				}
@@ -323,7 +340,11 @@ private:
 		}
 	}
 
-	template<typename F> static void collisions_internal(F&& f, node* a, node* b) {
+	template<typename F> static void collisions_internal(F&& f, node* rynx_restrict a, node* rynx_restrict b) {
+		rynx_assert(a != nullptr, "node cannot be null");
+		rynx_assert(b != nullptr, "node cannot be null");
+		rynx_assert(a != b, "nodes must differ");
+
 		if ((b->pos - a->pos).lengthSquared() > sqr(a->radius + b->radius)) {
 			return;
 		}

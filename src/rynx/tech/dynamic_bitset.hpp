@@ -22,6 +22,7 @@ public:
 		uint8_t bit = id & 63;
 		if (block >= m_index_data.size())
 			m_index_data.resize(((3 * block) >> 1) + 1, 0);
+		rynx_assert(block < m_index_data.size(), "out of bounds");
 		m_index_data[block] |= uint64_t(1) << bit;
 		return *this;
 	}
@@ -29,6 +30,7 @@ public:
 	dynamic_bitset& reset(uint64_t id) {
 		uint64_t block = id >> 6;
 		uint8_t bit = id & 63;
+		rynx_assert(block < m_index_data.size(), "out of bounds");
 		m_index_data[block] &= ~(uint64_t(1) << bit);
 		return *this;
 	}
@@ -42,6 +44,51 @@ public:
 	}
 
 	dynamic_bitset& clear() { m_index_data.fill_memset(uint8_t(0)); return *this; }
+
+	bool includes(const dynamic_bitset& other) const {
+		size_t mySize = m_index_data.size();
+		size_t otherSize = other.m_index_data.size();
+
+		if (otherSize <= mySize) {
+			bool ok = true;
+			for (size_t i = 0, end = other.m_index_data.size(); i < end; ++i) {
+				ok &= (other.m_index_data[i] & m_index_data[i]) == other.m_index_data[i];
+			}
+			return ok;
+		}
+		else {
+			bool ok = true;
+			size_t end = end = m_index_data.size();
+			for (size_t i = 0; i < end; ++i) {
+				ok &= (other.m_index_data[i] & m_index_data[i]) == other.m_index_data[i];
+			}
+			for (size_t i = end; i < other.m_index_data.size(); ++i) {
+				ok &= other.m_index_data[i] == 0;
+			}
+			return ok;
+		}
+	}
+
+	bool excludes(const dynamic_bitset& other) const {
+		size_t mySize = m_index_data.size();
+		size_t otherSize = other.m_index_data.size();
+
+		if (otherSize <= mySize) {
+			bool ok = true;
+			for (size_t i = 0, end = other.m_index_data.size(); i < end; ++i) {
+				ok &= (other.m_index_data[i] & m_index_data[i]) == 0;
+			}
+			return ok;
+		}
+		else {
+			bool ok = true;
+			size_t end = end = m_index_data.size();
+			for (size_t i = 0; i < end; ++i) {
+				ok &= (other.m_index_data[i] & m_index_data[i]) == 0;
+			}
+			return ok;
+		}
+	}
 
 	// merge with operator AND
 	template<data_view view>
@@ -72,6 +119,7 @@ public:
 		return *this;
 	}
 
+	// NOTE: this requires creating a new bitset => reserves memory => slow.
 	dynamic_bitset operator & (const dynamic_bitset& other) const {
 		dynamic_bitset result = *this;
 		result.merge<data_view::PassThrough>(other);

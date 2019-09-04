@@ -18,3 +18,10 @@ inline uint64_t findFirstSetBit(uint64_t source) {
 	return __builtin_ctzl(source);
 }
 #endif
+
+
+#ifdef _WIN32
+#define rynx_restrict __restrict
+#else
+#define rynx_restrict __restrict__
+#endif

@@ -8,6 +8,7 @@
 #define DEBUG_LEVEL 1
 #endif
 
+// TODO: How to properly disable all debug
 #if DEBUG_LEVEL > 0
 
 #ifdef _WIN32
@@ -66,9 +67,18 @@ void windowsDebugOut(const char* logBuffer);
 
 #else // no debug
 
-#define logmsg(x, ...)
-#define rynx_assert(x, msg, ...)
+#define logmsg(x, ...) 
+#ifdef _WIN32
+#define rynx_assert(x, msg, ...) __assume(x);
+#else
+#define rynx_assert(x, msg, ...) __builtin_assume(x);
+#endif
 #define logs(x, ...)
 #define logsnl(x, ...)
 
 #endif
+
+#ifndef WILDSHADE_PROFILING
+#define PROFILE_SCOPE(...)
+#endif
+#define rynx_profile(a, b) PROFILE_SCOPE(a, b);

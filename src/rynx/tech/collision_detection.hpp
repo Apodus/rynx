@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace rynx {
-	class collision_detection : public object_storage::iobject {
+	class collision_detection {
 	private:
 		struct collision_check {
 			collision_check() = default;

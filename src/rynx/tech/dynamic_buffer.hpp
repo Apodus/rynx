@@ -24,6 +24,10 @@ public:
 			resize_discard(other.size());
 			memcpy(m_data.get(), other.m_data.get(), other.size() * sizeof(T));
 		}
+		else {
+			m_data = nullptr;
+			m_size = 0;
+		}
 		return *this;
 	}
 
@@ -95,6 +99,7 @@ public:
 
 	dynamic_buffer& fill(T t) {
 		auto* ptr = m_data.get();
+		rynx_assert(ptr != nullptr, "trying to fill an invalid buffer");
 		auto* end = ptr + m_size;
 		while (ptr != end)
 			*ptr++ = t;

@@ -12,7 +12,7 @@ namespace rynx {
 		// NOTE: As long as we are not using DLLs, this should return the same char* value.
 		//       This means we can use the pointer value instead of the actual string representation for map key.
 #ifdef _WIN32
-		template<typename T> static constexpr char* unique_str_for_type() { return __FUNCDNAME__; }
+		template<typename T> static constexpr const char* unique_str_for_type() { return __FUNCDNAME__; }
 #else
 		template<typename T> static constexpr const char* unique_str_for_type() { return __PRETTY_FUNCTION__; }
 #endif
