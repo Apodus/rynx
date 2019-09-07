@@ -14,8 +14,8 @@ namespace rynx {
 	class unordered_map {
 		static constexpr uint32_t npos = ~uint32_t(0);
 
+#if 0
 		// Array of structs layout
-		/*
 		inline uint32_t next_of_slot(size_t slot) const { return m_info[(slot << 2) + 0]; }
 		inline uint32_t next_of_item(size_t slot) const { return m_info[(slot << 2) + 1]; }
 		inline uint32_t prev_of_item(size_t slot) const { return m_info[(slot << 2) + 2]; }
@@ -25,9 +25,8 @@ namespace rynx {
 		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[(slot << 2) + 1] = value; }
 		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[(slot << 2) + 2] = value; }
 		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[(slot << 2) + 3] = value; }
-		*/
-
-		// Structs of arrays layout
+#else	
+		// Structs of arrays layout. Better for find.
 		inline uint32_t next_of_slot(size_t slot) const { return m_info[slot + 0 * m_capacity]; }
 		inline uint32_t next_of_item(size_t slot) const { return m_info[slot + 1 * m_capacity]; }
 		inline uint32_t prev_of_item(size_t slot) const { return m_info[slot + 2 * m_capacity]; }
@@ -37,6 +36,7 @@ namespace rynx {
 		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[slot + 1 * m_capacity] = value; }
 		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[slot + 2 * m_capacity] = value; }
 		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[slot + 3 * m_capacity] = value; }
+#endif
 
 	public:
 		using key_type = T;
@@ -260,6 +260,7 @@ namespace rynx {
 			new (m_data.get() + place) value_type(std::move(value));
 			m_presence.set(place);
 
+			update_hash_of_item(place, static_cast<uint32_t>(hash));
 			if (next_of_slot(hash) == npos) {
 				update_next_of_slot(hash, static_cast<uint32_t>(place));
 			}
@@ -271,7 +272,6 @@ namespace rynx {
 			return { iterator(place, &m_presence, m_data.get()), true };
 		}
 		*/
-
 
 		uint64_t find_index_(const T& key, size_t hash) const {
 			if (empty())

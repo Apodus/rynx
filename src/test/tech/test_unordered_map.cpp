@@ -75,28 +75,32 @@ TEST_CASE("unordered_map benchmark", "std vs rynx") {
 	// find
 	{
 		rynx::unordered_map<int, int> rynxmap;
-		for (int i = 0; i < 100000; ++i) {
+		for (int i = 0; i < 1000000; ++i) {
 			rynxmap.insert({ i, i });
 		}
 		BENCHMARK("rynx: find") {
-			int target = 100000;
+			int target = 1000000 - 1;
 			int sum = 0;
-			while (target-- > 0)
+			while (target > 0) {
 				sum += rynxmap.find(target)->second;
+				target -= 10;
+			}
 			return sum;
 		};
 	}
 
 	{
 		std::unordered_map<int, int> stdmap;
-		for (int i = 0; i < 100000; ++i) {
+		for (int i = 0; i < 1000000; ++i) {
 			stdmap.insert({ i, i });
 		}
 		BENCHMARK("std: find") {
-			int target = 100000;
+			int target = 1000000 - 1;
 			int sum = 0;
-			while (target-- > 0)
+			while (target > 0) {
 				sum += stdmap.find(target)->second;
+				target -= 10;
+			}
 			return sum;
 		};
 	}
