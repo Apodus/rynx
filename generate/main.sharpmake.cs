@@ -50,7 +50,10 @@ class Rynx : Solution
     {
         conf.SolutionPath = @"[solution.SharpmakeCsPath]\..";
         conf.AddProject<Game>(target);
-    }
+		
+		conf.AddProject<TestTech>(target);
+		conf.AddProject<TestScheduler>(target);
+	}
 }
 
 internal static class main

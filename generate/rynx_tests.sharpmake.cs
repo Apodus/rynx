@@ -30,20 +30,3 @@ public class TestTech : TestProject
 		conf.AddPublicDependency<Tech>(target);
 	}
 }
-
-[Export]
-public class RynxTests : Project
-{
-	public RynxTests()
-    {
-        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\test\";
-    }
-	
-	[Configure]
-    public void conf_test(Project.Configuration conf, Target target)
-    {
-		conf.AddPublicDependency<TestTech>(target);
-		conf.AddPublicDependency<TestScheduler>(target);
-	}
-	
-}
