@@ -2,14 +2,9 @@
 
 #include <stdio.h>
 
-#ifndef FINAL_BUILD
-#define DEBUG_LEVEL 2
-#else
-#define DEBUG_LEVEL 1
-#endif
+#ifdef RYNX_ASSERTS_ENABLED_
 
-// TODO: How to properly disable all debug
-#if DEBUG_LEVEL > 0
+#define DEBUG_LEVEL 2
 
 #ifdef _WIN32
 void windowsDebugOut(const char* logBuffer);
