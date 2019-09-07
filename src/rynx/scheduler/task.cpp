@@ -2,10 +2,6 @@
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/context.hpp>
 
-#ifdef WILDSHADE_PROFILING
-#include <Core/Profiling.h>
-#endif
-
 void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*this); }
 
 void rynx::scheduler::task::run() {

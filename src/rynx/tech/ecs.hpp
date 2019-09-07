@@ -4,10 +4,6 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
 
-#ifdef WILDSHADE_PROFILING
-#include <Core/Profiling.h>
-#endif
-
 #include <vector>
 #include <type_traits>
 #include <tuple>

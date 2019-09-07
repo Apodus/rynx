@@ -19,7 +19,7 @@ namespace rynx {
 
 			template<typename T>
 			void add_rule_set(std::unique_ptr<T>&& t) {
-				m_logic.addRuleSet(std::move(t));
+				m_logic.add_ruleset(std::move(t));
 			}
 
 			template<typename T>

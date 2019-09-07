@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sharpmake.X360</name>
+    </assembly>
+    <members>
+        <member name="T:Sharpmake.X360.Options.Linker.ProjectDefaults">
+            <summary>
+            Xbox360 Image Conversion > Configuration File
+            </summary>
+        </member>
+    </members>
+</doc>

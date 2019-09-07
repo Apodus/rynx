@@ -1,0 +1,159 @@
+
+#include "window.hpp"
+
+#include <GL/glew.h>
+#include <GL/GL.h>
+#include <GLFW/glfw3.h>
+
+#include <stdexcept>
+#include <unordered_map>
+#include <functional>
+#include <iostream>
+
+#include <rynx/system/assert.hpp>
+
+using ResizeEventMapper = std::unordered_map<GLFWwindow*, std::function<void(int, int)>>;
+
+static std::unique_ptr<ResizeEventMapper>  g_resizeEventMapper;
+
+static ResizeEventMapper& getResizeEventMapper()
+{
+	if (!g_resizeEventMapper)
+	{
+		g_resizeEventMapper = std::make_unique<ResizeEventMapper>();
+	}
+	return *g_resizeEventMapper.get();
+}
+
+void global_scope_windowResizeCallback(GLFWwindow* window, int width, int height) {
+	getResizeEventMapper()[window](width, height);
+}
+
+Window::Window() {
+	m_fullscreen = false;
+	m_userRequestedExit = false;
+	m_pWindow = nullptr;
+}
+
+Window::~Window() {
+	glfwDestroyWindow(m_pWindow);
+	glfwTerminate();
+	m_pWindow = nullptr;
+	g_resizeEventMapper.reset();
+}
+
+void Window::onResize(int width, int height) {
+	if (width == 0 || height == 0)
+		return;
+
+	m_width = width;
+	m_height = height;
+	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+	glViewport(0, 0, width, height);
+}
+
+GLFWwindow* Window::createWindow(std::string name) {
+	GLFWmonitor* monitor = (m_fullscreen) ? glfwGetPrimaryMonitor() : nullptr;
+	GLFWwindow* window = glfwCreateWindow(static_cast<int>(m_width), static_cast<int>(m_height), name.c_str(), monitor, nullptr);
+
+	if (!window) {
+		glfwTerminate();
+		throw std::runtime_error("Failed to create GLFW window");
+	}
+
+	m_pWindow = window;
+	getResizeEventMapper()[m_pWindow] = [this](int x, int y) { onResize(x, y); };
+	glfwSetWindowSizeCallback(window, global_scope_windowResizeCallback);
+
+	int width, height;
+	glfwGetWindowSize(window, &width, &height);
+
+	onResize(width, height);
+	return window;
+}
+
+void Window::createWindow(int width, int height, std::string name) {
+	m_width = width;
+	m_height = height;
+
+	// Initialize GLFW
+	if (!glfwInit()) {
+		throw std::string("Failed to init GLFW");
+	}
+
+	// Window hints
+	// glfwWindowHint(GLFW_SAMPLES, 4); // FSAA
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // Min OpenGL 3.3
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+	// glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	// glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	m_pWindow = createWindow(name);
+
+	// Make the window's context current
+	glfwMakeContextCurrent(m_pWindow);
+
+	// Initialize GLEW
+	GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		std::cout << err << std::endl;
+		std::cout << "Renderer: " << std::string(reinterpret_cast<const char*>(glGetString(GL_RENDERER))) << std::endl;
+		std::cout << "Version:  " << std::string(reinterpret_cast<const char*>(glGetString(GL_VERSION))) << std::endl;
+		throw std::string("Failed to init GLEW");
+	}
+	else {
+		logmsg("Glew init OK");
+	}
+}
+
+size_t Window::width() const {
+	return m_width;
+}
+
+size_t Window::height() const {
+	return m_height;
+}
+
+void Window::toggle_fullscreen() {
+	m_fullscreen = !m_fullscreen;
+	m_pWindow = createWindow();
+}
+
+void Window::swap_buffers() const {
+	glfwSwapBuffers(m_pWindow);
+}
+
+void Window::enable_grab() const {
+	// TODO: Confine mouse cursor within window region
+	glfwSetInputMode(m_pWindow, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+}
+
+void Window::disable_grab() const {
+	glfwSetInputMode(m_pWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+}
+
+bool Window::shouldClose() const {
+	return (glfwWindowShouldClose(m_pWindow) == 1) || m_userRequestedExit;
+}
+
+void Window::pollEvents() const {
+	glfwPollEvents();
+}
+
+bool Window::active() const {
+	return (glfwGetWindowAttrib(m_pWindow, GLFW_FOCUSED) != 0);
+}
+
+void Window::hide() const {
+	disable_grab();
+	glfwIconifyWindow(m_pWindow);
+}
+
+void Window::requestExit() {
+	m_userRequestedExit = true;
+}
+
+GLFWwindow* Window::getGLFWwindow() const {
+	return m_pWindow;
+}
+

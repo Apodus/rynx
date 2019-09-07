@@ -2,18 +2,11 @@
 #include <rynx/scheduler/worker_thread.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
 
-#ifdef WILDSHADE_PROFILING
-#include <Core/Profiling.h>
-#endif
-
 rynx::scheduler::task_thread::task_thread(task_scheduler* pTaskMaster, int myIndex) {
 	m_scheduler = pTaskMaster;
 	m_done = true;
 	m_running = true;
 	m_thread = std::thread([this, myIndex]() {
-#ifdef WILDSHADE_PROFILING
-		core::Thread::Block bs; // wildshade engine memory tracking or some such. is required.
-#endif
 		threadEntry(myIndex);
 	});
 }

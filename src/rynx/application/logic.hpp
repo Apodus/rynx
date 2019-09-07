@@ -54,7 +54,7 @@ namespace rynx {
 				return result;
 			}
 
-			logic& addRuleSet(std::unique_ptr<iruleset> ruleset) {
+			logic& add_ruleset(std::unique_ptr<iruleset> ruleset) {
 				m_rules.emplace_back(std::move(ruleset));
 				return *this;
 			}

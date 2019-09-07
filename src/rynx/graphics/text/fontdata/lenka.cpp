@@ -1,0 +1,121 @@
+
+#include "lenka.hpp"
+#include <rynx/graphics/text/fontdata.hpp>
+
+FontData& Fonts::setFontLenka(FontData& fontdata) {
+    fontdata.textureID = "FONT_LENKA";
+    fontdata.totalWidth = 1024;
+    fontdata.totalHeight = 1024;
+    fontdata.baseLine = 121;
+    fontdata.lineHeight = 190;
+
+	fontdata[32	] = Glyph(32, 182  , 397  , 19   , 17  , -9  , 181 , 26    );
+	fontdata[33 ] = Glyph(33, 421  , 140  , 32   , 127 , -5  , 3   , 22    );
+	fontdata[34 ] = Glyph(34, 898  , 879  , 36   , 48  , -5  , 25  , 24    );
+	fontdata[35 ] = Glyph(35, 74   , 762  , 89   , 100 , -6  , 32  , 70    );
+	fontdata[36 ] = Glyph(36, 222  , 397  , 19   , 17  , -9  , 181 , 59    );
+	fontdata[37 ] = Glyph(37, 327  , 721  , 75   , 100 , -3  , 32  , 67    );
+	fontdata[38 ] = Glyph(38, 874  , 701  , 83   , 98  , -5  , 39  , 69    );
+	fontdata[39 ] = Glyph(39, 862  , 882  , 35   , 55  , -8  , 26  , 20    );
+	fontdata[40 ] = Glyph(40, 653  , 137  , 62   , 126 , 0   , 28  , 55    );
+	fontdata[41 ] = Glyph(41, 959  , 129  , 50   , 125 , -1  , 33  , 59    );
+	fontdata[42 ] = Glyph(42, 805  , 882  , 56   , 59  , -5  , 30  , 47    );
+	fontdata[43 ] = Glyph(43, 738  , 884  , 66   , 60  , -4  , 54  , 58    );
+	fontdata[44 ] = Glyph(44, 703  , 884  , 34   , 63  , 2   , 88  , 27    );
+	fontdata[45 ] = Glyph(45, 265  , 721  , 60   , 33  , -7  , 58  , 49    );
+	fontdata[46 ] = Glyph(46, 991  , 699  , 32   , 33  , -6  , 98  , 21    );
+	fontdata[47 ] = Glyph(47, 262  , 511  , 61   , 106 , -8  , 25  , 47    );
+	fontdata[48 ] = Glyph(48, 799  , 701  , 74   , 99  , -6  , 30  , 61    );
+	fontdata[49 ] = Glyph(49, 483  , 502  , 68   , 105 , -7  , 27  , 54    );
+	fontdata[50 ] = Glyph(50, 717  , 704  , 81   , 99  , -6  , 33  , 68    );
+	fontdata[51 ] = Glyph(51, 632  , 705  , 84   , 99  , -6  , 31  , 72    );
+	fontdata[52 ] = Glyph(52, 945  , 375  , 69   , 106 , -6  , 29  , 57    );
+	fontdata[53 ] = Glyph(53, 547  , 711  , 84   , 99  , -7  , 32  , 71    );
+	fontdata[54 ] = Glyph(54, 935  , 597  , 77   , 101 , -7  , 30  , 64    );
+	fontdata[55 ] = Glyph(55, 0    , 658  , 87   , 103 , -4  , 28  , 77    );
+	fontdata[56 ] = Glyph(56, 81   , 863  , 72   , 98  , -6  , 31  , 60    );
+	fontdata[57 ] = Glyph(57, 506  , 608  , 70   , 102 , -6  , 30  , 58    );
+	fontdata[58 ] = Glyph(58, 668  , 884  , 34   , 67  , -5  , 56  , 23    );
+	fontdata[59 ] = Glyph(59, 958  , 699  , 32   , 92  , -4  , 62  , 26    );
+	fontdata[63 ] = Glyph(63, 479  , 266  , 70   , 120 , -5  , 9   , 60    );
+	fontdata[64 ] = Glyph(64, 660  , 386  , 113  , 108 , -6  , 38  , 100   );
+	fontdata[65 ] = Glyph(65, 774  , 384  , 86   , 108 , -5  , 29  , 62    );
+	fontdata[66 ] = Glyph(66, 0    , 864  , 80   , 98  , -6  , 31  , 69    );
+	fontdata[67 ] = Glyph(67, 407  , 504  , 75   , 105 , -7  , 31  , 59    );
+	fontdata[68 ] = Glyph(68, 403  , 716  , 73   , 100 , -7  , 31  , 59    );
+	fontdata[69 ] = Glyph(69, 181  , 656  , 83   , 102 , -7  , 29  , 66    );
+	fontdata[70 ] = Glyph(70, 88   , 658  , 92   , 102 , -7  , 28  , 78    );
+	fontdata[71 ] = Glyph(71, 99   , 549  , 82   , 106 , -7  , 31  , 68    );
+	fontdata[72 ] = Glyph(72, 853  , 599  , 81   , 101 , -9  , 30  , 67    );
+	fontdata[73 ] = Glyph(73, 347  , 613  , 81   , 102 , -7  , 32  , 61    );
+	fontdata[74 ] = Glyph(74, 552  , 497  , 59   , 105 , -6  , 27  , 48    );
+	fontdata[75 ] = Glyph(75, 776  , 262  , 93   , 119 , -7  , 29  , 73    );
+	fontdata[76 ] = Glyph(76, 612  , 497  , 78   , 104 , -4  , 27  , 61    );
+	fontdata[77 ] = Glyph(77, 285  , 395  , 78   , 111 , -7  , 21  , 65    );
+	fontdata[78 ] = Glyph(78, 530  , 387  , 79   , 109 , -5  , 27  , 68    );
+	fontdata[79 ] = Glyph(79, 429  , 610  , 76   , 102 , -11 , 29  , 59    );
+	fontdata[80 ] = Glyph(80, 948  , 482  , 69   , 103 , -8  , 29  , 53    );
+	fontdata[81 ] = Glyph(81, 676  , 264  , 99   , 119 , -6  , 29  , 79    );
+	fontdata[82 ] = Glyph(82, 861  , 382  , 83   , 107 , -8  , 29  , 79    );
+	fontdata[83 ] = Glyph(83, 859  , 493  , 88   , 103 , -7  , 29  , 74    );
+	fontdata[84 ] = Glyph(84, 765  , 495  , 93   , 103 , -7  , 29  , 79    );
+	fontdata[85 ] = Glyph(85, 676  , 602  , 88   , 101 , -6  , 29  , 76    );
+	fontdata[86 ] = Glyph(86, 265  , 618  , 81   , 102 , -6  , 28  , 69    );
+	fontdata[87 ] = Glyph(87, 0    , 551  , 98   , 106 , -6  , 25  , 85    );
+	fontdata[88 ] = Glyph(88, 182  , 537  , 79   , 106 , -6  , 28  , 65    );
+	fontdata[89 ] = Glyph(89, 364  , 392  , 76   , 111 , -6  , 23  , 63    );
+	fontdata[90 ] = Glyph(90, 164  , 761  , 84   , 100 , -7  , 31  , 71    );
+	fontdata[91 ] = Glyph(91, 442  , 0    , 87   , 138 , -6  , 20  , 61    );
+	fontdata[92 ] = Glyph(92, 477  , 713  , 69   , 100 , -8  , 30  , 51    );
+	fontdata[93 ] = Glyph(93, 286  , 140  , 67   , 127 , -7  , 25  , 55    );
+	fontdata[97 ] = Glyph(97, 323  , 860  , 64   , 80  , -7  , 50  , 50    );
+	fontdata[98 ] = Glyph(98, 870  , 260  , 73   , 119 , -7  , 11  , 60    );
+	fontdata[99 ] = Glyph(99, 559  , 811  , 74   , 78  , -8  , 52  , 52    );
+	fontdata[100] = Glyph(100, 805  , 134  , 83   , 125 , -7  , 5   , 69    );
+	fontdata[101] = Glyph(101, 869  , 801  , 79   , 77  , -7  , 53  , 60    );
+	fontdata[102] = Glyph(102, 932  , 0    , 86   , 128 , -13 , 4   , 65    );
+	fontdata[103] = Glyph(103, 354  , 140  , 66   , 127 , -7  , 55  , 54    );
+	fontdata[104] = Glyph(104, 266  , 271  , 73   , 123 , -7  , 9   , 61    );
+	fontdata[105] = Glyph(105, 251  , 397  , 33   , 113 , -7  , 18  , 20    );
+	fontdata[106] = Glyph(106, 84   , 0    , 77   , 168 , -39 , 17  , 32    );
+	fontdata[107] = Glyph(107, 199  , 143  , 86   , 127 , -9  , 4   , 68    );
+	fontdata[108] = Glyph(108, 165  , 143  , 33   , 128 , -6  , 1   , 21    );
+	fontdata[109] = Glyph(109, 772  , 804  , 96   , 77  , -6  , 53  , 83    );
+	fontdata[110] = Glyph(110, 949  , 800  , 73   , 77  , -5  , 55  , 63    );
+	fontdata[111] = Glyph(111, 523  , 893  , 79   , 75  , -7  , 55  , 65    );
+	fontdata[112] = Glyph(112, 617  , 0    , 77   , 136 , -7  , 54  , 63    );
+	fontdata[113] = Glyph(113, 236  , 862  , 86   , 85  , -7  , 54  , 68    );
+	fontdata[114] = Glyph(114, 460  , 901  , 62   , 76  , -6  , 54  , 49    );
+	fontdata[115] = Glyph(115, 394  , 901  , 65   , 77  , -7  , 55  , 50    );
+	fontdata[116] = Glyph(116, 0    , 762  , 73   , 101 , -12 , 28  , 53    );
+	fontdata[117] = Glyph(117, 479  , 814  , 79   , 78  , -7  , 54  , 64    );
+	fontdata[118] = Glyph(118, 707  , 805  , 64   , 78  , -8  , 54  , 49    );
+	fontdata[119] = Glyph(119, 388  , 822  , 90   , 78  , -2  , 54  , 82    );
+	fontdata[120] = Glyph(120, 634  , 805  , 72   , 78  , -7  , 53  , 57    );
+	fontdata[121] = Glyph(121, 860  , 0    , 71   , 129 , -5  , 54  , 60    );
+	fontdata[122] = Glyph(122, 323  , 941  , 70   , 77  , -7  , 53  , 56    );
+	fontdata[160] = Glyph(160, 202  , 397  , 19   , 17  , -9  , 181 , 26    );
+	fontdata[163] = Glyph(163, 249  , 759  , 77   , 100 , -7  , 31  , 68    );
+	fontdata[167] = Glyph(167, 340  , 268  , 69   , 123 , -8  , 32  , 54    );
+	fontdata[177] = Glyph(177, 603  , 890  , 64   , 67  , -8  , 42  , 48    );
+	fontdata[193] = Glyph(193, 94   , 298  , 87   , 124 , -7  , 7   , 60    );
+	fontdata[201] = Glyph(201, 182  , 272  , 83   , 124 , -8  , 6   , 62    );
+	fontdata[205] = Glyph(205, 889  , 130  , 69   , 125 , -7  , 6   , 20    );
+	fontdata[211] = Glyph(211, 454  , 139  , 100  , 126 , -5  , 6   , 74    );
+	fontdata[218] = Glyph(218, 349  , 0    , 92   , 139 , -6  , -8  , 80    );
+	fontdata[221] = Glyph(221, 695  , 0    , 74   , 135 , -4  , -4  , 59    );
+	fontdata[225] = Glyph(225, 154  , 863  , 81   , 97  , -7  , 34  , 49    );
+	fontdata[233] = Glyph(233, 765  , 599  , 87   , 101 , -9  , 29  , 62    );
+	fontdata[237] = Glyph(237, 610  , 387  , 49   , 109 , -6  , 21  , 23    );
+	fontdata[243] = Glyph(243, 577  , 603  , 98   , 101 , -7  , 29  , 70    );
+	fontdata[250] = Glyph(250, 441  , 392  , 88   , 109 , -7  , 21  , 69    );
+	fontdata[253] = Glyph(253, 0    , 0    , 83   , 178 , -6  , 19  , 63    );
+
+	return fontdata;
+}
+
+FontData Fonts::setFontLenka() {
+	FontData data;
+	setFontLenka(data);
+	return data;
+}

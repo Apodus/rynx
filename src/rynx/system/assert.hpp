@@ -78,7 +78,5 @@ void windowsDebugOut(const char* logBuffer);
 
 #endif
 
-#ifndef WILDSHADE_PROFILING
 #define PROFILE_SCOPE(...)
-#endif
 #define rynx_profile(a, b) PROFILE_SCOPE(a, b);

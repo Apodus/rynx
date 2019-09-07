@@ -5,10 +5,6 @@
 #include <rynx/tech/math/geometry.hpp>
 #include <vector>
 
-#ifdef WILDSHADE_PROFILING
-#include <Core/Profiling.h>
-#endif
-
 inline float sqr(float x) { return x * x; };
 
 namespace rynx {
