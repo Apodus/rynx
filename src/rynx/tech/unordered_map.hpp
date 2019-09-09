@@ -542,9 +542,9 @@ namespace rynx {
 			std::swap(m_data, other.m_data);
 		}
 
-		constexpr bool empty() const { return m_size == 0; }
-		constexpr size_t size() const { return m_size; }
-		constexpr size_t max_size() const { return ~uint32_t(0); }
+		constexpr bool empty() const noexcept { return m_size == 0; }
+		constexpr size_t size() const noexcept { return m_size; }
+		constexpr size_t max_size() const noexcept { return ~uint32_t(0); }
 		Hash hash_function() const { return Hash(); }
 		KeyEqual key_eq() const { return KeyEqual(); }
 		void clear() noexcept {

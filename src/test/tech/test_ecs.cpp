@@ -29,6 +29,59 @@ TEST_CASE("ecs views usable", "verify compiles")
 	}
 }
 
+TEST_CASE("ecs for_each iterates correct amount of entities")
+{
+	{
+		struct a {
+			int value;
+		};
+
+		struct b {
+			int value;
+		};
+
+		rynx::ecs db;
+		db.create(a{ 1 });
+		db.create(a{ 2 });
+		db.create(b{ 3 });
+		db.create(b{ 4 });
+		db.create(b{ 5 });
+		db.create(a{ 6 }, b{ 7 });
+		db.create(a{ 8 }, b{ 9 });
+
+		{
+			uint32_t count = 0;
+			rynx::ecs::view<a> view = db;
+			view.for_each([&count](a&) {
+				++count;
+			});
+
+			REQUIRE(count == 4); // 2x {a} + 2x{a+b} = 4x a
+		}
+
+		{
+			uint32_t count = 0;
+			rynx::ecs::view<b> view = db;
+			view.for_each([&count](b&) {
+				++count;
+			});
+
+			REQUIRE(count == 5); // 3x {b} + 2x{a+b} = 4x a
+		}
+
+		{
+			uint32_t count = 0;
+			rynx::ecs::view<a, b> view = db;
+			view.for_each([&count](a&, b&) {
+				++count;
+			});
+
+			REQUIRE(count == 2); // 2x{a+b}
+		}
+
+	}
+}
+
 // you can run the same benchmarks against entt if you want. find out how to setup entt from their github pages.
 namespace entt {
 	class registry;
@@ -50,7 +103,7 @@ template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 	return count;
 }
 
-TEST_CASE("rynx :: 50% random components") {
+TEST_CASE("rynx ecs: 50% random components") {
 	constexpr int numEntities = 100000;
 	constexpr int fillrate = 50;
 
@@ -102,4 +155,24 @@ TEST_CASE("rynx :: 50% random components") {
 			return ecs_for_each<float, int, uint32_t, double>(r);
 		};
 	}
+}
+
+TEST_CASE("rynx ecs: insert & delete")
+{
+	struct two_ints
+	{
+		int a, b;
+	};
+
+	BENCHMARK("insert & delete")
+	{
+		rynx::ecs r;
+		for (int i = 0; i < 100000; ++i) {
+			r.create(two_ints{ i, i + 1 });
+		}
+		r.query().in<two_ints>().execute([&r](rynx::ecs::entity_id_t id) {
+			r.erase(id);
+		});
+		return r.size();
+	};
 }

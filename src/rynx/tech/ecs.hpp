@@ -464,6 +464,10 @@ namespace rynx {
 		ecs() = default;
 		~ecs() {}
 
+		constexpr size_t size() const {
+			return m_idCategoryMap.size();
+		}
+
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }
 		bool exists(id id) const { return exists(id.value); }
 
@@ -600,13 +604,14 @@ namespace rynx {
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }
 			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<std::remove_reference_t<Args>>() && ...); }
 
-		public:
-			view(const rynx::ecs* ecs) : m_ecs(const_cast<rynx::ecs*>(ecs)) {}
-
+		protected:
 			template<typename...Args> void componentTypesAllowed() const {
 				static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
 				static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
 			}
+
+		public:
+			view(const rynx::ecs* ecs) : m_ecs(const_cast<rynx::ecs*>(ecs)) {}
 
 			template<typename F>
 			void for_each(F&& op) {
