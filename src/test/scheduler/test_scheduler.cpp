@@ -27,31 +27,71 @@ TEST_CASE("scheduler", "[tasks + barriers]")
 }
 
 
-TEST_CASE("scheduler_", "[ecs component resource accesses respected]")
+TEST_CASE("scheduler", "[ecs component resource accesses respected]")
 {
-	/*
+	struct component {
+		int a;
+	};
+
 	rynx::ecs ecs;
 	rynx::scheduler::task_scheduler scheduler;
 	auto* context = scheduler.make_context();
 	context->set_resource(&ecs);
 
-	context->add_task("TestRead", [](rynx::ecs::view<const rynx::components::position> kek) {
-		kek.for_each([](const rynx::components::position& pos) {
-			std::cout << pos.angle << std::endl;
+	std::atomic<int> tasks_started = 0;
+	std::atomic<int> result = 0;
+
+	// read access to component. can be scheduled at same time.
+	context->add_task("TestRead", [&](rynx::ecs::view<const component> kek) {
+		++tasks_started;
+		REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		int v = 0;
+		kek.for_each([&](const component& a) {
+			v += a.a;
 		});
+
+		result += v;
 	});
 
-	context->add_task("TestRead", [](rynx::ecs::view<const rynx::components::position> kek) {
-		kek.for_each([](const rynx::components::position& pos) {
-			std::cout << pos.angle << std::endl;
+	// read access to component. can be scheduled at same time.
+	context->add_task("TestRead", [&](rynx::ecs::view<const component> kek) {
+		++tasks_started;
+		REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		int v = 0;
+		kek.for_each([&](const component& a) {
+			v += a.a;
 		});
+
+		result += v;
 	});
 
-	context->add_task("TestWrite", [](rynx::ecs::view<rynx::components::position> kek) {
-		kek.for_each([](rynx::components::position& pos) {
-			pos.value *= 2;
-			std::cout << pos.value.x << std::endl;
+	// write access to component. can't be scheduled while reads are running.
+	context->add_task("TestWrite", [&](rynx::ecs::view<component> kek) {
+		++tasks_started;
+		REQUIRE(tasks_started == 3); // write task added last, will also run last in this case. because there's no reason to not run the tasks created before.
+
+		int v = 0;
+		kek.for_each([&](component& a) {
+			a.a *= 2; // modify value of components.
+			v += a.a;
 		});
+
+		result += v;
 	});
-	*/
+
+	// couple of components
+	ecs.create(component({ 1 }));
+	ecs.create(component({ 1 }));
+
+	scheduler.start_frame();
+	scheduler.wait_until_complete();
+
+	REQUIRE(tasks_started == 3);
+	REQUIRE(result ==  2 + 2 + 2*2);
 }
