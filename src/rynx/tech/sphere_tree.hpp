@@ -17,7 +17,7 @@ public:
 	using index_t = uint32_t;
 
 private:
-	static constexpr int MaxElementsInNode = 16;
+	static constexpr int MaxElementsInNode = 16; // this is an arbitrary constant. might be smarter ways to pick it.
 	
 	struct entry {
 		entry() = default;
@@ -146,11 +146,9 @@ private:
 				}
 				posInfo = boundingSphere(members);
 			}
-			else
+			else {
 				posInfo = boundingSphere(children);
-
-			if (posInfo.first == pos && posInfo.second == radius)
-				return;
+			}
 
 			pos = posInfo.first;
 			radius = posInfo.second;
@@ -247,13 +245,12 @@ public:
 			if (entryMap.empty())
 				return;
 
-			
 			auto it = entryMap.iteratorAt(update_next_index);
 			
 			// NOTE: we are updating 1/32 of all entries per iteration. this is because the update itself is really fucking expensive.
 			//       this update optimizes the parent node of the entities. skipping the update means that our sphere tree bottom level will be slightly
 			//       unoptimized, which results in more work during collision- and inRange queries. But because changes in entry positions are seldom radical, this is usually perfectly fine.
-			for (size_t i = 0; i <= (entryMap.size() >> 5) + 1; ++i) {
+			for (size_t i = 0; i <= (entryMap.size() >> 5) + 1; ++i, ++it) {
 				if (it == entryMap.end()) {
 					it = entryMap.begin();
 				}
@@ -261,18 +258,29 @@ public:
 				auto item = it->second.first->members[it->second.second];
 				auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
 				if (!newLeaf.first || newLeaf.first == it->second.first) {
-					++it;
 					continue;
 				}
 
 				// move to new bucket.
 				it->second.first->entity_migrates(it->second.second, this);
 				newLeaf.first->insert(std::move(item), this);
-
-				++it;
 			}
 
 			update_next_index = it.index();
+			
+			/*
+			for (auto&& entry : entryMap) {
+				auto item = entry.second.first->members[entry.second.second];
+				auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
+				if (!newLeaf.first || newLeaf.first == entry.second.first) {
+					continue;
+				}
+
+				// move to new bucket.
+				entry.second.first->entity_migrates(entry.second.second, this);
+				newLeaf.first->insert(std::move(item), this);
+			}
+			*/
 		}
 
 		{

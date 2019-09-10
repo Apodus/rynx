@@ -248,7 +248,7 @@ void rynx::ruleset::collisions::check_all(ecs_view ecs, uint64_t entityA, uint64
 			collision_detection::shape_type::Sphere,
 			collision_detection::shape_type::Sphere,
 			normal,
-			(pos_a + pos_b) * 0.5f,
+			(pos_a + pos_b) * 0.5f, // TODO: This is not true when radius1 != radius2
 			penetration,
 			penetration
 		);

@@ -282,19 +282,13 @@ int main(int argc, char** argv) {
 
 		// visualize collision detection structure.
 		if constexpr (false) {
+			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
 			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
 				matrix4 m;
 				m.discardSetTranslate(pos);
 				m.scale(radius);
 				float sign[2] = { -1.0f, +1.0f };
-				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty",
-					{
-						0.5f - 0.2f * (1 + (depth >> 1)) * sign[depth & 1],
-						0.5f + 0.2f * (1 + (depth >> 1)) * sign[depth & 1],
-						1,
-						0.1f
-					}
-				);
+				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
 			});
 		}
 

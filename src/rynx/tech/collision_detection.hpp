@@ -68,6 +68,7 @@ namespace rynx {
 			}
 		}
 
+		// TODO: figure out if this is a useful abstraction to have or not :(
 		dynamic_bitset& collidedThisFrame() { return m_collisionIndex; }
 	};
 }

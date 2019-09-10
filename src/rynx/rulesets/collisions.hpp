@@ -24,8 +24,8 @@ namespace rynx {
 					rynx::scheduler::scoped_barrier_after(context, position_updates_barrier);
 					
 					context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::frame_collisions> ecs) {
-						ecs.for_each([&](rynx::ecs::id id, rynx::components::frame_collisions&) {
-							ecs[id].get<rynx::components::frame_collisions>().collisions.clear();
+						ecs.for_each([&](rynx::components::frame_collisions& collisions) {
+							collisions.collisions.clear();
 						});
 					});
 
@@ -53,14 +53,16 @@ namespace rynx {
 					});
 				})->after(position_updates_barrier);
 
+				/*
 				context.add_task("Clear collisions from previous frame", [](rynx::ecs::view<components::frame_collisions> ecs, collision_detection& detection) {
 					detection.collidedThisFrame().forEachOne([&ecs](uint64_t id) {
 						ecs[uint32_t(id)].get<components::frame_collisions>().collisions.clear();
 					});
 					detection.collidedThisFrame().clear();
 				})->before(collisions_find_barrier);
+				*/
 
-				auto positionDataToSphereTree = context.add_task("Update position info to collision detection.", [](
+				auto positionDataToSphereTree_task = context.make_task("Update position info to collision detection.", [](
 					rynx::ecs::view<const components::position,
 					const components::radius,
 					const components::collision_category,
@@ -71,17 +73,17 @@ namespace rynx {
 							detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
 						});
 
-						ecs.for_each([&](rynx::ecs::id id, const rynx::components::projectile&, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
+						ecs.query().in<const rynx::components::projectile>().execute([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
 						});
 				});
 				
-				positionDataToSphereTree->after(position_updates_barrier);
-				positionDataToSphereTree->before(collisions_find_barrier);
-
-				context.add_task("Update sphere tree", [](collision_detection& detection) {
+				positionDataToSphereTree_task.after(position_updates_barrier);
+				positionDataToSphereTree_task.before(collisions_find_barrier);
+				positionDataToSphereTree_task.then("Update sphere tree", [](collision_detection& detection) {
 					detection.update();
-				})->dependsOn(*positionDataToSphereTree);
+				});
+				context.add_task(std::move(positionDataToSphereTree_task));
 
 				auto findCollisionsTask = context.add_task("Find collisions", [](
 					rynx::ecs::view<
@@ -104,7 +106,9 @@ namespace rynx {
 				context.add_task("Collision resolution", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs) {
 					ecs.for_each([](components::motion& m, const components::frame_collisions& collisionsComponent) {
 						for (const auto& collision : collisionsComponent.collisions) {
-							m.acceleration += collision.collisionNormal * collision.penetration;
+							// TODO: Some smarter collision resolution would be nice.
+							// TODO: Collision resolution should be more harsh when colliding against static objects (walls).
+							m.acceleration += collision.collisionNormal * collision.penetration * 0.12f;
 						}
 					});
 				})->dependsOn(*findCollisionsTask);
