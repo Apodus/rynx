@@ -98,6 +98,8 @@ int main(int argc, char** argv) {
 		base_simulation.set_resource(&collisionDetection);
 	}
 
+	game::logic::minilisk_test_spawner_logic* spawner = nullptr;
+
 	// setup game logic
 	{
 		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::collisions>();
@@ -107,6 +109,7 @@ int main(int argc, char** argv) {
 		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(collisionCategoryDynamic);
+		spawner = ruleset_minilisk_gen.get();
 
 		ruleset_bullet_hits->dependsOn(*ruleset_collisionDetection);
 
@@ -137,7 +140,7 @@ int main(int argc, char** argv) {
 			rynx::components::position(),
 			rynx::components::motion(),
 			rynx::components::mass({ 1.0f }),
-			rynx::components::radius(0.2f),
+			rynx::components::radius(1.0f),
 			rynx::components::collision_category(collisionCategoryDynamic),
 			rynx::components::color(),
 			rynx::components::dampening({ 0.86f, 0.86f }),
@@ -157,7 +160,7 @@ int main(int argc, char** argv) {
 		};
 
 		for (int i = 0; i < 20; ++i)
-			makeBox({ +10, +15 - i * 2.0f, 0 }, 0.0f + i * 0.1f, 2.0f);
+			makeBox({ +20, +15 - i * 4.0f, 0 }, 0.0f + i * 0.1f, 2.0f);
 	}
 
 	// setup some debug controls
@@ -196,9 +199,12 @@ int main(int argc, char** argv) {
 		sampleButton3->alignToInnerEdge(sampleButton2.get(), rynx::menu::Align::LEFT);
 		sampleButton3->onClick([sampleButton3, &root]() {
 			sampleButton3->alignToInnerEdge(&root, rynx::menu::Align::TOP | rynx::menu::Align::RIGHT);
-			});
+		});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
+		sampleSlider->onValueChanged([spawner](float f) {
+			spawner->how_often_to_spawn = uint64_t(1 + int(f * 100.0f));
+		});
 
 		//sampleButton->m_positionAlign = rynx::menu::Component::PositionAlign::RIGHT | rynx::menu::Component::PositionAlign::BOTTOM;
 		root.addChild(sampleButton);
@@ -283,7 +289,7 @@ int main(int argc, char** argv) {
 		// visualize collision detection structure.
 		if constexpr (false) {
 			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+			collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
 				matrix4 m;
 				m.discardSetTranslate(pos);
 				m.scale(radius);

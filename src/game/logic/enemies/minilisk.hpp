@@ -91,8 +91,22 @@ namespace game {
 			projectiles(projectiles)
 			{}
 			
-			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
-				scheduler.add_task("handle bullet collisions", [this](
+			virtual void onFrameProcess(rynx::scheduler::context& context) override {
+				context.add_task("hehe", [this](
+					rynx::ecs::view<
+						const rynx::components::position,
+						rynx::components::radius> ecs
+					)
+					{
+						ecs.query().in<game::components::minilisk>().execute(
+							[](const rynx::components::position& p, rynx::components::radius& r) {
+								r.r = 1.0f + 0.5f * std::sin((p.value.x + p.value.y) * 0.55f);
+							}
+						);
+					}
+				);
+				
+				context.add_task("handle bullet collisions", [this](
 					rynx::ecs::view<
 						const rynx::components::projectile,
 						const game::components::bullet,

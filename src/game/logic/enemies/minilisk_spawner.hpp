@@ -15,11 +15,11 @@ namespace game {
 		struct minilisk_test_spawner_logic : public rynx::application::logic::iruleset {
 			rynx::collision_detection::category_id dynamic;
 			uint64_t frameCount = 0;
-
+			uint64_t how_often_to_spawn = 64;
 			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
-				if ((++frameCount & 63) > 60) {
+				if ((++frameCount % how_often_to_spawn) == 0) {
 					scheduler.add_task("create monsters", [this](
 						rynx::ecs::edit_view<
 							game::components::minilisk,
@@ -32,18 +32,19 @@ namespace game {
 							rynx::components::color,
 							rynx::components::dampening,
 							rynx::components::frame_collisions> ecs) {
-						ecs.create(
-							game::components::minilisk(),
-							game::health({ 30, 30 }),
-							rynx::components::position({ -20.0f + float(rand()) / RAND_MAX, +20.0f + float(rand()) / RAND_MAX, 0 }),
-							rynx::components::motion(),
-							rynx::components::mass({ 0.2f }),
-							rynx::components::radius(0.3f),
-							rynx::components::collision_category(dynamic),
-							rynx::components::color(),
-							rynx::components::dampening({ 0.87f, 0.87f }),
-							rynx::components::frame_collisions()
-						);
+						for(int i=0; i<3; ++i)
+							ecs.create(
+								game::components::minilisk(),
+								game::health({ 30, 30 }),
+								rynx::components::position({ -20.0f + 4 * float(rand()) / RAND_MAX, +20.0f +  4 * float(rand()) / RAND_MAX, 0 }),
+								rynx::components::motion(),
+								rynx::components::mass({ 0.2f }),
+								rynx::components::radius(0.3f),
+								rynx::components::collision_category(dynamic),
+								rynx::components::color(),
+								rynx::components::dampening({ 0.87f, 0.87f }),
+								rynx::components::frame_collisions()
+							);
 					});
 				}
 			}
