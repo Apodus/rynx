@@ -57,7 +57,7 @@ namespace rynx {
 			Button& text(std::string t) { m_text = std::move(t); return *this; }
 			Button& color_frame(vec4<float> color) { m_color = color; return *this; }
 			Button& color_text(vec4<float> color) { m_textColor = color; return *this; }
-			template<typename F> Button& onClick(F&& op) { m_onClick = op; return *this; }
+			template<typename F> Button& onClick(F&& op) { m_onClick = std::forward<F>(op); return *this; }
 
 		private:
 

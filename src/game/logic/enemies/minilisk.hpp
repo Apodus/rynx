@@ -100,7 +100,7 @@ namespace game {
 					{
 						ecs.query().in<game::components::minilisk>().execute(
 							[](const rynx::components::position& p, rynx::components::radius& r) {
-								r.r = 1.0f + 0.5f * std::sin((p.value.x + p.value.y) * 0.55f);
+								r.r = 1.0f + 0.3f * std::sin((p.value.x + p.value.y) * 0.55f);
 							}
 						);
 					}

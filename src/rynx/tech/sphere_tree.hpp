@@ -17,7 +17,7 @@ public:
 	using index_t = uint32_t;
 
 private:
-	static constexpr int MaxElementsInNode = 16; // this is an arbitrary constant. might be smarter ways to pick it.
+	static constexpr int MaxElementsInNode = 64; // this is an arbitrary constant. might be smarter ways to pick it.
 	
 	struct entry {
 		entry() = default;

@@ -180,6 +180,14 @@ int main(int argc, char** argv) {
 
 	rynx::menu::Div root({ 1, 1, 0 });
 	
+	struct debug_conf {
+		bool visualize_dynamic_collisions = false;
+		bool visualize_static_collisions = false;
+		bool visualize_projectile_collisions = false;
+	};
+
+	debug_conf conf;
+
 	// construct menus
 	{
 		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
@@ -187,8 +195,19 @@ int main(int argc, char** argv) {
 		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
 		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Empty", "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
 
-		sampleButton->text("Button 1").font(&fontConsola);
+		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
+		sampleButton->color_frame(Color::RED);
+		sampleButton->onClick([&conf, self = sampleButton.get()]() {
+			bool new_value = !conf.visualize_dynamic_collisions;
+			conf.visualize_dynamic_collisions = new_value;
+			if (new_value) {
+				self->color_frame(Color::GREEN);
+			}
+			else {
+				self->color_frame(Color::RED);
+			}
+		});
 
 		sampleButton2->text("Button 2").font(&fontConsola);
 		sampleButton2->alignToOuterEdge(sampleButton.get(), rynx::menu::Align::RIGHT);
@@ -265,6 +284,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		auto time_logic_start = std::chrono::high_resolution_clock::now();
 		{
 			rynx_profile(Game, "Construct frame tasks");
 			base_simulation.generate_tasks();
@@ -280,16 +300,19 @@ int main(int argc, char** argv) {
 			scheduler.wait_until_complete();
 			++tickCounter;
 		}
+		auto time_logic_end = std::chrono::high_resolution_clock::now();
 
+		auto time_render_start = std::chrono::high_resolution_clock::now();
 		{
 			rynx_profile(Game, "Render");
 			gameRenderer.render(ecs);
 		}
+		auto time_render_end = std::chrono::high_resolution_clock::now();
 
 		// visualize collision detection structure.
-		if constexpr (false) {
+		if (conf.visualize_dynamic_collisions) {
 			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
 				matrix4 m;
 				m.discardSetTranslate(pos);
 				m.scale(radius);
@@ -314,6 +337,14 @@ int main(int argc, char** argv) {
 			root.input(gameInput);
 			root.tick(0.016f, application.aspectRatio());
 			root.visualise(application.meshRenderer(), application.textRenderer());
+
+			auto num_entities = ecs.size();
+			auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(time_logic_end - time_logic_start).count();
+			auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
+
+			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.5f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us/10) / 100.0f) + "ms", -0.9f, 0.4f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
 		}
 
 		{
