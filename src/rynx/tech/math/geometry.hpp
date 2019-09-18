@@ -65,7 +65,7 @@ Sphere::Sphere(const Point& O, const Point& A, const Point& B, const Point& C)
 }
 */
 
-template<typename T> std::pair<vec3<float>, float> boundingSphere(std::vector<T>& points) {
+template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T>& points) {
 	std::pair<size_t, float> indexFar1 = farPoint(access(points[0]).pos, points);
 	std::pair<size_t, float> indexFar2 = farPoint(access(points[indexFar1.first]).pos, points);
 	indexFar1 = farPoint(access(points[indexFar2.first]).pos, points);
@@ -119,6 +119,7 @@ template<typename T> std::pair<vec3<float>, float> boundingSphere(std::vector<T>
 		const auto weighted_radius = farPoint(proposed_center, points).second;
 		return { proposed_center, weighted_radius };
 #elif THREE_POINTS_BOUND_ENHANCED
+		// take the 
 		const auto a_push = (proposed_center - a).normalizeApprox();
 		const auto b_push = (proposed_center - b).normalizeApprox();
 		const auto c_push = (proposed_center - c).normalizeApprox();

@@ -17,7 +17,8 @@ public:
 	using index_t = uint32_t;
 
 private:
-	static constexpr int MaxElementsInNode = 64; // this is an arbitrary constant. might be smarter ways to pick it.
+	static constexpr int MaxElementsInNode = 128; // this is an arbitrary constant. might be smarter ways to pick it.
+	static constexpr int MaxNodesInNode = MaxElementsInNode >> 2;
 	
 	struct entry {
 		entry() = default;
@@ -29,31 +30,36 @@ private:
 	};
 
 	struct node {
-		node(vec3<float> pos, node* parent) : pos(pos), parent(parent) {}
+		node(vec3<float> pos, node* parent, int depth = 0) : pos(pos), parent(parent), depth(depth) {}
 
 		vec3<float> pos;
-		float radius;
+		float radius = 0;
+		int depth = 0;
 
 		void killMePlease(node* child) {
 			// TODO: nodes could have this index stored. is not hard.
 			for (size_t i = 0; i < children.size(); ++i) {
 				if (children[i].get() == child) {
-					children[i] = std::move(children.back());
-					children.pop_back();
-
-					// if 1 child left, add child to parent. and kill self.
-					if (children.size() == 1) {
-						if (parent) {
-							children[0]->parent = parent;
-							parent->children.emplace_back(std::move(children[0]));
-							parent->killMePlease(this);
-						}
-					}					
+					killMePlease(i);
 					return;
 				}
 			}
 
 			rynx_assert(false, "must find the kill");
+		}
+
+		void killMePlease(int index) {
+			children[index] = std::move(children.back());
+			children.pop_back();
+
+			// if 1 child left, add child to parent. and kill self.
+			if (children.size() == 1) {
+				if (parent) {
+					children[0]->parent = parent;
+					parent->children.emplace_back(std::move(children[0]));
+					parent->killMePlease(this);
+				}
+			}
 		}
 
 		uint64_t entity_migrates(index_t member_index, sphere_tree* container) {
@@ -71,6 +77,20 @@ private:
 			return id_of_erased;
 		}
 
+		std::unique_ptr<node> node_migrates(node* child_ptr) {
+			for (size_t i = 0; i < children.size(); ++i) {
+				if (children[i].get() == child_ptr) {
+					std::unique_ptr<node> child = std::move(children[i]);
+					children[i] = std::move(children.back());
+					children.pop_back();
+					return child;
+				}
+			}
+			
+			rynx_assert(false, "unreachable");
+		}
+
+
 		void erase(index_t member_index, sphere_tree* container) {
 			uint64_t erasedEntity = entity_migrates(member_index, container);
 			container->entryMap.erase(erasedEntity);
@@ -81,19 +101,30 @@ private:
 			members.emplace_back(std::move(item));
 			container->entryMap.insert_or_assign(members.back().entityId, std::pair<node*, index_t>(this, index_t(members.size() - 1)));
 
-			if (members.size() > MaxElementsInNode) {
-				if (!parent || parent->children.size() > MaxElementsInNode) {
+			if (members.size() >= MaxElementsInNode) {
+				// if we have no parent (we are root node), add a couple of new child nodes under me.
+				if (!parent) {
+					/*
 					// split to new child level.
 					auto f1 = farPoint(members[0].pos, members);
 					auto f2 = farPoint(members[f1.first].pos, members);
 
-					children.emplace_back(std::make_unique<node>(members[f1.first].pos, this));
-					children.emplace_back(std::make_unique<node>(members[f2.first].pos, this));
+					children.emplace_back(std::make_unique<node>(members[f1.first].pos, this, depth + 1));
+					children.emplace_back(std::make_unique<node>(members[f2.first].pos, this, depth + 1));
 
 					for (auto&& member : members) {
 						int index = (member.pos - members[f1.first].pos).lengthSquared() < (member.pos - members[f2.first].pos).lengthSquared();
 						children[index]->insert(std::move(member), container);
 						// child insert takes care of update calls.
+					}
+					members.clear();
+					*/
+
+					for (size_t i = 0; i < MaxNodesInNode; ++i) {
+						children.emplace_back(std::make_unique<node>(members[i].pos, this, depth + 1));
+					}
+					for (size_t i = 0; i < members.size(); ++i) {
+						children[i % children.size()]->insert(std::move(members[i]), container);
 					}
 					members.clear();
 
@@ -102,14 +133,83 @@ private:
 					}
 				}
 				else {
-					// parent has space, split a new sibling node
+					// if also our parent node is full, and can't have new children.
+					// add a new layer of nodes between my parent, and myself.
+					if (parent->children.size() >= MaxNodesInNode) {
+						// first take the existing children to safety.
+						std::vector<std::unique_ptr<node>> children_of_parent = std::move(parent->children);
+
+#if 1
+						parent->children.clear();
+						for (size_t i = 0; i < MaxNodesInNode; ++i) {
+							parent->children.emplace_back(std::make_unique<node>(children_of_parent[i]->pos, parent, parent->depth + 1));
+						}
+
+						node* old_parent = parent;
+						for (size_t i = 0; i < children_of_parent.size(); ++i) {
+							auto& old_child = children_of_parent[i];
+							auto& new_parent = old_parent->children[i % old_parent->children.size()];
+							old_child->parent = new_parent.get();
+							new_parent->children.emplace_back(std::move(old_child));
+						}
+						
+						children_of_parent.clear();
+#else
+						// clear the state of parent's children structure, and add three new nodes there.
+						parent->children.clear();
+						parent->children.emplace_back(std::make_unique<node>(children_of_parent[0]->pos, parent, parent->depth + 1));
+						parent->children.emplace_back(std::make_unique<node>(children_of_parent[1]->pos, parent, parent->depth + 1));
+						parent->children.emplace_back(std::make_unique<node>(children_of_parent[2]->pos, parent, parent->depth + 1));
+
+						node* old_parent = parent;
+
+						auto node0_pos = children_of_parent[0]->pos;
+						auto node1_pos = children_of_parent[1]->pos;
+						auto node2_pos = children_of_parent[2]->pos;
+
+						// assign children to closest new parent nodes.
+						for (size_t i = 0; i < children_of_parent.size(); ++i) {
+							auto& old_child = children_of_parent[i];
+
+							float dist0 = (old_child->pos - node0_pos).lengthSquared();
+							float dist1 = (old_child->pos - node1_pos).lengthSquared();
+							float dist2 = (old_child->pos - node2_pos).lengthSquared();
+
+							if (dist0 < dist1) {
+								if (dist0 < dist2) {
+									old_child->parent = old_parent->children[0].get();
+									old_parent->children[0]->children.emplace_back(std::move(old_child));
+								}
+								else {
+									old_child->parent = old_parent->children[2].get();
+									old_parent->children[2]->children.emplace_back(std::move(old_child));
+								}
+							}
+							else {
+								if (dist1 < dist2) {
+									old_child->parent = old_parent->children[1].get();
+									old_parent->children[1]->children.emplace_back(std::move(old_child));
+								}
+								else {
+									old_child->parent = old_parent->children[2].get();
+									old_parent->children[2]->children.emplace_back(std::move(old_child));
+								}
+							}
+						}
+						children_of_parent.clear();
+#endif
+						for (auto& child : old_parent->children) {
+							child->refresh_depths();
+						}
+					}
+
+					// now there should be space in parent node's children list, add new siblings to self there.
 					auto f1 = farPoint(members.back().pos, members);
-					
 					{
-						parent->children.emplace_back(std::make_unique<node>(members[f1.first].pos, parent));
+						parent->children.emplace_back(std::make_unique<node>(members[f1.first].pos, parent, depth));
 						auto id = members[f1.first].entityId;
 						parent->children.back()->members.emplace_back(std::move(members[f1.first]));
-						
+
 						auto& datap = container->entryMap.find(id)->second;
 						datap.first = parent->children.back().get();
 						datap.second = 0; // update mapping of the moved child!
@@ -122,43 +222,104 @@ private:
 					}
 
 					members.pop_back();
-					
+
 					// these probably should not be called all the time. only after all move ops are done.
 					parent->children.back()->update_single();
 				}
 			}
 		}
 
+		void refresh_depths() {
+			for (auto& child : children) {
+				child->depth = depth + 1;
+				child->refresh_depths();
+			}
+		}
+
 		// recalculate node position and radius
-		void update() {
+		void update_from_root_to_leaf() {
 			update_single();
 			if (parent) {
-				parent->update();
+				parent->update_from_root_to_leaf();
 			}
+		}
+
+		void update_from_leaf_to_root() {
+			for (size_t i = 0; i < children.size(); ++i) {
+				auto& child = children[i];
+				if (child->children.empty() & child->members.empty()) {
+					killMePlease(i);
+					--i;
+				}
+				else {
+					child->update_from_leaf_to_root();
+				}
+			}
+			update_single();
 		}
 
 		void update_single() {
 			std::pair<vec3<float>, float> posInfo;
 			if (children.empty()) {
-				if (members.empty()) {
-					parent->killMePlease(this);
-					return;
-				}
-				posInfo = boundingSphere(members);
+				posInfo = bounding_sphere(members);
 			}
 			else {
-				posInfo = boundingSphere(children);
+				posInfo = bounding_sphere(children);
 			}
 
 			pos = posInfo.first;
 			radius = posInfo.second;
 		}
 
-		void update_depth_first() {
-			for (auto& child : children) {
-				child->update_depth_first();
+		void update_parents_for_nodes() {
+			if (parent) {
+				auto new_parent = root()->find_nearest_parent(pos, depth, std::numeric_limits<float>::max());
+				if (new_parent.first && (new_parent.first != parent)) {
+					std::unique_ptr<node> myself = parent->node_migrates(this);
+					myself->parent = new_parent.first;
+					new_parent.first->children.emplace_back(std::move(myself));
+					new_parent.first->update_single();
+				}
 			}
-			update_single();
+		}
+
+		node* root() {
+			if (!parent)
+				return this;
+			
+			node* next = parent;
+			while (true) {
+				if (!next->parent)
+					return next;
+				next = next->parent;
+			}
+		}
+
+		std::pair<node*, float> find_nearest_parent(vec3<float> point, int source_depth, float maxDistSqr) {
+			std::pair<node*, float> ans(nullptr, maxDistSqr);
+			for (auto&& child : children) {
+				float potentialSqrDist = (child->pos - point).lengthSquared() - child->radius * child->radius; // TODO: This is not true.
+				if (potentialSqrDist < ans.second) {
+					if (source_depth > child->depth) {
+						if (source_depth == child->depth + 1) {
+							std::pair<node*, float> potentialAns = {child.get(), (child->pos - point).lengthSquared()};
+							if (potentialAns.second < ans.second) {
+								ans = potentialAns;
+							}
+						}
+						else {
+							if (!child->children.empty()) {
+								auto potentialAns = child->find_nearest_parent(point, source_depth, ans.second);
+								if (potentialAns.second < ans.second) {
+									ans = potentialAns;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			return ans;
 		}
 
 		template<typename F> void forEachNode(F&& f, int depth = 0) {
@@ -267,25 +428,15 @@ public:
 			}
 
 			update_next_index = it.index();
-			
-			/*
-			for (auto&& entry : entryMap) {
-				auto item = entry.second.first->members[entry.second.second];
-				auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
-				if (!newLeaf.first || newLeaf.first == entry.second.first) {
-					continue;
-				}
+		}
 
-				// move to new bucket.
-				entry.second.first->entity_migrates(entry.second.second, this);
-				newLeaf.first->insert(std::move(item), this);
-			}
-			*/
+		{
+			root.update_parents_for_nodes();
 		}
 
 		{
 			rynx_profile(Game, "UpdateNodePositions");
-			root.update_depth_first();
+			root.update_from_leaf_to_root();
 		}
 	}
 
