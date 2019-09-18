@@ -18,7 +18,7 @@ public:
 
 private:
 	static constexpr int MaxElementsInNode = 128; // this is an arbitrary constant. might be smarter ways to pick it.
-	static constexpr int MaxNodesInNode = MaxElementsInNode >> 2;
+	static constexpr int MaxNodesInNode = MaxElementsInNode >> 1;
 	
 	struct entry {
 		entry() = default;
@@ -274,12 +274,20 @@ private:
 		void update_parents_for_nodes() {
 			if (parent) {
 				auto new_parent = root()->find_nearest_parent(pos, depth, std::numeric_limits<float>::max());
-				if (new_parent.first && (new_parent.first != parent)) {
+				if (
+					new_parent.first &&
+					(new_parent.first != parent) &&
+					new_parent.first->members.empty()
+					) {
 					std::unique_ptr<node> myself = parent->node_migrates(this);
 					myself->parent = new_parent.first;
 					new_parent.first->children.emplace_back(std::move(myself));
 					new_parent.first->update_single();
 				}
+			}
+
+			for (size_t i = 0; i < children.size(); ++i) {
+				children[i]->update_parents_for_nodes();
 			}
 		}
 
