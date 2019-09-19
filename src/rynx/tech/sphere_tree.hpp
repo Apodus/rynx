@@ -11,6 +11,10 @@ namespace rynx {
 	class collision_detection;
 }
 
+// for parallel collision detection
+// TODO: get rid of this include. move functionality to some other file?
+#include <rynx/scheduler/task.hpp>
+
 class sphere_tree {
 	friend class rynx::collision_detection;
 public:
@@ -40,7 +44,7 @@ private:
 			// TODO: nodes could have this index stored. is not hard.
 			for (size_t i = 0; i < children.size(); ++i) {
 				if (children[i].get() == child) {
-					killMePlease(i);
+					killMePlease(int(i));
 					return;
 				}
 			}
@@ -248,7 +252,7 @@ private:
 			for (size_t i = 0; i < children.size(); ++i) {
 				auto& child = children[i];
 				if (child->children.empty() & child->members.empty()) {
-					killMePlease(i);
+					killMePlease(int(i));
 					--i;
 				}
 				else {
@@ -464,6 +468,47 @@ public:
 	}
 
 private:
+	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, node* rynx_restrict a) {
+		rynx_assert(a != nullptr, "node cannot be null");
+
+		if (a->children.empty()) {
+			for (size_t i = 0; i < a->members.size(); ++i) {
+				auto& m1 = a->members[i];
+				for (size_t k = i + 1; k < a->members.size(); ++k) {
+					auto& m2 = a->members[k];
+					float distSqr = (m1.pos - m2.pos).lengthSquared();
+					float radiusSqr = sqr(m1.radius + m2.radius);
+					if (distSqr < radiusSqr) {
+						f(m1.entityId, m2.entityId, (m1.pos - m2.pos).normalizeApprox(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+					}
+				}
+			}
+		}
+		else {
+			task.extend_task_shared_resources([f, a](rynx::scheduler::task& task) {
+				for (auto& child : a->children) {
+					collisions_internal_parallel(f, task, child.get());
+				}
+			});
+
+			for (size_t i = 0; i < a->children.size(); ++i) {
+				node* child1 = a->children[i].get();
+				rynx_assert(child1 != nullptr, "node cannot be null");
+				rynx_assert(child1 != a, "nodes must differ");
+
+				for (size_t k = i + 1; k < a->children.size(); ++k) {
+					node* child2 = a->children[k].get();
+					rynx_assert(child2 != nullptr, "node cannot be null");
+					rynx_assert(child2 != child1, "nodes must differ");
+
+					if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+						collisions_internal(std::forward<F>(f), child1, child2);
+					}
+				}
+			}
+		}
+	}
+
 	template<typename F> static void collisions_internal(F&& f, node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 

@@ -70,7 +70,7 @@ namespace rynx {
 		class operation_resources {
 			std::vector<uint64_t> m_writeAccess;
 			std::vector<uint64_t> m_readAccess;
-
+		
 		public:
 			operation_resources& requireWrite(uint64_t resourceId) {
 				m_writeAccess.emplace_back(resourceId);
@@ -85,7 +85,6 @@ namespace rynx {
 			const std::vector<uint64_t>& readRequirements() const { return m_readAccess; }
 			const std::vector<uint64_t>& writeRequirements() const { return m_writeAccess; }
 		};
-
 
 		// this barrier is attached to end of any new task added to scheduler while in scope.
 		// this barrier depends on tasks created.

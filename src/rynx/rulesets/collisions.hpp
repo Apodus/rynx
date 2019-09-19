@@ -95,10 +95,11 @@ namespace rynx {
 						const components::collision_category,
 						const components::motion,
 						components::frame_collisions> ecs,
-					collision_detection& detection) {
-					detection.for_each_collision([&ecs](uint64_t entityA, uint64_t entityB, vec3<float> normal, float penetration) {
+					collision_detection& detection,
+					rynx::scheduler::task& this_task) {
+					detection.for_each_collision_parallel([ecs](uint64_t entityA, uint64_t entityB, vec3<float> normal, float penetration) {
 						check_all(ecs, entityA, entityB, normal, penetration);
-					});
+					}, this_task);
 				});
 
 				findCollisionsTask->after(collisions_find_barrier);

@@ -342,9 +342,9 @@ int main(int argc, char** argv) {
 			auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(time_logic_end - time_logic_start).count();
 			auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
 
-			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.5f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us/10) / 100.0f) + "ms", -0.9f, 0.4f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f, 0.05f, Color::WHITE, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.5f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us/10) / 100.0f) + "ms", -0.9f, 0.4f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 		}
 
 		{

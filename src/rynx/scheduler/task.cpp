@@ -2,7 +2,7 @@
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/context.hpp>
 
-void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*this); }
+void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*m_resources); }
 
 void rynx::scheduler::task::run() {
 	rynx_profile(Game, m_name.c_str());
@@ -21,6 +21,12 @@ void rynx::scheduler::task::run() {
 
 	{
 		rynx_profile(Game, "release resources");
-		m_context->release_resources(*this);
+		m_resources.reset();
+		m_resources_shared.reset();
 	}
+}
+
+
+rynx::scheduler::task::task_resources::~task_resources() {
+	m_context->release_resources(*this);
 }

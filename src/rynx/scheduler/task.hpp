@@ -59,6 +59,10 @@ namespace rynx {
 					}
 				};
 
+				// don't mark tasks as required resources. they are unique for each task, not shared.
+				template<> struct unpack_resource<rynx::scheduler::task&> { void operator()(task&) {} };
+				template<> struct unpack_resource<const rynx::scheduler::task&> { void operator()(task&) {} };
+
 				void operator()(task& host) {
 					(unpack_resource<Args>()(host), ...); // apply the resource constraints to the task.
 				}
@@ -78,23 +82,37 @@ namespace rynx {
 					return std::forward_as_tuple(getTaskArgParam<Args>(ctx, currentTask)...);
 				}
 			};
+			template<typename RetVal, typename Class, typename...Args> struct resource_deducer<RetVal(Class::*)(Args...)> : public resource_deducer<RetVal(Class::*)(Args...) const> {};
 
 			void reserve_resources() const;
 
 			task& id(uint64_t taskId) { m_id = taskId; return *this; }
 
 		public:
+			// TODO: use some memory pool thing for task_resources.
 			task() : m_name("EmptyTask"), m_context(nullptr) {}
-			task(context& context, uint64_t taskId, std::string name) : m_name(std::move(name)), m_id(taskId), m_context(&context) {}
-			template<typename F> task(context& context, uint64_t taskId, std::string taskName, F&& op) : m_name(std::move(taskName)), m_id(taskId), m_context(&context) { set(std::forward<F>(op)); }
+			task(context& context, uint64_t taskId, std::string name)
+				: m_name(std::move(name))
+				, m_id(taskId)
+				, m_context(&context)
+				, m_resources(std::make_shared<task_resources>(&context))
+			{}
+			
+			template<typename F> task(context& context, uint64_t taskId, std::string taskName, F&& op)
+				: m_name(std::move(taskName))
+				, m_id(taskId)
+				, m_context(&context)
+				, m_resources(std::make_shared<task_resources>(&context)) {
+				set(std::forward<F>(op));
+			}
 
 			uint64_t id() const { return m_id; }
 
 			operation_barriers& barriers() { return m_barriers; }
 			const operation_barriers& barriers() const { return m_barriers; }
 
-			operation_resources& resources() { return m_resources; }
-			const operation_resources& resources() const { return m_resources; }
+			operation_resources& resources() { return *m_resources; }
+			const operation_resources& resources() const { return *m_resources; }
 
 			task& dependsOn(task& other) {
 				barrier bar("anon");
@@ -125,13 +143,39 @@ namespace rynx {
 				return *this;
 			}
 
-			template<typename F>
-			task& extend_task(F&& op) {
-				auto followUpTask = m_context->make_task(m_name + "_e", std::forward<F>(op));
+			task& share_resources(task& other) {
+				rynx_assert(!other.m_resources_shared, "can't share more than one task's resources!");
+				if (m_resources_shared) {
+					other.m_resources_shared = m_resources_shared;
+				}
+				else {
+					other.m_resources_shared = m_resources;
+				}
+				return *this;
+			}
+
+			template<typename F> task& extend_task(std::string name, F&& op) {
+				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
 				m_context->add_task(std::move(followUpTask));
 				return *this;
 			}
+			template<typename F> task& extend_task(F&& op) { return extend_task(m_name + "_e", std::forward<F>(op)); }
+			
+			// NOTE: This is the only task creation function where you are allowed to capture
+			//       resources in your lambda. You are allowed to capture the resources used
+			//       by the task extended. These functions will run simultaneously regardless
+			//       oh having same write targets as shared resources. You are responsible for
+			//       ensuring that there are no race conditions when writing data.
+			template<typename F> task& extend_task_shared_resources(std::string name, F&& op) {
+				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
+				completion_blocked_by(followUpTask);
+				share_resources(followUpTask);
+				m_context->add_task(std::move(followUpTask));
+				return *this;
+			}
+			template<typename F> task& extend_task_shared_resources(F&& op) { return extend_task_shared_resources(m_name + "_es", std::forward<F>(op)); }
+
 
 			template<typename F>
 			task_token then(std::string name, F&& f) {
@@ -173,7 +217,18 @@ namespace rynx {
 			uint64_t m_id;
 			std::function<void(rynx::scheduler::task*)> m_op;
 			operation_barriers m_barriers;
-			operation_resources m_resources;
+			
+			struct task_resources : public operation_resources {
+				task_resources(context* ctx) : m_context(ctx) {}
+				~task_resources();
+
+			private:
+				context* m_context = nullptr;
+			};
+
+			std::shared_ptr<task_resources> m_resources;
+			std::shared_ptr<task_resources> m_resources_shared;
+
 			context* m_context = nullptr;
 		};
 	}

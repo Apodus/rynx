@@ -20,9 +20,9 @@ namespace rynx {
 		// NOTE: adding new tasks is allowed while scheduler is running.
 		class context {
 			friend struct rynx::scheduler::task_token;
-			friend class rynx::scheduler::task;
 			friend class rynx::scheduler::task_scheduler;
-
+			friend class rynx::scheduler::task;
+			
 			friend class scoped_barrier_after;
 			friend class scoped_barrier_before;
 
@@ -84,23 +84,26 @@ namespace rynx {
 			std::mutex m_taskMutex;
 			std::shared_mutex mutable m_resourceMutex;
 
-			void release_resources(const task& task) {
+
+			// TODO: hide these as private.
+		public:
+			void release_resources(const operation_resources& resources) {
 				std::shared_lock lock(m_resourceMutex);
-				for (uint64_t readResource : task.resources().readRequirements()) {
+				for (uint64_t readResource : resources.readRequirements()) {
 					auto it = m_resource_counters.find(readResource);
 					rynx_assert(it != m_resource_counters.end(), "task is using a resource that has not been set.");
 					--it->second.readers;
 				}
-				for (uint64_t writeResource : task.resources().writeRequirements()) {
+				for (uint64_t writeResource : resources.writeRequirements()) {
 					auto it = m_resource_counters.find(writeResource);
 					rynx_assert(it != m_resource_counters.end(), "task is using a resource that has not been set.");
 					--it->second.writers;
 				}
 			}
 
-			void reserve_resources(const task& task) {
+			void reserve_resources(const operation_resources& resources) {
 				std::shared_lock lock(m_resourceMutex);
-				for (uint64_t readResource : task.resources().readRequirements()) {
+				for (uint64_t readResource : resources.readRequirements()) {
 					auto it = m_resource_counters.find(readResource);
 					if (it == m_resource_counters.end()) {
 						// new resource kind.
@@ -118,7 +121,7 @@ namespace rynx {
 						++it->second.readers;
 					}
 				}
-				for (uint64_t writeResource : task.resources().writeRequirements()) {
+				for (uint64_t writeResource : resources.writeRequirements()) {
 					auto it = m_resource_counters.find(writeResource);
 					if (it == m_resource_counters.end()) {
 						// new resource kind.
@@ -136,6 +139,7 @@ namespace rynx {
 				}
 			}
 
+		private:
 			task findWork();
 			uint64_t nextTaskId() { return m_nextTaskId.fetch_add(1); }
 

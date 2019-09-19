@@ -68,6 +68,15 @@ namespace rynx {
 			}
 		}
 
+		template<typename F> void for_each_collision_parallel(F&& f, rynx::scheduler::task& task) {
+			for (auto&& check : m_collision_checks) {
+				if (check.a == check.b)
+					sphere_tree::collisions_internal_parallel(std::forward<F>(f), task, &check.a->root);
+				else
+					sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root);
+			}
+		}
+
 		// TODO: figure out if this is a useful abstraction to have or not :(
 		dynamic_bitset& collidedThisFrame() { return m_collisionIndex; }
 	};
