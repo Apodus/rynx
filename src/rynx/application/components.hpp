@@ -76,8 +76,6 @@ namespace rynx {
 			std::vector<entry> collisions;
 		};
 
-		struct ignore_collisions {}; // static entity. others can collide against this, but this does not react.
-
 		struct collision_category {
 			collision_category() : value(-1) {}
 			collision_category(rynx::collision_detection::category_id category) : value(category) {}

@@ -7,7 +7,6 @@ namespace {
 		const rynx::components::radius,
 		const rynx::components::boundary,
 		const rynx::components::projectile,
-		const rynx::components::ignore_collisions,
 		const rynx::components::collision_category,
 		const rynx::components::motion,
 		rynx::components::frame_collisions>;
@@ -22,7 +21,7 @@ namespace {
 		float penetration1,
 		float penetration2
 	) {
-		if (!a.has<rynx::components::ignore_collisions>() && a.has<rynx::components::frame_collisions>()) {
+		if (a.has<rynx::components::frame_collisions>()) {
 			rynx::components::frame_collisions::entry collision_for_a;
 			collision_for_a.categoryOfOther = b.get<const rynx::components::collision_category>().value;
 			collision_for_a.collisionNormal = normal;
@@ -33,7 +32,7 @@ namespace {
 			a.get<rynx::components::frame_collisions>().collisions.emplace_back(std::move(collision_for_a));
 		}
 
-		if (!b.has<rynx::components::ignore_collisions>() && b.has<rynx::components::frame_collisions>()) {
+		if (b.has<rynx::components::frame_collisions>()) {
 			rynx::components::frame_collisions::entry collision_for_b;
 			collision_for_b.categoryOfOther = a.get<const rynx::components::collision_category>().value;
 			collision_for_b.collisionNormal = -normal;

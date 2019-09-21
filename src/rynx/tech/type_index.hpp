@@ -2,13 +2,13 @@
 #pragma once
 
 #include <rynx/tech/unordered_map.hpp>
+#include <shared_mutex>
 
 namespace rynx {
 	class type_index {
 		mutable uint64_t runningTypeIndex = 0;
 		static constexpr uint64_t no_type = ~uint64_t(0);
 		mutable unordered_map<uintptr_t, uint64_t> m_typeMap;
-
 		// NOTE: As long as we are not using DLLs, this should return the same char* value.
 		//       This means we can use the pointer value instead of the actual string representation for map key.
 #ifdef _WIN32
@@ -22,6 +22,7 @@ namespace rynx {
 			if (it != m_typeMap.end()) {
 				return it->second;
 			}
+
 			return m_typeMap.insert({ uintptr_t(kek), runningTypeIndex++ }).first->second;
 		}
 

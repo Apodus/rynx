@@ -75,7 +75,7 @@ namespace rynx {
 			virtual ~itable() {}
 			virtual void erase(entity_id_t entityId) = 0;
 			// virtual itable* deepCopy() const = 0;
-			virtual void copyTableTypeTo(type_id_t typeId, unordered_map<type_id_t, std::unique_ptr<itable>>& targetTables) = 0;
+			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
 		};
 
@@ -92,8 +92,11 @@ namespace rynx {
 			}
 
 			// NOTE: This is required for moving entities between categories reliably.
-			virtual void copyTableTypeTo(type_id_t typeId, unordered_map<type_id_t, std::unique_ptr<itable>>& targetTables) override {
-				targetTables.emplace(typeId, std::make_unique<component_table>());
+			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) override {
+				if (typeId >= targetTables.size()) {
+					targetTables.resize(((3 * typeId) >> 1) + 1);
+				}
+				targetTables[typeId] = std::make_unique<component_table>();
 			}
 
 			virtual void moveFromIndexTo(index_t index, itable* dst) override {
@@ -136,7 +139,8 @@ namespace rynx {
 
 			std::pair<migrate_move, migrate_move> erase(index_t index) {
 				for (auto&& table : m_tables) {
-					table.second->erase(index);
+					if(table)
+						table->erase(index);
 				}
 
 				rynx_assert(index < m_ids.size(), "out of bounds");
@@ -174,13 +178,19 @@ namespace rynx {
 			void copyTypesFrom(entity_category* other, const dynamic_bitset& types) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
-					other->m_tables.find(typeId)->second->copyTableTypeTo(typeId, m_tables);
+					other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
 					typeId = types.nextOne(typeId + 1);
 				}
 			}
 			void copyTypesTo(entity_category* other, const dynamic_bitset& types) { other->copyTypesFrom(this, types); }
 
-			void copyTypesFrom(entity_category* other) { for (auto&& table : other->m_tables) table.second->copyTableTypeTo(table.first, m_tables); }
+			void copyTypesFrom(entity_category* other) {
+				for (index_t type_id = 0; type_id < other->m_tables.size(); ++type_id) {
+					if (other->m_tables[type_id]) {
+						other->m_tables[type_id]->copyTableTypeTo(type_id, m_tables);
+					}
+				}
+			}
 			void copyTypesTo(entity_category* other) { other->copyTypesFrom(this); }
 
 			size_t size() const { return m_ids.size(); }
@@ -205,7 +215,7 @@ namespace rynx {
 			std::pair<migrate_move, migrate_move> migrateEntity(const dynamic_bitset& types, entity_category* source, index_t source_index) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
-					source->m_tables.find(typeId)->second->moveFromIndexTo(source_index, m_tables.find(typeId)->second.get());
+					source->m_tables[typeId]->moveFromIndexTo(source_index, m_tables[typeId].get());
 					typeId = types.nextOne(typeId + 1);
 				}
 
@@ -231,10 +241,13 @@ namespace rynx {
 
 			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> component_table<U> & table() {
 				type_id_t typeIndex = m_typeIndex->id<U>();
-				auto it = m_tables.find(typeIndex);
-				if (it != m_tables.end())
-					return *static_cast<component_table<U>*>(it->second.get());
-				return *static_cast<component_table<U>*>(m_tables.emplace(typeIndex, std::make_unique<component_table<U>>()).first->second.get());
+				if (typeIndex >= m_tables.size()) {
+					m_tables.resize(((3 * typeIndex) >> 1) + 1);
+				}
+				if (!m_tables[typeIndex]) {
+					m_tables[typeIndex] = std::make_unique<component_table<U>>();
+				}
+				return *static_cast<component_table<U>*>(m_tables[typeIndex].get());
 			}
 
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
@@ -276,7 +289,7 @@ namespace rynx {
 			};
 
 			dynamic_bitset m_types;
-			unordered_map<type_id_t, std::unique_ptr<itable>> m_tables;
+			std::vector<std::unique_ptr<itable>> m_tables;
 			std::vector<id> m_ids;
 			type_index* m_typeIndex;
 		};
@@ -375,22 +388,22 @@ namespace rynx {
 		template<typename category_source, bool allowEditing = false>
 		class entity {
 		public:
-			entity(category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {}
+			entity(category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {
+				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
+				m_entity_category = categoryAndIndex.first;
+				m_category_index = categoryAndIndex.second;
+			}
 
 			template<typename T> T& get() {
 				categorySource->template componentTypesAllowed<T>();
-				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
-				rynx_assert(categoryAndIndex.first != nullptr, "referenced entity seems to not exist.");
-				return categoryAndIndex.first->template table<T>()[categoryAndIndex.second];
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->template table<T>()[m_category_index];
 			}
 
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
-				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
-				if (categoryAndIndex.first) {
-					return true && (categoryAndIndex.first->types().test(categorySource->template typeId<Ts>()) && ...);
-				}
-				return false;
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return true && (m_entity_category->types().test(categorySource->template typeId<Ts>()) && ...);
 			}
 
 			template<typename... Ts> void remove() {
@@ -404,33 +417,42 @@ namespace rynx {
 			entity_id_t id() const { return m_id; }
 		private:
 			category_source* categorySource;
+			entity_category* m_entity_category;
+			index_t m_category_index;
 			entity_id_t m_id;
 		};
 
 		template<typename category_source>
 		class const_entity {
 		public:
-			const_entity(const category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {}
-			template<typename T> const T& get() {
-				categorySource->template componentTypesAllowed<T>();
+			const_entity(const category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {
 				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
-				rynx_assert(categoryAndIndex.first != nullptr, "referenced entity seems to not exist.");
-				return categoryAndIndex.first->template table<T>()[categoryAndIndex.second];
+				m_entity_category = categoryAndIndex.first;
+				m_category_index = categoryAndIndex.second;
+			}
+			template<typename T> const T& get() const {
+				categorySource->template componentTypesAllowed<T>();
+				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				return m_entity_category->template table<T>()[m_category_index];
+			}
+			template<typename T> const T* try_get() const {
+				categorySource->template componentTypesAllowed<T>();
+				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				return m_entity_category->template table<T>()[m_category_index];
 			}
 
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<Ts...>();
-				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
-				if (categoryAndIndex.first) {
-					return true && (categoryAndIndex.first->types().test(categorySource->template typeId<Ts>()) && ...);
-				}
-				return false;
+				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				return true && (m_entity_category->types().test(categorySource->template typeId<Ts>()) && ...);
 			}
 
 			template<typename... Ts> void remove() { static_assert(sizeof...(Ts) == 1 && sizeof...(Ts) == 2, "can't remove components from const entity"); }
 			template<typename T, typename... Args> void add(Args&& ... args) const { static_assert(sizeof(T) == 1 && sizeof(T) == 2, "can't add components to const entity"); }
 		private:
 			const category_source* categorySource;
+			const entity_category* m_entity_category;
+			index_t m_category_index;
 			entity_id_t m_id;
 		};
 

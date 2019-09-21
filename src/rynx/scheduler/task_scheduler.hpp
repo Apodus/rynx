@@ -56,6 +56,7 @@ namespace rynx {
 			// called once per frame.
 			void wait_until_complete() {
 				m_waitForComplete.wait();
+				logmsg("frame complete");
 			}
 
 			// called once per frame.

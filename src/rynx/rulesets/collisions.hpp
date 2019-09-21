@@ -79,10 +79,9 @@ namespace rynx {
 				});
 				
 				positionDataToSphereTree_task.after(position_updates_barrier);
-				positionDataToSphereTree_task.before(collisions_find_barrier);
 				positionDataToSphereTree_task.then("Update sphere tree", [](collision_detection& detection) {
 					detection.update();
-				});
+				})->before(collisions_find_barrier);
 				context.add_task(std::move(positionDataToSphereTree_task));
 
 				auto findCollisionsTask = context.add_task("Find collisions", [](
@@ -91,7 +90,6 @@ namespace rynx {
 						const components::radius,
 						const components::boundary,
 						const components::projectile,
-						const components::ignore_collisions,
 						const components::collision_category,
 						const components::motion,
 						components::frame_collisions> ecs,
@@ -122,7 +120,6 @@ namespace rynx {
 					const components::radius,
 					const components::boundary,
 					const components::projectile,
-					const components::ignore_collisions,
 					const components::collision_category,
 					const components::motion,
 					components::frame_collisions> ecs,

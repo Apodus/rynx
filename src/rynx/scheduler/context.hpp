@@ -78,64 +78,29 @@ namespace rynx {
 			rynx::unordered_map<uint64_t, task> m_tasks;
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
-			rynx::unordered_map<uint64_t, resource_state> m_resource_counters;
+			// rynx::unordered_map<uint64_t, resource_state> m_resource_counters;
+			std::vector<resource_state> m_resource_counters;
 
 			rynx::object_storage m_resources;
 			std::mutex m_taskMutex;
-			std::shared_mutex mutable m_resourceMutex;
-
 
 			// TODO: hide these as private.
 		public:
 			void release_resources(const operation_resources& resources) {
-				std::shared_lock lock(m_resourceMutex);
-				for (uint64_t readResource : resources.readRequirements()) {
-					auto it = m_resource_counters.find(readResource);
-					rynx_assert(it != m_resource_counters.end(), "task is using a resource that has not been set.");
-					--it->second.readers;
+				for (uint64_t readResource : resources.read_requirements()) {
+					m_resource_counters[readResource].readers.fetch_sub(1);
 				}
-				for (uint64_t writeResource : resources.writeRequirements()) {
-					auto it = m_resource_counters.find(writeResource);
-					rynx_assert(it != m_resource_counters.end(), "task is using a resource that has not been set.");
-					--it->second.writers;
+				for (uint64_t writeResource : resources.write_requirements()) {
+					m_resource_counters[writeResource].writers.fetch_sub(1);
 				}
 			}
 
 			void reserve_resources(const operation_resources& resources) {
-				std::shared_lock lock(m_resourceMutex);
-				for (uint64_t readResource : resources.readRequirements()) {
-					auto it = m_resource_counters.find(readResource);
-					if (it == m_resource_counters.end()) {
-						// new resource kind.
-						lock.unlock();
-						{
-							// it is possible that multiple threads execute this path consecutively, but that's ok because
-							// the latter emplaces will not replace the value, and all increments will be stored.
-							std::lock_guard write_lock(m_resourceMutex);
-							auto emplace_result = m_resource_counters.emplace(readResource, resource_state());
-							++emplace_result.first->second.readers;
-						}
-						lock.lock();
-					}
-					else {
-						++it->second.readers;
-					}
+				for (uint64_t readResource : resources.read_requirements()) {
+					m_resource_counters[readResource].readers.fetch_add(1);
 				}
-				for (uint64_t writeResource : resources.writeRequirements()) {
-					auto it = m_resource_counters.find(writeResource);
-					if (it == m_resource_counters.end()) {
-						// new resource kind.
-						lock.unlock();
-						{
-							std::lock_guard write_lock(m_resourceMutex);
-							auto emplace_result = m_resource_counters.emplace(writeResource, resource_state());
-							++emplace_result.first->second.writers;
-						}
-						lock.lock();
-					}
-					else {
-						++it->second.writers;
-					}
+				for (uint64_t writeResource : resources.write_requirements()) {
+					m_resource_counters[writeResource].writers.fetch_add(1);
 				}
 			}
 
@@ -146,45 +111,32 @@ namespace rynx {
 		public:
 
 			bool resourcesAvailableFor(const task& t) const {
-				bool okToStart = true;
-				std::shared_lock lock(m_resourceMutex);
-				
-				for (uint64_t readResource : t.resources().readRequirements()) {
-					auto it = m_resource_counters.find(readResource);
-					if (it != m_resource_counters.end()) {
-						okToStart &= (it->second.writers == 0);
-					}
+				int resources_in_use = 0;
+				for (uint64_t readResource : t.resources().read_requirements()) {
+					resources_in_use += m_resource_counters[readResource].writers.load();
 				}
-				for (uint64_t writeResource : t.resources().writeRequirements()) {
-					auto it = m_resource_counters.find(writeResource);
-					if (it != m_resource_counters.end()) {
-						auto& resourceState = it->second;
-						okToStart &= ((resourceState.readers == 0 && resourceState.writers == 0));
-					}
+				for (uint64_t writeResource : t.resources().write_requirements()) {
+					resources_in_use += m_resource_counters[writeResource].writers.load();
+					resources_in_use += m_resource_counters[writeResource].readers.load();
 				}
-				return okToStart;
+				return resources_in_use == 0;
 			}
 
 			context(context_id id) : m_id(id) {
+				m_resource_counters.resize(1024);
 				set_resource<context>(this);
 			}
 
 			bool isFinished() const { return m_tasks.empty(); }
 
 			template<typename T> context& set_resource(T* t) {
-				std::lock_guard lock(m_resourceMutex);
-
 				m_resources.set_and_discard(t);
 				uint64_t type_id = m_typeIndex.id<std::remove_cvref_t<T>>();
-				auto emplace_result = m_resource_counters.emplace(type_id, resource_state());
-				if (!emplace_result.second) {
-					rynx_assert(
-						emplace_result.first->second.readers == 0 &&
-						emplace_result.first->second.writers == 0,
-						"setting a resource for scheduler context, while the previous instance of the resource is in use! not ok."
-					);
-				}
-
+				rynx_assert(
+					m_resource_counters[type_id].readers == 0 &&
+					m_resource_counters[type_id].writers == 0,
+					"setting a resource for scheduler context, while the previous instance of the resource is in use! not ok."
+				);
 				return *this;
 			}
 

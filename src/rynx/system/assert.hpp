@@ -27,7 +27,7 @@ void windowsDebugOut(const char* logBuffer);
 #ifdef _WIN32
 
 #define logmsg(x, ...) {                                 \
-	printf(x "\n", ##__VA_ARGS__);          \
+	/* printf(x "\n", ##__VA_ARGS__); */         \
 	char logBuffer[2048];                             \
 	sprintf_s(logBuffer, sizeof(logBuffer),  "%s(%d): " x "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
 	windowsDebugOut(logBuffer); \

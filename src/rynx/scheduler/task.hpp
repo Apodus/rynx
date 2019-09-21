@@ -35,10 +35,10 @@ namespace rynx {
 					void operator()(task& host) {
 						uint64_t typeId = host.m_context->m_typeIndex.id<std::remove_cvref_t<T>>();
 						if constexpr (std::is_const_v<std::remove_reference_t<T>>) {
-							host.resources().requireRead(typeId);
+							host.resources().require_read(typeId);
 						}
 						else {
-							host.resources().requireWrite(typeId);
+							host.resources().require_write(typeId);
 						}
 					}
 				};
@@ -154,6 +154,14 @@ namespace rynx {
 				return *this;
 			}
 
+			task& copy_resources(task& other) {
+				if (m_resources_shared) {
+					other.m_resources->insert(*m_resources_shared);
+				}
+				other.m_resources->insert(*m_resources);
+				return *this;
+			}
+
 			template<typename F> task& extend_task(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
@@ -167,14 +175,31 @@ namespace rynx {
 			//       by the task extended. These functions will run simultaneously regardless
 			//       oh having same write targets as shared resources. You are responsible for
 			//       ensuring that there are no race conditions when writing data.
-			template<typename F> task& extend_task_shared_resources(std::string name, F&& op) {
+
+			template<typename F> task make_extended_task_copy_resources(std::string name, F&& op) {
+				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
+				completion_blocked_by(followUpTask);
+				copy_resources(followUpTask);
+				return followUpTask;
+			}
+			template<typename F> task make_extended_task_share_resources(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
 				share_resources(followUpTask);
-				m_context->add_task(std::move(followUpTask));
+				return followUpTask;
+			}
+
+			template<typename F> task& extend_task_shared_resources(std::string name, F&& op) {
+				m_context->add_task(make_extended_task_share_resources(std::move(name), std::forward<F>(op)));
 				return *this;
 			}
 			template<typename F> task& extend_task_shared_resources(F&& op) { return extend_task_shared_resources(m_name + "_es", std::forward<F>(op)); }
+
+			template<typename F> task& extend_task_copy_resources(std::string name, F&& op) {
+				m_context->add_task(make_extended_task_copy_resources(std::move(name), std::forward<F>(op)));
+				return *this;
+			}
+			template<typename F> task& extend_task_copy_resources(F&& op) { return extend_task_copy_resources(m_name + "_es", std::forward<F>(op)); }
 
 
 			template<typename F>
@@ -221,6 +246,23 @@ namespace rynx {
 			struct task_resources : public operation_resources {
 				task_resources(context* ctx) : m_context(ctx) {}
 				~task_resources();
+
+				task_resources(const task_resources& other) = default;
+				task_resources& operator = (const task_resources& other) = default;
+
+				// moving not allowed
+				task_resources(task_resources&& other) = delete;
+				task_resources& operator = (task_resources&& other) = delete;
+
+				task_resources& insert(const task_resources& other) {
+					for (const auto resource_id : other.read_requirements()) {
+						require_read(resource_id);
+					}
+					for (const auto resource_id : other.write_requirements()) {
+						require_write(resource_id);
+					}
+					return *this;
+				}
 
 			private:
 				context* m_context = nullptr;
