@@ -28,7 +28,7 @@
 
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/tech/smooth_value.hpp>
- 
+
 #include <game/logic/shooting.hpp>
 #include <game/logic/keyboard_movement.hpp>
 
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
 
 	auto zoomOut = gameInput.generateAndBindGameKey('1', "zoom out");
 	auto zoomIn = gameInput.generateAndBindGameKey('2', "zoom in");
-	
+
 
 	application.meshRenderer().setDepthTest(false);
 
@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
 
 	rynx::menu::Div root({ 1, 1, 0 });
-	
+
 	struct debug_conf {
 		bool visualize_dynamic_collisions = false;
 		bool visualize_static_collisions = false;
@@ -218,12 +218,12 @@ int main(int argc, char** argv) {
 		sampleButton3->alignToInnerEdge(sampleButton2.get(), rynx::menu::Align::LEFT);
 		sampleButton3->onClick([sampleButton3, &root]() {
 			sampleButton3->alignToInnerEdge(&root, rynx::menu::Align::TOP | rynx::menu::Align::RIGHT);
-		});
+			});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
 		sampleSlider->onValueChanged([spawner](float f) {
 			spawner->how_often_to_spawn = uint64_t(1 + int(f * 100.0f));
-		});
+			});
 
 		//sampleButton->m_positionAlign = rynx::menu::Component::PositionAlign::RIGHT | rynx::menu::Component::PositionAlign::BOTTOM;
 		root.addChild(sampleButton);
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
 		application.startFrame();
 
 		auto mousePos = application.input()->getCursorPosition();
-		
+
 		cameraHeight.tick(0.016f * 3);
 
 		{
@@ -323,7 +323,7 @@ int main(int argc, char** argv) {
 
 		{
 			rynx_profile(Game, "Menus");
-			
+
 			// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
 			// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
 			root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
@@ -343,7 +343,7 @@ int main(int argc, char** argv) {
 			auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
 
 			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.5f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us/10) / 100.0f) + "ms", -0.9f, 0.4f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 		}
 
@@ -367,10 +367,10 @@ int main(int argc, char** argv) {
 			// NOTE: Frame time can be edited during runtime for debugging reasons.
 			if (gameInput.isKeyDown(slowTime)) { sleepTime *= 1.1f; }
 			if (gameInput.isKeyDown(fastTime)) { sleepTime *= 0.9f; }
-			
+
 			if (gameInput.isKeyDown(zoomOut)) { cameraHeight *= 1.1f; }
 			if (gameInput.isKeyDown(zoomIn)) { cameraHeight *= 0.9f; }
-			
+
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(sleepTime)));
 		}
 

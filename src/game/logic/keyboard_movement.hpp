@@ -49,25 +49,28 @@ namespace game {
 
 			virtual std::vector<std::unique_ptr<rynx::application::logic::iaction>> onInput(rynx::input::mapped_input& input, const rynx::ecs& ecs) override {
 				int localPlayer = 1;
-				auto localPlayerEntity = ecs[localPlayer];
 				std::vector<std::unique_ptr<rynx::application::logic::iaction>> result;
+				
+				if (ecs.exists(localPlayer)) {
+					auto localPlayerEntity = ecs[localPlayer];
 
-				vec3<float> total;
-				if (input.isKeyDown(moveLeft)) {
-					total.x -= 0.025f;
-				}
-				if(input.isKeyDown(moveRight)) {
-					total.x += 0.025f;
-				}
-				if (input.isKeyDown(moveUp)) {
-					total.y += 0.025f;
-				}
-				if (input.isKeyDown(moveDown)) {
-					total.y -= 0.025f;
-				}
+					vec3<float> total;
+					if (input.isKeyDown(moveLeft)) {
+						total.x -= 0.025f;
+					}
+					if (input.isKeyDown(moveRight)) {
+						total.x += 0.025f;
+					}
+					if (input.isKeyDown(moveUp)) {
+						total.y += 0.025f;
+					}
+					if (input.isKeyDown(moveDown)) {
+						total.y -= 0.025f;
+					}
 
-				if (total.lengthSquared() > 0) {
-					result.emplace_back(std::make_unique<actions::movement>(localPlayer, total));
+					if (total.lengthSquared() > 0) {
+						result.emplace_back(std::make_unique<actions::movement>(localPlayer, total));
+					}
 				}
 				return result;
 			}

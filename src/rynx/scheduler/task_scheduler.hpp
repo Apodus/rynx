@@ -56,7 +56,16 @@ namespace rynx {
 			// called once per frame.
 			void wait_until_complete() {
 				m_waitForComplete.wait();
-				logmsg("frame complete");
+				// now all workers are stopped, and we can update our type indices.
+				for (auto& ctx : m_contexts) {
+					ctx.second->m_typeIndex.sync();
+					ctx.second->m_resources.sync();
+					auto* ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
+					if (ecs_resource) {
+						ecs_resource->sync_type_index();
+					}
+				}
+				// logmsg("frame complete");
 			}
 
 			// called once per frame.

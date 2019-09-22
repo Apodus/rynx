@@ -211,12 +211,12 @@ namespace rynx {
 				}
 				// slot = try_pack_neighbors(static_cast<uint32_t>(slot), hash);
 
-				update_next_of_slot(hash, static_cast<uint32_t>(slot));
-				update_hash_of_item(slot, static_cast<uint32_t>(hash));
-
 				rynx_assert(!m_presence.test(slot), "inserting to reserved slot");
 				new (m_data.get() + slot) value_type(std::move(value));
 				m_presence.set(slot);
+
+				update_next_of_slot(hash, static_cast<uint32_t>(slot));
+				update_hash_of_item(slot, static_cast<uint32_t>(hash));
 
 				return { iterator(slot, &m_presence, m_data.get()), true };
 			}
@@ -236,13 +236,13 @@ namespace rynx {
 				}
 				// slot = try_pack_neighbors(static_cast<uint32_t>(slot), hash);
 
-				update_next_of_item(next_hash, static_cast<uint32_t>(slot));
-				update_prev_of_item(slot, static_cast<uint32_t>(next_hash));
-				update_hash_of_item(slot, static_cast<uint32_t>(hash));
-
 				rynx_assert(!m_presence.test(slot), "inserting to reserved slot");
 				new (m_data.get() + slot) value_type(std::move(value));
 				m_presence.set(slot);
+
+				update_next_of_item(next_hash, static_cast<uint32_t>(slot));
+				update_prev_of_item(slot, static_cast<uint32_t>(next_hash));
+				update_hash_of_item(slot, static_cast<uint32_t>(hash));
 
 				return { iterator(slot, &m_presence, m_data.get()), true };
 			}

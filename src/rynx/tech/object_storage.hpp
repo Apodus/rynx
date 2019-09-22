@@ -36,17 +36,28 @@ namespace rynx {
 		}
 
 		template<typename T>
-		T& get() {
+		T* try_get() {
 			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
 			if (id >= m_stateObjects.size()) {
 				m_stateObjects.resize(2 * m_stateObjects.size() / 3 + 1, nullptr);
 			}
-			auto* value = static_cast<T*>(m_stateObjects[id]);
+			return static_cast<T*>(m_stateObjects[id]);
+		}
+
+		template<typename T>
+		T& get() {
+			auto* value = try_get<T>();
 			rynx_assert(value, "requested type does not exist in object storage.");
 			return *value;
 		}
 
 		template<typename T> const T& get() const { return const_cast<object_storage*>(this)->get<T>(); }
+		template<typename T> const T* try_get() const { return const_cast<object_storage*>(this)->try_get<T>(); }
+
+		// not thread safe. should be called once per frame. or "once in a while".
+		void sync() {
+			m_typeIndex.sync();
+		}
 
 	private:
 		type_index m_typeIndex;

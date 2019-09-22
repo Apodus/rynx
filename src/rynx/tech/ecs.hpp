@@ -37,28 +37,18 @@ namespace rynx {
 		class entity_index {
 		public:
 			entity_id_t generateOne() {
-				/*
-				if (!freeIds.empty()) {
-					auto id = freeIds.back();
-					freeIds.pop_back();
-					return id;
-				}
-				*/
 				return ++m_nextId;
 			} // zero is never generated. we can use that as InvalidId.
 
-			void entityKilled(entity_id_t /* entityId */) {
-				// freeIds.emplace_back(entityId);
-			}
-
 			static constexpr entity_id_t InvalidId = 0;
 		private:
+			
+			// does not need to be atomic. creating new entities is not thread-safe anyway, only one thread is allowed to do so at a time.
 			entity_id_t m_nextId = 0;
-			// std::vector<entity_id_t> freeIds;
 		};
 
-		type_index types;
-		entity_index entities;
+		type_index m_types;
+		entity_index m_entities;
 
 	public:
 		struct id {
@@ -490,6 +480,12 @@ namespace rynx {
 			return m_idCategoryMap.size();
 		}
 
+		// should call once per frame. this is not thread safe.
+		// if you don't call this, you will see performance go down the toilet.
+		void sync_type_index() {
+			m_types.sync();
+		}
+
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }
 		bool exists(id id) const { return exists(id.value); }
 
@@ -530,7 +526,6 @@ namespace rynx {
 					m_idCategoryMap[operations.second.id] = { operations.second.new_category, operations.second.newIndex };
 				}
 			}
-			entities.entityKilled(entityId);
 		}
 
 		void erase(id entityId) { erase(entityId.value); }
@@ -539,11 +534,11 @@ namespace rynx {
 
 		template<typename... Components>
 		entity_id_t create(Components&& ... components) {
-			entity_id_t id = entities.generateOne();
+			entity_id_t id = m_entities.generateOne();
 			dynamic_bitset targetCategory;
-			(targetCategory.set(types.id<Components>()), ...);
+			(targetCategory.set(m_types.id<Components>()), ...);
 			auto category_it = m_categories.find(targetCategory);
-			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &types)).first; }
+			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
 			category_it->second->insertNew(id, std::forward<Components>(components)...);
 			m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(category_it->second->size() - 1)));
 			return id;
@@ -555,11 +550,11 @@ namespace rynx {
 			rynx_assert(it != m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
 			const dynamic_bitset& initialTypes = it->second.first->types();
 			dynamic_bitset resultTypes = initialTypes;
-			(resultTypes.set(types.id<Components>()), ...);
+			(resultTypes.set(m_types.id<Components>()), ...);
 
 			auto destinationCategoryIt = m_categories.find(resultTypes);
 			if (destinationCategoryIt == m_categories.end()) {
-				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &types)).first;
+				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
 				destinationCategoryIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 			}
 
@@ -580,11 +575,11 @@ namespace rynx {
 			rynx_assert(it != m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
 			const dynamic_bitset& initialTypes = it->second.first->types();
 			dynamic_bitset resultTypes = initialTypes;
-			(resultTypes.reset(types.id<Components>()), ...);
+			(resultTypes.reset(m_types.id<Components>()), ...);
 
 			auto destinationCategoryIt = m_categories.find(resultTypes);
 			if (destinationCategoryIt == m_categories.end()) {
-				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &types)).first;
+				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
 				destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
 			}
 
@@ -731,7 +726,7 @@ namespace rynx {
 			}
 		};
 
-		template<typename T> type_id_t typeId() const { return types.template id<T>(); }
+		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
 		unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
