@@ -17,6 +17,8 @@
 #include <game/logic.hpp>
 #include <game/gametypes.hpp>
 
+#include <rynx/tech/profiling.hpp>
+
 namespace game
 {
 	struct hitpoint_bar_renderer : public rynx::application::renderer::irenderer {
@@ -25,7 +27,7 @@ namespace game
 		}
 		virtual ~hitpoint_bar_renderer() {}
 		virtual void render(const rynx::ecs& ecs) override {
-			rynx_profile(Game, "DrawHitpoints");
+			rynx_profile("SphereTree", "DrawHitpoints");
 			ecs.for_each([this](const rynx::components::position& pos, const health& hp) {
 				auto drawPos = pos.value + vec3<float>({ -0.5f, 1.0f, 0.0f });
 				float prctage = hp.currentHp / hp.maxHp;

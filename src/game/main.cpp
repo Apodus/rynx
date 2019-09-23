@@ -47,7 +47,6 @@
 
 
 int main(int argc, char** argv) {
-
 	Font fontLenka(Fonts::setFontLenka());
 	Font fontConsola(Fonts::setFontConsolaMono());
 
@@ -212,18 +211,21 @@ int main(int argc, char** argv) {
 		sampleButton2->text("Button 2").font(&fontConsola);
 		sampleButton2->alignToOuterEdge(sampleButton.get(), rynx::menu::Align::RIGHT);
 		sampleButton2->alignToInnerEdge(sampleButton.get(), rynx::menu::Align::BOTTOM);
+		sampleButton2->onClick([]() {
+			rynx::profiling::write_profile_log();
+		});
 
 		sampleButton3->text("Button 3").font(&fontConsola);
 		sampleButton3->alignToOuterEdge(sampleButton2.get(), rynx::menu::Align::TOP);
 		sampleButton3->alignToInnerEdge(sampleButton2.get(), rynx::menu::Align::LEFT);
 		sampleButton3->onClick([sampleButton3, &root]() {
 			sampleButton3->alignToInnerEdge(&root, rynx::menu::Align::TOP | rynx::menu::Align::RIGHT);
-			});
+		});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
 		sampleSlider->onValueChanged([spawner](float f) {
 			spawner->how_often_to_spawn = uint64_t(1 + int(f * 100.0f));
-			});
+		});
 
 		//sampleButton->m_positionAlign = rynx::menu::Component::PositionAlign::RIGHT | rynx::menu::Component::PositionAlign::BOTTOM;
 		root.addChild(sampleButton);
@@ -249,7 +251,7 @@ int main(int argc, char** argv) {
 	});
 
 	while (!application.isExitRequested()) {
-		rynx_profile(Game, "Main");
+		rynx_profile("Main", "frame");
 		application.startFrame();
 
 		auto mousePos = application.input()->getCursorPosition();
@@ -276,7 +278,7 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			rynx_profile(Game, "Input handling");
+			rynx_profile("Main", "Input handling");
 			// TODO: Simulation API
 			std::vector<std::unique_ptr<rynx::application::logic::iaction>> userActions = base_simulation.m_logic.onInput(gameInput, ecs);
 			for (auto&& action : userActions) {
@@ -286,17 +288,17 @@ int main(int argc, char** argv) {
 
 		auto time_logic_start = std::chrono::high_resolution_clock::now();
 		{
-			rynx_profile(Game, "Construct frame tasks");
+			rynx_profile("Main", "Construct frame tasks");
 			base_simulation.generate_tasks();
 		}
 
 		{
-			rynx_profile(Game, "Start scheduler");
+			rynx_profile("Main", "Start scheduler");
 			scheduler.start_frame();
 		}
 
 		{
-			rynx_profile(Game, "Wait for frame end");
+			rynx_profile("Main", "Wait for frame end");
 			scheduler.wait_until_complete();
 			++tickCounter;
 		}
@@ -304,7 +306,7 @@ int main(int argc, char** argv) {
 
 		auto time_render_start = std::chrono::high_resolution_clock::now();
 		{
-			rynx_profile(Game, "Render");
+			rynx_profile("Main", "Render");
 			gameRenderer.render(ecs);
 		}
 		auto time_render_end = std::chrono::high_resolution_clock::now();
@@ -322,7 +324,7 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			rynx_profile(Game, "Menus");
+			rynx_profile("Main", "Menus");
 
 			// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
 			// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
@@ -348,7 +350,7 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			rynx_profile(Game, "Clean up dead entitites");
+			rynx_profile("Main", "Clean up dead entitites");
 			ecs.for_each([&ecs](rynx::ecs::id id, rynx::components::lifetime& time) {
 				--time.value;
 				if (time.value <= 0) {
@@ -363,7 +365,7 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			rynx_profile(Game, "Sleep");
+			rynx_profile("Main", "Sleep");
 			// NOTE: Frame time can be edited during runtime for debugging reasons.
 			if (gameInput.isKeyDown(slowTime)) { sleepTime *= 1.1f; }
 			if (gameInput.isKeyDown(fastTime)) { sleepTime *= 0.9f; }

@@ -72,6 +72,3 @@ void windowsDebugOut(const char* logBuffer);
 #define logsnl(x, ...)
 
 #endif
-
-#define PROFILE_SCOPE(...)
-#define rynx_profile(a, b) PROFILE_SCOPE(a, b);

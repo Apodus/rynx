@@ -5,6 +5,9 @@
 #include <rynx/application/render.hpp>
 #include <rynx/application/components.hpp>
 
+#include <rynx/tech/profiling.hpp>
+
+
 // required for implementation
 #include <rynx/tech/ecs.hpp>
 
@@ -17,7 +20,7 @@ namespace rynx {
 				}
 				virtual ~mesh_renderer() {}
 				virtual void render(const rynx::ecs& ecs) override {
-					rynx_profile(Game, "mesh_renderer");
+					rynx_profile("visualisation", "mesh_renderer");
 					ecs.for_each([this](const rynx::components::position& pos, const rynx::components::mesh& m, const rynx::components::texture& t, const rynx::components::color& color) {
 						matrix4 model;
 						model.discardSetTranslate(pos.value);

@@ -7,6 +7,7 @@
 rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_context->m_tasks.find(m_taskId)->second; }
 
 rynx::scheduler::task rynx::scheduler::context::findWork() {
+	rynx_profile("Profiler", "Find work self");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	for (auto it = m_tasks.begin(); it != m_tasks.end(); ++it) {
 		auto& task = it->second;
@@ -37,6 +38,7 @@ void rynx::scheduler::task_scheduler::startTask(int threadIndex, rynx::scheduler
 }
 
 bool rynx::scheduler::task_scheduler::findWorkForThreadIndex(int threadIndex) {
+	rynx_profile("Profiler", "Find work");
 	// TODO: We should have separate mutexes for each thread index. Locking all is bad sense.
 	std::lock_guard<std::mutex> lock(m_worker_mutex);
 	if (m_threads[threadIndex]->isDone()) {
@@ -52,6 +54,7 @@ bool rynx::scheduler::task_scheduler::findWorkForThreadIndex(int threadIndex) {
 }
 
 void rynx::scheduler::task_scheduler::findWorkForAllThreads() {
+	rynx_profile("Profiler", "Find work for everyone");
 	for (;;) {
 		int freeThreadIndex = getFreeThreadIndex();
 		if (freeThreadIndex >= 0) {

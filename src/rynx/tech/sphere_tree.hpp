@@ -3,6 +3,7 @@
 #include <rynx/tech/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/math/geometry.hpp>
+#include <rynx/tech/profiling.hpp>
 #include <vector>
 
 inline float sqr(float x) { return x * x; };
@@ -414,7 +415,7 @@ public:
 
 	void update() {
 		{
-			rynx_profile(Game, "FindBuckets");
+			rynx_profile("SphereTree", "FindBuckets");
 			if (entryMap.empty())
 				return;
 
@@ -447,7 +448,7 @@ public:
 		}
 
 		{
-			rynx_profile(Game, "UpdateNodePositions");
+			rynx_profile("SphereTree", "UpdateNodePositions");
 			root.update_from_leaf_to_root();
 		}
 	}
@@ -491,7 +492,7 @@ private:
 				}
 			});
 
-			task.extend_task_copy_resources([f, a](rynx::scheduler::task& task) {
+			task.extend_task_copy_resources("pair-wise", [f, a](rynx::scheduler::task& task) {
 
 				// for small nodes, don't bother creating tasks.
 				if (a->children.size() < 30) {

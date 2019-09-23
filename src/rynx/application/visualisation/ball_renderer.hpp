@@ -5,6 +5,8 @@
 #include <rynx/application/render.hpp>
 #include <rynx/application/components.hpp>
 
+#include <rynx/tech/profiling.hpp>
+
 // required for implementation
 #include <rynx/tech/ecs.hpp>
 
@@ -18,7 +20,7 @@ namespace rynx {
 				}
 				virtual ~ball_renderer() {}
 				virtual void render(const rynx::ecs& ecs) override {
-					rynx_profile(Game, "ball_renderer");
+					rynx_profile("visualisation", "ball_renderer");
 					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().execute([this](
 						const rynx::components::position& pos,
 						const rynx::components::radius& r,

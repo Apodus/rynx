@@ -4,6 +4,8 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
 
+#include <rynx/tech/profiling.hpp>
+
 #include <vector>
 #include <type_traits>
 #include <tuple>
@@ -496,14 +498,14 @@ namespace rynx {
 
 		template<typename F>
 		void for_each(F&& op) {
-			rynx_profile(Game, "ECS For Each");
+			rynx_profile("Ecs", "for_each");
 			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
 			it.for_each(std::forward<F>(op));
 		}
 
 		template<typename F>
 		void for_each(F&& op) const {
-			rynx_profile(Game, "ECS For Each");
+			rynx_profile("Ecs", "for_each");
 			iterator<DataAccess::Const, ecs, decltype(&F::operator())> it(*this);
 			it.for_each(std::forward<F>(op));
 		}
@@ -632,14 +634,14 @@ namespace rynx {
 
 			template<typename F>
 			void for_each(F&& op) {
-				rynx_profile(Game, "ECS For Each");
+				rynx_profile("Ecs", "for_each");
 				iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
 				it.for_each(std::forward<F>(op));
 			}
 
 			template<typename F>
 			void for_each(F&& op) const {
-				rynx_profile(Game, "ECS For Each");
+				rynx_profile("Ecs", "for_each");
 				iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
 				it.for_each(std::forward<F>(op));
 			}

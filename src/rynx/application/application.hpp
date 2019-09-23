@@ -12,6 +12,8 @@
 #include <rynx/application/logic.hpp>
 #include <rynx/application/render.hpp>
 
+#include <rynx/tech/profiling.hpp>
+
 #include <memory>
 #include <string>
 
@@ -44,7 +46,7 @@ namespace rynx {
 			}
 
 			void swapBuffers() {
-				rynx_profile(Game, "Swap buffers");
+				rynx_profile("Application", "Swap buffers");
 				m_window->swap_buffers();
 			}
 
