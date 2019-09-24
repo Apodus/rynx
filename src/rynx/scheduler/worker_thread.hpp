@@ -17,8 +17,8 @@ namespace rynx {
 			semaphore m_semaphore;
 			task_scheduler* m_scheduler;
 			task m_task;
-			std::atomic<bool> m_done = true;
-			bool m_running = false;
+			std::atomic<bool> m_sleeping = true;
+			bool m_alive = false;
 
 			void threadEntry(int myThreadIndex);
 
@@ -27,29 +27,30 @@ namespace rynx {
 			task_thread(task_scheduler* pTaskMaster, int myIndex);
 			~task_thread() {}
 
-			void setTask(task task) { m_task = std::move(task); }
+			void set_task(task task) { m_task = std::move(task); }
 			const task& getTask() { return m_task; }
 
 			void shutdown() {
-				m_running = false;
-				while (!isDone()) {
+				m_alive = false;
+				while (!is_sleeping()) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(50));
 				}
 				m_semaphore.signal();
 				m_thread.join();
 			}
 
-			void start() {
-				m_done = false;
-				m_semaphore.signal();
+			void wake_up() {
+				if (m_sleeping.exchange(false)) {
+					m_semaphore.signal();
+				}
 			}
 
 			void wait() {
 				m_semaphore.wait();
 			}
 
-			bool isDone() const {
-				return m_done;
+			bool is_sleeping() const {
+				return m_sleeping;
 			}
 		};
 	}

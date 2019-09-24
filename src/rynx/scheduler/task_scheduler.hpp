@@ -34,14 +34,11 @@ namespace rynx {
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
 			rynx::unordered_map<scheduler::context::context_id, std::unique_ptr<scheduler::context>> m_contexts;
 			std::array<rynx::scheduler::task_thread*, numThreads> m_threads;
-			std::mutex m_worker_mutex;
 			semaphore m_waitForComplete;
 			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
 
-			int getFreeThreadIndex();
-			void startTask(int threadIndex, rynx::scheduler::task& task);
-			bool findWorkForThreadIndex(int threadIndex);
-			void findWorkForAllThreads();
+			bool find_work_for_thread_index(int threadIndex); // this is only allowed to be called from within the worker. TODO: architecture.
+			void wake_up_sleeping_workers();
 
 		public:
 
@@ -70,9 +67,9 @@ namespace rynx {
 
 			// called once per frame.
 			void start_frame() {
-				rynx_assert(m_frameComplete == 1, "mismatch with scheduler starts and waits");
-				m_frameComplete = 0;
-				findWorkForAllThreads();
+				rynx_assert(m_frameComplete.load() == 1, "mismatch with scheduler starts and waits");
+				m_frameComplete.store(0);
+				wake_up_sleeping_workers();
 			}
 
 			void dump() {

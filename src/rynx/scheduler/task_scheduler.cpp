@@ -20,56 +20,27 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	return task();
 }
 
-
-
-int rynx::scheduler::task_scheduler::getFreeThreadIndex() {
-	for (int i = 0; i < numThreads; ++i) {
-		if (m_threads[i]->isDone()) {
-			return i;
-		}
-	}
-	return -1;
-}
-
-void rynx::scheduler::task_scheduler::startTask(int threadIndex, rynx::scheduler::task& task) {
-	task.reserve_resources();
-	m_threads[threadIndex]->setTask(std::move(task));
-	m_threads[threadIndex]->start();
-}
-
-bool rynx::scheduler::task_scheduler::findWorkForThreadIndex(int threadIndex) {
+bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex) {
 	rynx_profile("Profiler", "Find work");
-	// TODO: We should have separate mutexes for each thread index. Locking all is bad sense.
-	std::lock_guard<std::mutex> lock(m_worker_mutex);
-	if (m_threads[threadIndex]->isDone()) {
-		for (auto& context : m_contexts) {
-			rynx::scheduler::task t = context.second->findWork();
-			if (t) {
-				startTask(threadIndex, t);
-				return true;
-			}
+	for (auto& context : m_contexts) {
+		rynx::scheduler::task t = context.second->findWork();
+		if (t) {
+			t.reserve_resources();
+			m_threads[threadIndex]->set_task(std::move(t));
+			return true;
 		}
 	}
 	return false;
 }
 
-void rynx::scheduler::task_scheduler::findWorkForAllThreads() {
-	rynx_profile("Profiler", "Find work for everyone");
-	for (;;) {
-		int freeThreadIndex = getFreeThreadIndex();
-		if (freeThreadIndex >= 0) {
-			if (!findWorkForThreadIndex(freeThreadIndex)) {
-				return;
-			}
-		}
-		else {
-			// logmsg("task execution was requested but no task threads are free :(");
-			return;
+void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
+	rynx_profile("Profiler", "Wake up sleeping workers");
+	for (int i = 0; i < numThreads; ++i) {
+		if (m_threads[i]->is_sleeping()) {
+			m_threads[i]->wake_up();
 		}
 	}
 }
-
-
 
 rynx::scheduler::task_scheduler::task_scheduler() : m_threads({ nullptr }) {
 	for (int i = 0; i < numThreads; ++i) {
@@ -91,7 +62,6 @@ rynx::scheduler::context* rynx::scheduler::task_scheduler::make_context() {
 	return m_contexts.emplace(id, std::make_unique<scheduler::context>(id)).first->second.get();
 }
 
-
 void rynx::scheduler::task_scheduler::checkComplete() {
 	bool contextsHaveNoQueuedTasks = true;
 	for (auto& context : m_contexts) {
@@ -101,7 +71,7 @@ void rynx::scheduler::task_scheduler::checkComplete() {
 	if (contextsHaveNoQueuedTasks) {
 		bool allWorkersAreFinished = true;
 		for (auto&& worker : m_threads) {
-			allWorkersAreFinished &= worker->isDone();
+			allWorkersAreFinished &= worker->is_sleeping();
 		}
 
 		if (allWorkersAreFinished) {
