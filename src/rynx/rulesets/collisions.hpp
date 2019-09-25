@@ -30,26 +30,32 @@ namespace rynx {
 					});
 
 					context.add_task("Apply acceleration and reset", [](rynx::ecs::view<components::motion> ecs) {
-						ecs.for_each([](components::motion& m) {
-							m.velocity += m.acceleration;
-							m.acceleration.set(0, 0, 0);
-							m.angularVelocity += m.angularAcceleration;
-							m.angularAcceleration = 0;
-						});
-					})->then("Apply motion to position", [](rynx::ecs::view<components::position, const components::motion> ecs) {
-						ecs.for_each([](components::position& p, const components::motion& m) {
-							p.value += m.velocity;
-							p.angle += m.angularVelocity;
-						});
+						{
+							rynx_profile("Motion", "apply acceleration");
+							ecs.for_each([](components::motion& m) {
+								m.velocity += m.acceleration;
+								m.acceleration.set(0, 0, 0);
+								m.angularVelocity += m.angularAcceleration;
+								m.angularAcceleration = 0;
+							});
+						}
+
+						{
+							rynx_profile("Motion", "apply velocity");
+							ecs.for_each([](components::position& p, const components::motion& m) {
+								p.value += m.velocity;
+								p.angle += m.angularVelocity;
+							});
+						}
 					});
 				}
 
 				context.add_task("Apply dampening", [](rynx::ecs::view<components::motion, const components::dampening> ecs) {
-					ecs.for_each([](components::motion& m, const components::dampening& d) {
+					ecs.for_each([](components::motion& m, components::dampening d) {
 						m.velocity *= d.linearDampening;
 						m.angularVelocity *= d.angularDampening;
 					});
-				})->after(position_updates_barrier);
+				})->depends_on(position_updates_barrier);
 
 				/*
 				context.add_task("Clear collisions from previous frame", [](rynx::ecs::view<components::frame_collisions> ecs, collision_detection& detection) {
@@ -76,10 +82,10 @@ namespace rynx {
 						});
 				});
 				
-				positionDataToSphereTree_task.after(position_updates_barrier);
+				positionDataToSphereTree_task.depends_on(position_updates_barrier);
 				positionDataToSphereTree_task.then("Update sphere tree", [](collision_detection& detection) {
 					detection.update();
-				})->before(collisions_find_barrier);
+				})->required_for(collisions_find_barrier);
 				context.add_task(std::move(positionDataToSphereTree_task));
 
 				auto findCollisionsTask = context.add_task("Find collisions", [](
@@ -98,7 +104,7 @@ namespace rynx {
 					}, this_task);
 				});
 
-				findCollisionsTask->after(collisions_find_barrier);
+				findCollisionsTask->depends_on(collisions_find_barrier);
 
 				context.add_task("Collision resolution", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs) {
 					ecs.for_each([](components::motion& m, const components::frame_collisions& collisionsComponent) {
@@ -108,7 +114,7 @@ namespace rynx {
 							m.acceleration += collision.collisionNormal * collision.penetration * 0.12f;
 						}
 					});
-				})->dependsOn(*findCollisionsTask);
+				})->depends_on(*findCollisionsTask);
 			}
 
 		private:

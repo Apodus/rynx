@@ -15,7 +15,7 @@ TEST_CASE("scheduler", "[tasks + barriers]")
 	std::atomic<int> count_a = 0;
 	auto task1 = context->make_task("First", [&]() { REQUIRE(count_a.fetch_add(1) == 0); });
 	auto task2 = context->make_task("Second", [&]() { REQUIRE(count_a.fetch_add(1) == 1); });
-	task1.requiredFor(task2);
+	task1.required_for(task2);
 	context->add_task(std::move(task2));
 	context->add_task(std::move(task1));
 

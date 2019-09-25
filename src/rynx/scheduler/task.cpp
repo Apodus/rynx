@@ -8,7 +8,7 @@ void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resou
 void rynx::scheduler::task::run() {
 	rynx_profile("Scheduler", m_name);
 	rynx_assert(m_op, "no op in task that is being run!");
-	rynx_assert(m_barriers.canStart(), "task is being run while still blocked by barriers!");
+	rynx_assert(m_barriers.can_start(), "task is being run while still blocked by barriers!");
 
 	{
 		// logmsg("start %s", m_name.c_str());
@@ -19,7 +19,7 @@ void rynx::scheduler::task::run() {
 
 	{
 		rynx_profile("Scheduler", "barriers update");
-		m_barriers.onComplete();
+		m_barriers.on_complete();
 	}
 
 	{

@@ -10,7 +10,7 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	for (auto it = m_tasks.begin(); it != m_tasks.end(); ++it) {
 		auto& task = it->second;
-		if (task.barriers().canStart() && resourcesAvailableFor(task)) {
+		if (task.barriers().can_start() && resourcesAvailableFor(task)) {
 			rynx::scheduler::task t(std::move(it->second));
 			m_tasks.erase(it);
 			t.reserve_resources();
@@ -25,6 +25,6 @@ void rynx::scheduler::context::dump() {
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
 	for (auto&& task : m_tasks) {
 		(void)task;
-		logmsg("%s barriers: %d, resources: %d", task.second.name().c_str(), task.second.barriers().canStart(), resourcesAvailableFor(task.second));
+		logmsg("%s barriers: %d, resources: %d", task.second.name().c_str(), task.second.barriers().can_start(), resourcesAvailableFor(task.second));
 	}
 }

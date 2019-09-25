@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(collisionCategoryDynamic);
 		spawner = ruleset_minilisk_gen.get();
 
-		ruleset_bullet_hits->dependsOn(*ruleset_collisionDetection);
+		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
 
 		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
 		base_simulation.add_rule_set(std::move(ruleset_shooting));

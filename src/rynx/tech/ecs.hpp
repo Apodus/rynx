@@ -614,10 +614,16 @@ namespace rynx {
 
 			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>(); }
 			template<typename T> static constexpr bool typeConstCorrect() {
-				if constexpr (std::is_const_v<T>)
-					return isAny<T, id, TypeConstraints...>() || isAny<std::remove_const_t<T>, id, TypeConstraints...>();
-				else
-					return isAny<T, id, TypeConstraints...>();
+				if constexpr (std::is_reference_v<T>) {
+					if constexpr (std::is_const_v<T>)
+						return isAny<T, id, std::add_const_t<TypeConstraints>...>(); // user must have requested any access to type (read/write both acceptable).
+					else
+						return isAny<T, id, TypeConstraints...>(); // verify user has requested a write access.
+				}
+				else {
+					// user is taking a copy, so it is always const with regards to what we have stored.
+					return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>();
+				}
 			}
 
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }

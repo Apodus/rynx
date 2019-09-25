@@ -114,27 +114,27 @@ namespace rynx {
 			operation_resources& resources() { return *m_resources; }
 			const operation_resources& resources() const { return *m_resources; }
 
-			task& dependsOn(task& other) {
+			task& depends_on(task& other) {
 				barrier bar("anon");
-				barriers().require(bar);
-				other.barriers().block(bar);
+				barriers().depends_on(bar);
+				other.barriers().required_for(bar);
 				return *this;
 			}
 
-			task& requiredFor(task& other) {
+			task& depends_on(barrier bar) {
+				barriers().depends_on(bar);
+				return *this;
+			}
+
+			task& required_for(task& other) {
 				barrier bar("anon");
-				other.barriers().require(bar);
-				barriers().block(bar);
+				other.barriers().depends_on(bar);
+				barriers().required_for(bar);
 				return *this;
 			}
 
-			task& before(barrier bar) {
-				barriers().block(bar);
-				return *this;
-			}
-
-			task& after(barrier bar) {
-				barriers().require(bar);
+			task& required_for(barrier bar) {
+				barriers().required_for(bar);
 				return *this;
 			}
 
@@ -176,36 +176,36 @@ namespace rynx {
 			//       oh having same write targets as shared resources. You are responsible for
 			//       ensuring that there are no race conditions when writing data.
 
-			template<typename F> task make_extended_task_copy_resources(std::string name, F&& op) {
+			template<typename F> task make_extension_task_execute_sequential(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
 				copy_resources(followUpTask);
 				return followUpTask;
 			}
-			template<typename F> task make_extended_task_share_resources(std::string name, F&& op) {
+			template<typename F> task make_extension_task_execute_parallel(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
 				share_resources(followUpTask);
 				return followUpTask;
 			}
 
-			template<typename F> task& extend_task_shared_resources(std::string name, F&& op) {
-				m_context->add_task(make_extended_task_share_resources(std::move(name), std::forward<F>(op)));
+			template<typename F> task& extend_task_execute_parallel(std::string name, F&& op) {
+				m_context->add_task(make_extension_task_execute_parallel(std::move(name), std::forward<F>(op)));
 				return *this;
 			}
-			template<typename F> task& extend_task_shared_resources(F&& op) { return extend_task_shared_resources(m_name + "_es", std::forward<F>(op)); }
+			template<typename F> task& extend_task_execute_parallel(F&& op) { return extend_task_execute_parallel(m_name + "_es", std::forward<F>(op)); }
 
-			template<typename F> task& extend_task_copy_resources(std::string name, F&& op) {
-				m_context->add_task(make_extended_task_copy_resources(std::move(name), std::forward<F>(op)));
+			template<typename F> task& extend_task_execute_sequential(std::string name, F&& op) {
+				m_context->add_task(make_extension_task_execute_sequential(std::move(name), std::forward<F>(op)));
 				return *this;
 			}
-			template<typename F> task& extend_task_copy_resources(F&& op) { return extend_task_copy_resources(m_name + "_es", std::forward<F>(op)); }
+			template<typename F> task& extend_task_execute_sequential(F&& op) { return extend_task_execute_sequential(m_name + "_es", std::forward<F>(op)); }
 
 
 			template<typename F>
 			task_token then(std::string name, F&& f) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(f));
-				followUpTask.dependsOn(*this);
+				followUpTask.depends_on(*this);
 				return m_context->add_task(std::move(followUpTask));
 			}
 
@@ -224,10 +224,10 @@ namespace rynx {
 
 				// apply current barrier states.
 				for (auto&& bar : m_context->m_activeTaskBarriers_Dependencies)
-					this->after(bar);
+					this->depends_on(bar);
 
 				for (auto&& bar : m_context->m_activeTaskBarriers)
-					this->before(bar);
+					this->required_for(bar);
 			}
 
 			void run();

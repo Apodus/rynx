@@ -33,8 +33,8 @@ namespace rynx {
 				void process(rynx::scheduler::context& scheduler);
 				rynx::scheduler::barrier barrier() const;
 
-				void dependsOn(iruleset& other) { other.requiredFor(*this); }
-				void requiredFor(iruleset& other);
+				void depends_on(iruleset& other) { other.required_for(*this); }
+				void required_for(iruleset& other);
 
 			private:
 				std::unique_ptr<rynx::scheduler::barrier> m_barrier;

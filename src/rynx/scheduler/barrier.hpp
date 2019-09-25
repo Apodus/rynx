@@ -24,18 +24,18 @@ namespace rynx {
 
 		class operation_barriers {
 		public:
-			operation_barriers& require(barrier bar) {
+			operation_barriers& depends_on(barrier bar) {
 				m_requires.emplace_back(std::move(bar));
 				return *this;
 			}
 
-			operation_barriers& block(barrier bar) {
-				++* bar.counter;
+			operation_barriers& required_for(barrier bar) {
+				++*bar.counter;
 				m_blocks.emplace_back(std::move(bar));
 				return *this;
 			}
 
-			bool canStart() {
+			bool can_start() {
 				while (!m_requires.empty()) {
 					if (m_requires.front()) {
 						m_requires[0] = std::move(m_requires.back()); // requirement met. erase it so we don't check it again.
@@ -48,9 +48,9 @@ namespace rynx {
 				return true;
 			}
 
-			void onComplete() {
+			void on_complete() {
 				for (auto&& bar : m_blocks) {
-					--* bar.counter;
+					--*bar.counter;
 				}
 			}
 
@@ -58,7 +58,7 @@ namespace rynx {
 			// that must be done before we can say the first task is complete, we can say completion_blocked_by(other)
 			void completion_blocked_by(operation_barriers& other) {
 				for (auto& bar : m_blocks) {
-					other.block(bar);
+					other.required_for(bar);
 				}
 			}
 
@@ -70,7 +70,7 @@ namespace rynx {
 		class operation_resources {
 			std::vector<uint64_t> m_writeAccess;
 			std::vector<uint64_t> m_readAccess;
-		
+
 		public:
 			operation_resources& require_write(uint64_t resourceId) {
 				m_writeAccess.emplace_back(resourceId);

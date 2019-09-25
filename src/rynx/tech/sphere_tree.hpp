@@ -485,7 +485,7 @@ private:
 			}
 		}
 		else {
-			task.extend_task_shared_resources([f, a](rynx::scheduler::task& task) {
+			task.extend_task_execute_parallel([f, a](rynx::scheduler::task& task) {
 				for (const auto& child : a->children) {
 					collisions_internal_parallel_intra_node(f, task, child.get());
 				}
@@ -494,7 +494,7 @@ private:
 	}
 	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
-		task.extend_task_copy_resources("intra-node", [f, a](rynx::scheduler::task& task) {
+		task.extend_task_execute_sequential("intra-node", [f, a](rynx::scheduler::task& task) {
 			collisions_internal_parallel_intra_node(f, task, a);
 		});
 
@@ -503,25 +503,135 @@ private:
 
 		for (;;) {
 			std::vector<const node*> copy_for_task = current_level;
-			task.extend_task_copy_resources("inter-node", [f, current_level = std::move(copy_for_task)](rynx::scheduler::task& task) {
+			task.extend_task_execute_sequential("inter-node", [f, current_level = std::move(copy_for_task)](rynx::scheduler::task& task) {
 				for (const node* a : current_level) {
-					task.extend_task_shared_resources([f, a]() {
-						for (size_t i = 0; i < a->children.size(); ++i) {
-							const node* child1 = a->children[i].get();
-							rynx_assert(child1 != nullptr, "node cannot be null");
-							rynx_assert(child1 != a, "nodes must differ");
+					if (a->depth == 0 && a->children.size() >= size_t(16)) {
+						auto two_ranges = [f, a](size_t begin1, size_t end1, size_t begin2, size_t end2) {
+							rynx_assert(end1 <= a->children.size(), "iterating past end");
+							rynx_assert(end2 <= a->children.size(), "iterating past end");
+							for (size_t i = begin1; i < end1; ++i) {
+								const node* child1 = a->children[i].get();
+								rynx_assert(child1 != nullptr, "node cannot be null");
+								rynx_assert(child1 != a, "nodes must differ");
 
-							for (size_t k = i + 1; k < a->children.size(); ++k) {
-								const node* child2 = a->children[k].get();
-								rynx_assert(child2 != nullptr, "node cannot be null");
-								rynx_assert(child2 != child1, "nodes must differ");
+								for (size_t k = begin2; k < end2; ++k) {
+									const node* child2 = a->children[k].get();
+									rynx_assert(child2 != nullptr, "node cannot be null");
+									rynx_assert(child2 != child1, "nodes must differ");
 
-								if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
-									collisions_internal(f, child1, child2);
+									if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+										collisions_internal(f, child1, child2);
+									}
 								}
 							}
-						}
-					});
+						};
+
+						auto one_range = [f, a](size_t begin1, size_t end1) {
+							rynx_assert(end1 <= a->children.size(), "iterating past end");
+							for (size_t i = begin1; i < end1; ++i) {
+								const node* child1 = a->children[i].get();
+								rynx_assert(child1 != nullptr, "node cannot be null");
+								rynx_assert(child1 != a, "nodes must differ");
+
+								for (size_t k = i + 1; k < end1; ++k) {
+									const node* child2 = a->children[k].get();
+									rynx_assert(child2 != nullptr, "node cannot be null");
+									rynx_assert(child2 != child1, "nodes must differ");
+
+									if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+										collisions_internal(f, child1, child2);
+									}
+								}
+							}
+						};
+
+						int block_size = int(a->children.size() >> 3);
+
+						task.extend_task_execute_sequential([one_range, block_size, a](rynx::scheduler::task& task) {
+							for (int i = 0; i < 7; ++i) {
+								task.extend_task_execute_parallel([one_range, block_size, i]() {
+									one_range(i * block_size, (i + 1) * block_size);
+								});
+							}
+							one_range(7 * block_size, a->children.size());
+						});
+
+						auto call = [two_ranges, block_size, a](int i, int k) {
+							int begin1 = i * block_size;
+							int end1 = (i + 1) * block_size;
+							int begin2 = k * block_size;
+							int end2 = (k < 7) ? (k + 1) * block_size : int(a->children.size());
+							two_ranges(begin1, end1, begin2, end2);
+						};
+							
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 1); });
+							task.extend_task_execute_parallel([call]() { call(2, 3); });
+							task.extend_task_execute_parallel([call]() { call(4, 5); });
+							task.extend_task_execute_parallel([call]() { call(6, 7); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 2); });
+							task.extend_task_execute_parallel([call]() { call(1, 3); });
+							task.extend_task_execute_parallel([call]() { call(4, 6); });
+							task.extend_task_execute_parallel([call]() { call(5, 7); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 3); });
+							task.extend_task_execute_parallel([call]() { call(1, 2); });
+							task.extend_task_execute_parallel([call]() { call(4, 7); });
+							task.extend_task_execute_parallel([call]() { call(5, 6); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 4); });
+							task.extend_task_execute_parallel([call]() { call(1, 5); });
+							task.extend_task_execute_parallel([call]() { call(2, 6); });
+							task.extend_task_execute_parallel([call]() { call(3, 7); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 5); });
+							task.extend_task_execute_parallel([call]() { call(1, 4); });
+							task.extend_task_execute_parallel([call]() { call(2, 7); });
+							task.extend_task_execute_parallel([call]() { call(3, 6); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 6); });
+							task.extend_task_execute_parallel([call]() { call(1, 7); });
+							task.extend_task_execute_parallel([call]() { call(2, 5); });
+							task.extend_task_execute_parallel([call]() { call(3, 4); });
+						});
+
+						task.extend_task_execute_sequential([call, a](rynx::scheduler::task& task) {
+							task.extend_task_execute_parallel([call]() { call(0, 7); });
+							task.extend_task_execute_parallel([call]() { call(1, 6); });
+							task.extend_task_execute_parallel([call]() { call(2, 4); });
+							task.extend_task_execute_parallel([call]() { call(3, 5); });
+						});
+					}
+					else {
+						task.extend_task_execute_parallel([f, a]() {
+							for (size_t i = 0; i < a->children.size(); ++i) {
+								const node* child1 = a->children[i].get();
+								rynx_assert(child1 != nullptr, "node cannot be null");
+								rynx_assert(child1 != a, "nodes must differ");
+
+								for (size_t k = i + 1; k < a->children.size(); ++k) {
+									const node* child2 = a->children[k].get();
+									rynx_assert(child2 != nullptr, "node cannot be null");
+									rynx_assert(child2 != child1, "nodes must differ");
+
+									if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+										collisions_internal(f, child1, child2);
+									}
+								}
+							}
+						});
+					}
 				}
 			});
 

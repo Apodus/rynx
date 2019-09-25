@@ -18,6 +18,6 @@ void rynx::application::logic::iruleset::process(rynx::scheduler::context& conte
 
 rynx::scheduler::barrier rynx::application::logic::iruleset::barrier() const { return *m_barrier; }
 
-void rynx::application::logic::iruleset::requiredFor(iruleset& other) {
+void rynx::application::logic::iruleset::required_for(iruleset& other) {
 	other.m_dependOn.emplace_back(std::make_unique<rynx::scheduler::barrier>(*m_barrier));
 }
