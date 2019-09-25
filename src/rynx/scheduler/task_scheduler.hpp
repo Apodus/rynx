@@ -35,6 +35,7 @@ namespace rynx {
 			rynx::unordered_map<scheduler::context::context_id, std::unique_ptr<scheduler::context>> m_contexts;
 			std::array<rynx::scheduler::task_thread*, numThreads> m_threads;
 			semaphore m_waitForComplete;
+			std::mutex m_task_starting_mutex;
 			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
 
 			bool find_work_for_thread_index(int threadIndex); // this is only allowed to be called from within the worker. TODO: architecture.

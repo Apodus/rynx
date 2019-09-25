@@ -26,7 +26,7 @@ namespace rynx {
 
 		class task {
 		private:
-			friend class rynx::scheduler::task_scheduler;
+			friend class rynx::scheduler::context;
 
 			template<typename F> struct resource_deducer {};
 			template<typename RetVal, typename Class, typename...Args> struct resource_deducer<RetVal(Class::*)(Args...) const> {

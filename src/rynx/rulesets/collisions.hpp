@@ -36,18 +36,16 @@ namespace rynx {
 							m.angularVelocity += m.angularAcceleration;
 							m.angularAcceleration = 0;
 						});
-					});
-
-					context.add_task("Apply motion to position", [](rynx::ecs::view<components::position, components::motion> ecs) {
-						ecs.for_each([](components::position& p, components::motion& m) {
+					})->then("Apply motion to position", [](rynx::ecs::view<components::position, const components::motion> ecs) {
+						ecs.for_each([](components::position& p, const components::motion& m) {
 							p.value += m.velocity;
 							p.angle += m.angularVelocity;
 						});
 					});
 				}
-				
-				context.add_task("Apply dampening", [](rynx::ecs::view<components::motion, components::dampening> ecs) {
-					ecs.for_each([](components::motion& m, components::dampening& d) {
+
+				context.add_task("Apply dampening", [](rynx::ecs::view<components::motion, const components::dampening> ecs) {
+					ecs.for_each([](components::motion& m, const components::dampening& d) {
 						m.velocity *= d.linearDampening;
 						m.angularVelocity *= d.angularDampening;
 					});

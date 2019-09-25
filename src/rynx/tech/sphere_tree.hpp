@@ -91,7 +91,6 @@ private:
 					return child;
 				}
 			}
-			
 			rynx_assert(false, "unreachable");
 		}
 
@@ -469,14 +468,14 @@ public:
 	}
 
 private:
-	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, node* rynx_restrict a) {
+	template<typename F> static void collisions_internal_parallel_intra_node(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 
 		if (a->children.empty()) {
 			for (size_t i = 0; i < a->members.size(); ++i) {
-				auto& m1 = a->members[i];
+				const auto& m1 = a->members[i];
 				for (size_t k = i + 1; k < a->members.size(); ++k) {
-					auto& m2 = a->members[k];
+					const auto& m2 = a->members[k];
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
@@ -487,139 +486,69 @@ private:
 		}
 		else {
 			task.extend_task_shared_resources([f, a](rynx::scheduler::task& task) {
-				for (auto& child : a->children) {
-					collisions_internal_parallel(f, task, child.get());
-				}
-			});
-
-			task.extend_task_copy_resources("pair-wise", [f, a](rynx::scheduler::task& task) {
-
-				// for small nodes, don't bother creating tasks.
-				if (a->children.size() < 30) {
-					for (size_t i = 0; i < a->children.size(); ++i) {
-						node* child1 = a->children[i].get();
-						rynx_assert(child1 != nullptr, "node cannot be null");
-						rynx_assert(child1 != a, "nodes must differ");
-
-						for (size_t k = i + 1; k < a->children.size(); ++k) {
-							node* child2 = a->children[k].get();
-							rynx_assert(child2 != nullptr, "node cannot be null");
-							rynx_assert(child2 != child1, "nodes must differ");
-
-							if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
-								collisions_internal(f, child1, child2);
-							}
-						}
-					}
-					return;
-				}
-
-				auto handle_two_ranges = [f, a](size_t start1, size_t end1, size_t start2, size_t end2) {
-					for (size_t i = start1; i < end1; ++i) {
-						node* child1 = a->children[i].get();
-						rynx_assert(child1 != nullptr, "node cannot be null");
-						rynx_assert(child1 != a, "nodes must differ");
-
-						for (size_t k = start2; k < end2; ++k) {
-							node* child2 = a->children[k].get();
-							rynx_assert(child2 != nullptr, "node cannot be null");
-							rynx_assert(child2 != child1, "nodes must differ");
-
-							if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
-								collisions_internal(f, child1, child2);
-							}
-						}
-					}
-				};
-				
-				auto handle_one_range = [f, a](size_t start, size_t end) {
-					for (size_t i = start; i < end; ++i) {
-						node* child1 = a->children[i].get();
-						rynx_assert(child1 != nullptr, "node cannot be null");
-						rynx_assert(child1 != a, "nodes must differ");
-
-						for (size_t k = i+1; k < end; ++k) {
-							node* child2 = a->children[k].get();
-							rynx_assert(child2 != nullptr, "node cannot be null");
-							rynx_assert(child2 != child1, "nodes must differ");
-
-							if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
-								collisions_internal(f, child1, child2);
-							}
-						}
-					}
-				};
-
-				int total_size = int(a->children.size());
-				static constexpr const int num_segments = 4;
-				int one_segment_size = total_size / num_segments;
-				
-				auto two_ranges = [=](int range1, int range2) {
-					rynx_assert(total_size == a->children.size(), "??");
-					rynx_assert(range1 < range2, "wrongful call.");
-					if (range2 == 3) {
-						handle_two_ranges(one_segment_size * range1, one_segment_size * (range1 + 1), one_segment_size * range2, total_size);
-					}
-					else {
-						handle_two_ranges(one_segment_size * range1, one_segment_size * (range1 + 1), one_segment_size * range2, one_segment_size * (range2 + 1));
-					}
-				};
-				auto one_range = [=](int a) { handle_one_range(one_segment_size * a, one_segment_size * (a + 1)); };
-
-				// intra-segment checks.
-				{
-					task.extend_task_copy_resources([=](rynx::scheduler::task& task) {
-						task.extend_task_shared_resources([=]() { rynx_assert(total_size == a->children.size(), "??"); one_range(0); });
-						task.extend_task_shared_resources([=]() { rynx_assert(total_size == a->children.size(), "??"); one_range(1); });
-						task.extend_task_shared_resources([=]() { rynx_assert(total_size == a->children.size(), "??"); one_range(2); });
-						task.extend_task_shared_resources([=]() {
-							rynx_assert(total_size == a->children.size(), "??");
-							handle_one_range(one_segment_size * (num_segments - 1), total_size); // in case size mod num_segments is not zero.
-						});
-					});
-				}
-
-				// segment pair checks.
-				{
-					task.extend_task_copy_resources([=](rynx::scheduler::task& task) {
-						task.extend_task_shared_resources([=]() {
-							two_ranges(0, 1);
-						});
-						task.extend_task_shared_resources([=]() {
-							two_ranges(2, 3);
-						});
-					});
-
-					task.extend_task_copy_resources([=](rynx::scheduler::task& task) {
-						task.extend_task_shared_resources([=]() {
-							two_ranges(0, 2);
-						});
-						task.extend_task_shared_resources([=]() {
-							two_ranges(1, 3);
-						});
-					});
-
-					task.extend_task_copy_resources([f, a, two_ranges, handle_two_ranges](rynx::scheduler::task& task) {
-						task.extend_task_shared_resources([f, a, two_ranges, handle_two_ranges]() {
-							two_ranges(0, 3);
-						});
-						task.extend_task_shared_resources([f, a, two_ranges, handle_two_ranges]() {
-							two_ranges(1, 2);
-						});
-					});
+				for (const auto& child : a->children) {
+					collisions_internal_parallel_intra_node(f, task, child.get());
 				}
 			});
 		}
 	}
+	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
+		rynx_assert(a != nullptr, "node cannot be null");
+		task.extend_task_copy_resources("intra-node", [f, a](rynx::scheduler::task& task) {
+			collisions_internal_parallel_intra_node(f, task, a);
+		});
 
-	template<typename F> static void collisions_internal(F&& f, node* rynx_restrict a) {
+		std::vector<const node*> current_level;
+		current_level.emplace_back(a);
+
+		for (;;) {
+			std::vector<const node*> copy_for_task = current_level;
+			task.extend_task_copy_resources("inter-node", [f, current_level = std::move(copy_for_task)](rynx::scheduler::task& task) {
+				for (const node* a : current_level) {
+					task.extend_task_shared_resources([f, a]() {
+						for (size_t i = 0; i < a->children.size(); ++i) {
+							const node* child1 = a->children[i].get();
+							rynx_assert(child1 != nullptr, "node cannot be null");
+							rynx_assert(child1 != a, "nodes must differ");
+
+							for (size_t k = i + 1; k < a->children.size(); ++k) {
+								const node* child2 = a->children[k].get();
+								rynx_assert(child2 != nullptr, "node cannot be null");
+								rynx_assert(child2 != child1, "nodes must differ");
+
+								if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+									collisions_internal(f, child1, child2);
+								}
+							}
+						}
+					});
+				}
+			});
+
+			{
+				std::vector<const node*> next_level;
+				for (const node* node_ptr : current_level) {
+					for (auto& child_ptr : node_ptr->children) {
+						next_level.emplace_back(child_ptr.get());
+					}
+				}
+				current_level = std::move(next_level);
+			}
+			
+			if (current_level.empty()) {
+				return;
+			}
+		}
+	}
+
+	template<typename F> static void collisions_internal(F&& f, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 
 		if (a->children.empty()) {
 			for (size_t i = 0; i < a->members.size(); ++i) {
-				auto& m1 = a->members[i];
+				const auto& m1 = a->members[i];
 				for (size_t k = i + 1; k < a->members.size(); ++k) {
-					auto& m2 = a->members[k];
+					const auto& m2 = a->members[k];
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
@@ -629,17 +558,17 @@ private:
 			}
 		}
 		else {
-			for (auto& child : a->children) {
+			for (const auto& child : a->children) {
 				collisions_internal(std::forward<F>(f), child.get());
 			}
 
 			for (size_t i = 0; i < a->children.size(); ++i) {
-				node* child1 = a->children[i].get();
+				const node* child1 = a->children[i].get();
 				rynx_assert(child1 != nullptr, "node cannot be null");
 				rynx_assert(child1 != a, "nodes must differ");
 
 				for (size_t k = i + 1; k < a->children.size(); ++k) {
-					node* child2 = a->children[k].get();
+					const node* child2 = a->children[k].get();
 					rynx_assert(child2 != nullptr, "node cannot be null");
 					rynx_assert(child2 != child1, "nodes must differ");
 
@@ -651,7 +580,7 @@ private:
 		}
 	}
 
-	template<typename F> static void collisions_internal(F&& f, node* rynx_restrict a, node* rynx_restrict b) {
+	template<typename F> static void collisions_internal(F&& f, const node* rynx_restrict a, const node* rynx_restrict b) {
 		rynx_assert(a != nullptr, "node cannot be null");
 		rynx_assert(b != nullptr, "node cannot be null");
 		rynx_assert(a != b, "nodes must differ");
@@ -662,7 +591,7 @@ private:
 
 		// if b reaches bottom first, swap. this means less checks later.
 		if (b->children.empty()) {
-			node* tmp = a;
+			const node* tmp = a;
 			a = b;
 			b = tmp;
 		}
@@ -670,14 +599,14 @@ private:
 		if (a->children.empty()) {
 			if (b->children.empty()) {
 				if (a->radius < b->radius) {
-					node* tmp = a;
+					const node* tmp = a;
 					a = b;
 					b = tmp;
 				}
 
-				for (auto& member1 : a->members) {
+				for (const auto& member1 : a->members) {
 					if ((member1.pos - b->pos).lengthSquared() < sqr(member1.radius + b->radius)) {
-						for (auto& member2 : b->members) {
+						for (const auto& member2 : b->members) {
 							float distSqr = (member1.pos - member2.pos).lengthSquared();
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
@@ -690,19 +619,19 @@ private:
 				}
 			}
 			else {
-				for (auto& child : b->children) {
+				for (const auto& child : b->children) {
 					collisions_internal(std::forward<F>(f), a, child.get());
 				}
 			}
 		}
 		else {
 			if (a->radius > b->radius) {
-				for (auto& child : a->children) {
+				for (const auto& child : a->children) {
 					collisions_internal(std::forward<F>(f), child.get(), b);
 				}
 			}
 			else {
-				for (auto& child : b->children) {
+				for (const auto& child : b->children) {
 					collisions_internal(std::forward<F>(f), a, child.get());
 				}
 			}

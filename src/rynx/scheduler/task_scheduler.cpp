@@ -6,26 +6,13 @@
 
 rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_context->m_tasks.find(m_taskId)->second; }
 
-rynx::scheduler::task rynx::scheduler::context::findWork() {
-	rynx_profile("Profiler", "Find work self");
-	std::lock_guard<std::mutex> lock(m_taskMutex);
-	for (auto it = m_tasks.begin(); it != m_tasks.end(); ++it) {
-		auto& task = it->second;
-		if (task.barriers().canStart() && resourcesAvailableFor(task)) {
-			rynx::scheduler::task t(std::move(it->second));
-			m_tasks.erase(it);
-			return t;
-		}
-	}
-	return task();
-}
-
+// TODO: it would probably be better to just find work, and return the task. don't mix threads and worker state to this function. let them do that internally.
 bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex) {
 	rynx_profile("Profiler", "Find work");
+	// std::unique_lock lock(m_task_starting_mutex); // NOTE: This is required to synchronize t.reserve_resources() with findWork() / canStart() things.
 	for (auto& context : m_contexts) {
 		rynx::scheduler::task t = context.second->findWork();
 		if (t) {
-			t.reserve_resources();
 			m_threads[threadIndex]->set_task(std::move(t));
 			return true;
 		}
