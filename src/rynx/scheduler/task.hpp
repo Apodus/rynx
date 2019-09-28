@@ -237,6 +237,77 @@ namespace rynx {
 
 			const std::string& name() const { return m_name; }
 
+			struct parallel_operations {
+				parallel_operations(task& parent) : m_parent(parent) {}
+
+				template<typename F> barrier for_each_prediv(int64_t begin, int64_t end, F&& op, int64_t divisions = 32) {
+					int64_t size = end - begin;
+					if (size == 0)
+						return {};
+					while (divisions > size)
+						divisions >>= 1;
+
+					barrier bar;
+
+					int64_t block_size = size / divisions;
+					int64_t block_start = begin;
+					int64_t block_end = begin;
+					for (int64_t i = 0; i < divisions - 1; ++i) {
+						block_end += block_size;
+						task work = m_parent.make_extension_task_execute_parallel("parfor", [block_start, block_end, op]() {
+							for (int64_t begin = block_start; begin < block_end; ++begin) {
+								op(begin);
+							}
+						});
+						work.required_for(bar);
+						m_parent.m_context->add_task(std::move(work));
+						block_start += block_size;
+					}
+					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+					for (; block_start < end; ++block_start) {
+						op(block_start);
+					}
+
+					return bar;
+				}
+
+				template<typename F> barrier for_each_atomic_index(int64_t begin, int64_t end, F&& op, int64_t num_worker_threads = 8, int64_t work_size = 32) {
+					barrier bar;
+					std::shared_ptr<std::atomic<int64_t>> index = std::make_shared<std::atomic<int64_t>>(begin);
+					for (int64_t i = 0; i < num_worker_threads - 1; ++i) {
+						task work = m_parent.make_extension_task_execute_parallel("parfor", [index, work_size, end, op]() {
+							for (;;) {
+								int64_t my_index = index->fetch_add(work_size);
+								for (int64_t i = 0; i < work_size; ++i) {
+									if (my_index + i >= end)
+										return;
+									op(my_index + i);
+								}
+							}
+						});
+						work.required_for(bar);
+						m_parent.m_context->add_task(std::move(work));
+					}
+					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+					for (;;) {
+						int64_t my_index = index->fetch_add(work_size);
+						for (int64_t i = 0; i < work_size; ++i) {
+							if (my_index + i >= end)
+								return bar;
+							op(my_index + i);
+						}
+					}
+				}
+
+				task& m_parent;
+			};
+
+			parallel_operations parallel() {
+				return parallel_operations(*this);
+			}
+
 		private:
 			std::string m_name;
 			uint64_t m_id;

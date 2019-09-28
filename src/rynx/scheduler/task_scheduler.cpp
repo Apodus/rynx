@@ -46,7 +46,7 @@ rynx::scheduler::task_scheduler::~task_scheduler() {
 rynx::scheduler::context* rynx::scheduler::task_scheduler::make_context() {
 	scheduler::context::context_id id = ++m_contextIdGen;
 	rynx_assert(m_contexts.find(id) == m_contexts.end(), "creating a context but a context by this name exists already");
-	return m_contexts.emplace(id, std::make_unique<scheduler::context>(id)).first->second.get();
+	return m_contexts.emplace(id, std::make_unique<scheduler::context>(id, this)).first->second.get();
 }
 
 void rynx::scheduler::task_scheduler::checkComplete() {

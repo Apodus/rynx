@@ -294,16 +294,8 @@ namespace rynx {
 			iterator(category_source& ecs) : m_ecs(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
 			iterator(const category_source& ecs) : m_ecs(const_cast<category_source&>(ecs)) { m_ecs.template componentTypesAllowed<Args...>(); }
 
-#define RYNX_ECS_USE_TUPLE_CALL_IMPL 0
 			template<typename F> void for_each(F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
-
-#if RYNX_ECS_USE_TUPLE_CALL_IMPL
-				// remove one type from front if we have id query.
-				using components_tuple_type = typename remove_front_if<is_id_query, std::tuple<FArg, Args...>>::type;
-				using components_index_seq_type = decltype(std::make_index_sequence<std::tuple_size<components_tuple_type>::value>());
-#endif
-
 				if constexpr (!is_id_query) {
 					unpack_types<FArg>();
 				}
@@ -313,19 +305,12 @@ namespace rynx {
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(includeTypes) && entity_category.second->includesNone(excludeTypes)) {
 						auto& ids = entity_category.second->ids();
-						
-#if !RYNX_ECS_USE_TUPLE_CALL_IMPL
-						// NOTE: VS 2019 16.2.3 (Tested 26.8.2019) can optimize this version of the implementation better.
 						if constexpr (is_id_query) {
 							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
 						}
 						else {
 							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
 						}
-#else
-						auto datas = entity_category.second->template table_datas<accessType, components_tuple_type>();
-						call_user_op_with_data<is_id_query>(std::forward<F>(op), ids, datas, components_index_seq_type());
-#endif
 					}
 				}
 			}
@@ -334,7 +319,6 @@ namespace rynx {
 			iterator& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
 
 		private:
-#if !RYNX_ECS_USE_TUPLE_CALL_IMPL
 			template<bool isIdQuery, typename F, typename T_first, typename... Ts> void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
 					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
@@ -347,24 +331,6 @@ namespace rynx {
 					});
 				}
 			}
-#endif
-
-#if RYNX_ECS_USE_TUPLE_CALL_IMPL
-			template<bool isIdQuery, typename F, typename... Ts, size_t...Is> void call_user_op_with_data(F&& op, std::vector<id>& ids, std::tuple<Ts*...>& data_ptrs, std::index_sequence<Is...>) {
-				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
-						op(entityId, *std::get<Is>(data_ptrs)++...);
-					});
-				}
-				else {
-					// TODO:
-					std::for_each(ids.data(), ids.data() + ids.size(), [=](std::tuple_element<0>(data_ptrs)::type ptr) mutable {
-						op(*std::get<Is>(data_ptrs)++...);
-					});
-				}
-			}
-#endif
-#undef RYNX_ECS_USE_TUPLE_CALL_IMPL
 
 			template<typename TupleType, size_t...Is>
 			void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }

@@ -14,6 +14,7 @@ namespace rynx {
 	namespace scheduler {
 		struct task_token;
 		class task;
+		class task_scheduler;
 		class scoped_barrier_after;
 		class scoped_barrier_before;
 
@@ -83,6 +84,7 @@ namespace rynx {
 
 			rynx::object_storage m_resources;
 			std::mutex m_taskMutex;
+			task_scheduler* m_scheduler = nullptr;
 
 			// TODO: hide these as private.
 		public:
@@ -122,7 +124,7 @@ namespace rynx {
 				return resources_in_use == 0;
 			}
 
-			context(context_id id) : m_id(id) {
+			context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler) {
 				m_resource_counters.resize(1024);
 				set_resource<context>(this);
 			}

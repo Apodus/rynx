@@ -10,6 +10,7 @@ namespace rynx {
 		class context;
 
 		struct barrier {
+			barrier() : barrier("anon") {}
 			barrier(std::string name) : name(std::move(name)), counter(std::make_shared<std::atomic<int32_t>>(0)) {}
 			barrier(const barrier& other) = default;
 			barrier(barrier&& other) = default;
