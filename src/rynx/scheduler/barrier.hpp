@@ -25,6 +25,24 @@ namespace rynx {
 
 		class operation_barriers {
 		public:
+			/*
+			~operation_barriers() {
+				on_complete();
+			}
+			*/
+
+			operation_barriers() = default;
+			operation_barriers(operation_barriers&&) = default;
+			operation_barriers(const operation_barriers& other) {
+				m_requires = other.m_requires;
+				m_blocks = other.m_blocks;
+
+				for (auto&& bar : m_blocks)
+					++*bar.counter;
+			}
+
+			operation_barriers& operator =(operation_barriers&&) = default;
+
 			operation_barriers& depends_on(barrier bar) {
 				m_requires.emplace_back(std::move(bar));
 				return *this;

@@ -108,6 +108,7 @@ namespace rynx {
 
 		private:
 			task findWork();
+			void erase_completed_parallel_for_tasks();
 			uint64_t nextTaskId() { return m_nextTaskId.fetch_add(1); }
 
 		public:

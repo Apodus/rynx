@@ -9,7 +9,6 @@ rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_c
 // TODO: it would probably be better to just find work, and return the task. don't mix threads and worker state to this function. let them do that internally.
 bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex) {
 	rynx_profile("Profiler", "Find work");
-	// std::unique_lock lock(m_task_starting_mutex); // NOTE: This is required to synchronize t.reserve_resources() with findWork() / canStart() things.
 	for (auto& context : m_contexts) {
 		rynx::scheduler::task t = context.second->findWork();
 		if (t) {
