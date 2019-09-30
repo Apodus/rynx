@@ -248,8 +248,9 @@ namespace rynx {
 
 		private:
 			struct parallel_for_each_data {
-				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end) {}
+				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end), task_is_cleaned_up(0) {}
 				std::atomic<int64_t> index;
+				std::atomic<int> task_is_cleaned_up;
 				const int64_t end;
 			};
 
@@ -267,11 +268,15 @@ namespace rynx {
 					barrier bar;
 					
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
-					task work = m_parent.make_extension_task_execute_parallel("parfor", [work_size, end, for_each_data, op]() {
+					task work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
 						for (;;) {
 							int64_t my_index = for_each_data->index.fetch_add(work_size);
-							if (my_index >= end)
+							if (my_index >= end) {
+								if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+									task_context->erase_completed_parallel_for_tasks();
+								}
 								return;
+							}
 							int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 							for (int64_t i = my_index; i < limit; ++i) {
 								op(i);
@@ -286,18 +291,17 @@ namespace rynx {
 					// work on the for_each task myself.
 					for (;;) {
 						int64_t my_index = for_each_data->index.fetch_add(work_size);
-						if (my_index >= end)
+						if (my_index >= end) {
+							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+								m_parent.m_context->erase_completed_parallel_for_tasks();
+							}
 							return bar;
+						}
 						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 						for (int64_t i = my_index; i < limit; ++i) {
 							op(i);
 						}
 					}
-
-					// NOTE: the parallel for is now done for sure. it might be that one of the workers
-					//       detected this and erased it. It might be that none of the workers detected this.
-					//       Since our parent is the context for the parallel for, we know that this does not 
-					m_parent.m_context->erase_completed_parallel_for_tasks();
 				}
 
 				task& m_parent;
