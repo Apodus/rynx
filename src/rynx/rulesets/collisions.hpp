@@ -5,6 +5,7 @@
 #include <rynx/application/components.hpp>
 #include <rynx/tech/collision_detection.hpp>
 
+#include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/barrier.hpp>
 
@@ -43,8 +44,15 @@ namespace rynx {
 						{
 							rynx_profile("Motion", "apply velocity");
 							ecs.for_each([](components::position& p, const components::motion& m) {
-								p.value += m.velocity;
+								p.value += m.velocity + m.displacement;
 								p.angle += m.angularVelocity;
+							});
+						}
+
+						{
+							rynx_profile("Motion", "apply velocity");
+							ecs.for_each([](components::motion& m) {
+								m.displacement.set(0, 0, 0);
 							});
 						}
 					});
@@ -66,26 +74,51 @@ namespace rynx {
 				})->before(collisions_find_barrier);
 				*/
 
+				struct added_to_sphere_tree {};
+
 				auto positionDataToSphereTree_task = context.make_task("Update position info to collision detection.", [](
 					rynx::ecs::view<const components::position,
 					const components::radius,
 					const components::collision_category,
 					const components::projectile,
-					const components::motion> ecs,
-					collision_detection& detection) {
-						ecs.query().notIn<const rynx::components::projectile>().execute([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
+					const components::motion,
+					const added_to_sphere_tree> ecs,
+					collision_detection& detection,
+					rynx::scheduler::task& task) {
+						// This will never insert. Always update existing. Can run parallel.
+						// TODO: separate the updateEntity function -> update/insert versions.
+						ecs.query().notIn<const rynx::components::projectile>().in<const added_to_sphere_tree>().execute_parallel([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
+						}, task.parallel());
+
+						ecs.query().in<const rynx::components::projectile, const added_to_sphere_tree>().execute_parallel([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
+							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
+						}, task.parallel());
+					});
+				
+				positionDataToSphereTree_task.then("sphere tree: add new entities", [](rynx::ecs::edit_view<const components::position,
+					const components::radius,
+					const components::collision_category,
+					const components::projectile,
+					const components::motion,
+					added_to_sphere_tree> ecs,
+					collision_detection& detection) {
+						// This will always insert to detection datastructures. Can not parallel.
+						// TODO: separate the function from the normal case of update.
+						ecs.query().notIn<const rynx::components::projectile, const added_to_sphere_tree>().execute([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
+							detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
+							ecs[id].add(added_to_sphere_tree());
 						});
 
-						ecs.query().in<const rynx::components::projectile>().execute([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
+						ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().execute([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
+							ecs[id].add(added_to_sphere_tree());
 						});
-				});
+				})->then("Update sphere tree", [](collision_detection& detection) {
+					detection.update();
+				})->required_for(collisions_find_barrier);;
 				
 				positionDataToSphereTree_task.depends_on(position_updates_barrier);
-				positionDataToSphereTree_task.then("Update sphere tree", [](collision_detection& detection) {
-					detection.update();
-				})->required_for(collisions_find_barrier);
 				context.add_task(std::move(positionDataToSphereTree_task));
 
 				auto findCollisionsTask = context.add_task("Find collisions", [](
@@ -106,14 +139,19 @@ namespace rynx {
 
 				findCollisionsTask->depends_on(collisions_find_barrier);
 
-				context.add_task("Collision resolution", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs) {
-					ecs.for_each([](components::motion& m, const components::frame_collisions& collisionsComponent) {
+				context.add_task("Collision resolution", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+					ecs.for_each_parallel([](components::motion& m, const components::frame_collisions& collisionsComponent) {
 						for (const auto& collision : collisionsComponent.collisions) {
 							// TODO: Some smarter collision resolution would be nice.
 							// TODO: Collision resolution should be more harsh when colliding against static objects (walls).
-							m.acceleration += collision.collisionNormal * collision.penetration * 0.12f;
+							auto proximity_force = collision.collisionNormal * collision.penetration;
+							m.displacement += proximity_force * 0.25f;
+
+							float collision_velocity_fix = m.velocity.dot(collision.collisionNormal);
+							auto collision_resolution_force = collision_velocity_fix < 0 ? collision.collisionNormal * (-0.7f * collision_velocity_fix) : vec3<float>();
+							m.acceleration += collision_resolution_force;
 						}
-					});
+					}, task.parallel());
 				})->depends_on(*findCollisionsTask);
 			}
 

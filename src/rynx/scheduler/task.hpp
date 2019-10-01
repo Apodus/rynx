@@ -264,7 +264,7 @@ namespace rynx {
 			struct parallel_operations {
 				parallel_operations(task& parent) : m_parent(parent) {}
 
-				template<typename F> barrier for_each(int64_t begin, int64_t end, F&& op, int64_t work_size = 32) {
+				template<typename F> barrier for_each(int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
 					barrier bar;
 					
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
@@ -306,6 +306,11 @@ namespace rynx {
 
 				task& m_parent;
 			};
+
+			// to allow passing task as a parameter when parallel operations context is expected.
+			operator parallel_operations() const {
+				return parallel_operations(*this);
+			}
 
 			parallel_operations parallel() {
 				return parallel_operations(*this);
