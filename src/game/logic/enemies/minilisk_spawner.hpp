@@ -39,7 +39,7 @@ namespace game {
 								rynx::components::position({ -20.0f + 4 * float(rand()) / RAND_MAX, +20.0f +  4 * float(rand()) / RAND_MAX, 0 }),
 								rynx::components::motion(),
 								rynx::components::mass({ 0.2f }),
-								rynx::components::radius(0.3f),
+								rynx::components::radius(0.6f),
 								rynx::components::collision_category(dynamic),
 								rynx::components::color(),
 								rynx::components::dampening({ 0.87f, 0.87f }),

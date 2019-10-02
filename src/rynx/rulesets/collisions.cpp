@@ -21,7 +21,33 @@ namespace {
 		float penetration1,
 		float penetration2
 	) {
-		if (a.has<rynx::components::frame_collisions>()) {
+		rynx_assert(normal.lengthSquared() > 0.9f, "normal must be unit length");
+		rynx_assert(normal.lengthSquared() < 1.1f, "normal must be unit length");
+
+		auto* collisions_of_a = a.try_get<rynx::components::frame_collisions>();
+		auto* collisions_of_b = b.try_get<rynx::components::frame_collisions>();
+
+		const auto* motion_a = a.try_get<const rynx::components::motion>();
+		const auto* motion_b = b.try_get<const rynx::components::motion>();
+		
+		vec3<float> relative_velocity;
+		
+		// TODO: Take rotational velocity into account.
+		if (motion_a) {
+			if (motion_b) {
+				relative_velocity = motion_a->velocity - motion_b->velocity;
+			}
+			else {
+				relative_velocity = motion_a->velocity;
+			}
+		}
+		else {
+			if (motion_b) {
+				relative_velocity = -motion_b->velocity;
+			}
+		}
+
+		if (collisions_of_a) {
 			rynx::components::frame_collisions::entry collision_for_a;
 			collision_for_a.categoryOfOther = b.get<const rynx::components::collision_category>().value;
 			collision_for_a.collisionNormal = normal;
@@ -29,10 +55,12 @@ namespace {
 			collision_for_a.shapeOfOther = shapeB;
 			collision_for_a.collisionPoint = collisionPoint;
 			collision_for_a.penetration = penetration1;
-			a.get<rynx::components::frame_collisions>().collisions.emplace_back(std::move(collision_for_a));
+			collision_for_a.other_has_collision_response = (collisions_of_b != nullptr);
+			collision_for_a.collisionPointRelativeVelocity = relative_velocity;
+			collisions_of_a->collisions.emplace_back(std::move(collision_for_a));
 		}
 
-		if (b.has<rynx::components::frame_collisions>()) {
+		if (collisions_of_b) {
 			rynx::components::frame_collisions::entry collision_for_b;
 			collision_for_b.categoryOfOther = a.get<const rynx::components::collision_category>().value;
 			collision_for_b.collisionNormal = -normal;
@@ -40,7 +68,9 @@ namespace {
 			collision_for_b.shapeOfOther = shapeA;
 			collision_for_b.collisionPoint = collisionPoint;
 			collision_for_b.penetration = penetration2;
-			b.get<rynx::components::frame_collisions>().collisions.emplace_back(std::move(collision_for_b));
+			collision_for_b.other_has_collision_response = (collisions_of_a != nullptr);
+			collision_for_b.collisionPointRelativeVelocity = -relative_velocity;
+			collisions_of_b->collisions.emplace_back(std::move(collision_for_b));
 		}
 	}
 
@@ -144,7 +174,7 @@ namespace {
 				dynamicEntity,
 				rynx::collision_detection::shape_type::Projectile,
 				rynx::collision_detection::shape_type::Sphere,
-				(bulletPos.value - bulletMotion.velocity) - ballPos,
+				((bulletPos.value - bulletMotion.velocity) - ballPos).normalizeApprox(),
 				pointDistanceResult.second,
 				0,
 				0 // NOTE: penetration values don't really mean anything in projectile case.
@@ -244,7 +274,6 @@ void rynx::ruleset::collisions::check_all(ecs_view ecs, uint64_t entityA, uint64
 		vec3<float> pos_b = entB.get<const components::position>().value;
 		float r_a = entA.get<const components::radius>().r;
 		float r_b = entB.get<const components::radius>().r;
-
 
 		store_collision(
 			entA,

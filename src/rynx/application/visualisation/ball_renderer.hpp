@@ -33,7 +33,7 @@ namespace rynx {
 						
 						matrix4 model;
 						model.discardSetTranslate(pos.value);
-						model.scale(r.r);
+						model.scale(r.r * 0.5f);
 						m_meshRenderer->drawMesh(*m_circleMesh, model, "Empty", used_color);
 					});
 				}

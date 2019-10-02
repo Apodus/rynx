@@ -65,15 +65,6 @@ namespace rynx {
 					});
 				})->depends_on(position_updates_barrier);
 
-				/*
-				context.add_task("Clear collisions from previous frame", [](rynx::ecs::view<components::frame_collisions> ecs, collision_detection& detection) {
-					detection.collidedThisFrame().forEachOne([&ecs](uint64_t id) {
-						ecs[uint32_t(id)].get<components::frame_collisions>().collisions.clear();
-					});
-					detection.collidedThisFrame().clear();
-				})->before(collisions_find_barrier);
-				*/
-
 				struct added_to_sphere_tree {};
 
 				auto positionDataToSphereTree_task = context.make_task("Update position info to collision detection.", [](
@@ -139,16 +130,54 @@ namespace rynx {
 
 				findCollisionsTask->depends_on(collisions_find_barrier);
 
-				context.add_task("Collision resolution", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+				
+				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 					ecs.for_each_parallel([](components::motion& m, const components::frame_collisions& collisionsComponent) {
+						float inv_mul = 0.5f;
 						for (const auto& collision : collisionsComponent.collisions) {
-							// TODO: Some smarter collision resolution would be nice.
-							// TODO: Collision resolution should be more harsh when colliding against static objects (walls).
-							auto proximity_force = collision.collisionNormal * collision.penetration;
-							m.displacement += proximity_force * 0.25f;
+							float local_mul = !collision.other_has_collision_response + collision.other_has_collision_response * inv_mul;
+							auto proximity_force = collision.collisionNormal * collision.penetration * local_mul;
+							rynx_assert(collision.collisionNormal.lengthSquared() < 1.1f, "normal should be unit length");
+							m.acceleration += proximity_force * (1.0f - collision.other_has_collision_response * 0.90f);
 
-							float collision_velocity_fix = m.velocity.dot(collision.collisionNormal);
-							auto collision_resolution_force = collision_velocity_fix < 0 ? collision.collisionNormal * (-0.7f * collision_velocity_fix) : vec3<float>();
+							float collision_velocity_fix = collision.collisionPointRelativeVelocity.dot(collision.collisionNormal) * local_mul;
+							auto collision_resolution_force = collision.collisionNormal * (-0.15f * collision_velocity_fix) * (collision_velocity_fix < 0);
+							m.acceleration += collision_resolution_force;
+						}
+					}, task.parallel());
+				};
+
+				auto apply_accelerations = [](rynx::ecs::view<components::motion> ecs) {
+					rynx_profile("Motion", "apply acceleration");
+					ecs.for_each([](components::motion& m) {
+						m.velocity += m.acceleration;
+						m.acceleration.set(0, 0, 0);
+						m.angularVelocity += m.angularAcceleration;
+						m.angularAcceleration = 0;
+					});
+				};
+
+				context.add_task("Gravity", [](rynx::ecs::view<const components::position, components::motion> ecs, rynx::scheduler::task& task) {
+					ecs.for_each_parallel([](components::motion& m, const components::position& pos) {
+						m.acceleration.y -= 0.03f;
+					}, task.parallel());
+				})->depends_on(*findCollisionsTask)
+					.then(collision_resolution_first_stage)
+					->then(apply_accelerations)
+					->then(collision_resolution_first_stage)
+					->then(apply_accelerations)
+					->then("collision resolution 2nd pass", [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+					ecs.for_each_parallel([](components::motion& m, const components::frame_collisions& collisionsComponent) {
+						float inv_mul = 1.0f / collisionsComponent.collisions.size();
+						for (const auto& collision : collisionsComponent.collisions) {
+							float local_mul = !collision.other_has_collision_response + collision.other_has_collision_response * inv_mul;
+							auto proximity_force = collision.collisionNormal * collision.penetration * local_mul;
+							rynx_assert(collision.collisionNormal.lengthSquared() < 1.1f, "normal should be unit length");
+							m.displacement += proximity_force * (1.0f - 0.5f * collision.other_has_collision_response);
+							m.acceleration += proximity_force * 0.5f * !collision.other_has_collision_response;
+
+							float collision_velocity_fix = collision.collisionPointRelativeVelocity.dot(collision.collisionNormal) * local_mul;
+							auto collision_resolution_force = collision.collisionNormal * (-0.25f * collision_velocity_fix) * (collision_velocity_fix < 0);
 							m.acceleration += collision_resolution_force;
 						}
 					}, task.parallel());

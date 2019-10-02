@@ -219,15 +219,17 @@ namespace rynx {
 				return m_context->add_task(std::move(followUpTask));
 			}
 
+			template<typename F> task_token then(F&& f) { return then(m_name + "->", std::forward<F>(f)); }
+
 			task(task&& other) = default;
 
 			template<typename F>
 			void set(F&& f) {
-				resource_deducer<decltype(&F::operator())>()(*this);
+				resource_deducer<decltype(&std::remove_reference_t<F>::operator())>()(*this);
 				context* ctx = m_context;
 
 				m_op = [ctx, f = std::move(f)](rynx::scheduler::task* myTask) {
-					auto resources = resource_deducer<decltype(&F::operator())>().fetchParams(ctx, myTask);
+					auto resources = resource_deducer<decltype(&std::remove_reference_t<F>::operator())>().fetchParams(ctx, myTask);
 					std::apply(f, resources);
 				};
 

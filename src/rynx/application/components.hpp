@@ -73,7 +73,9 @@ namespace rynx {
 				rynx::collision_detection::shape_type shapeOfOther = rynx::collision_detection::shape_type::Sphere;
 				vec3<float> collisionNormal;
 				vec3<float> collisionPoint;
+				vec3<float> collisionPointRelativeVelocity;
 				float penetration;
+				bool other_has_collision_response;
 			};
 			std::vector<entry> collisions;
 		};

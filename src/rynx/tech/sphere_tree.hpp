@@ -265,6 +265,9 @@ private:
 		void update_single() {
 			std::pair<vec3<float>, float> posInfo;
 			if (children.empty()) {
+				if (members.empty()) {
+					return;
+				}
 				posInfo = bounding_sphere(members);
 			}
 			else {

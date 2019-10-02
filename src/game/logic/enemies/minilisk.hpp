@@ -92,6 +92,7 @@ namespace game {
 			{}
 			
 			virtual void onFrameProcess(rynx::scheduler::context& context) override {
+				/*
 				context.add_task("modify radius of things", [this](
 					rynx::ecs::view<
 						const rynx::components::position,
@@ -105,6 +106,7 @@ namespace game {
 						);
 					}
 				);
+				*/
 				
 				context.add_task("handle bullet collisions", [this](
 					rynx::ecs::view<

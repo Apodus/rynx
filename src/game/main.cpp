@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(emptyMesh.get(), &application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
+	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
 
 	rynx::smooth<float> cameraHeight(30);
@@ -160,6 +160,9 @@ int main(int argc, char** argv) {
 
 		for (int i = 0; i < 20; ++i)
 			makeBox({ +20, +15 - i * 4.0f, 0 }, 0.0f + i * 0.1f, 2.0f);
+
+		makeBox({ -5, -30, 0 }, +0.3f, 40.f);
+		makeBox({ -25, -30, 0 }, -0.3f, 40.f);
 	}
 
 	// setup some debug controls

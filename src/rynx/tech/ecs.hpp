@@ -231,8 +231,7 @@ namespace rynx {
 				}
 			}
 
-			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> component_table<U> & table() {
-				type_id_t typeIndex = m_typeIndex->id<U>();
+			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> component_table<U>& table(type_id_t typeIndex) {
 				if (typeIndex >= m_tables.size()) {
 					m_tables.resize(((3 * typeIndex) >> 1) + 1);
 				}
@@ -240,6 +239,10 @@ namespace rynx {
 					m_tables[typeIndex] = std::make_unique<component_table<U>>();
 				}
 				return *static_cast<component_table<U>*>(m_tables[typeIndex].get());
+			}
+			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> component_table<U>& table() {
+				type_id_t typeIndex = m_typeIndex->id<U>();
+				return table<U>(typeIndex);
 			}
 
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
@@ -396,6 +399,16 @@ namespace rynx {
 				return m_entity_category->template table<T>()[m_category_index];
 			}
 
+			template<typename T> T* try_get() {
+				categorySource->template componentTypesAllowed<T>();
+				type_id_t typeIndex = categorySource->template typeId<T>();
+				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				if (m_entity_category->types().test(typeIndex)) {
+					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
+				}
+				return nullptr;
+			}
+
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
@@ -433,10 +446,13 @@ namespace rynx {
 			}
 			template<typename T> const T* try_get() const {
 				categorySource->template componentTypesAllowed<T>();
+				type_id_t typeIndex = categorySource->template typeId<T>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
-				return m_entity_category->template table<T>()[m_category_index];
+				if (m_entity_category->types().test(typeIndex)) {
+					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
+				}
+				return nullptr;
 			}
-
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<Ts...>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
