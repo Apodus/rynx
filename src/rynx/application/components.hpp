@@ -55,8 +55,6 @@ namespace rynx {
 			
 			vec3<float> acceleration;
 			float angularAcceleration = 0;
-
-			vec3<float> displacement;
 		};
 
 		struct boundary {

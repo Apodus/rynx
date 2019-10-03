@@ -245,6 +245,7 @@ namespace rynx {
 				return table<U>(typeIndex);
 			}
 
+			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 
 		private:
@@ -654,6 +655,8 @@ namespace rynx {
 		template<typename...TypeConstraints>
 		class view {
 			template<typename T, bool> friend class rynx::ecs::entity;
+			template<typename T> friend class rynx::ecs::const_entity;
+
 			template<DataAccess accessType, typename category_source> friend class rynx::ecs::query_t;
 			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::iterator;
 
@@ -728,7 +731,7 @@ namespace rynx {
 			const auto& categories() const { return m_ecs->categories(); }
 
 			template<typename T> type_id_t typeId() const { return m_ecs->template typeId<T>(); }
-			auto category_and_index_for(entity_id_t id) { return m_ecs->category_and_index_for(id); }
+			auto category_and_index_for(entity_id_t id) const { return m_ecs->category_and_index_for(id); }
 
 		public:
 			template<typename...Args> operator view<Args...>() const {
