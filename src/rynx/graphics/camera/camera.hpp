@@ -10,7 +10,7 @@ public:
 
 	void setOrtho(float width, float height, float zNear, float zFar);
 	void setProjection(float zNear, float zFar, float aspect);
-	void setPosition(const vec3<float>& cameraPosition);
+	void setPosition(vec3<float> cameraPosition);
 
 	vec3<float> position() const { return cameraPosition; }
 

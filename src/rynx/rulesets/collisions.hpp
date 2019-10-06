@@ -135,7 +135,7 @@ namespace rynx {
 								m.acceleration += proximity_force * (1.0f - collision.other_has_collision_response * 0.5f);
 
 								float collision_velocity_fix = impact_power * local_mul;
-								auto collision_resolution_force = collision.collisionNormal * (0.60f * collision_velocity_fix) * (collision_velocity_fix > 0);
+								auto collision_resolution_force = collision.collisionNormal * (0.40f * collision_velocity_fix) * (collision_velocity_fix > 0);
 								m.acceleration += collision_resolution_force;
 							}
 						}

@@ -6,12 +6,19 @@ namespace rynx {
 	public:
 		smooth() = default;
 		smooth(T t) : current(t), target(t) {}
+		template<typename...Ts> smooth(Ts&&... ts) : smooth(T(std::forward<Ts>(ts)...)) {}
 
 		template<typename U> smooth& operator = (const U& other) { target = other; return *this; }
 		template<typename U> smooth& operator +=(const U& other) { target += other; return *this; }
 		template<typename U> smooth& operator -=(const U& other) { target -= other; return *this; }
 		template<typename U> smooth& operator *=(const U& other) { target *= other; return *this; }
 		template<typename U> smooth& operator /=(const U& other) { target /= other; return *this; }
+
+		template<typename U> smooth& operator = (U&& other) { target = other; return *this; }
+		template<typename U> smooth& operator +=(U&& other) { target += other; return *this; }
+		template<typename U> smooth& operator -=(U&& other) { target -= other; return *this; }
+		template<typename U> smooth& operator *=(U&& other) { target *= other; return *this; }
+		template<typename U> smooth& operator /=(U&& other) { target /= other; return *this; }
 
 		template<typename U> T operator +(const U& other) { return current + other; }
 		template<typename U> T operator -(const U& other) { return current - other; }

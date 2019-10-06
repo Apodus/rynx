@@ -45,7 +45,6 @@
 #include <rynx/menu/Slider.hpp>
 #include <rynx/menu/Div.hpp>
 
-
 int main(int argc, char** argv) {
 	Font fontLenka(Fonts::setFontLenka());
 	Font fontConsola(Fonts::setFontConsolaMono());
@@ -127,7 +126,7 @@ int main(int argc, char** argv) {
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
 
-	rynx::smooth<float> cameraHeight(30);
+	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 30.0f);
 
 	rynx::ecs& ecs = base_simulation.m_ecs;
 
@@ -179,6 +178,12 @@ int main(int argc, char** argv) {
 	auto menuCamera = std::make_shared<Camera>();
 
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
+	
+	auto cameraUp = gameInput.generateAndBindGameKey('W', "cameraUp");
+	auto cameraLeft = gameInput.generateAndBindGameKey('A', "cameraLeft");
+	auto cameraRight = gameInput.generateAndBindGameKey('D', "cameraRight");
+	auto cameraDown = gameInput.generateAndBindGameKey('S', "cameraDown");
+
 
 	rynx::menu::Div root({ 1, 1, 0 });
 
@@ -259,10 +264,10 @@ int main(int argc, char** argv) {
 
 		auto mousePos = application.input()->getCursorPosition();
 
-		cameraHeight.tick(0.016f * 3);
+		cameraPosition.tick(0.016f * 3);
 
 		{
-			camera->setPosition(vec3<float>(0, 0, cameraHeight));
+			camera->setPosition(cameraPosition);
 			camera->setProjection(0.02f, 200.0f, application.aspectRatio());
 
 			application.meshRenderer().setCamera(camera);
@@ -270,7 +275,25 @@ int main(int argc, char** argv) {
 			application.meshRenderer().cameraToGPU();
 		}
 
-		gameInput.mouseWorldPosition(mousePos * vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f));
+		{
+			constexpr float camera_translate_multiplier = 0.04f;
+			constexpr float camera_zoom_multiplier = 1.05f;
+			if (gameInput.isKeyDown(cameraUp)) { cameraPosition += vec3<float>{0, camera_translate_multiplier * cameraPosition->z, 0}; }
+			if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += vec3<float>{-camera_translate_multiplier * cameraPosition->z, 0.0f, 0}; }
+			if (gameInput.isKeyDown(cameraRight)) { cameraPosition += vec3<float>{camera_translate_multiplier* cameraPosition->z, 0.0f, 0}; }
+			if (gameInput.isKeyDown(cameraDown)) { cameraPosition += vec3<float>{0, -camera_translate_multiplier * cameraPosition->z, 0}; }
+			if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
+			if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
+		}
+
+		{
+			float cameraHeight = cameraPosition->z;
+			gameInput.mouseWorldPosition(
+				(cameraPosition* vec3<float>{1,1,0}) +
+				mousePos * vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
+			);
+		}
+		
 		auto mpos = gameInput.mouseWorldPosition();
 
 		{
@@ -372,9 +395,6 @@ int main(int argc, char** argv) {
 			// NOTE: Frame time can be edited during runtime for debugging reasons.
 			if (gameInput.isKeyDown(slowTime)) { sleepTime *= 1.1f; }
 			if (gameInput.isKeyDown(fastTime)) { sleepTime *= 0.9f; }
-
-			if (gameInput.isKeyDown(zoomOut)) { cameraHeight *= 1.1f; }
-			if (gameInput.isKeyDown(zoomIn)) { cameraHeight *= 0.9f; }
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(sleepTime)));
 		}

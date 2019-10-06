@@ -27,7 +27,7 @@ void Camera::setOrtho(float width, float height, float zNear, float zFar)
 	);
 }
 
-void Camera::setPosition(const vec3<float>& cameraPosition_) {
+void Camera::setPosition(vec3<float> cameraPosition_) {
 	cameraPosition = cameraPosition_;
 	vec3<float> center(cameraPosition);
 	vec3<float> up(0.f, 1.f, 0.f);

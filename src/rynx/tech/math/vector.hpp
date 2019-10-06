@@ -16,8 +16,11 @@ struct vec3 {
 	vec3& normalizeApprox() { T l = lengthApprox() + std::numeric_limits<float>::epsilon(); *this /= l; return *this; }
 	vec3& operator*=(T scalar) { x *= scalar; y *= scalar; z *= scalar; return *this; }
 	vec3& operator/=(T scalar) { x /= scalar; y /= scalar; z /= scalar; return *this; }
-	vec3& operator+=(const vec3<T>& other) { x += other.x; y += other.y; z += other.z; return *this; }
-	vec3& operator-=(const vec3<T>& other) { x -= other.x; y -= other.y; z -= other.z; return *this; }
+	vec3& operator+=(vec3<T> other) { x += other.x; y += other.y; z += other.z; return *this; }
+	vec3& operator-=(vec3<T> other) { x -= other.x; y -= other.y; z -= other.z; return *this; }
+	vec3& operator*=(vec3<T> other) { x *= other.x; y *= other.y; z *= other.z; return *this; }
+	vec3& operator/=(vec3<T> other) { x /= other.x; y /= other.y; z /= other.z; return *this; }
+
 	vec3 operator+(const vec3<T>& other) const { return vec3(x + other.x, y + other.y, z + other.z); }
 	vec3 operator-(const vec3<T>& other) const { return vec3(x - other.x, y - other.y, z - other.z); }
 	vec3 operator*(const vec3<T>& other) const { return vec3(x * other.x, y * other.y, z * other.z); }
