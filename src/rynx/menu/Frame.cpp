@@ -29,13 +29,13 @@ rynx::menu::Frame::Frame(
 void rynx::menu::Frame::initMesh(GPUTextures& textures) {
 	const vec4<float>& limits = textures.textureLimits(m_textureID);
 
-	float edgeUV_x = m_edgeSize * limits.data[2];
-	float edgeUV_y = m_edgeSize * limits.data[3];
+	float edgeUV_x = m_edgeSize * (limits.data[2] - limits[0]);
+	float edgeUV_y = m_edgeSize * (limits.data[3] - limits[1]);
 
 	float botCoordX = limits.data[0];
 	float botCoordY = limits.data[1];
-	float topCoordX = limits.data[0] + limits.data[2];
-	float topCoordY = limits.data[1] + limits.data[3];
+	float topCoordX = limits.data[2];
+	float topCoordY = limits.data[3];
 
 	m_backgroundMesh->texCoords.clear();
 	m_backgroundMesh->putUVCoord(botCoordX, topCoordY);

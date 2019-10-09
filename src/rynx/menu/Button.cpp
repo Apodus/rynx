@@ -12,21 +12,13 @@
 
 #include <rynx/graphics/text/font.hpp>
 
-void rynx::menu::Button::initialize(
-	GPUTextures& textures,
-	std::string texture
-) {
-	m_texture = std::move(texture);
+void rynx::menu::Button::initialize() {
 	m_text = "";
 	m_color = Color::WHITE;
 	m_color.tick(1.0f);
 	m_textColor = Color::WHITE;
 	m_textColor.tick(1.0f);
 	m_align = TextRenderer::Align::Center;
-
-	vec4<float> uvLimits = textures.textureLimits(texture, vec4<float>(0.5f, 0.5f, 1.0f, 1.0f));
-	m_mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.f), uvLimits);
-	m_mesh->build();
 }
 
 void rynx::menu::Button::onInput(rynx::input::mapped_input& input) {
@@ -63,7 +55,7 @@ void rynx::menu::Button::update(float dt) {
 	m_frame.tick(dt, aspectRatio());
 
 	m_model.discardSetTranslate(position_world());
-	m_model.scale(scale_world());
+	m_model.scale(scale_world() * 0.5f);
 
 	m_color.tick(dt * 5);
 	m_frame.color(m_color);

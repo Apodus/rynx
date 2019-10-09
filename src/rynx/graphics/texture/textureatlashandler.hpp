@@ -2,10 +2,10 @@
 #pragma once
 
 #include <rynx/tech/math/vector.hpp>
+#include <rynx/tech/unordered_map.hpp>
 #include <rynx/graphics/texture/textureatlas.hpp>
 
 #include <string>
-#include <unordered_map>
 
 class TextureAtlasHandler {
 
@@ -22,7 +22,7 @@ class TextureAtlasHandler {
 		}
 	};
 
-	std::unordered_map<std::string, SubTexture> subTextures;
+	rynx::unordered_map<std::string, SubTexture> subTextures;
 	vec4<float> DEFAULT_TEXTURE_COORDINATES;
 
 public:
@@ -35,8 +35,8 @@ public:
 		for(const std::string& subTextureID : textureAtlas.getSubTextureTextureIDs()) {
 			vec4<float> subTextureCoordinates = textureAtlas.getSubTextureCoordinates(subTextureID);
 			SubTexture subTexture(subTextureCoordinates, realTextureID);
-			subTextures[subTextureID] = subTexture;
-			// logmsg("Added subtexture: %s", subTextureID.c_str());
+			subTextures.emplace(subTextureID, subTexture);
+			logmsg("Added subtexture: %s", subTextureID.c_str());
 		}
 	}
 
@@ -56,18 +56,15 @@ public:
 		return it->second.subTextureCoordinates;
 	}
 
-	vec4<float> combineUVLimits(const vec4<float>& uvLimits, const vec4<float>& atlasLimits) const {
-		vec4<float> limits;
-		limits.data[0] = uvLimits.data[0] * atlasLimits.data[2] + atlasLimits.data[0];
-		limits.data[1] = uvLimits.data[1] * atlasLimits.data[3] + atlasLimits.data[1];
-		limits.data[2] = uvLimits.data[2] * atlasLimits.data[2];
-		limits.data[3] = uvLimits.data[3] * atlasLimits.data[3];
-		return limits;
-	}
-
-	vec4<float> getTextureCoordinateLimits(const std::string& textureID, const vec4<float>& uvLimits) const {
-		vec4<float> atlasLimits = getTextureCoordinateLimits(textureID);
-		return combineUVLimits(uvLimits, atlasLimits);
+	vec4<float> getTextureCoordinateLimits(const std::string& textureID, vec4<float> uvLimits) const {
+		vec4<float> subtex_limits = getTextureCoordinateLimits(textureID);
+		float width = subtex_limits[2] - subtex_limits[0];
+		float height = subtex_limits[3] - subtex_limits[1];
+		uvLimits[0] *= width;
+		uvLimits[2] *= width;
+		uvLimits[1] *= height;
+		uvLimits[3] *= height;
+		return subtex_limits + uvLimits;
 	}
 
 };

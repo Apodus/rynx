@@ -34,7 +34,6 @@ void MeshRenderer::init() {
 	m_rectangle = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(2.f));
 	m_rectangle->build();
 
-	// vec4<float> uvLimits = m_textures->textureLimits("Empty", vec4<float>(0.5f, 0.5f, 1.0f, 1.0f));
 	m_line = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.f));
 	m_line->build();
 	
@@ -67,12 +66,7 @@ void MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
 }
 
 void MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const vec4<float>& color) {
-	matrix4 model_;
-	vec3<float> mid = (p1 + p2) * 0.5f;
-	model_.discardSetTranslate(mid.x, mid.y, mid.z);
-	model_.rotate(::atan((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
-	model_.scale((p1 - p2).lengthApprox(), width, 1.0f);
-	drawMesh(*m_line, model_, "empty", color);
+	drawLine(p1, p2, matrix4(), width, color);
 }
 
 void MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const vec4<float>& color) {
@@ -82,22 +76,37 @@ void MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const 
 	model_.rotate(::atan((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
 	model_.scale((p1 - p2).lengthApprox(), width, 1.0f);
 	model_ *= model;
-	drawMesh(*m_line, model_, "empty", color);
+
+	const vec4<float>& limits = m_textures->textureLimits("Empty");
+	float botCoordX = limits.data[0];
+	float botCoordY = limits.data[1];
+	float topCoordX = limits.data[2];
+	float topCoordY = limits.data[3];
+
+	m_line->texCoords.clear();
+	m_line->putUVCoord(topCoordX, botCoordY);
+	m_line->putUVCoord(topCoordX, topCoordY);
+	m_line->putUVCoord(botCoordX, topCoordY);
+	m_line->putUVCoord(botCoordX, botCoordY);
+
+	m_line->bind();
+	m_line->rebuildTextureBuffer();
+
+	drawMesh(*m_line, model_, "Empty", color);
 }
 
 void MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture, const vec4<float>& color) {
 	const vec4<float>& limits = m_textures->textureLimits(texture);
 	float botCoordX = limits.data[0];
 	float botCoordY = limits.data[1];
-	float topCoordX = limits.data[0] + limits.data[2];
-	float topCoordY = limits.data[1] + limits.data[3];
+	float topCoordX = limits.data[2];
+	float topCoordY = limits.data[3];
 
 	m_rectangle->texCoords.clear();
 	m_rectangle->putUVCoord(topCoordX, botCoordY);
 	m_rectangle->putUVCoord(topCoordX, topCoordY);
 	m_rectangle->putUVCoord(botCoordX, topCoordY);
 	m_rectangle->putUVCoord(botCoordX, botCoordY);
-
 
 	m_rectangle->bind();
 	m_rectangle->rebuildTextureBuffer();

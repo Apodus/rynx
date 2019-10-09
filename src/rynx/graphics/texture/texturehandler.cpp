@@ -313,11 +313,11 @@ bool GPUTextures::textureExists(const std::string& name) const
 	return textures.find(name) != textures.end();
 }
 
-const vec4<float>& GPUTextures::textureLimits(const std::string& name) const {
+vec4<float> GPUTextures::textureLimits(const std::string& name) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name);
 }
 
-vec4<float> GPUTextures::textureLimits(const std::string& name, const vec4<float>& uvLimits) const {
+vec4<float> GPUTextures::textureLimits(const std::string& name, vec4<float> uvLimits) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name, uvLimits);
 }
 

@@ -17,8 +17,42 @@ namespace game {
 			virtual ~bullet_renderer() {}
 			virtual void render(const rynx::ecs& ecs) override {
 				ecs.for_each([this](const rynx::components::position& pos, const rynx::components::motion& m, const game::components::bullet&, const rynx::components::color& color) {
-					m_meshRenderer->drawLine(pos.value - m.velocity, pos.value, 0.1f, color.value);
+					m_meshRenderer->drawLine(pos.value - m.velocity, pos.value, 0.3f, color.value);
 				});
+			}
+
+			MeshRenderer* m_meshRenderer;
+		};
+	}
+}
+
+namespace game {
+	namespace visual {
+		struct hero_renderer : public rynx::application::renderer::irenderer {
+			hero_renderer(MeshRenderer* meshRenderer) {
+				m_meshRenderer = meshRenderer;
+			}
+			virtual ~hero_renderer() {}
+			virtual void render(const rynx::ecs& ecs) override {
+				ecs.query().execute([this](
+					const rynx::components::position pos,
+					const rynx::components::radius r,
+					const rynx::components::color color)
+					{
+						matrix4 model;
+						model.discardSetTranslate(pos.value);
+						model.scale(r.r);
+							
+						// m_meshRenderer->drawRectangle(model, "Helmet", color.value);
+							
+						// TODO: pos.angle != aim direction.
+						model.discardSetTranslate(pos.value);
+						model.scale(r.r * 2, r.r, 1.0f);
+						model.rotate(pos.angle, 0, 0, 1);
+						// m_meshRenderer->drawRectangle(model, "Shoulders", color.value);
+
+						// TODO: Legs while running :)
+					});
 			}
 
 			MeshRenderer* m_meshRenderer;

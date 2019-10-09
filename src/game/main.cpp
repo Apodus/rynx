@@ -54,20 +54,20 @@ int main(int argc, char** argv) {
 	application.loadTextures("../textures/textures.txt");
 
 	// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
-	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero", { +0.5f, -0.5f, 0.5f, 0.5f }));
+	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
 	mesh->build();
 
-	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Empty", { +0.5f, -0.5f, 0.5f, 0.5f }));
+	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Empty"));
 	emptyMesh->build();
 
-	auto emptySquare = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.0f), application.textures().textureLimits("Empty", { +0.5f, -0.5f, 0.5f, 0.5f }));
+	auto emptySquare = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.0f), application.textures().textureLimits("Empty"));
 	emptySquare->build();
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
 
 	std::shared_ptr<Camera> camera = std::make_shared<Camera>();
-	camera->setProjection(0.02f, 200.0f, application.aspectRatio());
+	camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 
 	rynx::input::mapped_input gameInput(application.input());
 
@@ -125,6 +125,7 @@ int main(int argc, char** argv) {
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
+	gameRenderer.addRenderer(std::make_unique<game::visual::hero_renderer>(&application.meshRenderer()));
 
 	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 30.0f);
 
@@ -179,12 +180,11 @@ int main(int argc, char** argv) {
 
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
 	
-	auto cameraUp = gameInput.generateAndBindGameKey('W', "cameraUp");
-	auto cameraLeft = gameInput.generateAndBindGameKey('A', "cameraLeft");
-	auto cameraRight = gameInput.generateAndBindGameKey('D', "cameraRight");
-	auto cameraDown = gameInput.generateAndBindGameKey('S', "cameraDown");
-
-
+	auto cameraUp = gameInput.generateAndBindGameKey('I', "cameraUp");
+	auto cameraLeft = gameInput.generateAndBindGameKey('J', "cameraLeft");
+	auto cameraRight = gameInput.generateAndBindGameKey('L', "cameraRight");
+	auto cameraDown = gameInput.generateAndBindGameKey('K', "cameraDown");
+	
 	rynx::menu::Div root({ 1, 1, 0 });
 
 	struct debug_conf {
@@ -197,10 +197,10 @@ int main(int argc, char** argv) {
 
 	// construct menus
 	{
-		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Empty", "Empty", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
 			matrix4 m;
 			m.discardSetTranslate(mpos);
 			m.scale(0.5f);
-			application.meshRenderer().drawMesh(*emptyMesh, m, "Empty");
+			application.meshRenderer().drawMesh(*mesh, m, "Empty");
 		}
 
 		{

@@ -30,8 +30,8 @@ class GPUTextures
 		const std::string& getCurrentTexture(size_t texture_unit) const;
 		unsigned getTextureID(const std::string&) const;
 
-		const vec4<float>& textureLimits(const std::string&) const;
-		vec4<float> textureLimits(const std::string& name, const vec4<float>& uvLimits) const;
+		vec4<float> textureLimits(const std::string&) const;
+		vec4<float> textureLimits(const std::string& name, vec4<float> uvLimits) const;
 
 		void insertAtlas(const TextureAtlas& atlas);
 		
