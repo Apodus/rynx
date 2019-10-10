@@ -35,7 +35,7 @@ private:
 	};
 
 	struct node {
-		node(vec3<float> pos, node* parent, int depth = 0) : pos(pos), parent(parent), depth(depth) {}
+		node(vec3<float> pos, node* parent, int depth = 0) : pos(pos), m_parent(parent), depth(depth) {}
 
 		vec3<float> pos;
 		float radius = 0;
@@ -43,8 +43,8 @@ private:
 
 		void killMePlease(node* child) {
 			// TODO: nodes could have this index stored. is not hard.
-			for (size_t i = 0; i < children.size(); ++i) {
-				if (children[i].get() == child) {
+			for (size_t i = 0; i < m_children.size(); ++i) {
+				if (m_children[i].get() == child) {
 					killMePlease(int(i));
 					return;
 				}
@@ -54,27 +54,27 @@ private:
 		}
 
 		void killMePlease(int index) {
-			children[index] = std::move(children.back());
-			children.pop_back();
+			m_children[index] = std::move(m_children.back());
+			m_children.pop_back();
 
 			// if 1 child left, add child to parent. and kill self.
-			if (children.size() == 1) {
-				if (parent) {
-					children[0]->parent = parent;
-					parent->children.emplace_back(std::move(children[0]));
-					parent->killMePlease(this);
+			if (m_children.size() == 1) {
+				if (m_parent) {
+					m_children[0]->m_parent = m_parent;
+					m_parent->m_children.emplace_back(std::move(m_children[0]));
+					m_parent->killMePlease(this);
 				}
 			}
 		}
 
 		uint64_t entity_migrates(index_t member_index, sphere_tree* container) {
-			auto id_of_erased = members[member_index].entityId;
-			members[member_index] = std::move(members.back());
-			container->entryMap.find(members[member_index].entityId)->second.second = member_index;
-			members.pop_back();
+			auto id_of_erased = m_members[member_index].entityId;
+			m_members[member_index] = std::move(m_members.back());
+			container->entryMap.find(m_members[member_index].entityId)->second.second = member_index;
+			m_members.pop_back();
 
-			if (members.empty() && parent != nullptr) {
-				parent->killMePlease(this);
+			if (m_members.empty() && m_parent != nullptr) {
+				m_parent->killMePlease(this);
 			}
 
 			// TODO: check, if me and siblings are too many in number vs. the number of elements stored,
@@ -83,11 +83,11 @@ private:
 		}
 
 		std::unique_ptr<node> node_migrates(node* child_ptr) {
-			for (size_t i = 0; i < children.size(); ++i) {
-				if (children[i].get() == child_ptr) {
-					std::unique_ptr<node> child = std::move(children[i]);
-					children[i] = std::move(children.back());
-					children.pop_back();
+			for (size_t i = 0; i < m_children.size(); ++i) {
+				if (m_children[i].get() == child_ptr) {
+					std::unique_ptr<node> child = std::move(m_children[i]);
+					m_children[i] = std::move(m_children.back());
+					m_children.pop_back();
 					return child;
 				}
 			}
@@ -101,13 +101,13 @@ private:
 		}
 
 		void insert(entry&& item, sphere_tree* container) {
-			rynx_assert(children.empty(), "insert can only be done on leaf nodes");
-			members.emplace_back(std::move(item));
-			container->entryMap.insert_or_assign(members.back().entityId, std::pair<node*, index_t>(this, index_t(members.size() - 1)));
+			rynx_assert(m_children.empty(), "insert can only be done on leaf nodes");
+			m_members.emplace_back(std::move(item));
+			container->entryMap.insert_or_assign(m_members.back().entityId, std::pair<node*, index_t>(this, index_t(m_members.size() - 1)));
 
-			if (members.size() >= MaxElementsInNode) {
+			if (m_members.size() >= MaxElementsInNode) {
 				// if we have no parent (we are root node), add a couple of new child nodes under me.
-				if (!parent) {
+				if (!m_parent) {
 					/*
 					// split to new child level.
 					auto f1 = farPoint(members[0].pos, members);
@@ -125,36 +125,36 @@ private:
 					*/
 
 					for (size_t i = 0; i < MaxNodesInNode; ++i) {
-						children.emplace_back(std::make_unique<node>(members[i].pos, this, depth + 1));
+						m_children.emplace_back(std::make_unique<node>(m_members[i].pos, this, depth + 1));
 					}
-					for (size_t i = 0; i < members.size(); ++i) {
-						children[i % children.size()]->insert(std::move(members[i]), container);
+					for (size_t i = 0; i < m_members.size(); ++i) {
+						m_children[i % m_children.size()]->insert(std::move(m_members[i]), container);
 					}
-					members.clear();
+					m_members.clear();
 
-					for (auto& child : children) {
+					for (auto& child : m_children) {
 						child->update_single();
 					}
 				}
 				else {
 					// if also our parent node is full, and can't have new children.
 					// add a new layer of nodes between my parent, and myself.
-					if (parent->children.size() >= MaxNodesInNode) {
+					if (m_parent->m_children.size() >= MaxNodesInNode) {
 						// first take the existing children to safety.
-						std::vector<std::unique_ptr<node>> children_of_parent = std::move(parent->children);
+						std::vector<std::unique_ptr<node>> children_of_parent = std::move(m_parent->m_children);
 
 #if 1
-						parent->children.clear();
+						m_parent->m_children.clear();
 						for (size_t i = 0; i < MaxNodesInNode; ++i) {
-							parent->children.emplace_back(std::make_unique<node>(children_of_parent[i]->pos, parent, parent->depth + 1));
+							m_parent->m_children.emplace_back(std::make_unique<node>(children_of_parent[i]->pos, m_parent, m_parent->depth + 1));
 						}
 
-						node* old_parent = parent;
+						node* old_parent = m_parent;
 						for (size_t i = 0; i < children_of_parent.size(); ++i) {
 							auto& old_child = children_of_parent[i];
-							auto& new_parent = old_parent->children[i % old_parent->children.size()];
-							old_child->parent = new_parent.get();
-							new_parent->children.emplace_back(std::move(old_child));
+							auto& new_parent = old_parent->m_children[i % old_parent->m_children.size()];
+							old_child->m_parent = new_parent.get();
+							new_parent->m_children.emplace_back(std::move(old_child));
 						}
 						
 						children_of_parent.clear();
@@ -202,39 +202,39 @@ private:
 						}
 						children_of_parent.clear();
 #endif
-						for (auto& child : old_parent->children) {
+						for (auto& child : old_parent->m_children) {
 							child->refresh_depths();
 						}
 					}
 
 					// now there should be space in parent node's children list, add new siblings to self there.
-					auto f1 = farPoint(members.back().pos, members);
+					auto f1 = farPoint(m_members.back().pos, m_members);
 					{
-						parent->children.emplace_back(std::make_unique<node>(members[f1.first].pos, parent, depth));
-						auto id = members[f1.first].entityId;
-						parent->children.back()->members.emplace_back(std::move(members[f1.first]));
+						m_parent->m_children.emplace_back(std::make_unique<node>(m_members[f1.first].pos, m_parent, depth));
+						auto id = m_members[f1.first].entityId;
+						m_parent->m_children.back()->m_members.emplace_back(std::move(m_members[f1.first]));
 
 						auto& datap = container->entryMap.find(id)->second;
-						datap.first = parent->children.back().get();
+						datap.first = m_parent->m_children.back().get();
 						datap.second = 0; // update mapping of the moved child!
 					}
 
-					if (f1.first != members.size() - 1) {
-						auto id = members.back().entityId;
-						members[f1.first] = std::move(members.back());
+					if (f1.first != m_members.size() - 1) {
+						auto id = m_members.back().entityId;
+						m_members[f1.first] = std::move(m_members.back());
 						container->entryMap.find(id)->second.second = index_t(f1.first); // also need to update mapping of new f1.first
 					}
 
-					members.pop_back();
+					m_members.pop_back();
 
 					// these probably should not be called all the time. only after all move ops are done.
-					parent->children.back()->update_single();
+					m_parent->m_children.back()->update_single();
 				}
 			}
 		}
 
 		void refresh_depths() {
-			for (auto& child : children) {
+			for (auto& child : m_children) {
 				child->depth = depth + 1;
 				child->refresh_depths();
 			}
@@ -243,15 +243,15 @@ private:
 		// recalculate node position and radius
 		void update_from_root_to_leaf() {
 			update_single();
-			if (parent) {
-				parent->update_from_root_to_leaf();
+			if (m_parent) {
+				m_parent->update_from_root_to_leaf();
 			}
 		}
 
 		void update_from_leaf_to_root() {
-			for (size_t i = 0; i < children.size(); ++i) {
-				auto& child = children[i];
-				if (child->children.empty() & child->members.empty()) {
+			for (size_t i = 0; i < m_children.size(); ++i) {
+				auto& child = m_children[i];
+				if (child->m_children.empty() & child->m_members.empty()) {
 					killMePlease(int(i));
 					--i;
 				}
@@ -264,55 +264,72 @@ private:
 
 		void update_single() {
 			std::pair<vec3<float>, float> posInfo;
-			if (children.empty()) {
-				if (members.empty()) {
+			if (m_children.empty()) {
+				if (m_members.empty()) {
 					return;
 				}
-				posInfo = bounding_sphere(members);
+				posInfo = bounding_sphere(m_members);
 			}
 			else {
-				posInfo = bounding_sphere(children);
+				posInfo = bounding_sphere(m_children);
 			}
 
 			pos = posInfo.first;
 			radius = posInfo.second;
 		}
 
-		void update_parents_for_nodes() {
-			if (parent) {
+		// TODO: Optimization: This should be interleaved. No need to update every node every frame.
+		// TODO: Optimization: This can be parallelized.
+		void find_optimized_parents_for_nodes() {
+			if (m_parent) {
 				auto new_parent = root()->find_nearest_parent(pos, depth, std::numeric_limits<float>::max());
 				if (
 					new_parent.first &&
-					(new_parent.first != parent) &&
-					new_parent.first->members.empty()
-					) {
-					std::unique_ptr<node> myself = parent->node_migrates(this);
-					myself->parent = new_parent.first;
-					new_parent.first->children.emplace_back(std::move(myself));
-					new_parent.first->update_single();
+					new_parent.first != m_parent
+					)
+				{
+					m_new_parent = new_parent.first;
 				}
 			}
 
-			for (size_t i = 0; i < children.size(); ++i) {
-				children[i]->update_parents_for_nodes();
+			for (auto&& child : m_children) {
+				child->find_optimized_parents_for_nodes();
+			}
+		}
+
+		void apply_optimized_parents_for_nodes() {
+			if (m_new_parent) {
+				std::unique_ptr<node> myself = m_parent->node_migrates(this);
+				myself->m_parent = m_new_parent;
+				m_new_parent->m_children.emplace_back(std::move(myself));
+				m_new_parent->update_single();
+				m_new_parent = nullptr;
+			}
+
+			// this mutates the m_children vector and thus cannot be range for, or iterators.
+			for (size_t i = 0; i < m_children.size(); ++i) {
+				m_children[i]->apply_optimized_parents_for_nodes();
 			}
 		}
 
 		node* root() {
-			if (!parent)
+			if (!m_parent)
 				return this;
 			
-			node* next = parent;
+			node* next = m_parent;
 			while (true) {
-				if (!next->parent)
+				if (!next->m_parent)
 					return next;
-				next = next->parent;
+				next = next->m_parent;
 			}
 		}
 
 		std::pair<node*, float> find_nearest_parent(vec3<float> point, int source_depth, float maxDistSqr) {
 			std::pair<node*, float> ans(nullptr, maxDistSqr);
-			for (auto&& child : children) {
+			for (auto&& child : m_children) {
+				if (!child->m_members.empty())
+					continue;
+				
 				float potentialSqrDist = (child->pos - point).lengthSquared() - child->radius * child->radius; // TODO: This is not true.
 				if (potentialSqrDist < ans.second) {
 					if (source_depth > child->depth) {
@@ -323,7 +340,7 @@ private:
 							}
 						}
 						else {
-							if (!child->children.empty()) {
+							if (!child->m_children.empty()) {
 								auto potentialAns = child->find_nearest_parent(point, source_depth, ans.second);
 								if (potentialAns.second < ans.second) {
 									ans = potentialAns;
@@ -339,7 +356,7 @@ private:
 
 		template<typename F> void forEachNode(F&& f, int depth = 0) {
 			f(pos, radius, depth);
-			for (auto& child : children) {
+			for (auto& child : m_children) {
 				child->forEachNode(std::forward<F>(f), depth + 1);
 			}
 		}
@@ -347,15 +364,15 @@ private:
 		template<typename F>
 		void inRange(vec3<float> point, float range, F&& f) {
 			if ((pos - point).lengthSquared() < sqr(radius + range)) {
-				if (children.empty()) {
-					for (auto&& item : members) {
+				if (m_children.empty()) {
+					for (auto&& item : m_members) {
 						if ((item.pos - point).lengthSquared() < range * range) {
 							f(item.entityId, item.pos, item.radius);
 						}
 					}
 				}
 				else {
-					for (auto&& child : children) {
+					for (auto&& child : m_children) {
 						child->inRange(point, range, std::forward<F>(f));
 					}
 				}
@@ -363,12 +380,12 @@ private:
 		}
 
 		std::pair<node*, float> findNearestLeaf(vec3<float> point, float maxDistSqr) {
-			if (children.empty()) {
+			if (m_children.empty()) {
 				return { this, (point - pos).lengthSquared() };
 			}
 
 			std::pair<node*, float> ans(nullptr, maxDistSqr);
-			for (auto&& child : children) {
+			for (auto&& child : m_children) {
 				float potentialSqrDist = (child->pos - point).lengthSquared() - child->radius * child->radius;
 				if (potentialSqrDist < ans.second) {
 					auto potentialAns = child->findNearestLeaf(point, ans.second);
@@ -381,9 +398,10 @@ private:
 			return ans;
 		}
 
-		node* parent = nullptr;
-		std::vector<std::unique_ptr<node>> children; // child nodes
-		std::vector<entry> members;
+		node* m_parent = nullptr;
+		node* m_new_parent = nullptr;
+		std::vector<std::unique_ptr<node>> m_children; // child nodes
+		std::vector<entry> m_members;
 	};
 
 	rynx::unordered_map<uint64_t, std::pair<node*, index_t>> entryMap;
@@ -396,7 +414,7 @@ public:
 	void updateEntity(vec3<float> pos, float radius, uint64_t entityId) {
 		auto it = entryMap.find(entityId);
 		if (it != entryMap.end()) {
-			auto& data = it->second.first->members[it->second.second];
+			auto& data = it->second.first->m_members[it->second.second];
 			data.pos = pos;
 			data.radius = radius;
 		}
@@ -431,7 +449,7 @@ public:
 					it = entryMap.begin();
 				}
 
-				auto item = it->second.first->members[it->second.second];
+				auto item = it->second.first->m_members[it->second.second];
 				auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
 				if (!newLeaf.first || newLeaf.first == it->second.first) {
 					continue;
@@ -446,11 +464,17 @@ public:
 		}
 
 		{
-			root.update_parents_for_nodes();
+			rynx_profile("SphereTree", "Find optimized parents for nodes");
+			root.find_optimized_parents_for_nodes();
 		}
 
 		{
-			rynx_profile("SphereTree", "UpdateNodePositions");
+			rynx_profile("SphereTree", "Update parents for nodes");
+			root.apply_optimized_parents_for_nodes();
+		}
+
+		{
+			rynx_profile("SphereTree", "Update node positions");
 			root.update_from_leaf_to_root();
 		}
 	}
@@ -474,11 +498,11 @@ private:
 	template<typename F> static void collisions_internal_parallel_intra_node(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 
-		if (a->children.empty()) {
-			for (size_t i = 0; i < a->members.size(); ++i) {
-				const auto& m1 = a->members[i];
-				for (size_t k = i + 1; k < a->members.size(); ++k) {
-					const auto& m2 = a->members[k];
+		if (a->m_children.empty()) {
+			for (size_t i = 0; i < a->m_members.size(); ++i) {
+				const auto& m1 = a->m_members[i];
+				for (size_t k = i + 1; k < a->m_members.size(); ++k) {
+					const auto& m2 = a->m_members[k];
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
@@ -489,7 +513,7 @@ private:
 		}
 		else {
 			task.extend_task_execute_parallel([f, a](rynx::scheduler::task& task) {
-				for (const auto& child : a->children) {
+				for (const auto& child : a->m_children) {
 					collisions_internal_parallel_intra_node(f, task, child.get());
 				}
 			});
@@ -508,17 +532,17 @@ private:
 			std::vector<const node*> copy_for_task = current_level;
 			task.extend_task_execute_sequential("inter-node", [f, current_level = std::move(copy_for_task)](rynx::scheduler::task& task) {
 				for (const node* a : current_level) {
-					if (a->depth == 0 && a->children.size() >= size_t(16)) {
+					if (a->depth == 0 && a->m_children.size() >= size_t(16)) {
 						auto two_ranges = [f, a](size_t begin1, size_t end1, size_t begin2, size_t end2) {
-							rynx_assert(end1 <= a->children.size(), "iterating past end");
-							rynx_assert(end2 <= a->children.size(), "iterating past end");
+							rynx_assert(end1 <= a->m_children.size(), "iterating past end");
+							rynx_assert(end2 <= a->m_children.size(), "iterating past end");
 							for (size_t i = begin1; i < end1; ++i) {
-								const node* child1 = a->children[i].get();
+								const node* child1 = a->m_children[i].get();
 								rynx_assert(child1 != nullptr, "node cannot be null");
 								rynx_assert(child1 != a, "nodes must differ");
 
 								for (size_t k = begin2; k < end2; ++k) {
-									const node* child2 = a->children[k].get();
+									const node* child2 = a->m_children[k].get();
 									rynx_assert(child2 != nullptr, "node cannot be null");
 									rynx_assert(child2 != child1, "nodes must differ");
 
@@ -530,14 +554,14 @@ private:
 						};
 
 						auto one_range = [f, a](size_t begin1, size_t end1) {
-							rynx_assert(end1 <= a->children.size(), "iterating past end");
+							rynx_assert(end1 <= a->m_children.size(), "iterating past end");
 							for (size_t i = begin1; i < end1; ++i) {
-								const node* child1 = a->children[i].get();
+								const node* child1 = a->m_children[i].get();
 								rynx_assert(child1 != nullptr, "node cannot be null");
 								rynx_assert(child1 != a, "nodes must differ");
 
 								for (size_t k = i + 1; k < end1; ++k) {
-									const node* child2 = a->children[k].get();
+									const node* child2 = a->m_children[k].get();
 									rynx_assert(child2 != nullptr, "node cannot be null");
 									rynx_assert(child2 != child1, "nodes must differ");
 
@@ -548,7 +572,7 @@ private:
 							}
 						};
 
-						int block_size = int(a->children.size() >> 3);
+						int block_size = int(a->m_children.size() >> 3);
 
 						task.extend_task_execute_sequential([one_range, block_size, a](rynx::scheduler::task& task) {
 							for (int i = 0; i < 7; ++i) {
@@ -556,14 +580,14 @@ private:
 									one_range(i * block_size, (i + 1) * block_size);
 								});
 							}
-							one_range(7 * block_size, a->children.size());
+							one_range(7 * block_size, a->m_children.size());
 						});
 
 						auto call = [two_ranges, block_size, a](int i, int k) {
 							int begin1 = i * block_size;
 							int end1 = (i + 1) * block_size;
 							int begin2 = k * block_size;
-							int end2 = (k < 7) ? (k + 1) * block_size : int(a->children.size());
+							int end2 = (k < 7) ? (k + 1) * block_size : int(a->m_children.size());
 							two_ranges(begin1, end1, begin2, end2);
 						};
 							
@@ -618,13 +642,13 @@ private:
 					}
 					else {
 						task.extend_task_execute_parallel([f, a]() {
-							for (size_t i = 0; i < a->children.size(); ++i) {
-								const node* child1 = a->children[i].get();
+							for (size_t i = 0; i < a->m_children.size(); ++i) {
+								const node* child1 = a->m_children[i].get();
 								rynx_assert(child1 != nullptr, "node cannot be null");
 								rynx_assert(child1 != a, "nodes must differ");
 
-								for (size_t k = i + 1; k < a->children.size(); ++k) {
-									const node* child2 = a->children[k].get();
+								for (size_t k = i + 1; k < a->m_children.size(); ++k) {
+									const node* child2 = a->m_children[k].get();
 									rynx_assert(child2 != nullptr, "node cannot be null");
 									rynx_assert(child2 != child1, "nodes must differ");
 
@@ -641,7 +665,7 @@ private:
 			{
 				std::vector<const node*> next_level;
 				for (const node* node_ptr : current_level) {
-					for (auto& child_ptr : node_ptr->children) {
+					for (auto& child_ptr : node_ptr->m_children) {
 						next_level.emplace_back(child_ptr.get());
 					}
 				}
@@ -657,11 +681,11 @@ private:
 	template<typename F> static void collisions_internal(F&& f, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 
-		if (a->children.empty()) {
-			for (size_t i = 0; i < a->members.size(); ++i) {
-				const auto& m1 = a->members[i];
-				for (size_t k = i + 1; k < a->members.size(); ++k) {
-					const auto& m2 = a->members[k];
+		if (a->m_children.empty()) {
+			for (size_t i = 0; i < a->m_members.size(); ++i) {
+				const auto& m1 = a->m_members[i];
+				for (size_t k = i + 1; k < a->m_members.size(); ++k) {
+					const auto& m2 = a->m_members[k];
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
@@ -671,17 +695,17 @@ private:
 			}
 		}
 		else {
-			for (const auto& child : a->children) {
+			for (const auto& child : a->m_children) {
 				collisions_internal(std::forward<F>(f), child.get());
 			}
 
-			for (size_t i = 0; i < a->children.size(); ++i) {
-				const node* child1 = a->children[i].get();
+			for (size_t i = 0; i < a->m_children.size(); ++i) {
+				const node* child1 = a->m_children[i].get();
 				rynx_assert(child1 != nullptr, "node cannot be null");
 				rynx_assert(child1 != a, "nodes must differ");
 
-				for (size_t k = i + 1; k < a->children.size(); ++k) {
-					const node* child2 = a->children[k].get();
+				for (size_t k = i + 1; k < a->m_children.size(); ++k) {
+					const node* child2 = a->m_children[k].get();
 					rynx_assert(child2 != nullptr, "node cannot be null");
 					rynx_assert(child2 != child1, "nodes must differ");
 
@@ -703,23 +727,23 @@ private:
 		}
 
 		// if b reaches bottom first, swap. this means less checks later.
-		if (b->children.empty()) {
+		if (b->m_children.empty()) {
 			const node* tmp = a;
 			a = b;
 			b = tmp;
 		}
 
-		if (a->children.empty()) {
-			if (b->children.empty()) {
+		if (a->m_children.empty()) {
+			if (b->m_children.empty()) {
 				if (a->radius < b->radius) {
 					const node* tmp = a;
 					a = b;
 					b = tmp;
 				}
 
-				for (const auto& member1 : a->members) {
+				for (const auto& member1 : a->m_members) {
 					if ((member1.pos - b->pos).lengthSquared() < sqr(member1.radius + b->radius)) {
-						for (const auto& member2 : b->members) {
+						for (const auto& member2 : b->m_members) {
 							float distSqr = (member1.pos - member2.pos).lengthSquared();
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
@@ -732,19 +756,19 @@ private:
 				}
 			}
 			else {
-				for (const auto& child : b->children) {
+				for (const auto& child : b->m_children) {
 					collisions_internal(std::forward<F>(f), a, child.get());
 				}
 			}
 		}
 		else {
 			if (a->radius > b->radius) {
-				for (const auto& child : a->children) {
+				for (const auto& child : a->m_children) {
 					collisions_internal(std::forward<F>(f), child.get(), b);
 				}
 			}
 			else {
-				for (const auto& child : b->children) {
+				for (const auto& child : b->m_children) {
 					collisions_internal(std::forward<F>(f), a, child.get());
 				}
 			}

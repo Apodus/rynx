@@ -42,7 +42,7 @@ namespace game {
 								rynx::components::radius(0.6f),
 								rynx::components::collision_category(dynamic),
 								rynx::components::color(),
-								rynx::components::dampening({ 0.87f, 0.87f }),
+								rynx::components::dampening({ 0.97f, 0.87f }),
 								rynx::components::frame_collisions()
 							);
 					});

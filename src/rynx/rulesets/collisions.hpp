@@ -126,10 +126,22 @@ namespace rynx {
 				
 				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 					ecs.for_each_parallel([ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {
+						std::vector<int> collisionCounts(collisionsComponent.collisions.size(), 1);
+						
+						for (size_t i = 0; i < collisionsComponent.collisions.size(); ++i) {
+							for (size_t k = i+1; k < collisionsComponent.collisions.size(); ++k) {
+								int count = collisionsComponent.collisions[i].idOfOther == collisionsComponent.collisions[k].idOfOther;
+								collisionCounts[i] += count;
+								collisionCounts[k] += count;
+							}
+						}
+
 						for (int i = 0; i < 5; ++i) {
-							for (const auto& collision : collisionsComponent.collisions) {
+							for (size_t k = 0; k < collisionsComponent.collisions.size(); ++k) {
+								const auto& collision = collisionsComponent.collisions[k];
 								float impact_power = -(collision.collisionPointRelativeVelocity + m.acceleration).dot(collision.collisionNormal);
 								float local_mul = !collision.other_has_collision_response * 1.3f + collision.other_has_collision_response * 0.35f;
+								local_mul /= collisionCounts[k];
 								auto proximity_force = collision.collisionNormal * collision.penetration * local_mul * (impact_power > 0);
 								rynx_assert(collision.collisionNormal.lengthSquared() < 1.1f, "normal should be unit length");
 								m.acceleration += proximity_force * (1.0f - collision.other_has_collision_response * 0.5f);
