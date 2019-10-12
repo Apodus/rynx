@@ -39,7 +39,8 @@ private:
 
 		vec3<float> pos;
 		float radius = 0;
-		int depth = 0;
+		int32_t depth = 0;
+		int32_t parent_optimization_interleave = 0; // [0, 1] - each layer switches which children are updated
 
 		void killMePlease(node* child) {
 			// TODO: nodes could have this index stored. is not hard.
@@ -73,9 +74,11 @@ private:
 			container->entryMap.find(m_members[member_index].entityId)->second.second = member_index;
 			m_members.pop_back();
 
+			/*
 			if (m_members.empty() && m_parent != nullptr) {
 				m_parent->killMePlease(this);
 			}
+			*/
 
 			// TODO: check, if me and siblings are too many in number vs. the number of elements stored,
 			// merge some of the siblings?
@@ -240,15 +243,7 @@ private:
 			}
 		}
 
-		// recalculate node position and radius
-		void update_from_root_to_leaf() {
-			update_single();
-			if (m_parent) {
-				m_parent->update_from_root_to_leaf();
-			}
-		}
-
-		void update_from_leaf_to_root() {
+		void remove_empty_nodes() {
 			for (size_t i = 0; i < m_children.size(); ++i) {
 				auto& child = m_children[i];
 				if (child->m_children.empty() & child->m_members.empty()) {
@@ -256,8 +251,15 @@ private:
 					--i;
 				}
 				else {
-					child->update_from_leaf_to_root();
+					child->remove_empty_nodes();
 				}
+			}
+		}
+
+		void update_from_leaf_to_root() {
+			for (size_t i = 0; i < m_children.size(); ++i) {
+				auto& child = m_children[i];
+				child->update_from_leaf_to_root();
 			}
 			update_single();
 		}
@@ -278,7 +280,6 @@ private:
 			radius = posInfo.second;
 		}
 
-		// TODO: Optimization: This should be interleaved. No need to update every node every frame.
 		// TODO: Optimization: This can be parallelized.
 		void find_optimized_parents_for_nodes() {
 			if (m_parent) {
@@ -292,8 +293,9 @@ private:
 				}
 			}
 
-			for (auto&& child : m_children) {
-				child->find_optimized_parents_for_nodes();
+			parent_optimization_interleave ^= 1;
+			for (size_t i = parent_optimization_interleave; i < m_children.size(); i += 2) {
+				m_children[i]->find_optimized_parents_for_nodes();
 			}
 		}
 
@@ -324,9 +326,9 @@ private:
 			}
 		}
 
-		std::pair<node*, float> find_nearest_parent(vec3<float> point, int source_depth, float maxDistSqr) {
+		std::pair<node*, float> find_nearest_parent(vec3<float> point, int source_depth, float maxDistSqr) const {
 			std::pair<node*, float> ans(nullptr, maxDistSqr);
-			for (auto&& child : m_children) {
+			for (const auto& child : m_children) {
 				if (!child->m_members.empty())
 					continue;
 				
@@ -407,6 +409,7 @@ private:
 	rynx::unordered_map<uint64_t, std::pair<node*, index_t>> entryMap;
 	node root;
 	size_t update_next_index = 0;
+	uint64_t update_iteration_counter = 0;
 
 public:
 	sphere_tree() : root({0, 0, 0}, nullptr) {}
@@ -474,9 +477,174 @@ public:
 		}
 
 		{
-			rynx_profile("SphereTree", "Update node positions");
-			root.update_from_leaf_to_root();
+			rynx_profile("SphereTree", "Remove empty nodes");
+			root.remove_empty_nodes();
 		}
+
+		{
+			rynx_profile("SphereTree", "Update node positions");
+			std::vector<std::vector<node*>> node_levels(1, { &root });
+			for(;;)
+			{
+				std::vector<node*> next_level;
+				for (const node* node_ptr : node_levels.back()) {
+					for (auto& child_ptr : node_ptr->m_children) {
+						next_level.emplace_back(child_ptr.get());
+					}
+				}
+				if (next_level.empty())
+					break;
+				node_levels.emplace_back(std::move(next_level));
+			}
+
+			for (auto it = node_levels.rbegin(); it != node_levels.rend(); ++it) {
+				for (auto* node : *it) {
+					node->update_single();
+				}
+			}
+		}
+	}
+
+	void update_parallel(rynx::scheduler::task& task_context) {
+		
+		/*
+		{
+			rynx_profile("SphereTree", "Sequential FindBuckets");
+			if (entryMap.empty())
+				return;
+
+			auto it = entryMap.iteratorAt(update_next_index);
+
+			// NOTE: we are updating 1/32 of all entries per iteration. this is because the update itself is really fucking expensive.
+			//       this update optimizes the parent node of the entities. skipping the update means that our sphere tree bottom level will be slightly
+			//       unoptimized, which results in more work during collision- and inRange queries. But because changes in entry positions are seldom radical, this is usually perfectly fine.
+			for (size_t i = 0; i <= (entryMap.size() >> 5) + 1; ++i, ++it) {
+				if (it == entryMap.end()) {
+					it = entryMap.begin();
+				}
+
+				auto item = it->second.first->m_members[it->second.second];
+				auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
+				if (!newLeaf.first || newLeaf.first == it->second.first) {
+					continue;
+				}
+
+				// move to new bucket.
+				it->second.first->entity_migrates(it->second.second, this);
+				newLeaf.first->insert(std::move(item), this);
+			}
+
+			update_next_index = it.index();
+		}
+		*/
+
+		if (entryMap.empty())
+			return;
+
+		// NOTE: we are updating 1/16 of all entries per iteration. this is because the update itself is quite expensive.
+		//       this update optimizes the parent node of the entities. skipping the update means that our sphere tree bottom level will be slightly
+		//       unoptimized, which results in more work during collision- and inRange queries. But because changes in entry positions are seldom radical,
+		//       updating some smallish time duration later is usually perfectly fine.
+		auto capacity = entryMap.capacity();
+		rynx_assert((capacity & (capacity - 1)) == 0, "must be power of 2");
+
+		struct plip {
+			int64_t map_index;
+			node* new_parent;
+		};
+
+		std::shared_ptr<std::mutex> entity_migrate_mutex = std::make_shared<std::mutex>();
+		std::shared_ptr<std::vector<plip>> found_migrates = std::make_shared<std::vector<plip>>();
+		rynx::scheduler::barrier entities_migrated_bar;
+
+		auto limit = (capacity >> 4) + 1;
+		auto bar = task_context.parallel().for_each(update_next_index, update_next_index + limit, [this, capacity, m = std::move(entity_migrate_mutex), found_migrates](int64_t index) {
+			index &= capacity - 1;
+			if (entryMap.slot_test(index)) {
+				auto entry = entryMap.slot_get(index);
+				auto item = entry.second.first->m_members[entry.second.second];
+				auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
+
+				if (newLeaf.first && newLeaf.first != entry.second.first) {
+					// move to new bucket.
+					std::lock_guard lock(*m);
+					found_migrates->emplace_back(plip{ index, newLeaf.first });
+				}
+			}
+		});
+
+		task_context.extend_task_execute_parallel([this, found_migrates]() {
+			for (auto&& migratee : *found_migrates) {
+				auto entry = entryMap.slot_get(migratee.map_index);
+				auto item = entry.second.first->m_members[entry.second.second];
+
+				entry.second.first->entity_migrates(entry.second.second, this);
+				migratee.new_parent->insert(std::move(item), this);
+			}
+		})->depends_on(bar).required_for(entities_migrated_bar);
+
+		update_next_index += limit;
+		update_next_index &= capacity - 1;
+		
+
+		task_context.extend_task_execute_parallel([this](rynx::scheduler::task& task_context) {
+			{
+				rynx_profile("SphereTree", "Find optimized parents for nodes");
+				root.find_optimized_parents_for_nodes();
+			}
+
+			{
+				rynx_profile("SphereTree", "Update parents for nodes");
+				root.apply_optimized_parents_for_nodes();
+			}
+
+			{
+				rynx_profile("SphereTree", "Remove empty nodes");
+				root.remove_empty_nodes();
+			}
+
+			{
+				rynx_profile("SphereTree", "Update node positions");
+				std::vector<std::vector<node*>> node_levels(1, { &root });
+				std::vector<node*> flat_answer;
+				for (;;)
+				{
+					flat_answer.insert(flat_answer.end(), node_levels.back().begin(), node_levels.back().end());
+
+					std::vector<node*> next_level;
+					for (const node* node_ptr : node_levels.back()) {
+						for (auto& child_ptr : node_ptr->m_children) {
+							next_level.emplace_back(child_ptr.get());
+						}
+					}
+					if (next_level.empty())
+						break;
+					node_levels.emplace_back(std::move(next_level));
+				}
+
+				// doing this in one parallel_for is not 100% correct, because at layer boundaries should sync.
+				// if we start computing on second layer before first has completed, it is possible that a collision between
+				// objects is detected one frame late. but this does give 60% performance boost, and the error case of possible late detection isn't too bad.
+				std::reverse(flat_answer.begin(), flat_answer.end());
+				size_t s = flat_answer.size();
+				task_context.parallel().for_each(0, s, [layer = std::move(flat_answer)](int64_t i) {
+					layer[i]->update_single();
+				}, 8);
+
+				// This would give 100% correct result in all situations. But it has to sync between layers, which is slow.
+				/*
+				// update node positions & radii from leaf to root. sync between layers.
+				for (auto it = node_levels.rbegin(); it != node_levels.rend(); ++it) {
+					task_context.extend_task_execute_sequential("update node pos & r", [this, layer = std::move(*it)](rynx::scheduler::task& task_context) {
+						size_t size = layer.size();
+						task_context.parallel().for_each(0, size, [layer = std::move(layer)](int64_t i) {
+							layer[i]->update_single();
+						}, 8);
+					});
+				}
+				*/
+			}
+		})->depends_on(entities_migrated_bar);
 	}
 
 	template<typename F>
@@ -498,6 +666,44 @@ private:
 	template<typename F> static void collisions_internal_parallel_intra_node(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 
+		std::vector<const node*> prev_layer(1, { a });
+		std::vector<const node*> leaf_nodes;
+		if(a->m_children.empty())
+			leaf_nodes.emplace_back(a);
+
+		for (;;)
+		{
+			std::vector<const node*> next_layer;
+			for (const node* node_ptr : prev_layer) {
+				for (auto& child_ptr : node_ptr->m_children) {
+					if (child_ptr->m_children.empty())
+						leaf_nodes.emplace_back(child_ptr.get());
+					else
+						next_layer.emplace_back(child_ptr.get());
+				}
+			}
+			if (next_layer.empty())
+				break;
+			prev_layer = std::move(next_layer);
+		}
+
+		auto leaf_node_count = leaf_nodes.size();
+		task.parallel().for_each(0, leaf_node_count, [f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) {
+			const node* a = leaf_nodes[node_index];
+			for (size_t i = 0; i < a->m_members.size(); ++i) {
+				const auto& m1 = a->m_members[i];
+				for (size_t k = i + 1; k < a->m_members.size(); ++k) {
+					const auto& m2 = a->m_members[k];
+					float distSqr = (m1.pos - m2.pos).lengthSquared();
+					float radiusSqr = sqr(m1.radius + m2.radius);
+					if (distSqr < radiusSqr) {
+						f(m1.entityId, m2.entityId, (m1.pos - m2.pos).normalizeApprox(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+					}
+				}
+			}
+		}, 8);
+
+		/*
 		if (a->m_children.empty()) {
 			for (size_t i = 0; i < a->m_members.size(); ++i) {
 				const auto& m1 = a->m_members[i];
@@ -518,7 +724,9 @@ private:
 				}
 			});
 		}
+		*/
 	}
+	
 	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 		task.extend_task_execute_sequential("intra-node", [f, a](rynx::scheduler::task& task) {
@@ -641,23 +849,30 @@ private:
 						});
 					}
 					else {
-						task.extend_task_execute_parallel([f, a]() {
-							for (size_t i = 0; i < a->m_children.size(); ++i) {
-								const node* child1 = a->m_children[i].get();
-								rynx_assert(child1 != nullptr, "node cannot be null");
-								rynx_assert(child1 != a, "nodes must differ");
+						std::vector<std::pair<const node*, const node*>> collision_check_node_pair;
+						for (size_t i = 0; i < a->m_children.size(); ++i) {
+							const node* child1 = a->m_children[i].get();
+							rynx_assert(child1 != nullptr, "node cannot be null");
+							rynx_assert(child1 != a, "nodes must differ");
 
-								for (size_t k = i + 1; k < a->m_children.size(); ++k) {
-									const node* child2 = a->m_children[k].get();
-									rynx_assert(child2 != nullptr, "node cannot be null");
-									rynx_assert(child2 != child1, "nodes must differ");
+							for (size_t k = i + 1; k < a->m_children.size(); ++k) {
+								const node* child2 = a->m_children[k].get();
+								rynx_assert(child2 != nullptr, "node cannot be null");
+								rynx_assert(child2 != child1, "nodes must differ");
 
-									if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
-										collisions_internal(f, child1, child2);
-									}
+								if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+									collision_check_node_pair.emplace_back(child1, child2);
 								}
 							}
-						});
+						}
+
+						if (!collision_check_node_pair.empty()) {
+							task.extend_task_execute_parallel([f, a, data = std::move(collision_check_node_pair)]() {
+								for (auto entry : data) {
+									collisions_internal(f, entry.first, entry.second);
+								}
+							});
+						}
 					}
 				}
 			});
@@ -666,7 +881,9 @@ private:
 				std::vector<const node*> next_level;
 				for (const node* node_ptr : current_level) {
 					for (auto& child_ptr : node_ptr->m_children) {
-						next_level.emplace_back(child_ptr.get());
+						if (!child_ptr->m_children.empty()) {
+							next_level.emplace_back(child_ptr.get());
+						}
 					}
 				}
 				current_level = std::move(next_level);

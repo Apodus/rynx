@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(emptyMesh.get(), &application.meshRenderer()));
+	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(emptyMesh.get(), &application.meshRenderer(), &(*camera)));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
@@ -163,6 +163,9 @@ int main(int argc, char** argv) {
 
 		makeBox({ -5, -30, 0 }, +0.3f, 40.f);
 		makeBox({ -25, -30, 0 }, -0.3f, 40.f);
+
+		makeBox({ -45, -80, 0 }, 0.f, 40.f);
+		makeBox({ +25, -80, 0 }, +0.5f, 40.f);
 	}
 
 	// setup some debug controls

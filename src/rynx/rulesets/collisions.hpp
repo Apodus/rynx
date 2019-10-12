@@ -22,7 +22,7 @@ namespace rynx {
 				rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");
 
 				{
-					rynx::scheduler::scoped_barrier_after(context, position_updates_barrier);
+					rynx::scheduler::scoped_barrier_after scope(context, position_updates_barrier);
 					
 					context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::frame_collisions> ecs) {
 						ecs.for_each([&](rynx::components::frame_collisions& collisions) {
@@ -43,16 +43,21 @@ namespace rynx {
 
 						{
 							rynx_profile("Motion", "apply velocity");
-							ecs.for_each([](components::position& p, const components::motion& m) {
+							ecs.query().in<components::frame_collisions>().execute([](components::position& p, const components::motion& m) {
 								p.value += m.velocity;
 								p.angle += m.angularVelocity;
+							});
+
+							ecs.query().notIn<components::frame_collisions>().execute([](components::position& p) {
+								// p.value += m.velocity;
+								p.angle += 0.005f;
 							});
 						}
 					});
 				}
 
-				context.add_task("Apply dampening", [](rynx::ecs::view<components::motion, const components::dampening> ecs) {
-					ecs.for_each([](components::motion& m, components::dampening d) {
+				context.add_task("Apply dampening", [](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
+					ecs.for_each_parallel(task.parallel(), [](components::motion& m, components::dampening d) {
 						m.velocity *= d.linearDampening;
 						m.angularVelocity *= d.angularDampening;
 					});
@@ -71,13 +76,25 @@ namespace rynx {
 					rynx::scheduler::task& task) {
 						// This will never insert. Always update existing. Can run parallel.
 						// TODO: separate the updateEntity function -> update/insert versions.
-						ecs.query().notIn<const rynx::components::projectile>().in<const added_to_sphere_tree>().execute_parallel([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
-							detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
-						}, task.parallel());
+						ecs.query()
+							.notIn<const rynx::components::projectile>()
+							.in<const added_to_sphere_tree>()
+							.execute_parallel(task.parallel(),
+								[&](
+									rynx::ecs::id id,
+									const components::position& pos,
+									const components::radius& r,
+									const components::collision_category& category)
+								{
+									detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
+								}
+						);
 
-						ecs.query().in<const rynx::components::projectile, const added_to_sphere_tree>().execute_parallel([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
+						ecs.query()
+							.in<const rynx::components::projectile, const added_to_sphere_tree>()
+							.execute_parallel(task.parallel(), [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
-						}, task.parallel());
+						});
 					});
 				
 				positionDataToSphereTree_task.then("sphere tree: add new entities", [](rynx::ecs::edit_view<const components::position,
@@ -98,8 +115,8 @@ namespace rynx {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
 							ecs[id].add(added_to_sphere_tree());
 						});
-				})->then("Update sphere tree", [](collision_detection& detection) {
-					detection.update();
+				})->then("Update sphere tree", [](collision_detection& detection, rynx::scheduler::task& task_context) {
+					detection.update_parallel(task_context);
 				})->required_for(collisions_find_barrier);;
 				
 				positionDataToSphereTree_task.depends_on(position_updates_barrier);
@@ -125,7 +142,7 @@ namespace rynx {
 
 				
 				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
-					ecs.for_each_parallel([ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {
+					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {
 						std::vector<int> collisionCounts(collisionsComponent.collisions.size(), 1);
 						
 						for (size_t i = 0; i < collisionsComponent.collisions.size(); ++i) {
@@ -151,7 +168,7 @@ namespace rynx {
 								m.acceleration += collision_resolution_force;
 							}
 						}
-					}, task.parallel());
+					});
 				};
 
 				auto apply_accelerations = [](rynx::ecs::view<components::motion> ecs) {
@@ -165,11 +182,10 @@ namespace rynx {
 				};
 
 				context.add_task("Gravity", [](rynx::ecs::view<components::motion> ecs, rynx::scheduler::task& task) {
-					ecs.for_each_parallel([](components::motion& m) {
+					ecs.for_each_parallel(task.parallel(), [](components::motion& m) {
 						m.acceleration.y -= 0.03f;
-					}, task.parallel());
-					})->depends_on(*findCollisionsTask)
-						.then(collision_resolution_first_stage);
+					});
+				})->depends_on(*findCollisionsTask).then(collision_resolution_first_stage);
 			}
 
 		private:

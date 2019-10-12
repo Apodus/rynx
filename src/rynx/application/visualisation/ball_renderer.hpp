@@ -14,19 +14,37 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::renderer::irenderer {
-				ball_renderer(Mesh* circleMesh, MeshRenderer* meshRenderer) {
+				ball_renderer(Mesh* circleMesh, MeshRenderer* meshRenderer, Camera* camera) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
+					m_camera = camera;
 				}
+
+				bool inScreen(vec3<float> p, float r) {
+					bool out = p.x + r < cameraLeft;
+					out |= p.x - r > cameraRight;
+					out |= p.y + r < cameraTop;
+					out |= p.y - r > cameraBot;
+					return out;
+				}
+
 				virtual ~ball_renderer() {}
 				virtual void render(const rynx::ecs& ecs) override {
 					rynx_profile("visualisation", "ball_renderer");
+					cameraLeft = m_camera->position().x - m_camera->position().z;
+					cameraRight = m_camera->position().x + m_camera->position().z;
+					cameraTop = m_camera->position().y + m_camera->position().z;
+					cameraBot = m_camera->position().y - m_camera->position().z;
+
 					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().execute([this](
 						const rynx::components::position& pos,
 						const rynx::components::radius& r,
 						const rynx::components::color& color,
 						const rynx::components::frame_collisions& c)
 					{
+						if (!inScreen(pos.value, r.r))
+							return;
+
 						vec4<float> used_color = color.value;
 						if (!c.collisions.empty())
 							used_color = Color::RED;
@@ -38,8 +56,15 @@ namespace rynx {
 					});
 				}
 
+				// Assumes axis aligned top-down camera :(
+				float cameraLeft;
+				float cameraRight;
+				float cameraTop;
+				float cameraBot;
+
 				MeshRenderer* m_meshRenderer;
 				Mesh* m_circleMesh;
+				Camera* m_camera;
 			};
 		}
 	}

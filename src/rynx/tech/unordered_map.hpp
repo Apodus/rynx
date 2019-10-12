@@ -544,6 +544,12 @@ namespace rynx {
 
 		constexpr bool empty() const noexcept { return m_size == 0; }
 		constexpr size_t size() const noexcept { return m_size; }
+		constexpr size_t capacity() const noexcept { return m_capacity; }
+		
+		// slot_* functions are very much non-standard. but useful in parallel_for.
+		bool slot_test(int64_t index) const noexcept { return m_presence.test(index); }
+		const value_type& slot_get(int64_t index) const noexcept { return *reinterpret_cast<std::pair<T, U>*>(m_data.get() + index); }
+
 		constexpr size_t max_size() const noexcept { return ~uint32_t(0); }
 		Hash hash_function() const { return Hash(); }
 		KeyEqual key_eq() const { return KeyEqual(); }

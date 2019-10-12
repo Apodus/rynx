@@ -101,25 +101,6 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 		
 		const auto proposed_center = bounding_sphere_for_points(a, b, c);
 		
-#define THREE_POINTS_BOUND_ENHANCED 1
-#define DISPLACE_BASED_ON_RADIUS 0
-#define NAIVELY_ACCEPT_3_POINTS_BOUNDING_SPHERE 0
-
-#if DISPLACE_BASED_ON_RADIUS
-		const auto a_push = (proposed_center - a).normalizeApprox();
-		const auto b_push = (proposed_center - b).normalizeApprox();
-		const auto c_push = (proposed_center - c).normalizeApprox();
-
-		const float radius_avg = (radius1 + radius2 + radius3) * 0.333333f;
-
-		const auto weighted_center = proposed_center - (a_push * (radius1 - radius_avg) + b_push * (radius2 - radius_avg) + c_push * (radius3 - radius_avg)) * 0.5f;
-		const auto weighted_radius = farPoint(weighted_center, points).second;
-		return { weighted_center, weighted_radius };
-#elif NAIVELY_ACCEPT_3_POINTS_BOUNDING_SPHERE
-		const auto weighted_radius = farPoint(proposed_center, points).second;
-		return { proposed_center, weighted_radius };
-#elif THREE_POINTS_BOUND_ENHANCED
-		// take the 
 		const auto a_push = (proposed_center - a).normalizeApprox();
 		const auto b_push = (proposed_center - b).normalizeApprox();
 		const auto c_push = (proposed_center - c).normalizeApprox();
@@ -131,7 +112,6 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 		const auto proposed_center_fixed = bounding_sphere_for_points(a_fixed, b_fixed, c_fixed);
 		const auto weighted_radius = farPoint(proposed_center_fixed, points).second;
 		return { proposed_center_fixed, weighted_radius };
-#endif
 	}
 	else {
 		return { center, (center - a).lengthApprox() + radius1 };

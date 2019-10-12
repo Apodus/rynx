@@ -3,6 +3,12 @@
 #include <rynx/scheduler/context.hpp>
 #include <rynx/tech/profiling.hpp>
 
+rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_task; }
+rynx::scheduler::task_token::~task_token() {
+	m_task.m_context->schedule_task(std::move(m_task));
+}
+
+
 void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*m_resources); }
 
 void rynx::scheduler::task::run() {

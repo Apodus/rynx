@@ -45,6 +45,12 @@ namespace rynx {
 			}
 		}
 
+		void update_parallel(rynx::scheduler::task& task_context) {
+			for (auto& tree : m_sphere_trees) {
+				tree->update_parallel(task_context);
+			}
+		}
+
 		void erase(uint64_t entityId, category_id from) {
 			m_sphere_trees[from.value]->eraseEntity(entityId);
 		}
