@@ -134,7 +134,7 @@ namespace game {
 						float closestDistance = 73496798.0f;
 
 						for (size_t i = 0; i < collisions.collisions.size(); ++i) {
-							float d = (collisions.collisions[i].collisionPoint - prevPos).lengthSquared();
+							float d = collisions.collisions[i].collisionPointRelative.dot(m.velocity);
 							if (d < closestDistance) {
 								closestDistance = d;
 								closestIndex = i;

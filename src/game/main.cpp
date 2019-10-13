@@ -154,7 +154,8 @@ int main(int argc, char** argv) {
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeBox(edgeLength).generateBoundary() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
-				rynx::components::color({ 0,1,0,1 })
+				rynx::components::color({ 0,1,0,1 }),
+				rynx::components::motion({ 0, 0, 0 }, 0.025f)
 			);
 		};
 

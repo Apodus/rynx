@@ -50,6 +50,9 @@ namespace rynx {
 		};
 
 		struct motion {
+			motion() = default;
+			motion(vec3<float> v, float av) : velocity(v), angularVelocity(av) {}
+
 			vec3<float> velocity;
 			float angularVelocity = 0;
 			
@@ -70,7 +73,7 @@ namespace rynx {
 				rynx::collision_detection::category_id categoryOfOther = 0;
 				rynx::collision_detection::shape_type shapeOfOther = rynx::collision_detection::shape_type::Sphere;
 				vec3<float> collisionNormal;
-				vec3<float> collisionPoint;
+				vec3<float> collisionPointRelative;
 				vec3<float> collisionPointRelativeVelocity;
 				float penetration;
 				bool other_has_collision_response;

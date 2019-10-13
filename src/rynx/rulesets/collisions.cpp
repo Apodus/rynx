@@ -18,6 +18,8 @@ namespace {
 		rynx::collision_detection::shape_type shapeB,
 		vec3<float> normal,
 		vec3<float> collisionPoint,
+		vec3<float> pos_a,
+		vec3<float> pos_b,
 		float penetration1,
 		float penetration2
 	) {
@@ -31,19 +33,22 @@ namespace {
 		const auto* motion_b = b.try_get<const rynx::components::motion>();
 		
 		vec3<float> relative_velocity;
-		
-		// TODO: Take rotational velocity into account.
+		const vec3<float> relative_pos_a = collisionPoint - pos_a;
+		const vec3<float> relative_pos_b = collisionPoint - pos_b;
+
 		if (motion_a) {
 			if (motion_b) {
-				relative_velocity = motion_a->velocity - motion_b->velocity;
+				relative_velocity =
+					(motion_a->velocity + math::velocity_at_point_2d(relative_pos_a, motion_a->angularVelocity)) -
+					(motion_b->velocity + math::velocity_at_point_2d(relative_pos_b, motion_b->angularVelocity));
 			}
 			else {
-				relative_velocity = motion_a->velocity;
+				relative_velocity = (motion_a->velocity + math::velocity_at_point_2d(relative_pos_a, motion_a->angularVelocity));
 			}
 		}
 		else {
 			if (motion_b) {
-				relative_velocity = -motion_b->velocity;
+				relative_velocity = -(motion_b->velocity + math::velocity_at_point_2d(relative_pos_b, motion_b->angularVelocity));
 			}
 		}
 
@@ -53,7 +58,7 @@ namespace {
 			collision_for_a.collisionNormal = normal;
 			collision_for_a.idOfOther = b.id();
 			collision_for_a.shapeOfOther = shapeB;
-			collision_for_a.collisionPoint = collisionPoint;
+			collision_for_a.collisionPointRelative = relative_pos_a;
 			collision_for_a.penetration = penetration1;
 			collision_for_a.other_has_collision_response = (collisions_of_b != nullptr);
 			collision_for_a.collisionPointRelativeVelocity = relative_velocity;
@@ -66,7 +71,7 @@ namespace {
 			collision_for_b.collisionNormal = -normal;
 			collision_for_b.idOfOther = a.id();
 			collision_for_b.shapeOfOther = shapeA;
-			collision_for_b.collisionPoint = collisionPoint;
+			collision_for_b.collisionPointRelative = relative_pos_b;
 			collision_for_b.penetration = penetration2;
 			collision_for_b.other_has_collision_response = (collisions_of_a != nullptr);
 			collision_for_b.collisionPointRelativeVelocity = -relative_velocity;
@@ -90,12 +95,14 @@ namespace {
 			const float radiusB = ball.get<const rynx::components::radius>().r;
 			if (dist < radiusB) {
 				store_collision(
-					ball,
 					polygon,
-					rynx::collision_detection::shape_type::Sphere,
+					ball,
 					rynx::collision_detection::shape_type::Boundary,
-					math::rotatedXY(segment.getNormalXY(), posA.angle),
+					rynx::collision_detection::shape_type::Sphere,
+					-math::rotatedXY(segment.getNormalXY(), posA.angle),
 					pointToLineSegment.second,
+					posA.value,
+					posB.value,
 					radiusB - dist,
 					radiusB - dist
 				);
@@ -149,6 +156,8 @@ namespace {
 							rynx::collision_detection::shape_type::Boundary,
 							normal,
 							collisionPoint.point(),
+							posA.value,
+							posB.value,
 							d1_b < d2_b ? d1_b : d2_b,
 							d1_a < d2_a ? d1_a : d2_a
 						);
@@ -176,6 +185,8 @@ namespace {
 				rynx::collision_detection::shape_type::Sphere,
 				((bulletPos.value - bulletMotion.velocity) - ballPos).normalizeApprox(),
 				pointDistanceResult.second,
+				bulletPos.value,
+				ballPos,
 				0,
 				0 // NOTE: penetration values don't really mean anything in projectile case.
 			);
@@ -212,6 +223,8 @@ namespace {
 						rynx::collision_detection::shape_type::Boundary,
 						math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
 						intersectionTest.point(),
+						bulletPos.value,
+						polyPos,
 						0,
 						0 // NOTE: penetration values don't really mean anything in projectile case.
 					);
@@ -282,6 +295,8 @@ void rynx::ruleset::collisions::check_all(ecs_view ecs, uint64_t entityA, uint64
 			collision_detection::shape_type::Sphere,
 			normal,
 			(pos_a + pos_b) * 0.5f + normal * (r_a - r_b),
+			pos_a,
+			pos_b,
 			penetration,
 			penetration
 		);

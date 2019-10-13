@@ -481,8 +481,8 @@ namespace rynx {
 			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
 			~query_t() { rynx_assert(m_consumed, "did you forgete to execute query object?"); }
 			
-			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<Ts>()), ...); return *this; }
-			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<Ts>()), ...); return *this; }
+			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::remove_cvref_t<Ts>>()), ...); return *this; }
+			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId< std::remove_cvref_t<Ts>>()), ...); return *this; }
 
 			template<typename F>
 			query_t& execute(F&& op) {

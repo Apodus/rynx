@@ -96,6 +96,10 @@ namespace math {
 		return *((float*)x);
 	}
 
+	inline vec3<float> velocity_at_point_2d(vec3<float> pos, float angular_velocity) {
+		return pos.lengthApprox() * angular_velocity * (vec3<float>(-pos.y, +pos.x, 0).normalizeApprox());
+	}
+
 	template<class P>
 	inline auto distanceSquared(const P& p1, const P& p2) {
 		decltype(p1.x) x = (p1.x - p2.x);

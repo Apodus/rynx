@@ -43,14 +43,9 @@ namespace rynx {
 
 						{
 							rynx_profile("Motion", "apply velocity");
-							ecs.query().in<components::frame_collisions>().execute([](components::position& p, const components::motion& m) {
+							ecs.for_each([](components::position& p, const components::motion& m) {
 								p.value += m.velocity;
 								p.angle += m.angularVelocity;
-							});
-
-							ecs.query().notIn<components::frame_collisions>().execute([](components::position& p) {
-								// p.value += m.velocity;
-								p.angle += 0.005f;
 							});
 						}
 					});
@@ -117,7 +112,7 @@ namespace rynx {
 						});
 				})->then("Update sphere tree", [](collision_detection& detection, rynx::scheduler::task& task_context) {
 					detection.update_parallel(task_context);
-				})->required_for(collisions_find_barrier);;
+				})->required_for(collisions_find_barrier);
 				
 				positionDataToSphereTree_task.depends_on(position_updates_barrier);
 				context.add_task(std::move(positionDataToSphereTree_task));
@@ -156,6 +151,8 @@ namespace rynx {
 						for (int i = 0; i < 5; ++i) {
 							for (size_t k = 0; k < collisionsComponent.collisions.size(); ++k) {
 								const auto& collision = collisionsComponent.collisions[k];
+								// TODO: Rotation response
+								// float linear_velocity_from_rotation = m.angularVelocity * (collision.collisionPoint)
 								float impact_power = -(collision.collisionPointRelativeVelocity + m.acceleration).dot(collision.collisionNormal);
 								float local_mul = !collision.other_has_collision_response * 1.3f + collision.other_has_collision_response * 0.35f;
 								local_mul /= collisionCounts[k];
@@ -171,18 +168,8 @@ namespace rynx {
 					});
 				};
 
-				auto apply_accelerations = [](rynx::ecs::view<components::motion> ecs) {
-					rynx_profile("Motion", "apply acceleration");
-					ecs.for_each([](components::motion& m) {
-						m.velocity += m.acceleration;
-						m.acceleration.set(0, 0, 0);
-						m.angularVelocity += m.angularAcceleration;
-						m.angularAcceleration = 0;
-					});
-				};
-
-				context.add_task("Gravity", [](rynx::ecs::view<components::motion> ecs, rynx::scheduler::task& task) {
-					ecs.for_each_parallel(task.parallel(), [](components::motion& m) {
+				context.add_task("Gravity", [](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
+					ecs.query().in<components::frame_collisions>().execute_parallel(task.parallel(), [](components::motion& m) {
 						m.acceleration.y -= 0.03f;
 					});
 				})->depends_on(*findCollisionsTask).then(collision_resolution_first_stage);

@@ -45,6 +45,10 @@ struct vec3 {
 	T z;
 };
 
+inline vec3<float> operator * (float x, const vec3<float>& other) {
+	return other * x;
+}
+
 template <class T>
 struct vec4 {
 	vec4(const vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}

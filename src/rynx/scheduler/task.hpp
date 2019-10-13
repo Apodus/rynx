@@ -179,6 +179,7 @@ namespace rynx {
 				completion_blocked_by(followUpTask);
 				return task_token(std::move(followUpTask));
 			}
+
 			template<typename F> task_token extend_task(F&& op) { return extend_task(m_name + "_e", std::forward<F>(op)); }
 			
 			// NOTE: This is the only task creation function where you are allowed to capture
@@ -193,6 +194,7 @@ namespace rynx {
 				copy_resources(followUpTask);
 				return std::move(followUpTask);
 			}
+			
 			template<typename F> task_token make_extension_task_execute_parallel(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
@@ -204,7 +206,6 @@ namespace rynx {
 			template<typename F> task_token extend_task_execute_parallel(F&& op) { return extend_task_execute_parallel(m_name + "_es", std::forward<F>(op)); }
 			template<typename F> task_token extend_task_execute_sequential(std::string name, F&& op) { return make_extension_task_execute_sequential(std::move(name), std::forward<F>(op)); }
 			template<typename F> task_token extend_task_execute_sequential(F&& op) { return extend_task_execute_sequential(m_name + "_es", std::forward<F>(op)); }
-
 
 			template<typename F>
 			task_token then(std::string name, F&& f) {
