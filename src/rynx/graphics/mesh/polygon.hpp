@@ -65,7 +65,7 @@ public:
 	}
 
 
-	std::vector<Segment> generateBoundary() const {
+	std::vector<Segment> generateBoundary_Outside() const {
 		std::vector<Segment> boundary;
 		if (vertices.size() < 3) {
 			return boundary;
@@ -77,6 +77,14 @@ public:
 		}
 		boundary.emplace_back(Segment(vertices[vertices.size() - 1], vertices[0], isConvex(int(vertices.size() - 1)), isConvex(0)));
 		boundary.back().computeNormalXY().normalizeApprox();
+		return boundary;
+	}
+
+	std::vector<Segment> generateBoundary_Inside() const {
+		std::vector<Segment> boundary = generateBoundary_Outside();
+		for (auto&& plop : boundary) {
+			plop.normal *= -1.0f;
+		}
 		return boundary;
 	}
 };

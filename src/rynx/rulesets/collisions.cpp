@@ -86,13 +86,16 @@ namespace {
 		const auto& posA = polygon.get<const rynx::components::position>();
 		const auto& posB = ball.get<const rynx::components::position>();
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
+		const float radiusB = ball.get<const rynx::components::radius>().r;
+
+		float sin_v = math::sin(posA.angle);
+		float cos_v = math::cos(posA.angle);
 
 		for (auto&& segment : boundaryA.segments) {
-			const auto p1 = math::rotatedXY(segment.p1, posA.angle) + posA.value;
-			const auto p2 = math::rotatedXY(segment.p2, posA.angle) + posA.value;
+			const auto p1 = math::rotatedXY(segment.p1, sin_v, cos_v) + posA.value;
+			const auto p2 = math::rotatedXY(segment.p2, sin_v, cos_v) + posA.value;
 			const auto pointToLineSegment = math::pointDistanceLineSegment(p1, p2, posB.value);
 			const float dist = pointToLineSegment.first;
-			const float radiusB = ball.get<const rynx::components::radius>().r;
 			if (dist < radiusB) {
 				store_collision(
 					polygon,

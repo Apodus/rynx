@@ -16,6 +16,8 @@ namespace game {
 			rynx::collision_detection::category_id dynamic;
 			uint64_t frameCount = 0;
 			uint64_t how_often_to_spawn = 64;
+			float x_spawn = -20.9f;
+			
 			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
@@ -36,10 +38,10 @@ namespace game {
 							ecs.create(
 								game::components::minilisk(),
 								game::health({ 30, 30 }),
-								rynx::components::position({ -20.0f + 4 * float(rand()) / RAND_MAX, +20.0f +  4 * float(rand()) / RAND_MAX, 0 }),
+								rynx::components::position({ x_spawn + 4 * float(rand()) / RAND_MAX, +20.0f +  4 * float(rand()) / RAND_MAX, 0 }),
 								rynx::components::motion(),
 								rynx::components::mass({ 0.2f }),
-								rynx::components::radius(0.6f),
+								rynx::components::radius(1.6f),
 								rynx::components::collision_category(dynamic),
 								rynx::components::color(),
 								rynx::components::dampening({ 0.97f, 0.87f }),

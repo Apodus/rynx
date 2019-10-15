@@ -18,7 +18,6 @@ namespace rynx {
 		class scoped_barrier_after;
 		class scoped_barrier_before;
 
-		// NOTE: adding new tasks is allowed while scheduler is running.
 		class context {
 			friend class rynx::scheduler::task_token;
 			friend class rynx::scheduler::task_scheduler;
@@ -28,11 +27,10 @@ namespace rynx {
 			friend class scoped_barrier_before;
 
 			using context_id = uint64_t;
-
+			
 			context_id m_id;
 			rynx::type_index m_typeIndex;
-			std::atomic<uint64_t> m_nextTaskId = 0;
-
+			
 			struct resource_state {
 				std::atomic<int> readers = 0;
 				std::atomic<int> writers = 0;
@@ -76,7 +74,7 @@ namespace rynx {
 				return resource_getter<T>()(this);
 			}
 
-			rynx::unordered_map<uint64_t, task> m_tasks;
+			std::vector<task> m_tasks;
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
 			// rynx::unordered_map<uint64_t, resource_state> m_resource_counters;
@@ -109,7 +107,6 @@ namespace rynx {
 		private:
 			void erase_completed_parallel_for_tasks();
 			[[nodiscard]] task findWork();
-			[[nodiscard]] uint64_t nextTaskId() { return m_nextTaskId.fetch_add(1); }
 
 		public:
 
@@ -147,8 +144,8 @@ namespace rynx {
 				return m_resources.get<T>();
 			}
 
-			template<typename F> [[nodiscard]] task make_task(std::string taskName, F&& op) { return task(*this, nextTaskId(), std::move(taskName), std::forward<F>(op)); }
-			[[nodiscard]] task make_task(std::string taskName) { return task(*this, nextTaskId(), std::move(taskName)); }
+			template<typename F> [[nodiscard]] task make_task(std::string taskName, F&& op) { return task(*this, std::move(taskName), std::forward<F>(op)); }
+			[[nodiscard]] task make_task(std::string taskName) { return task(*this, std::move(taskName)); }
 
 			task_token add_task(task task) {
 				return task_token(std::move(task));
@@ -156,13 +153,12 @@ namespace rynx {
 
 			template<typename F>
 			task_token add_task(std::string taskName, F&& taskOp) {
-				return add_task(task(*this, nextTaskId(), std::move(taskName), std::forward<F>(taskOp)));
+				return add_task(task(*this, std::move(taskName), std::forward<F>(taskOp)));
 			}
 
 			void schedule_task(task task) {
 				std::lock_guard<std::mutex> lock(m_taskMutex);
-				uint64_t taskId = task.id();
-				m_tasks.emplace(taskId, std::move(task));
+				m_tasks.emplace_back(std::move(task));
 			}
 
 			void dump();

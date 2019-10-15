@@ -61,7 +61,7 @@ namespace rynx {
 		};
 
 		struct boundary {
-			decltype(Polygon<vec3<float>>().generateBoundary()) segments;
+			decltype(Polygon<vec3<float>>().generateBoundary_Outside()) segments;
 		};
 
 		struct projectile {}; // tag for fast moving items in collision detection.

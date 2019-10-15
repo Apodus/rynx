@@ -79,14 +79,18 @@ namespace math {
 		return v;
 	}
 
+
+	inline vec3<float> rotatedXY(vec3<float> v, float sin_value, float cos_value) {
+		return vec3<float>{
+			v.x * cos_value - v.y * sin_value,
+			v.x * sin_value + v.y * cos_value,
+			0
+		};
+	}
+
 	template<class T>
 	inline T rotatedXY(const T& v, decltype(T().x) radians) {
-		T result;
-		decltype(T().x) cosVal = math::cos(radians);
-		decltype(T().x) sinVal = math::sin(radians);
-		result.x = (v.x * cosVal - v.y * sinVal);
-		result.y = (v.x * sinVal + v.y * cosVal);
-		return result;
+		return rotatedXY(v, math::sin(radians), math::cos(radians));
 	}
 
 	// approximation, good enough

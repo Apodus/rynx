@@ -75,24 +75,19 @@ namespace rynx {
 				}
 			};
 			template<typename RetVal, typename Class, typename...Args> struct resource_deducer<RetVal(Class::*)(Args...)> : public resource_deducer<RetVal(Class::*)(Args...) const> {};
-
 			void reserve_resources() const;
-
-			task& id(uint64_t taskId) { m_id = taskId; return *this; }
 
 		public:
 			// TODO: use some memory pool thing for task_resources.
 			task() : m_name("EmptyTask"), m_context(nullptr) {}
-			task(context& context, uint64_t taskId, std::string name)
+			task(context& context, std::string name)
 				: m_name(std::move(name))
-				, m_id(taskId)
 				, m_context(&context)
 				, m_resources(std::make_shared<task_resources>(&context))
 			{}
 			
-			template<typename F> task(context& context, uint64_t taskId, std::string taskName, F&& op)
+			template<typename F> task(context& context, std::string taskName, F&& op)
 				: m_name(std::move(taskName))
-				, m_id(taskId)
 				, m_context(&context)
 				, m_resources(std::make_shared<task_resources>(&context)) {
 				set(std::forward<F>(op));
@@ -107,10 +102,7 @@ namespace rynx {
 			// that also makes the copying api very surprising, and that is why it is hidden from end users as private.
 			task(const task& other) = default; // copy is required in parallel_for case.
 		public:
-
-
-			uint64_t id() const { return m_id; }
-
+			
 			operation_barriers& barriers() { return m_barriers; }
 			const operation_barriers& barriers() const { return m_barriers; }
 
@@ -124,15 +116,13 @@ namespace rynx {
 				return *this;
 			}
 
-			task& depends_on(barrier bar) {
-				barriers().depends_on(bar);
+			task& required_for(task& other) {
+				other.depends_on(*this);
 				return *this;
 			}
 
-			task& required_for(task& other) {
-				barrier bar("anon");
-				other.barriers().depends_on(bar);
-				barriers().required_for(bar);
+			task& depends_on(barrier bar) {
+				barriers().depends_on(bar);
 				return *this;
 			}
 
@@ -141,6 +131,7 @@ namespace rynx {
 				return *this;
 			}
 
+			// TODO: Rename this function.
 			task& completion_blocked_by(task& other) {
 				m_barriers.completion_blocked_by(other.barriers());
 				return *this;
@@ -170,6 +161,7 @@ namespace rynx {
 				return *this;
 			}
 
+			// TODO: Rename all task creation functions.
 			template<typename F> task_token make_task(F&& op) {
 				return task_token(m_context->make_task("task", std::forward<F>(op)));
 			}
@@ -182,12 +174,6 @@ namespace rynx {
 
 			template<typename F> task_token extend_task(F&& op) { return extend_task(m_name + "_e", std::forward<F>(op)); }
 			
-			// NOTE: This is the only task creation function where you are allowed to capture
-			//       resources in your lambda. You are allowed to capture the resources used
-			//       by the task extended. These functions will run simultaneously regardless
-			//       oh having same write targets as shared resources. You are responsible for
-			//       ensuring that there are no race conditions when writing data.
-
 			template<typename F> task_token make_extension_task_execute_sequential(std::string name, F&& op) {
 				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(followUpTask);
@@ -326,7 +312,6 @@ namespace rynx {
 			}
 			
 			std::string m_name;
-			uint64_t m_id;
 			std::function<void(rynx::scheduler::task*)> m_op;
 			operation_barriers m_barriers;
 			

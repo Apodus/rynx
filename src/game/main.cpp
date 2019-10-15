@@ -148,25 +148,43 @@ int main(int argc, char** argv) {
 		);
 
 		// TODO: radius calculation from boundary (bounding radius or something)
-		auto makeBox = [&](vec3<float> pos, float angle, float edgeLength) {
+		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collision_category(collisionCategoryStatic),
-				rynx::components::boundary({ Shape::makeBox(edgeLength).generateBoundary() }),
+				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
-				rynx::components::motion({ 0, 0, 0 }, 0.025f)
+				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
+			);
+		};
+
+		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+			base_simulation.m_ecs.create(
+				rynx::components::position(pos, angle),
+				rynx::components::collision_category(collisionCategoryStatic),
+				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
+				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
+				rynx::components::color({ 0,1,0,1 }),
+				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
 			);
 		};
 
 		for (int i = 0; i < 20; ++i)
-			makeBox({ +20, +15 - i * 4.0f, 0 }, 0.0f + i * 0.1f, 2.0f);
+			makeBox_inside({ +20, +15 - i * 15.0f, 0 }, 0.0f + i * 0.1f, 2.0f, -0.05f);
 
-		makeBox({ -5, -30, 0 }, +0.3f, 40.f);
-		makeBox({ -25, -30, 0 }, -0.3f, 40.f);
+		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
+		makeBox_outside({ -25, -50, 0 }, -0.3f, 50.f, +0.030f);
 
-		makeBox({ -45, -80, 0 }, 0.f, 40.f);
-		makeBox({ +25, -80, 0 }, +0.5f, 40.f);
+		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
+		makeBox_outside({ -65, -100, 0 }, -0.3f, 25.f, -0.120f);
+
+		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
+		makeBox_outside({ +25, -120, 0 }, -0.3f, 35.f, -0.030f);
+
+		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
+		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f, 0.f);
+		makeBox_outside({ +80, -160, 0 }, +0.3f, 100.0f, 0.f);
 	}
 
 	// setup some debug controls
@@ -205,6 +223,7 @@ int main(int argc, char** argv) {
 		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
 		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
 		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
@@ -239,11 +258,17 @@ int main(int argc, char** argv) {
 			spawner->how_often_to_spawn = uint64_t(1 + int(f * 100.0f));
 		});
 
+		megaSlider->alignToOuterEdge(sampleSlider.get(), rynx::menu::Align::BOTTOM);
+		megaSlider->onValueChanged([spawner](float f) {
+			spawner->x_spawn = f * 200.0f - 100.0f;
+		});
+
 		//sampleButton->m_positionAlign = rynx::menu::Component::PositionAlign::RIGHT | rynx::menu::Component::PositionAlign::BOTTOM;
 		root.addChild(sampleButton);
 		root.addChild(sampleButton2);
 		root.addChild(sampleButton3);
 		root.addChild(sampleSlider);
+		root.addChild(megaSlider);
 	}
 
 	std::atomic<size_t> tickCounter = 0;
@@ -254,7 +279,6 @@ int main(int argc, char** argv) {
 		while (dead_lock_detector_keepalive) {
 			if (prev_tick == tickCounter && dead_lock_detector_keepalive) {
 				scheduler.dump();
-				// PROFILE_RECORD(500); // Record last 500 ms profiling to build/bin
 				return;
 			}
 			prev_tick = tickCounter;
