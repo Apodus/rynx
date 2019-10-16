@@ -39,3 +39,12 @@ void rynx::scheduler::task::run() {
 rynx::scheduler::task::task_resources::~task_resources() {
 	m_context->release_resources(*this);
 }
+
+
+rynx::scheduler::task& rynx::scheduler::task::depends_on(task_token& other) {
+	return depends_on(*other);
+}
+
+rynx::scheduler::task& rynx::scheduler::task::required_for(task_token& other) {
+	return required_for(*other);
+}

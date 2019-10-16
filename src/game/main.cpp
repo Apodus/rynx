@@ -239,18 +239,25 @@ int main(int argc, char** argv) {
 			}
 		});
 
-		sampleButton2->text("Button 2").font(&fontConsola);
+		sampleButton2->text("Log Profile").font(&fontConsola);
 		sampleButton2->alignToOuterEdge(sampleButton.get(), rynx::menu::Align::RIGHT);
 		sampleButton2->alignToInnerEdge(sampleButton.get(), rynx::menu::Align::BOTTOM);
 		sampleButton2->onClick([]() {
 			rynx::profiling::write_profile_log();
 		});
 
-		sampleButton3->text("Button 3").font(&fontConsola);
+		sampleButton3->text("Statics").font(&fontConsola);
 		sampleButton3->alignToOuterEdge(sampleButton2.get(), rynx::menu::Align::TOP);
 		sampleButton3->alignToInnerEdge(sampleButton2.get(), rynx::menu::Align::LEFT);
-		sampleButton3->onClick([sampleButton3, &root]() {
-			sampleButton3->alignToInnerEdge(&root, rynx::menu::Align::TOP | rynx::menu::Align::RIGHT);
+		sampleButton3->onClick([&conf, self = sampleButton3.get(), &root]() {
+			bool new_value = !conf.visualize_static_collisions;
+			conf.visualize_static_collisions = new_value;
+			if (new_value) {
+				self->color_frame(Color::GREEN);
+			}
+			else {
+				self->color_frame(Color::RED);
+			}
 		});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
@@ -263,7 +270,6 @@ int main(int argc, char** argv) {
 			spawner->x_spawn = f * 200.0f - 100.0f;
 		});
 
-		//sampleButton->m_positionAlign = rynx::menu::Component::PositionAlign::RIGHT | rynx::menu::Component::PositionAlign::BOTTOM;
 		root.addChild(sampleButton);
 		root.addChild(sampleButton2);
 		root.addChild(sampleButton3);
@@ -369,6 +375,18 @@ int main(int argc, char** argv) {
 		if (conf.visualize_dynamic_collisions) {
 			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
 			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+				matrix4 m;
+				m.discardSetTranslate(pos);
+				m.scale(radius);
+				float sign[2] = { -1.0f, +1.0f };
+				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
+			});
+		}
+
+		// visualize collision detection structure.
+		if (conf.visualize_static_collisions) {
+			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+			collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
 				matrix4 m;
 				m.discardSetTranslate(pos);
 				m.scale(radius);

@@ -507,37 +507,6 @@ public:
 
 	void update_parallel(rynx::scheduler::task& task_context) {
 		
-		/*
-		{
-			rynx_profile("SphereTree", "Sequential FindBuckets");
-			if (entryMap.empty())
-				return;
-
-			auto it = entryMap.iteratorAt(update_next_index);
-
-			// NOTE: we are updating 1/32 of all entries per iteration. this is because the update itself is really fucking expensive.
-			//       this update optimizes the parent node of the entities. skipping the update means that our sphere tree bottom level will be slightly
-			//       unoptimized, which results in more work during collision- and inRange queries. But because changes in entry positions are seldom radical, this is usually perfectly fine.
-			for (size_t i = 0; i <= (entryMap.size() >> 5) + 1; ++i, ++it) {
-				if (it == entryMap.end()) {
-					it = entryMap.begin();
-				}
-
-				auto item = it->second.first->m_members[it->second.second];
-				auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
-				if (!newLeaf.first || newLeaf.first == it->second.first) {
-					continue;
-				}
-
-				// move to new bucket.
-				it->second.first->entity_migrates(it->second.second, this);
-				newLeaf.first->insert(std::move(item), this);
-			}
-
-			update_next_index = it.index();
-		}
-		*/
-
 		if (entryMap.empty())
 			return;
 
@@ -565,8 +534,9 @@ public:
 				auto item = entry.second.first->m_members[entry.second.second];
 				auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
 
+				// move to new bucket. the lock is kind of annoying, but on the other hand.
+				// there are very few entities migrating per frame. so it should not be terrible, maybe? TODO: Measure.
 				if (newLeaf.first && newLeaf.first != entry.second.first) {
-					// move to new bucket.
 					std::lock_guard lock(*m);
 					found_migrates->emplace_back(plip{ index, newLeaf.first });
 				}
@@ -702,31 +672,88 @@ private:
 				}
 			}
 		}, 8);
+	}
 
-		/*
+	static void collisions_internal_gather_leaf_node_pairs(
+		const node* rynx_restrict a,
+		const node* rynx_restrict b,
+		rynx::unordered_map<const node*, std::vector<const node*>>& leaf_pairs)
+	{
+		rynx_assert(a != nullptr, "node cannot be null");
+		rynx_assert(b != nullptr, "node cannot be null");
+		rynx_assert(a != b, "nodes must differ");
+
+		if ((b->pos - a->pos).lengthSquared() > sqr(a->radius + b->radius)) {
+			return;
+		}
+
 		if (a->m_children.empty()) {
-			for (size_t i = 0; i < a->m_members.size(); ++i) {
-				const auto& m1 = a->m_members[i];
-				for (size_t k = i + 1; k < a->m_members.size(); ++k) {
-					const auto& m2 = a->m_members[k];
-					float distSqr = (m1.pos - m2.pos).lengthSquared();
-					float radiusSqr = sqr(m1.radius + m2.radius);
-					if (distSqr < radiusSqr) {
-						f(m1.entityId, m2.entityId, (m1.pos - m2.pos).normalizeApprox(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
-					}
+			if (b->m_children.empty()) {
+				leaf_pairs.emplace(a, std::vector<const node*>()).first->second.emplace_back(b);
+				rynx_assert(leaf_pairs[a].size() > 0, "???");
+				rynx_assert(leaf_pairs.slot_test(leaf_pairs.find(a).index()), "??");
+				rynx_assert(leaf_pairs.slot_get(leaf_pairs.find(a).index()).second.size() > 0, "??");
+			}
+			else {
+				for (const auto& child : b->m_children) {
+					collisions_internal_gather_leaf_node_pairs(a, child.get(), leaf_pairs);
 				}
 			}
 		}
 		else {
-			task.extend_task_execute_parallel([f, a](rynx::scheduler::task& task) {
+			if (b->m_children.empty()) {
 				for (const auto& child : a->m_children) {
-					collisions_internal_parallel_intra_node(f, task, child.get());
+					collisions_internal_gather_leaf_node_pairs(child.get(), b, leaf_pairs);
 				}
-			});
+			}
+			else if (a->radius > b->radius) {
+				for (const auto& child : a->m_children) {
+					collisions_internal_gather_leaf_node_pairs(child.get(), b, leaf_pairs);
+				}
+			}
+			else {
+				for (const auto& child : b->m_children) {
+					collisions_internal_gather_leaf_node_pairs(a, child.get(), leaf_pairs);
+				}
+			}
 		}
-		*/
 	}
-	
+
+	// This is only safe to be called when node* b contains only static entities (will not store collisions)
+	template<typename F> static void collisions_internal_parallel_b_static(
+		F&& f,
+		rynx::scheduler::task& task_context,
+		const node* rynx_restrict a,
+		const node* rynx_restrict b)
+	{
+		std::shared_ptr<rynx::unordered_map<const node*, std::vector<const node*>>> leaf_pairs = std::make_shared<rynx::unordered_map<const node*, std::vector<const node*>>>();
+		collisions_internal_gather_leaf_node_pairs(a, b, *leaf_pairs);
+
+		task_context.parallel().for_each(0, leaf_pairs->capacity(), [f, leaf_pairs](int64_t i) {
+			if (!leaf_pairs->slot_test(i))
+				return;
+			
+			auto& entry = leaf_pairs->slot_get(i);
+			const node* a = entry.first;
+			for (const node* b : entry.second) {
+				for (const auto& member1 : a->m_members) {
+					if ((member1.pos - b->pos).lengthSquared() < sqr(member1.radius + b->radius)) {
+						for (const auto& member2 : b->m_members) {
+							float distSqr = (member1.pos - member2.pos).lengthSquared();
+							float radiusSqr = sqr(member1.radius + member2.radius);
+							if (distSqr < radiusSqr) {
+								auto normal = (member1.pos - member2.pos).normalizeApprox();
+								float penetration = std::sqrtf(radiusSqr) - std::sqrtf(distSqr);
+								f(member1.entityId, member2.entityId, normal, penetration);
+							}
+						}
+					}
+				}
+			}
+		}, 1);
+	}
+
+
 	template<typename F> static void collisions_internal_parallel(F&& f, rynx::scheduler::task& task, const node* rynx_restrict a) {
 		rynx_assert(a != nullptr, "node cannot be null");
 		task.extend_task_execute_sequential("intra-node", [f, a](rynx::scheduler::task& task) {

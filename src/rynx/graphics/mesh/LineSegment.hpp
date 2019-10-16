@@ -29,24 +29,24 @@ public:
 
 	// planar normal in xy plane.
 	vec3<float>& computeNormalXY() {
-    normal.x = p2.y - p1.y;
-    normal.y = p1.x - p2.x;
+		normal.x = p2.y - p1.y;
+		normal.y = p1.x - p2.x;
 		return normal;
-  }
+	}
 
 	vec3<float> computeNormalXY() const {
-    vec3<float> normal_;
+		vec3<float> normal_;
 		normal_.x = p2.y - p1.y;
-    normal_.y = p1.x - p2.x;
-    return normal_;
-  }
+		normal_.y = p1.x - p2.x;
+		return normal_;
+	}
 
-  const vec3<float>& getNormalXY() const {
-    return normal;
-  }
+	const vec3<float>& getNormalXY() const {
+		return normal;
+	}
 
 	// in XY plane
-	bool intersects(const line_segment& other) const {		
+	bool intersects(const line_segment& other) const {
 		vec3<float> p = other.p1;
 		vec3<float> r = other.p2 - other.p1;
 

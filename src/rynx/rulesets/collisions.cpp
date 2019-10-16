@@ -88,13 +88,8 @@ namespace {
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
 		const float radiusB = ball.get<const rynx::components::radius>().r;
 
-		float sin_v = math::sin(posA.angle);
-		float cos_v = math::cos(posA.angle);
-
-		for (auto&& segment : boundaryA.segments) {
-			const auto p1 = math::rotatedXY(segment.p1, sin_v, cos_v) + posA.value;
-			const auto p2 = math::rotatedXY(segment.p2, sin_v, cos_v) + posA.value;
-			const auto pointToLineSegment = math::pointDistanceLineSegment(p1, p2, posB.value);
+		for (auto&& segment : boundaryA.segments_world) {
+			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, posB.value);
 			const float dist = pointToLineSegment.first;
 			if (dist < radiusB) {
 				store_collision(
@@ -102,7 +97,7 @@ namespace {
 					ball,
 					rynx::collision_detection::shape_type::Boundary,
 					rynx::collision_detection::shape_type::Sphere,
-					-math::rotatedXY(segment.getNormalXY(), posA.angle),
+					-segment.getNormalXY(),
 					pointToLineSegment.second,
 					posA.value,
 					posB.value,
@@ -125,14 +120,14 @@ namespace {
 		const float radiusB = poly2.get<const rynx::components::radius>().r;
 
 		// NOTE: this could be optimized by having static boundary objects individual segments in a sphere_tree and testing against that.
-		for (auto&& segmentA : boundaryA.segments) {
-			const auto p1 = math::rotatedXY(segmentA.p1, posA.angle) + posA.value;
-			const auto p2 = math::rotatedXY(segmentA.p2, posA.angle) + posA.value;
+		for (auto&& segmentA : boundaryA.segments_world) {
+			const auto p1 = segmentA.p1;
+			const auto p2 = segmentA.p2;
 			const float dist = math::pointDistanceLineSegment(p1, p2, posB.value).first;
 			if (dist < radiusB) {
-				for (auto&& segmentB : boundaryB.segments) {
-					const auto q1 = math::rotatedXY(segmentB.p1, posB.angle) + posB.value;
-					const auto q2 = math::rotatedXY(segmentB.p2, posB.angle) + posB.value;
+				for (auto&& segmentB : boundaryB.segments_world) {
+					const auto q1 = segmentB.p1;
+					const auto q2 = segmentB.p2;
 
 					const auto collisionPoint = math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
 					if (collisionPoint) {
@@ -146,10 +141,10 @@ namespace {
 
 						vec3<float> normal;
 						if (((d1_a < d1_b) & (d1_a < d2_b)) | ((d2_a < d1_b) & (d2_a < d2_b))) {
-							normal = math::rotatedXY(segmentB.getNormalXY(), posB.angle);
+							normal = segmentB.getNormalXY();
 						}
 						else {
-							normal = math::rotatedXY(segmentA.getNormalXY(), posA.angle);
+							normal = segmentA.getNormalXY();
 						}
 
 						store_collision(
@@ -210,7 +205,7 @@ namespace {
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
-			for (auto&& segment : boundary.segments) {
+			for (auto&& segment : boundary.segments_local) {
 				auto intersectionTest = math::lineSegmentIntersectionPoint(
 					bulletPos.value,
 					bulletPos.value - bulletMotion.velocity,

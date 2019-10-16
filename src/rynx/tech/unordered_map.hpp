@@ -385,7 +385,7 @@ namespace rynx {
 			uint32_t hash = static_cast<uint32_t>(Hash()(value.first) & (m_capacity - 1));
 			auto it = find(value.first, hash);
 			if (it.m_index != dynamic_bitset::npos) {
-				return { end(), false };
+				return { it, false };
 			}
 			return insert_unique_(std::move(value), hash);
 		}
@@ -548,7 +548,7 @@ namespace rynx {
 		
 		// slot_* functions are very much non-standard. but useful in parallel_for.
 		bool slot_test(int64_t index) const noexcept { return m_presence.test(index); }
-		const value_type& slot_get(int64_t index) const noexcept { return *reinterpret_cast<std::pair<T, U>*>(m_data.get() + index); }
+		const value_type& slot_get(int64_t index) const noexcept { return *reinterpret_cast<const value_type*>(&m_data.get()[index]); }
 
 		constexpr size_t max_size() const noexcept { return ~uint32_t(0); }
 		Hash hash_function() const { return Hash(); }

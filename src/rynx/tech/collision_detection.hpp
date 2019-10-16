@@ -78,8 +78,9 @@ namespace rynx {
 			for (auto&& check : m_collision_checks) {
 				if (check.a == check.b)
 					sphere_tree::collisions_internal_parallel(std::forward<F>(f), task, &check.a->root);
-				else
-					sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root);
+				else {
+					sphere_tree::collisions_internal_parallel_b_static(std::forward<F>(f), task, &check.a->root, &check.b->root);
+				}
 			}
 		}
 

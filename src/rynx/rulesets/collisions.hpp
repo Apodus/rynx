@@ -117,6 +117,21 @@ namespace rynx {
 				positionDataToSphereTree_task.depends_on(position_updates_barrier);
 				context.add_task(std::move(positionDataToSphereTree_task));
 
+				auto updateBoundaryWorld = context.add_task(
+					"Update boundary local -> boundary world",
+					[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
+						ecs.for_each_parallel(task_context.parallel(), [](components::position pos, components::boundary& boundary) {
+							float sin_v = math::sin(pos.angle);
+							float cos_v = math::cos(pos.angle);
+							for (size_t i = 0; i < boundary.segments_local.size(); ++i) {
+								boundary.segments_world[i].p1 = math::rotatedXY(boundary.segments_local[i].p1, sin_v, cos_v) + pos.value;
+								boundary.segments_world[i].p2 = math::rotatedXY(boundary.segments_local[i].p2, sin_v, cos_v) + pos.value;
+								boundary.segments_world[i].normal = math::rotatedXY(boundary.segments_local[i].normal, sin_v, cos_v);
+							}
+						});
+					}
+				);
+
 				auto findCollisionsTask = context.add_task("Find collisions", [](
 					rynx::ecs::view<
 						const components::position,
@@ -134,7 +149,7 @@ namespace rynx {
 				});
 
 				findCollisionsTask->depends_on(collisions_find_barrier);
-
+				findCollisionsTask->depends_on(updateBoundaryWorld);
 				
 				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {

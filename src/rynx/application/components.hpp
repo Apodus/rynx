@@ -61,7 +61,12 @@ namespace rynx {
 		};
 
 		struct boundary {
-			decltype(Polygon<vec3<float>>().generateBoundary_Outside()) segments;
+			using boundary_t = decltype(Polygon<vec3<float>>().generateBoundary_Outside());
+			boundary(boundary_t&& b) : segments_local(std::move(b)) {
+				segments_world.resize(segments_local.size());
+			}
+			boundary_t segments_local;
+			boundary_t segments_world;
 		};
 
 		struct projectile {}; // tag for fast moving items in collision detection.

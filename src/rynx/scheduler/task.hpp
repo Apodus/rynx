@@ -131,6 +131,9 @@ namespace rynx {
 				return *this;
 			}
 
+			task& depends_on(task_token& other);
+			task& required_for(task_token& other);
+
 			// TODO: Rename this function.
 			task& completion_blocked_by(task& other) {
 				m_barriers.completion_blocked_by(other.barriers());
@@ -353,7 +356,7 @@ namespace rynx {
 			~task_token();
 
 			task* operator -> ();
-			task& operator * () { return *operator->(); }
+			task& operator * () { return m_task; }
 
 		private:
 			task m_task;
