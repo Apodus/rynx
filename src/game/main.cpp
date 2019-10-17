@@ -76,17 +76,17 @@ int main(int argc, char** argv) {
 	auto& collisionDetection = *detection;
 
 	// setup collision detection
-	rynx::collision_detection::category_id collisionCategoryDynamic = collisionDetection.addCategory();
-	rynx::collision_detection::category_id collisionCategoryStatic = collisionDetection.addCategory();
-	rynx::collision_detection::category_id collisionCategoryProjectiles = collisionDetection.addCategory();
+	rynx::collision_detection::category_id collisionCategoryDynamic = collisionDetection.add_category();
+	rynx::collision_detection::category_id collisionCategoryStatic = collisionDetection.add_category();
+	rynx::collision_detection::category_id collisionCategoryProjectiles = collisionDetection.add_category();
 
 	{
 		// TODO: Do not update static category sphere tree every frame.
-		collisionDetection.enableCollisionsBetweenCategories(collisionCategoryDynamic, collisionCategoryDynamic); // enable dynamic <-> dynamic collisions
-		collisionDetection.enableCollisionsBetweenCategories(collisionCategoryDynamic, collisionCategoryStatic); // enable dynamic <-> static collisions
+		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryDynamic); // enable dynamic <-> dynamic collisions
+		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryStatic.ignore_collisions()); // enable dynamic <-> static collisions
 
-		collisionDetection.enableCollisionsBetweenCategories(collisionCategoryProjectiles, collisionCategoryStatic); // projectile <-> static
-		collisionDetection.enableCollisionsBetweenCategories(collisionCategoryProjectiles, collisionCategoryDynamic); // projectile <-> dynamic
+		collisionDetection.enable_collisions_between(collisionCategoryProjectiles, collisionCategoryStatic.ignore_collisions()); // projectile <-> static
+		collisionDetection.enable_collisions_between(collisionCategoryProjectiles, collisionCategoryDynamic); // projectile <-> dynamic
 	}
 
 	rynx::application::renderer gameRenderer;

@@ -9,11 +9,17 @@
 namespace rynx {
 	class collision_detection {
 	private:
+		enum class check_type {
+			both_are_dynamic,
+			b_is_static
+		};
+
 		struct collision_check {
 			collision_check() = default;
-			collision_check(sphere_tree* a, sphere_tree* b) : a(a), b(b) {}
+			collision_check(sphere_tree* a, sphere_tree* b, check_type type = check_type::both_are_dynamic) : a(a), b(b), type(type) {}
 			sphere_tree* a;
 			sphere_tree* b;
+			check_type type;
 		};
 
 		std::vector<std::unique_ptr<sphere_tree>> m_sphere_trees;
@@ -23,7 +29,14 @@ namespace rynx {
 	public:
 		struct category_id {
 			category_id(int32_t value) : value(value) {}
+			category_id ignore_collisions() const {
+				category_id v(value);
+				v.m_ignore_collisions = true;
+				return v;
+			};
+
 			int32_t value;
+			bool m_ignore_collisions = false;
 		};
 
 		enum class shape_type {
@@ -32,9 +45,30 @@ namespace rynx {
 			Projectile
 		};
 
-		category_id addCategory() { m_sphere_trees.emplace_back(std::make_unique<sphere_tree>()); return category_id(int32_t(m_sphere_trees.size()) - 1); }
-		collision_detection& enableCollisionsBetweenCategories(category_id category1, category_id category2) { m_collision_checks.emplace_back(m_sphere_trees[category1.value].get(), m_sphere_trees[category2.value].get()); return *this; }
-
+		category_id add_category() {
+			m_sphere_trees.emplace_back(std::make_unique<sphere_tree>());
+			return category_id(int32_t(m_sphere_trees.size()) - 1);
+		}
+		
+		collision_detection& enable_collisions_between(category_id category1, category_id category2) {
+			rynx_assert(category1.m_ignore_collisions || category2.m_ignore_collisions, "checking collisions between two categories who both ignore collisions, makes no sense");
+			if (category1.m_ignore_collisions) {
+				m_collision_checks.emplace_back(
+					m_sphere_trees[category2.value].get(),
+					m_sphere_trees[category1.value].get(),
+					check_type::b_is_static
+				);
+			}
+			else {
+				m_collision_checks.emplace_back(
+					m_sphere_trees[category1.value].get(),
+					m_sphere_trees[category2.value].get(),
+					category2.m_ignore_collisions ? check_type::b_is_static : check_type::both_are_dynamic
+				);
+			}
+			return *this;
+		}
+		
 		template<typename F> void inRange(category_id category, vec3<float> point, float radius, F&& f) {
 			m_sphere_trees[category.value]->inRange(pos, radius std::forward<F>(f));
 		}
@@ -79,7 +113,14 @@ namespace rynx {
 				if (check.a == check.b)
 					sphere_tree::collisions_internal_parallel(std::forward<F>(f), task, &check.a->root);
 				else {
-					sphere_tree::collisions_internal_parallel_b_static(std::forward<F>(f), task, &check.a->root, &check.b->root);
+					if (check.type == check_type::b_is_static) {
+						sphere_tree::collisions_internal_parallel_b_static(std::forward<F>(f), task, &check.a->root, &check.b->root);
+					}
+					else {
+						// parallelizing this path is more tricky. parallel accumulators might help.
+						// if we didn't write directly to entity components, we could run everything in parallel.
+						sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root);
+					}
 				}
 			}
 		}
