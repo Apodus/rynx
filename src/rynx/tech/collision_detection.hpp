@@ -51,7 +51,7 @@ namespace rynx {
 		}
 		
 		collision_detection& enable_collisions_between(category_id category1, category_id category2) {
-			rynx_assert(category1.m_ignore_collisions || category2.m_ignore_collisions, "checking collisions between two categories who both ignore collisions, makes no sense");
+			rynx_assert(!(category1.m_ignore_collisions && category2.m_ignore_collisions), "checking collisions between two categories who both ignore collisions, makes no sense");
 			if (category1.m_ignore_collisions) {
 				m_collision_checks.emplace_back(
 					m_sphere_trees[category2.value].get(),
