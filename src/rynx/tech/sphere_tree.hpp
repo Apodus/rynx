@@ -73,28 +73,22 @@ private:
 			m_members[member_index] = std::move(m_members.back());
 			container->entryMap.find(m_members[member_index].entityId)->second.second = member_index;
 			m_members.pop_back();
-
-			/*
-			if (m_members.empty() && m_parent != nullptr) {
-				m_parent->killMePlease(this);
-			}
-			*/
-
-			// TODO: check, if me and siblings are too many in number vs. the number of elements stored,
-			// merge some of the siblings?
 			return id_of_erased;
 		}
 
 		std::unique_ptr<node> node_migrates(node* child_ptr) {
-			for (size_t i = 0; i < m_children.size(); ++i) {
+			size_t i = 0;
+			for (;;) {
 				if (m_children[i].get() == child_ptr) {
 					std::unique_ptr<node> child = std::move(m_children[i]);
 					m_children[i] = std::move(m_children.back());
 					m_children.pop_back();
 					return child;
 				}
+
+				++i;
+				rynx_assert(i < m_children.size(), "target node not found. this is not possible.");
 			}
-			rynx_assert(false, "unreachable");
 		}
 
 
@@ -111,22 +105,6 @@ private:
 			if (m_members.size() >= MaxElementsInNode) {
 				// if we have no parent (we are root node), add a couple of new child nodes under me.
 				if (!m_parent) {
-					/*
-					// split to new child level.
-					auto f1 = farPoint(members[0].pos, members);
-					auto f2 = farPoint(members[f1.first].pos, members);
-
-					children.emplace_back(std::make_unique<node>(members[f1.first].pos, this, depth + 1));
-					children.emplace_back(std::make_unique<node>(members[f2.first].pos, this, depth + 1));
-
-					for (auto&& member : members) {
-						int index = (member.pos - members[f1.first].pos).lengthSquared() < (member.pos - members[f2.first].pos).lengthSquared();
-						children[index]->insert(std::move(member), container);
-						// child insert takes care of update calls.
-					}
-					members.clear();
-					*/
-
 					for (size_t i = 0; i < MaxNodesInNode; ++i) {
 						m_children.emplace_back(std::make_unique<node>(m_members[i].pos, this, depth + 1));
 					}
