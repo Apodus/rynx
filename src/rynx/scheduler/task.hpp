@@ -95,7 +95,7 @@ namespace rynx {
 
 			task& operator =(task&& other) = default;
 			
-			// !!
+			// TODO: PRIVATE!!
 		public:
 			// NOTE:
 			// copying tasks does not increment barrier counters because we don't know if user actually wants that or not.

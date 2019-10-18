@@ -384,6 +384,15 @@ namespace rynx {
 			category_source& m_ecs;
 		};
 
+		// support for mutable lambdas / non-const member functions
+		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
+		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...)> : public iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> {
+		public:
+			iterator(category_source& ecs) : iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
+			iterator(const category_source& ecs) : iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
+		};
+
+
 		// TODO: don't use boolean template parameter. use enum class instead.
 		template<typename category_source, bool allowEditing = false>
 		class entity {
