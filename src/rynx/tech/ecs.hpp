@@ -619,9 +619,9 @@ namespace rynx {
 			auto changePair = destinationCategoryIt->second->migrateEntity(initialTypes, it->second.first, it->second.second);
 			//                                                             ^types moved, ^source category, ^source index
 			destinationCategoryIt->second->insertComponents(std::forward<Components>(components)...);
-			m_idCategoryMap[changePair.first.id] = { changePair.first.new_category, changePair.first.newIndex };
+			m_idCategoryMap.find(changePair.first.id)->second = { changePair.first.new_category, changePair.first.newIndex };
 			if (changePair.second.new_category)
-				m_idCategoryMap[changePair.second.id] = { changePair.second.new_category, changePair.second.newIndex };
+				m_idCategoryMap.find(changePair.second.id)->second = { changePair.second.new_category, changePair.second.newIndex };
 
 			return *this;
 		}
@@ -643,9 +643,9 @@ namespace rynx {
 			it->second.first->eraseComponentsFromIndex<Components...>(it->second.second);
 			auto changePair = destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second);
 
-			m_idCategoryMap[changePair.first.id] = { changePair.first.new_category, changePair.first.newIndex };
+			m_idCategoryMap.find(changePair.first.id)->second = { changePair.first.new_category, changePair.first.newIndex };
 			if (changePair.second.new_category)
-				m_idCategoryMap[changePair.second.id] = { changePair.second.new_category, changePair.second.newIndex };
+				m_idCategoryMap.find(changePair.second.id)->second = { changePair.second.new_category, changePair.second.newIndex };
 			return *this;
 		}
 
