@@ -101,7 +101,7 @@ namespace math {
 	}
 
 	inline vec3<float> velocity_at_point_2d(vec3<float> pos, float angular_velocity) {
-		return pos.lengthApprox() * angular_velocity * (vec3<float>(-pos.y, +pos.x, 0).normalizeApprox());
+		return pos.lengthApprox() * angular_velocity * pos.normal2d().normalizeApprox();
 	}
 
 	template<class P>
@@ -112,6 +112,16 @@ namespace math {
 	}
 
 	inline std::pair<float, vec3<float>> pointDistanceLineSegment(vec3<float> v, vec3<float> w, vec3<float> p) {
+		const float l2 = (v - w).lengthSquared();
+		if (l2 == 0.0) return { (p - v).lengthApprox(), v };
+		float bound = (p - v).dot(w - v) / l2;
+		bound = bound < 1 ? bound : 1;
+		bound = bound > 0 ? bound : 0;
+		const vec3<float> projection = v + (w - v) * bound;
+		return { (p - projection).lengthApprox(), projection };
+	}
+
+	inline std::pair<float, vec3<float>> pointDistanceLineSegmentSquared(vec3<float> v, vec3<float> w, vec3<float> p) {
 		const float l2 = (v - w).lengthSquared();
 		if (l2 == 0.0) return { (p - v).lengthApprox(), v };
 		float bound = (p - v).dot(w - v) / l2;

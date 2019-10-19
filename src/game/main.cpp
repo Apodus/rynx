@@ -133,6 +133,7 @@ int main(int argc, char** argv) {
 
 	// setup simulation initial state
 	{
+		/*
 		ecs.create(
 			game::hero(),
 			game::health(),
@@ -146,7 +147,20 @@ int main(int argc, char** argv) {
 			game::components::weapon(),
 			rynx::components::frame_collisions()
 		);
+		*/
 
+		for(int i=0; i<16; ++i)
+		ecs.create(
+			rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
+			rynx::components::collision_category(collisionCategoryDynamic),
+			rynx::components::boundary({ Shape::makeRectangle(4.0f, 4.0f).generateBoundary_Outside() }),
+			rynx::components::radius(math::sqrt_approx(16 + 16)),
+			rynx::components::color({ 1,1,0,1 }),
+			rynx::components::motion({ 0, 0, 0 }, 0),
+			rynx::components::dampening({ 0.93f, 0.98f }),
+			rynx::components::frame_collisions()
+		);
+		
 		// TODO: radius calculation from boundary (bounding radius or something)
 		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			base_simulation.m_ecs.create(
@@ -170,17 +184,19 @@ int main(int argc, char** argv) {
 			);
 		};
 
+		/*
 		for (int i = 0; i < 20; ++i)
 			makeBox_inside({ +20, +15 - i * 15.0f, 0 }, 0.0f + i * 0.1f, 2.0f, -0.05f);
+		*/
 
-		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -25, -50, 0 }, -0.3f, 50.f, +0.030f);
+		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
+		makeBox_outside({ -25, -50, 0 }, -0.3f, 50.f, +0.005f);
 
-		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
-		makeBox_outside({ -65, -100, 0 }, -0.3f, 25.f, -0.120f);
+		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
+		makeBox_outside({ -65, -100, 0 }, -0.3f, 25.f, -0.020f);
 
-		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
-		makeBox_outside({ +25, -120, 0 }, -0.3f, 35.f, -0.030f);
+		// makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
+		makeBox_outside({ +25, -120, 0 }, -0.3f, 35.f, -0.015f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f, 0.f);
@@ -262,7 +278,7 @@ int main(int argc, char** argv) {
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
 		sampleSlider->onValueChanged([spawner](float f) {
-			spawner->how_often_to_spawn = uint64_t(1 + int(f * 100.0f));
+			spawner->how_often_to_spawn = uint64_t(1 + int(f * 300.0f));
 		});
 
 		megaSlider->alignToOuterEdge(sampleSlider.get(), rynx::menu::Align::BOTTOM);

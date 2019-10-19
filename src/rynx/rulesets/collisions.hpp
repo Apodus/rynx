@@ -150,6 +150,19 @@ namespace rynx {
 
 				findCollisionsTask->depends_on(collisions_find_barrier);
 				findCollisionsTask->depends_on(updateBoundaryWorld);
+
+				/*
+				auto update_relative_velocity = [](rynx::ecs::view<components::frame_collisions, const components::position, const components::motion> ecs, rynx::scheduler::task& task) {
+					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::position pos, components::frame_collisions& collisionsComponent) {
+						for (auto&& entry : collisionsComponent.collisions) {
+							auto other = ecs[entry.idOfOther];
+							const auto& om = other.get<const components::motion>();
+							const auto& op = other.get<const components::position>();
+							entry.collisionPointRelativeVelocity = m.velocity_at_point(entry.collisionPointRelative) - om.velocity_at_point(pos.value + entry.collisionPointRelative - op.value);
+						}
+					});
+				};
+				*/
 				
 				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {
@@ -163,21 +176,75 @@ namespace rynx {
 							}
 						}
 
-						for (int i = 0; i < 5; ++i) {
+						for (int i = 0; i < 3; ++i) {
 							for (size_t k = 0; k < collisionsComponent.collisions.size(); ++k) {
 								const auto& collision = collisionsComponent.collisions[k];
 								// TODO: Rotation response
 								// float linear_velocity_from_rotation = m.angularVelocity * (collision.collisionPoint)
-								float impact_power = -(collision.collisionPointRelativeVelocity + m.acceleration).dot(collision.collisionNormal);
+								
+								vec3<float> angular_response_effect = m.angularAcceleration * collision.collisionPointRelative.normal2d();
+								auto relative_velocity = collision.collisionPointRelativeVelocity + m.acceleration + angular_response_effect;
+								float impact_power = -relative_velocity.dot(collision.collisionNormal);
+								
+								if (impact_power < 0)
+									continue;
+
 								float local_mul = !collision.other_has_collision_response * 1.3f + collision.other_has_collision_response * 0.35f;
 								local_mul /= collisionCounts[k];
+								
 								auto proximity_force = collision.collisionNormal * collision.penetration * local_mul * (impact_power > 0);
 								rynx_assert(collision.collisionNormal.lengthSquared() < 1.1f, "normal should be unit length");
 								m.acceleration += proximity_force * (1.0f - collision.other_has_collision_response * 0.5f);
 
+								float inertia1 = sqr(collision.collisionNormal.cross2d(collision.collisionPointRelative)) / 2.0f; // divided by moment of inertia of the body.
+								float inertia2 = sqr(collision.collisionNormal.cross2d(collision.collisionPointRelative)) / 20.0f; // divided by moment of inertia of the body.
+								float collision_elasticity = 0.1f;
+								
+								float top = (1.0f + collision_elasticity) * impact_power;
+								float bot = 1.0f / 5.0f + 1.0f / 50000000.0f + inertia1 + inertia2; // assume other has very high mass
+								
+								float bias = 0.05f * collision.penetration;
+								float soft_j = local_mul * bias * top / bot;
+								float hard_j = local_mul * (top / bot + bias);
+
+								/*
+								soft_j = (soft_j < bias) ? bias : soft_j;
+								hard_j = (hard_j < bias) ? bias : hard_j;
+								*/
+
+								vec3<float> normal = collision.collisionNormal;
+								normal.normalizeApprox();
+
+								auto soft_impact_force = normal * soft_j * (impact_power > 0);
+								auto hard_impact_force = normal * hard_j * (impact_power > 0);
+
+								// TODO: Have friction factors stored in some components
+								constexpr float mu = 1.00f; // just pick some constant until then.
+
+								vec3<float> tangent = normal.normal2d();
+								if (tangent.dot(relative_velocity) < 0)
+									tangent *= -1;
+								tangent.normalizeApprox();
+
+								float friction_power = -tangent.dot(relative_velocity) * mu;
+								// while (friction_power * friction_power > soft_j * soft_j)
+								//	friction_power *= 0.9f;
+								
+								tangent *= friction_power;
+								
+								/*
 								float collision_velocity_fix = impact_power * local_mul;
-								auto collision_resolution_force = collision.collisionNormal * (0.40f * collision_velocity_fix) * (collision_velocity_fix > 0);
+								auto collision_resolution_force = collision.collisionNormal * 0.40f * collision_velocity_fix + tangent;
 								m.acceleration += collision_resolution_force;
+								*/
+
+								// A->velocity -= (1 / A->mass) * impulse
+								m.acceleration += (soft_impact_force + tangent) * 1.0f / 5.0f; // divide by mass
+								// m.acceleration += (hard_impact_force + tangent) * 1.0f;
+								
+								float rotation_force_friction = tangent.cross2d(collision.collisionPointRelative);
+								float rotation_force_linear = soft_impact_force.cross2d(collision.collisionPointRelative);
+								m.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * 0.2f; // divide by moment of inertia.
 							}
 						}
 					});

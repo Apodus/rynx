@@ -20,7 +20,7 @@ namespace rynx {
 				virtual ~boundary_renderer() {}
 				virtual void render(const rynx::ecs& ecs) override {
 					rynx_profile("visualisation", "boundary_renderer");
-					ecs.query().notIn<rynx::components::mesh>().execute([this](const rynx::components::position& pos, const rynx::components::boundary& m, const rynx::components::color& color) {
+					ecs.query().notIn<rynx::components::mesh>().execute([this](const rynx::components::boundary& m, const rynx::components::color& color) {
 						for (const auto& line : m.segments_world) {
 							m_meshRenderer->drawLine(line.p1, line.p2, 0.4f, color.value);
 						}

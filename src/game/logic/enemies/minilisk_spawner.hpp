@@ -15,7 +15,7 @@ namespace game {
 		struct minilisk_test_spawner_logic : public rynx::application::logic::iruleset {
 			rynx::collision_detection::category_id dynamic;
 			uint64_t frameCount = 0;
-			uint64_t how_often_to_spawn = 64;
+			uint64_t how_often_to_spawn = 300;
 			float x_spawn = -20.9f;
 			
 			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
@@ -34,7 +34,7 @@ namespace game {
 							rynx::components::color,
 							rynx::components::dampening,
 							rynx::components::frame_collisions> ecs) {
-						for(int i=0; i<3; ++i)
+						for(int i=0; i<1; ++i)
 							ecs.create(
 								game::components::minilisk(),
 								game::health({ 30, 30 }),
@@ -44,7 +44,7 @@ namespace game {
 								rynx::components::radius(1.6f),
 								rynx::components::collision_category(dynamic),
 								rynx::components::color(),
-								rynx::components::dampening({ 0.97f, 0.87f }),
+								rynx::components::dampening({ 0.97f, 0.97f }),
 								rynx::components::frame_collisions()
 							);
 					});

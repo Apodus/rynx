@@ -133,19 +133,26 @@ namespace {
 					if (collisionPoint) {
 
 						// how to choose normal?
-						const float d1_a = (collisionPoint.point() - p1).lengthSquared();
-						const float d2_a = (collisionPoint.point() - p2).lengthSquared();
+						const float b1 = math::pointDistanceLineSegment(p1, p2, q1).first;
+						const float b2 = math::pointDistanceLineSegment(p1, p2, q2).first;
 
-						const float d1_b = (collisionPoint.point() - q1).lengthSquared();
-						const float d2_b = (collisionPoint.point() - q2).lengthSquared();
+						const float a1 = math::pointDistanceLineSegment(q1, q2, p1).first;
+						const float a2 = math::pointDistanceLineSegment(q1, q2, p2).first;
 
 						vec3<float> normal;
-						if (((d1_a < d1_b) & (d1_a < d2_b)) | ((d2_a < d1_b) & (d2_a < d2_b))) {
+						if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
 							normal = segmentB.getNormalXY();
 						}
 						else {
 							normal = segmentA.getNormalXY();
 						}
+						normal.normalizeApprox();
+						if (normal.dot(collisionPoint.point() - posA.value) > 0)
+							normal *= -1.f;
+						
+						float penetration1 = a1 < a2 ? a1 : a2;
+						float penetration2 = b1 < b2 ? b1 : b2;
+						float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
 
 						store_collision(
 							poly1,
@@ -156,8 +163,8 @@ namespace {
 							collisionPoint.point(),
 							posA.value,
 							posB.value,
-							d1_b < d2_b ? d1_b : d2_b,
-							d1_a < d2_a ? d1_a : d2_a
+							penetration,
+							penetration
 						);
 					}
 				}

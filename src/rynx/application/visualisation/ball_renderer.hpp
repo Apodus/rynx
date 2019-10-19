@@ -37,22 +37,18 @@ namespace rynx {
 					cameraBot = m_camera->position().y - m_camera->position().z;
 
 					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().execute([this](
-						const rynx::components::position& pos,
-						const rynx::components::radius& r,
-						const rynx::components::color& color,
-						const rynx::components::frame_collisions& c)
+						const rynx::components::position pos,
+						const rynx::components::radius r,
+						const rynx::components::color color)
 					{
 						if (!inScreen(pos.value, r.r))
 							return;
 
-						vec4<float> used_color = color.value;
-						if (!c.collisions.empty())
-							used_color = Color::RED;
-						
 						matrix4 model;
 						model.discardSetTranslate(pos.value);
 						model.scale(r.r);
-						m_meshRenderer->drawMesh(*m_circleMesh, model, "Empty", used_color);
+						m_meshRenderer->drawMesh(*m_circleMesh, model, "Empty", color.value);
+						m_meshRenderer->drawLine(pos.value, pos.value + r.r * vec3<float>(std::cos(pos.angle), std::sin(pos.angle), 0), r.r * 0.3f, Color::DARK_GREY);
 					});
 				}
 

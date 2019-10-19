@@ -58,6 +58,10 @@ namespace rynx {
 			
 			vec3<float> acceleration;
 			float angularAcceleration = 0;
+
+			vec3<float> velocity_at_point(vec3<float> relative_point) const {
+				return velocity + angularVelocity * relative_point.lengthApprox() * vec3<float>(-relative_point.y, +relative_point.x, 0).normalizeApprox();
+			}
 		};
 
 		struct boundary {
