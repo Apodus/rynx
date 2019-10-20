@@ -11,10 +11,10 @@
 
 namespace rynx {
 	namespace ruleset {
-		class collisions : public application::logic::iruleset {
+		class physics_2d_sidescrolling : public application::logic::iruleset {
 		public:
-			collisions() {}
-			virtual ~collisions() {}
+			physics_2d_sidescrolling() {}
+			virtual ~physics_2d_sidescrolling() {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& context) override {
 
@@ -196,7 +196,7 @@ namespace rynx {
 								rynx_assert(collision.collisionNormal.lengthSquared() < 1.1f, "normal should be unit length");
 								m.acceleration += proximity_force * (1.0f - collision.other_has_collision_response * 0.5f);
 
-								float inertia1 = sqr(collision.collisionNormal.cross2d(collision.collisionPointRelative)) / 2.0f; // divided by moment of inertia of the body.
+								float inertia1 = sqr(collision.collisionNormal.cross2d(collision.collisionPointRelative)) / 8.0f; // divided by moment of inertia of the body.
 								float inertia2 = sqr(collision.collisionNormal.cross2d(collision.collisionPointRelative)) / 20.0f; // divided by moment of inertia of the body.
 								float collision_elasticity = 0.1f;
 								
@@ -205,7 +205,7 @@ namespace rynx {
 								
 								float bias = 0.05f * collision.penetration;
 								float soft_j = local_mul * bias * top / bot;
-								float hard_j = local_mul * (top / bot + bias);
+								float hard_j = local_mul * (top / bot + bias * 0.1f);
 
 								/*
 								soft_j = (soft_j < bias) ? bias : soft_j;
@@ -240,7 +240,7 @@ namespace rynx {
 
 								// A->velocity -= (1 / A->mass) * impulse
 								m.acceleration += (soft_impact_force + tangent) * 1.0f / 5.0f; // divide by mass
-								// m.acceleration += (hard_impact_force + tangent) * 1.0f;
+								// m.acceleration += (hard_impact_force + tangent) * 1.0f / 5.0f;
 								
 								float rotation_force_friction = tangent.cross2d(collision.collisionPointRelative);
 								float rotation_force_linear = soft_impact_force.cross2d(collision.collisionPointRelative);

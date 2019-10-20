@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
 	Font fontConsola(Fonts::setFontConsolaMono());
 
 	rynx::application::Application application;
-	application.openWindow();
+	application.openWindow(1920, 1080);
 	application.loadTextures("../textures/textures.txt");
 
 	// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::collisions>();
+		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d_sidescrolling>();
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
 		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
 
@@ -149,17 +149,22 @@ int main(int argc, char** argv) {
 		);
 		*/
 
-		for(int i=0; i<16; ++i)
-		ecs.create(
-			rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
-			rynx::components::collision_category(collisionCategoryDynamic),
-			rynx::components::boundary({ Shape::makeRectangle(4.0f, 4.0f).generateBoundary_Outside() }),
-			rynx::components::radius(math::sqrt_approx(16 + 16)),
-			rynx::components::color({ 1,1,0,1 }),
-			rynx::components::motion({ 0, 0, 0 }, 0),
-			rynx::components::dampening({ 0.93f, 0.98f }),
-			rynx::components::frame_collisions()
-		);
+		math::rand64 random;
+
+		// create some boxes for testing.
+		if constexpr (false) {
+			for (int i = 0; i < 16; ++i)
+				ecs.create(
+					rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
+					rynx::components::collision_category(collisionCategoryDynamic),
+					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * (random() & 127) / 127.0f).generateBoundary_Outside() }),
+					rynx::components::radius(math::sqrt_approx(16 + 16)),
+					rynx::components::color({ 1,1,0,1 }),
+					rynx::components::motion({ 0, 0, 0 }, 0),
+					rynx::components::dampening({ 0.93f, 0.98f }),
+					rynx::components::frame_collisions()
+				);
+		}
 		
 		// TODO: radius calculation from boundary (bounding radius or something)
 		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
@@ -190,13 +195,13 @@ int main(int argc, char** argv) {
 		*/
 
 		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -25, -50, 0 }, -0.3f, 50.f, +0.005f);
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 65.f, +0.003f);
 
 		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
-		makeBox_outside({ -65, -100, 0 }, -0.3f, 25.f, -0.020f);
+		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.004f);
 
 		// makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
-		makeBox_outside({ +25, -120, 0 }, -0.3f, 35.f, -0.015f);
+		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.002f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f, 0.f);
@@ -235,9 +240,9 @@ int main(int argc, char** argv) {
 
 	// construct menus
 	{
-		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.14f);
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.16f);
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.18f);
 		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 

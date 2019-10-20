@@ -18,14 +18,16 @@ rynx::menu::SlideBarVertical::SlideBarVertical(GPUTextures& textures, std::strin
 
 	{
 		auto slideBarDiv = std::make_shared<Div>(this, vec3<float>(1.0f, 0.25f, 0));
-		slideBarDiv->addChild(std::make_shared<Frame>(slideBarDiv.get(), textures, std::move(baseTexture)));
+		auto slideBarFrame = std::make_shared<Frame>(slideBarDiv.get(), textures, std::move(baseTexture), 0.2f);
+		slideBarDiv->addChild(std::move(slideBarFrame));
 		addChild(slideBarDiv);
 	}
 
 	{
 		// todo: better formulation for slider knob dimensions
 		auto knobDiv = std::make_shared<Div>(this, vec3<float>(0.2f, 0.5f, 0));
-		knobDiv->addChild(std::make_shared<Frame>(knobDiv.get(), textures, std::move(knobTexture)));
+		auto knobFrame = std::make_shared<Frame>(knobDiv.get(), textures, std::move(knobTexture));
+		knobDiv->addChild(std::move(knobFrame));
 		addChild(knobDiv);
 		m_knobDiv = knobDiv.get();
 	}

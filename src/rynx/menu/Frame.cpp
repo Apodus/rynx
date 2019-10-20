@@ -11,10 +11,9 @@ rynx::menu::Frame::Frame(
 	Component* parent,
 	GPUTextures& textures,
 	const std::string& textureID,
-	const vec4<float>& color,
 	float edgeSize) : Component(parent, vec3<float>(), vec3<float>()) {
 	m_backgroundMesh = std::make_unique<Mesh>();
-	m_color = color;
+	m_color = Color::WHITE;
 	m_textureID = textureID;
 	m_edgeSize = edgeSize;
 
@@ -71,9 +70,11 @@ void rynx::menu::Frame::initMesh(GPUTextures& textures) {
 void rynx::menu::Frame::buildMesh(float size_x, float size_y) {
 	float edgeSizeX = 0.05f / size_x;
 	float edgeSizeY = 0.05f / size_y;
+	
+	edgeSizeY = (edgeSizeY > 0.5f) ? 0.5f : edgeSizeY;
+	edgeSizeX = (edgeSizeX > 0.5f) ? 0.5f : edgeSizeX;
 
 	m_backgroundMesh->vertices.clear();
-
 	m_backgroundMesh->putVertex(-1, -1, 0);
 	m_backgroundMesh->putVertex(-1 + edgeSizeX, -1, 0);
 	m_backgroundMesh->putVertex(+1 - edgeSizeX, -1, 0);

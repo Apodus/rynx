@@ -239,7 +239,7 @@ namespace {
 	}
 }
 
-void rynx::ruleset::collisions::check_all(ecs_view ecs, uint64_t entityA, uint64_t entityB, vec3<float> normal, float penetration) {
+void rynx::ruleset::physics_2d_sidescrolling::check_all(ecs_view ecs, uint64_t entityA, uint64_t entityB, vec3<float> normal, float penetration) {
 	auto entA = ecs[entityA];
 	auto entB = ecs[entityB];
 

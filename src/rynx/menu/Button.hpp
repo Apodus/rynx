@@ -42,9 +42,10 @@ namespace rynx {
 				std::string texture,
 				Component* parent,
 				vec3<float> scale,
-				vec3<float> position = vec3<float>()
+				vec3<float> position = vec3<float>(),
+				float frame_edge_percentage = 0.2f
 			) : Component(parent, scale, position)
-				, m_frame(this, textures, std::move(texture))
+				, m_frame(this, textures, std::move(texture), frame_edge_percentage)
 			{
 				m_defaultScale = scale;
 				initialize();

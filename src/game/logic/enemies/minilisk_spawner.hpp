@@ -18,6 +18,8 @@ namespace game {
 			uint64_t how_often_to_spawn = 300;
 			float x_spawn = -20.9f;
 			
+			math::rand64 m_random;
+
 			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
@@ -33,20 +35,38 @@ namespace game {
 							rynx::components::collision_category,
 							rynx::components::color,
 							rynx::components::dampening,
+							rynx::components::boundary,
 							rynx::components::frame_collisions> ecs) {
-						for(int i=0; i<1; ++i)
-							ecs.create(
-								game::components::minilisk(),
-								game::health({ 30, 30 }),
-								rynx::components::position({ x_spawn + 4 * float(rand()) / RAND_MAX, +20.0f +  4 * float(rand()) / RAND_MAX, 0 }),
-								rynx::components::motion(),
-								rynx::components::mass({ 0.2f }),
-								rynx::components::radius(1.6f),
-								rynx::components::collision_category(dynamic),
-								rynx::components::color(),
-								rynx::components::dampening({ 0.97f, 0.97f }),
-								rynx::components::frame_collisions()
-							);
+						for (int i = 0; i < 1; ++i) {
+							float x = x_spawn + m_random(0.0f, 4.0f);
+							float y = +20.0f + m_random(0.0f, 4.0f);
+							if (m_random() & 1) {
+								ecs.create(
+									game::components::minilisk(),
+									game::health({ 30, 30 }),
+									rynx::components::position({x, y, 0 }),
+									rynx::components::motion(),
+									rynx::components::mass({ 0.2f }),
+									rynx::components::radius(1.6f),
+									rynx::components::collision_category(dynamic),
+									rynx::components::color(),
+									rynx::components::dampening({ 0.97f, 0.97f }),
+									rynx::components::frame_collisions()
+								);
+							}
+							else {
+								ecs.create(
+									rynx::components::position(vec3<float>(x, y, 0.0f), i * 2.0f),
+									rynx::components::collision_category(dynamic),
+									rynx::components::boundary({ Shape::makeBox(1.5f + 2.0f * (m_random() & 127) / 127.0f).generateBoundary_Outside() }),
+									rynx::components::radius(math::sqrt_approx(16 + 16)),
+									rynx::components::color({ 1,1,0,1 }),
+									rynx::components::motion({ 0, 0, 0 }, 0),
+									rynx::components::dampening({ 0.93f, 0.98f }),
+									rynx::components::frame_collisions()
+								);
+							}
+						}
 					});
 				}
 			}

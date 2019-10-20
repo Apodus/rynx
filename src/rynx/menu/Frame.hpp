@@ -29,12 +29,12 @@ namespace rynx {
 				Component* parent,
 				GPUTextures& textures,
 				const std::string& textureID,
-				const vec4<float>& color = Color::WHITE,
 				float edgeSize = 0.20f);
 			
 			void buildMesh(float size_x, float size_y);
-
 			vec4<float>& color() { return m_color; }
+
+			Frame& edge_size(float v) { m_edgeSize = v; return *this; }
 			Frame& color(vec4<float> v) { m_color = v; return *this; }
 
 			virtual void update(float) override;

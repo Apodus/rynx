@@ -34,6 +34,36 @@ class Game : RynxProject
     }
 }
 
+// TODO: Take common parts of game projects to a parent class.
+
+[Generate]
+class Snake : RynxProject
+{
+    public Snake()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\snake\";
+    }
+	
+	[Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
+		conf.AddPublicDependency<RuleSets>(target);
+		conf.AddPublicDependency<Input>(target);
+		conf.AddPublicDependency<Menu>(target);
+        conf.AddPublicDependency<Graphics>(target);
+		conf.AddPublicDependency<Tech>(target);
+		conf.AddPublicDependency<Scheduler>(target);
+		
+		conf.TargetFileName = Name;
+		conf.SolutionFolder = "";
+		conf.TargetPath = @"[project.SharpmakeCsPath]\..\build\bin\";
+		conf.Output = Project.Configuration.OutputType.Exe;
+		
+		conf.VcxprojUserFile = new Configuration.VcxprojUserFileSettings()
+            { LocalDebuggerWorkingDirectory = conf.TargetPath };
+    }
+}
+
 [Generate]
 class Rynx : Solution
 {
@@ -50,6 +80,7 @@ class Rynx : Solution
     {
         conf.SolutionPath = @"[solution.SharpmakeCsPath]\..";
         conf.AddProject<Game>(target);
+		conf.AddProject<Snake>(target);
 		
 		conf.AddProject<TestTech>(target);
 		conf.AddProject<TestScheduler>(target);
