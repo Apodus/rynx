@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <stdexcept>
+#include <memory>
 
 template<class T>
 class PolygonTesselator {

@@ -28,6 +28,7 @@ namespace rynx {
 
 	public:
 		struct category_id {
+			category_id(const category_id&) = default;
 			category_id(int32_t value) : value(value) {}
 			category_id ignore_collisions() const {
 				category_id v(value);

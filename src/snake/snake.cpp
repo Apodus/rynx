@@ -1,14 +1,4 @@
-#include <game/view.hpp>
-#include <game/gametypes.hpp>
-#include <game/logic.hpp>
 
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/ecs.hpp>
-
-#include <iostream>
-#include <thread>
-
-#include <cmath>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/mesh/polygonTesselator.hpp>
 
@@ -20,30 +10,27 @@
 #include <rynx/application/render.hpp>
 #include <rynx/application/simulation.hpp>
 
-#include <rynx/rulesets/collisions.hpp>
-
 #include <rynx/application/visualisation/ball_renderer.hpp>
 #include <rynx/application/visualisation/boundary_renderer.hpp>
 #include <rynx/application/visualisation/mesh_renderer.hpp>
 
+#include <rynx/rulesets/collisions.hpp>
+
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/tech/smooth_value.hpp>
 
-#include <game/logic/shooting.hpp>
-#include <game/logic/keyboard_movement.hpp>
-
-#include <game/logic/enemies/minilisk.hpp>
-#include <game/logic/enemies/minilisk_spawner.hpp>
-
-#include <game/visual/bullet_rendering.hpp>
-
 #include <rynx/scheduler/task_scheduler.hpp>
-
-#include <memory>
 
 #include <rynx/menu/Button.hpp>
 #include <rynx/menu/Slider.hpp>
 #include <rynx/menu/Div.hpp>
+
+#include <rynx/tech/unordered_map.hpp>
+#include <rynx/tech/ecs.hpp>
+
+#include <iostream>
+#include <thread>
+#include <memory>
 
 int main(int argc, char** argv) {
 	Font fontLenka(Fonts::setFontLenka());
@@ -53,15 +40,11 @@ int main(int argc, char** argv) {
 	application.openWindow(1920, 1080);
 	application.loadTextures("../textures/textures.txt");
 
-	// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
-	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
+	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 64), application.textures().textureLimits("Hero"));
+	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 64), application.textures().textureLimits("Empty"));
+	
 	mesh->build();
-
-	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Empty"));
 	emptyMesh->build();
-
-	auto emptySquare = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.0f), application.textures().textureLimits("Empty"));
-	emptySquare->build();
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
@@ -81,7 +64,6 @@ int main(int argc, char** argv) {
 	rynx::collision_detection::category_id collisionCategoryProjectiles = collisionDetection.add_category();
 
 	{
-		// TODO: Do not update static category sphere tree every frame.
 		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryDynamic); // enable dynamic <-> dynamic collisions
 		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryStatic.ignore_collisions()); // enable dynamic <-> static collisions
 
@@ -96,147 +78,173 @@ int main(int argc, char** argv) {
 		base_simulation.set_resource(&collisionDetection);
 	}
 
-	game::logic::minilisk_test_spawner_logic* spawner = nullptr;
+	struct snake_head {};
+	struct dead {};
+	struct apple {}; // snakes collect apples
+	struct health {
+		int hp = 100;
+	};
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -0.03f, 0));
-		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
-		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
+		class snake_rules : public rynx::application::logic::iruleset {
+			rynx::collision_detection::category_id m_collision_category;
+			math::rand64 random;
+		
+		public:
+			snake_rules(rynx::collision_detection::category_id id) : m_collision_category(id) {}
 
-		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
-		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
-		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(collisionCategoryDynamic);
-		spawner = ruleset_minilisk_gen.get();
+			virtual void onFrameProcess(rynx::scheduler::context& context) override {
+				context.add_task("snake move",
+					[this](rynx::ecs::edit_view<
+						snake_head,
+						apple,
+						dead,
+						rynx::components::radius,
+						rynx::components::color,
+						rynx::components::frame_collisions,
+						rynx::components::collision_category,
+						rynx::components::lifetime,
+						rynx::components::motion,
+						rynx::components::position> ecs, rynx::scheduler::task& task_context) {
 
-		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
+						ecs.query().in<snake_head>().execute([this, ecs](rynx::components::position pos) mutable {
+							ecs.create(
+								rynx::components::position({ pos.value }),
+								rynx::components::lifetime(150),
+								rynx::components::radius(1.0f),
+								rynx::components::collision_category(m_collision_category),
+								rynx::components::color(Color::WHITE)
+							);
+						});
 
+						ecs.query().in<snake_head>().execute([](rynx::components::position& pos) {
+							constexpr float velocity = 0.5f;
+							float sin_v = math::sin(pos.angle);
+							float cos_v = math::cos(pos.angle);
+							pos.value.x += cos_v * velocity;
+							pos.value.y += sin_v * velocity;
+						});
+
+						std::vector<rynx::ecs::id> killed_entities;
+						ecs.query().in<snake_head>().execute([&, ecs](rynx::components::frame_collisions& collisions) {
+							for (auto& collision : collisions.collisions) {
+								if (ecs[collision.idOfOther.value].has<apple>()) {
+									// TODO: award points to snake_head player or something.
+									
+									// erase the collected apple
+									killed_entities.emplace_back(collision.idOfOther);
+								}
+							}
+						});
+
+						for (auto& id : killed_entities) {
+							ecs.attachToEntity(id, dead());
+
+							// replace the collected apple with a new one.
+							ecs.create(
+								apple{},
+								rynx::components::position({ random(-400.0f, +400.0f), random(-400.0f, +400.0f), 0.0f }, 0),
+								rynx::components::motion(),
+								rynx::components::radius(10.0f),
+								rynx::components::collision_category(m_collision_category),
+								rynx::components::color(Color::GREEN),
+								rynx::components::frame_collisions()
+							);
+						}
+					}
+				);
+			}
+		};
+
+		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>();
+		auto ruleset_snake = std::make_unique<snake_rules>(collisionCategoryDynamic);
+		ruleset_snake->depends_on(*ruleset_collisionDetection);
+		
 		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
-		base_simulation.add_rule_set(std::move(ruleset_shooting));
-		base_simulation.add_rule_set(std::move(ruleset_keyboardMovement));
-
-		base_simulation.add_rule_set(std::move(ruleset_bullet_hits));
-		base_simulation.add_rule_set(std::move(ruleset_minilisk));
-		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
+		base_simulation.add_rule_set(std::move(ruleset_snake));
 	}
 
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(emptyMesh.get(), &application.meshRenderer(), &(*camera)));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
-	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<game::visual::hero_renderer>(&application.meshRenderer()));
-
-	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 30.0f);
-
+	
+	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 1000.0f);
 	rynx::ecs& ecs = base_simulation.m_ecs;
 
 	// setup simulation initial state
 	{
-		/*
-		ecs.create(
-			game::hero(),
-			game::health(),
-			rynx::components::position(),
-			rynx::components::motion(),
-			rynx::components::mass({ 1.0f }),
-			rynx::components::radius(1.0f),
-			rynx::components::collision_category(collisionCategoryDynamic),
-			rynx::components::color(),
-			rynx::components::dampening({ 0.86f, 0.86f }),
-			game::components::weapon(),
-			rynx::components::frame_collisions()
-		);
-		*/
-
 		math::rand64 random;
 
-		// create some boxes for testing.
-		if constexpr (false) {
-			for (int i = 0; i < 16; ++i)
-				ecs.create(
-					rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
-					rynx::components::collision_category(collisionCategoryDynamic),
-					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * (random() & 127) / 127.0f).generateBoundary_Outside() }),
-					rynx::components::radius(math::sqrt_approx(16 + 16)),
-					rynx::components::color({ 1,1,0,1 }),
-					rynx::components::motion({ 0, 0, 0 }, 0),
-					rynx::components::dampening({ 0.93f, 0.98f }),
-					rynx::components::frame_collisions()
-				);
-		}
-		
-		// TODO: radius calculation from boundary (bounding radius or something)
-		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
-			base_simulation.m_ecs.create(
-				rynx::components::position(pos, angle),
-				rynx::components::collision_category(collisionCategoryStatic),
-				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
-				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
-				rynx::components::color({ 0,1,0,1 }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
+		auto createSnake = [&](float x, float y, float angle) {
+			ecs.create(
+				snake_head{},
+				health{},
+				rynx::components::position({x, y, 0.0f}, angle),
+				rynx::components::motion(),
+				rynx::components::radius(1.0f),
+				rynx::components::collision_category(collisionCategoryDynamic),
+				rynx::components::color(),
+				rynx::components::frame_collisions()
 			);
 		};
 
-		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+		createSnake(random(-100.0f, 100.0f), random(-100.0f, 100.0f), random(3.0f));
+		createSnake(random(-100.0f, 100.0f), random(-100.0f, 100.0f), random(3.0f));
+		createSnake(random(-100.0f, 100.0f), random(-100.0f, 100.0f), random(3.0f));
+		createSnake(random(-100.0f, 100.0f), random(-100.0f, 100.0f), random(3.0f));
+
+		auto createApple = [&](float x, float y) {
+			ecs.create(
+				apple{},
+				rynx::components::position({ x, y, 0.0f }, 0),
+				rynx::components::motion(),
+				rynx::components::radius(10.0f),
+				rynx::components::collision_category(collisionCategoryDynamic),
+				rynx::components::color(Color::GREEN),
+				rynx::components::frame_collisions()
+			);
+		};
+
+		for (size_t i = 0; i < 10; ++i) {
+			createApple(random(-200.0f, +200.0f), random(-200.0f, +200.0f));
+		}
+
+		/*
+		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength) {
 			base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
+				rynx::components::motion()
 			);
 		};
 
-		/*
-		for (int i = 0; i < 20; ++i)
-			makeBox_inside({ +20, +15 - i * 15.0f, 0 }, 0.0f + i * 0.1f, 2.0f, -0.05f);
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 65.f);
+		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f);
+		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f);
+		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f);
+		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f);
+		makeBox_outside({ +80, -160, 0 }, +0.3f, 100.0f);
 		*/
-
-		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 65.f, +0.003f);
-
-		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
-		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.004f);
-
-		// makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
-		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.002f);
-
-		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
-		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f, 0.f);
-		makeBox_outside({ +80, -160, 0 }, +0.3f, 100.0f, 0.f);
 	}
 
-	// setup some debug controls
-	float sleepTime = 10.0f;
-	auto slowTime = gameInput.generateAndBindGameKey('X', "slow time");
-	auto fastTime = gameInput.generateAndBindGameKey('C', "fast time");
-
+	
 	auto zoomOut = gameInput.generateAndBindGameKey('1', "zoom out");
 	auto zoomIn = gameInput.generateAndBindGameKey('2', "zoom in");
-
-
 	application.meshRenderer().setDepthTest(false);
 
 	auto menuCamera = std::make_shared<Camera>();
-
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
-	
+
 	auto cameraUp = gameInput.generateAndBindGameKey('I', "cameraUp");
 	auto cameraLeft = gameInput.generateAndBindGameKey('J', "cameraLeft");
 	auto cameraRight = gameInput.generateAndBindGameKey('L', "cameraRight");
 	auto cameraDown = gameInput.generateAndBindGameKey('K', "cameraDown");
-	
+
 	rynx::menu::Div root({ 1, 1, 0 });
-
-	struct debug_conf {
-		bool visualize_dynamic_collisions = false;
-		bool visualize_static_collisions = false;
-		bool visualize_projectile_collisions = false;
-	};
-
-	debug_conf conf;
 
 	// construct menus
 	{
@@ -246,49 +254,28 @@ int main(int argc, char** argv) {
 		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 
-		sampleButton->text("Dynamics").font(&fontConsola);
+		sampleButton->text("-").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
 		sampleButton->color_frame(Color::RED);
-		sampleButton->onClick([&conf, self = sampleButton.get()]() {
-			bool new_value = !conf.visualize_dynamic_collisions;
-			conf.visualize_dynamic_collisions = new_value;
-			if (new_value) {
-				self->color_frame(Color::GREEN);
-			}
-			else {
-				self->color_frame(Color::RED);
-			}
-		});
+		sampleButton->onClick([self = sampleButton.get()]() {});
 
-		sampleButton2->text("Log Profile").font(&fontConsola);
+		sampleButton2->text("-").font(&fontConsola);
 		sampleButton2->alignToOuterEdge(sampleButton.get(), rynx::menu::Align::RIGHT);
 		sampleButton2->alignToInnerEdge(sampleButton.get(), rynx::menu::Align::BOTTOM);
-		sampleButton2->onClick([]() {
-			rynx::profiling::write_profile_log();
-		});
+		sampleButton2->onClick([]() {});
 
-		sampleButton3->text("Statics").font(&fontConsola);
+		sampleButton3->text("-").font(&fontConsola);
 		sampleButton3->alignToOuterEdge(sampleButton2.get(), rynx::menu::Align::TOP);
 		sampleButton3->alignToInnerEdge(sampleButton2.get(), rynx::menu::Align::LEFT);
-		sampleButton3->onClick([&conf, self = sampleButton3.get(), &root]() {
-			bool new_value = !conf.visualize_static_collisions;
-			conf.visualize_static_collisions = new_value;
-			if (new_value) {
-				self->color_frame(Color::GREEN);
-			}
-			else {
-				self->color_frame(Color::RED);
-			}
-		});
+		sampleButton3->onClick([self = sampleButton3.get()]() {});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
-		sampleSlider->onValueChanged([spawner](float f) {
-			spawner->how_often_to_spawn = uint64_t(1 + int(f * 300.0f));
+		sampleSlider->onValueChanged([](float f) {
 		});
 
 		megaSlider->alignToOuterEdge(sampleSlider.get(), rynx::menu::Align::BOTTOM);
-		megaSlider->onValueChanged([spawner](float f) {
-			spawner->x_spawn = f * 200.0f - 100.0f;
+		megaSlider->alignToInnerEdge(sampleSlider.get(), rynx::menu::Align::CENTER_HORIZONTAL);
+		megaSlider->onValueChanged([](float f) {
 		});
 
 		root.addChild(sampleButton);
@@ -299,8 +286,8 @@ int main(int argc, char** argv) {
 	}
 
 	std::atomic<size_t> tickCounter = 0;
-
 	std::atomic<bool> dead_lock_detector_keepalive = true;
+	
 	std::thread dead_lock_detector([&]() {
 		size_t prev_tick = 994839589;
 		while (dead_lock_detector_keepalive) {
@@ -318,7 +305,6 @@ int main(int argc, char** argv) {
 		application.startFrame();
 
 		auto mousePos = application.input()->getCursorPosition();
-
 		cameraPosition.tick(0.016f * 3);
 
 		{
@@ -333,7 +319,7 @@ int main(int argc, char** argv) {
 		{
 			constexpr float camera_translate_multiplier = 0.04f;
 			constexpr float camera_zoom_multiplier = 1.05f;
-			if (gameInput.isKeyDown(cameraUp)) { cameraPosition += vec3<float>{0, camera_translate_multiplier * cameraPosition->z, 0}; }
+			if (gameInput.isKeyDown(cameraUp)) { cameraPosition += vec3<float>{0, camera_translate_multiplier* cameraPosition->z, 0}; }
 			if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += vec3<float>{-camera_translate_multiplier * cameraPosition->z, 0.0f, 0}; }
 			if (gameInput.isKeyDown(cameraRight)) { cameraPosition += vec3<float>{camera_translate_multiplier* cameraPosition->z, 0.0f, 0}; }
 			if (gameInput.isKeyDown(cameraDown)) { cameraPosition += vec3<float>{0, -camera_translate_multiplier * cameraPosition->z, 0}; }
@@ -344,27 +330,9 @@ int main(int argc, char** argv) {
 		{
 			float cameraHeight = cameraPosition->z;
 			gameInput.mouseWorldPosition(
-				(cameraPosition* vec3<float>{1,1,0}) +
+				(cameraPosition * vec3<float>{1, 1, 0}) +
 				mousePos * vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
 			);
-		}
-		
-		auto mpos = gameInput.mouseWorldPosition();
-
-		{
-			matrix4 m;
-			m.discardSetTranslate(mpos);
-			m.scale(0.5f);
-			application.meshRenderer().drawMesh(*mesh, m, "Empty");
-		}
-
-		{
-			rynx_profile("Main", "Input handling");
-			// TODO: Simulation API
-			std::vector<std::unique_ptr<rynx::application::logic::iaction>> userActions = base_simulation.m_logic.onInput(gameInput, ecs);
-			for (auto&& action : userActions) {
-				action->apply(ecs);
-			}
 		}
 
 		auto time_logic_start = std::chrono::high_resolution_clock::now();
@@ -391,30 +359,6 @@ int main(int argc, char** argv) {
 			gameRenderer.render(ecs);
 		}
 		auto time_render_end = std::chrono::high_resolution_clock::now();
-
-		// visualize collision detection structure.
-		if (conf.visualize_dynamic_collisions) {
-			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-				matrix4 m;
-				m.discardSetTranslate(pos);
-				m.scale(radius);
-				float sign[2] = { -1.0f, +1.0f };
-				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
-			});
-		}
-
-		// visualize collision detection structure.
-		if (conf.visualize_static_collisions) {
-			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-				matrix4 m;
-				m.discardSetTranslate(pos);
-				m.scale(radius);
-				float sign[2] = { -1.0f, +1.0f };
-				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
-			});
-		}
 
 		{
 			rynx_profile("Main", "Menus");
@@ -445,26 +389,30 @@ int main(int argc, char** argv) {
 
 		{
 			rynx_profile("Main", "Clean up dead entitites");
-			ecs.for_each([&ecs](rynx::ecs::id id, rynx::components::lifetime& time) {
+			std::vector<rynx::ecs::id> kill_entities;
+			
+			ecs.query().in<dead>().execute([&](rynx::ecs::id id) {
+				kill_entities.emplace_back(id);
+			});
+			
+			ecs.for_each([&](rynx::ecs::id id, rynx::components::lifetime& time) {
 				--time.value;
 				if (time.value <= 0) {
-					ecs.attachToEntity(id, game::dead());
+					kill_entities.emplace_back(id);
 				}
 			});
 
-			ecs.for_each([&ecs, &collisionDetection](rynx::ecs::id id, game::dead&, rynx::components::collision_category& cat) {
+			for (auto& id : kill_entities) {
+				ecs.attachToEntity(id, dead());
+			}
+
+			ecs.query().in<dead>().execute([&ecs, &collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
 				collisionDetection.erase(id.value, cat.value);
-				ecs.erase(id);
 			});
-		}
 
-		{
-			rynx_profile("Main", "Sleep");
-			// NOTE: Frame time can be edited during runtime for debugging reasons.
-			if (gameInput.isKeyDown(slowTime)) { sleepTime *= 1.1f; }
-			if (gameInput.isKeyDown(fastTime)) { sleepTime *= 0.9f; }
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(int(sleepTime)));
+			for (auto& id : kill_entities) {
+				ecs.erase(id);
+			}
 		}
 
 		application.swapBuffers();

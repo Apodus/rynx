@@ -1,6 +1,8 @@
 ﻿
 #pragma once
 
+#include <rynx/tech/math/vector.hpp>
+
 #include <cmath>
 #include <utility>
 #include <cstdint>

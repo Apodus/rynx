@@ -344,6 +344,19 @@ namespace rynx {
 			iterator& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
 
 		private:
+			template<bool isIdQuery, typename F>
+			static void call_user_op(F&& op, std::vector<id>& ids) {
+				if constexpr (isIdQuery) {
+					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
+						op(entityId);
+					});
+				}
+				else {
+					for (size_t i = 0; i < ids.size(); ++i)
+						op();
+				}
+			}
+			
 			template<bool isIdQuery, typename F, typename T_first, typename... Ts>
 			static void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
@@ -759,6 +772,9 @@ namespace rynx {
 			
 			entity<edit_view, true> operator[](entity_id_t id) { return entity<edit_view, true>(*this, id); }
 			entity<edit_view, true> operator[](id id) { return entity<edit_view, true>(*this, id.value); }
+
+			const_entity<view> operator[](entity_id_t id) const { return const_entity<view>(*this, id); }
+			const_entity<view> operator[](id id) const { return const_entity<view>(*this, id.value); }
 
 			template<typename... Components>
 			entity_id_t create(Components&& ... components) {

@@ -11,10 +11,11 @@
 
 namespace rynx {
 	namespace ruleset {
-		class physics_2d_sidescrolling : public application::logic::iruleset {
+		class physics_2d : public application::logic::iruleset {
+			vec3<float> m_gravity;
 		public:
-			physics_2d_sidescrolling() {}
-			virtual ~physics_2d_sidescrolling() {}
+			physics_2d(vec3<float> gravity = vec3<float>(0, 0, 0)) : m_gravity(gravity) {}
+			virtual ~physics_2d() {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& context) override {
 
@@ -150,19 +151,6 @@ namespace rynx {
 
 				findCollisionsTask->depends_on(collisions_find_barrier);
 				findCollisionsTask->depends_on(updateBoundaryWorld);
-
-				/*
-				auto update_relative_velocity = [](rynx::ecs::view<components::frame_collisions, const components::position, const components::motion> ecs, rynx::scheduler::task& task) {
-					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::position pos, components::frame_collisions& collisionsComponent) {
-						for (auto&& entry : collisionsComponent.collisions) {
-							auto other = ecs[entry.idOfOther];
-							const auto& om = other.get<const components::motion>();
-							const auto& op = other.get<const components::position>();
-							entry.collisionPointRelativeVelocity = m.velocity_at_point(entry.collisionPointRelative) - om.velocity_at_point(pos.value + entry.collisionPointRelative - op.value);
-						}
-					});
-				};
-				*/
 				
 				auto collision_resolution_first_stage = [](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 					ecs.for_each_parallel(task.parallel(), [ecs](components::motion& m, const components::frame_collisions& collisionsComponent) {
@@ -250,10 +238,12 @@ namespace rynx {
 					});
 				};
 
-				context.add_task("Gravity", [](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
-					ecs.query().in<components::frame_collisions>().execute_parallel(task.parallel(), [](components::motion& m) {
-						m.acceleration.y -= 0.03f;
-					});
+				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
+					if (m_gravity.lengthSquared() > 0) {
+						ecs.query().in<components::frame_collisions>().execute_parallel(task.parallel(), [this](components::motion& m) {
+							m.acceleration += m_gravity;
+						});
+					}
 				})->depends_on(*findCollisionsTask).then(collision_resolution_first_stage);
 			}
 
