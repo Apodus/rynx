@@ -40,7 +40,7 @@ namespace game {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +20.0f + m_random(0.0f, 4.0f);
-							if (m_random() & 1) {
+							if (false && m_random() & 1) {
 								ecs.create(
 									game::components::minilisk(),
 									game::health({ 30, 30 }),
@@ -50,7 +50,7 @@ namespace game {
 									rynx::components::radius(1.6f),
 									rynx::components::collision_category(dynamic),
 									rynx::components::color(),
-									rynx::components::dampening({ 0.97f, 0.97f }),
+									rynx::components::dampening({ 0.97f, 0.997f }),
 									rynx::components::frame_collisions()
 								);
 							}
@@ -62,7 +62,7 @@ namespace game {
 									rynx::components::radius(math::sqrt_approx(16 + 16)),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
-									rynx::components::dampening({ 0.93f, 0.98f }),
+									rynx::components::dampening({ 0.97f, 0.997f }),
 									rynx::components::frame_collisions()
 								);
 							}

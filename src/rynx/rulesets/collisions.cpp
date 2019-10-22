@@ -80,8 +80,8 @@ namespace {
 	}
 
 	void check_polygon_ball(
-		rynx::ecs::entity<ecs_view>& polygon,
-		rynx::ecs::entity<ecs_view>& ball
+		rynx::ecs::entity<ecs_view> polygon,
+		rynx::ecs::entity<ecs_view> ball
 	) {
 		const auto& posA = polygon.get<const rynx::components::position>();
 		const auto& posB = ball.get<const rynx::components::position>();
@@ -91,13 +91,16 @@ namespace {
 		for (auto&& segment : boundaryA.segments_world) {
 			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, posB.value);
 			const float dist = pointToLineSegment.first;
+			auto normal = (pointToLineSegment.second - posB.value).normalizeApprox();
+			normal *= 2.0f * (normal.dot(posA.value - pointToLineSegment.second) > 0) - 1.0f;
+
 			if (dist < radiusB) {
 				store_collision(
 					polygon,
 					ball,
 					rynx::collision_detection::shape_type::Boundary,
 					rynx::collision_detection::shape_type::Sphere,
-					-segment.getNormalXY(),
+					normal,
 					pointToLineSegment.second,
 					posA.value,
 					posB.value,
@@ -109,8 +112,8 @@ namespace {
 	}
 
 	void check_polygon_polygon(
-		rynx::ecs::entity<ecs_view>& poly1,
-		rynx::ecs::entity<ecs_view>& poly2
+		rynx::ecs::entity<ecs_view> poly1,
+		rynx::ecs::entity<ecs_view> poly2
 	) {
 		const auto& posA = poly1.get<const rynx::components::position>();
 		const auto& posB = poly2.get<const rynx::components::position>();
@@ -119,7 +122,6 @@ namespace {
 
 		const float radiusB = poly2.get<const rynx::components::radius>().r;
 
-		// NOTE: this could be optimized by having static boundary objects individual segments in a sphere_tree and testing against that.
 		for (auto&& segmentA : boundaryA.segments_world) {
 			const auto p1 = segmentA.p1;
 			const auto p2 = segmentA.p2;
@@ -145,10 +147,9 @@ namespace {
 						}
 						else {
 							normal = segmentA.getNormalXY();
+							normal *= -1.f;
 						}
 						normal.normalizeApprox();
-						if (normal.dot(collisionPoint.point() - posA.value) > 0)
-							normal *= -1.f;
 						
 						float penetration1 = a1 < a2 ? a1 : a2;
 						float penetration2 = b1 < b2 ? b1 : b2;

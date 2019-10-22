@@ -164,7 +164,7 @@ namespace rynx {
 							}
 						}
 
-						for (int i = 0; i < 3; ++i) {
+						for (int i = 0; i < 20; ++i) {
 							for (size_t k = 0; k < collisionsComponent.collisions.size(); ++k) {
 								const auto& collision = collisionsComponent.collisions[k];
 								// TODO: Rotation response
@@ -194,11 +194,6 @@ namespace rynx {
 								float bias = 0.05f * collision.penetration;
 								float soft_j = local_mul * bias * top / bot;
 								float hard_j = local_mul * (top / bot + bias * 0.1f);
-
-								/*
-								soft_j = (soft_j < bias) ? bias : soft_j;
-								hard_j = (hard_j < bias) ? bias : hard_j;
-								*/
 
 								vec3<float> normal = collision.collisionNormal;
 								normal.normalizeApprox();
@@ -232,7 +227,7 @@ namespace rynx {
 								
 								float rotation_force_friction = tangent.cross2d(collision.collisionPointRelative);
 								float rotation_force_linear = soft_impact_force.cross2d(collision.collisionPointRelative);
-								m.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * 0.2f; // divide by moment of inertia.
+								m.angularAcceleration -= (rotation_force_linear + rotation_force_friction) / 8.0f; // divide by moment of inertia.
 							}
 						}
 					});
