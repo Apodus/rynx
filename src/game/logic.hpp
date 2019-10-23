@@ -25,7 +25,7 @@ namespace game {
 			ecs.create(
 				rynx::components::position(dir * dist),
 				rynx::components::motion(),
-				rynx::components::mass({ 1.0f }),
+				rynx::components::physical_body({ 1.0f / 5.0f, 1.0f / 15.0f, 0.3f, 1.0f }),
 				rynx::components::radius(0.2f),
 				rynx::components::collision_category(m_category),
 				rynx::components::color()

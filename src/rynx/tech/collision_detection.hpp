@@ -109,24 +109,19 @@ namespace rynx {
 			}
 		}
 
-		template<typename F> void for_each_collision_parallel(F&& f, rynx::scheduler::task& task) {
+		template<typename T, typename F> void for_each_collision_parallel(std::shared_ptr<rynx::parallel_accumulator<T>>& accumulator, F&& f, rynx::scheduler::task& task) {
 			for (auto&& check : m_collision_checks) {
 				if (check.a == check.b)
-					sphere_tree::collisions_internal_parallel(std::forward<F>(f), task, &check.a->root);
+					sphere_tree::collisions_internal_parallel(accumulator, std::forward<F>(f), task, &check.a->root);
 				else {
 					if (check.type == check_type::b_is_static) {
-						sphere_tree::collisions_internal_parallel_b_static(std::forward<F>(f), task, &check.a->root, &check.b->root);
+						sphere_tree::collisions_internal_parallel_b_static(accumulator, std::forward<F>(f), task, &check.a->root, &check.b->root);
 					}
 					else {
-						// parallelizing this path is more tricky. parallel accumulators might help.
-						// if we didn't write directly to entity components, we could run everything in parallel.
-						sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root);
+						// sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root); // single threaded
 					}
 				}
 			}
 		}
-
-		// TODO: figure out if this is a useful abstraction to have or not :(
-		dynamic_bitset& collidedThisFrame() { return m_collisionIndex; }
 	};
 }

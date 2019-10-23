@@ -30,7 +30,7 @@ namespace game {
 							game::health,
 							rynx::components::position,
 							rynx::components::motion,
-							rynx::components::mass,
+							rynx::components::physical_body,
 							rynx::components::radius,
 							rynx::components::collision_category,
 							rynx::components::color,
@@ -40,13 +40,13 @@ namespace game {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +20.0f + m_random(0.0f, 4.0f);
-							if (false && m_random() & 1) {
+							if (m_random() & 1) {
 								ecs.create(
 									game::components::minilisk(),
 									game::health({ 30, 30 }),
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
-									rynx::components::mass({ 0.2f }),
+									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
 									rynx::components::radius(1.6f),
 									rynx::components::collision_category(dynamic),
 									rynx::components::color(),
@@ -60,6 +60,7 @@ namespace game {
 									rynx::components::collision_category(dynamic),
 									rynx::components::boundary({ Shape::makeBox(1.5f + 2.0f * (m_random() & 127) / 127.0f).generateBoundary_Outside() }),
 									rynx::components::radius(math::sqrt_approx(16 + 16)),
+									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
 									rynx::components::dampening({ 0.97f, 0.997f }),

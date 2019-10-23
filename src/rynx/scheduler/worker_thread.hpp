@@ -39,10 +39,12 @@ namespace rynx {
 				m_thread.join();
 			}
 
-			void wake_up() {
+			bool wake_up() {
 				if (m_sleeping.exchange(false)) {
 					m_semaphore.signal();
+					return true;
 				}
+				return false;
 			}
 
 			void wait() {

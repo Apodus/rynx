@@ -40,8 +40,19 @@ namespace rynx {
 			int value;
 		};
 
-		struct mass {
-			float m = 1.0f;
+		struct physical_body {
+			physical_body() = default;
+			physical_body(float mass, float moment_of_inertia, float elasticity, float friction)
+				: inv_mass(1.0f / mass)
+				, inv_moment_of_inertia(1.0f / moment_of_inertia)
+				, collision_elasticity(elasticity)
+				, friction_multiplier(friction)
+			{}
+			
+			float inv_mass = 1.0f;
+			float inv_moment_of_inertia = 1.0f;
+			float collision_elasticity = 0.5f; // [0, 1[
+			float friction_multiplier = 1.0f; // [0, 1]
 		};
 
 		struct dampening {

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <rynx/tech/parallel_accumulator.hpp>
 #include <rynx/tech/ecs.hpp>
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/system/assert.hpp>
@@ -74,6 +75,7 @@ namespace rynx {
 					return std::forward_as_tuple(getTaskArgParam<Args>(ctx, currentTask)...);
 				}
 			};
+			
 			template<typename RetVal, typename Class, typename...Args> struct resource_deducer<RetVal(Class::*)(Args...)> : public resource_deducer<RetVal(Class::*)(Args...) const> {};
 			void reserve_resources() const;
 
@@ -212,7 +214,9 @@ namespace rynx {
 				resource_deducer<decltype(&std::remove_reference_t<F>::operator())>()(*this);
 				context* ctx = m_context;
 
-				m_op = [ctx, f = std::move(f)](rynx::scheduler::task* myTask) {
+				// this is marked as mutable in order to support f being mutable. since it is captured here in a lambda,
+				// if this were not mutable, f would not be allowed to change itself either. 
+				m_op = [ctx, f = std::move(f)](rynx::scheduler::task* myTask) mutable {
 					auto resources = resource_deducer<decltype(&std::remove_reference_t<F>::operator())>().fetchParams(ctx, myTask);
 					std::apply(f, resources);
 				};
@@ -292,6 +296,96 @@ namespace rynx {
 						}
 					}
 				}
+
+				template<typename T, typename F> std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> for_each_accumulate(int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
+					barrier bar;
+					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
+					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator>();
+
+					{
+						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
+							std::vector<T>& local_accumulator = accumulator->get_local_storage();
+							for (;;) {
+								int64_t my_index = for_each_data->index.fetch_add(work_size);
+								if (my_index >= end) {
+									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+										task_context->erase_completed_parallel_for_tasks();
+									}
+									return;
+								}
+								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+								for (int64_t i = my_index; i < limit; ++i) {
+									op(local_accumulator, i);
+								}
+							}
+						});
+						work->m_for_each = for_each_data;
+						work->required_for(bar);
+					}
+
+					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+					// work on the for_each task myself.
+					for (;;) {
+						std::vector<T>& local_accumulator = accumulator->get_local_storage();
+						int64_t my_index = for_each_data->index.fetch_add(work_size);
+						if (my_index >= end) {
+							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+								m_parent.m_context->erase_completed_parallel_for_tasks();
+							}
+							return bar;
+						}
+						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+						for (int64_t i = my_index; i < limit; ++i) {
+							op(local_accumulator, i);
+						}
+					}
+				}
+
+				template<typename T, typename F> barrier for_each_accumulate(std::shared_ptr<rynx::parallel_accumulator<T>> accumulator, int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
+					barrier bar;
+					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
+
+					{
+						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
+							std::vector<T>& local_accumulator = accumulator->get_local_storage();
+							for (;;) {
+								int64_t my_index = for_each_data->index.fetch_add(work_size);
+								if (my_index >= end) {
+									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+										task_context->erase_completed_parallel_for_tasks();
+									}
+									return;
+								}
+								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+								for (int64_t i = my_index; i < limit; ++i) {
+									op(local_accumulator, i);
+								}
+							}
+						});
+						work->m_for_each = for_each_data;
+						work->required_for(bar);
+					}
+
+					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+					// work on the for_each task myself.
+					for (;;) {
+						std::vector<T>& local_accumulator = accumulator->get_local_storage();
+						int64_t my_index = for_each_data->index.fetch_add(work_size);
+						if (my_index >= end) {
+							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+								m_parent.m_context->erase_completed_parallel_for_tasks();
+							}
+							return bar;
+						}
+						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+						for (int64_t i = my_index; i < limit; ++i) {
+							op(local_accumulator, i);
+						}
+					}
+				}
+
 
 				task& m_parent;
 			};

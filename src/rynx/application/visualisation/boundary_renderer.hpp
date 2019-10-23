@@ -23,8 +23,7 @@ namespace rynx {
 
 					ecs.query().notIn<rynx::components::mesh, rynx::components::frame_collisions>().execute([this](
 						const rynx::components::boundary& m,
-						const rynx::components::color& color,
-						const rynx::components::position& p
+						const rynx::components::color& color
 						) {
 						for (const auto& line : m.segments_world) {
 							m_meshRenderer->drawLine(line.p1, line.p2, 0.4f, color.value);

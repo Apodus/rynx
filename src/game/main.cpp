@@ -174,7 +174,8 @@ int main(int argc, char** argv) {
 				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
+				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f)
 			);
 		};
 
@@ -185,7 +186,8 @@ int main(int argc, char** argv) {
 				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity)
+				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f)
 			);
 		};
 
@@ -438,9 +440,9 @@ int main(int argc, char** argv) {
 			auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
 
 			float info_text_pos_y = +0.1f;
-			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.5f + info_text_pos_y, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f + info_text_pos_y, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f + info_text_pos_y, 0.09f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.2f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 		}
 
 		{

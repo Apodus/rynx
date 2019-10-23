@@ -20,8 +20,8 @@ bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex
 void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 	rynx_profile("Profiler", "Wake up sleeping workers");
 	for (int i = 0; i < numThreads; ++i) {
-		if (m_threads[i]->is_sleeping()) {
-			m_threads[i]->wake_up();
+		if (m_threads[i]->wake_up()) {
+			return; // wake up one is always enough. if they find work, they will wake up the next worker.
 		}
 	}
 }

@@ -9,77 +9,40 @@ namespace {
 		const rynx::components::projectile,
 		const rynx::components::collision_category,
 		const rynx::components::motion,
-		rynx::components::frame_collisions>;
+		const rynx::components::physical_body>;
 
-	void store_collision(
+	[[nodiscard]] rynx::ruleset::physics_2d::collision_event store_collision(
 		rynx::ecs::entity<ecs_view>& a,
 		rynx::ecs::entity<ecs_view>& b,
-		rynx::collision_detection::shape_type shapeA,
-		rynx::collision_detection::shape_type shapeB,
 		vec3<float> normal,
 		vec3<float> collisionPoint,
 		vec3<float> pos_a,
 		vec3<float> pos_b,
-		float penetration1,
-		float penetration2
+		float penetration
 	) {
 		rynx_assert(normal.lengthSquared() > 0.9f, "normal must be unit length");
 		rynx_assert(normal.lengthSquared() < 1.1f, "normal must be unit length");
 
-		auto* collisions_of_a = a.try_get<rynx::components::frame_collisions>();
-		auto* collisions_of_b = b.try_get<rynx::components::frame_collisions>();
-
-		const auto* motion_a = a.try_get<const rynx::components::motion>();
-		const auto* motion_b = b.try_get<const rynx::components::motion>();
+		rynx::ruleset::physics_2d::collision_event event;
+		event.a_id = a.id();
+		event.b_id = b.id();
+		event.normal = normal;
+		event.a_pos = pos_a;
+		event.b_pos = pos_b;
+		event.c_pos = collisionPoint;
+		event.penetration = penetration;
 		
-		vec3<float> relative_velocity;
-		const vec3<float> relative_pos_a = collisionPoint - pos_a;
-		const vec3<float> relative_pos_b = collisionPoint - pos_b;
-
-		if (motion_a) {
-			if (motion_b) {
-				relative_velocity =
-					(motion_a->velocity + math::velocity_at_point_2d(relative_pos_a, motion_a->angularVelocity)) -
-					(motion_b->velocity + math::velocity_at_point_2d(relative_pos_b, motion_b->angularVelocity));
-			}
-			else {
-				relative_velocity = (motion_a->velocity + math::velocity_at_point_2d(relative_pos_a, motion_a->angularVelocity));
-			}
-		}
-		else {
-			if (motion_b) {
-				relative_velocity = -(motion_b->velocity + math::velocity_at_point_2d(relative_pos_b, motion_b->angularVelocity));
-			}
-		}
-
-		if (collisions_of_a) {
-			rynx::components::frame_collisions::entry collision_for_a;
-			collision_for_a.categoryOfOther = b.get<const rynx::components::collision_category>().value;
-			collision_for_a.collisionNormal = normal;
-			collision_for_a.idOfOther = b.id();
-			collision_for_a.shapeOfOther = shapeB;
-			collision_for_a.collisionPointRelative = relative_pos_a;
-			collision_for_a.penetration = penetration1;
-			collision_for_a.other_has_collision_response = (collisions_of_b != nullptr);
-			collision_for_a.collisionPointRelativeVelocity = relative_velocity;
-			collisions_of_a->collisions.emplace_back(std::move(collision_for_a));
-		}
-
-		if (collisions_of_b) {
-			rynx::components::frame_collisions::entry collision_for_b;
-			collision_for_b.categoryOfOther = a.get<const rynx::components::collision_category>().value;
-			collision_for_b.collisionNormal = -normal;
-			collision_for_b.idOfOther = a.id();
-			collision_for_b.shapeOfOther = shapeA;
-			collision_for_b.collisionPointRelative = relative_pos_b;
-			collision_for_b.penetration = penetration2;
-			collision_for_b.other_has_collision_response = (collisions_of_a != nullptr);
-			collision_for_b.collisionPointRelativeVelocity = -relative_velocity;
-			collisions_of_b->collisions.emplace_back(std::move(collision_for_b));
-		}
+		auto* a_body = a.try_get<const rynx::components::physical_body>();
+		auto* b_body = b.try_get<const rynx::components::physical_body>();
+		if(a_body)
+			event.a_body = *a_body;
+		if (b_body)
+			event.b_body = *b_body;
+		return event;
 	}
 
 	void check_polygon_ball(
+		std::vector<rynx::ruleset::physics_2d::collision_event>& collisions_accumulator, 
 		rynx::ecs::entity<ecs_view> polygon,
 		rynx::ecs::entity<ecs_view> ball
 	) {
@@ -95,23 +58,21 @@ namespace {
 			normal *= 2.0f * (normal.dot(posA.value - pointToLineSegment.second) > 0) - 1.0f;
 
 			if (dist < radiusB) {
-				store_collision(
+				collisions_accumulator.emplace_back(store_collision(
 					polygon,
 					ball,
-					rynx::collision_detection::shape_type::Boundary,
-					rynx::collision_detection::shape_type::Sphere,
 					normal,
 					pointToLineSegment.second,
 					posA.value,
 					posB.value,
-					radiusB - dist,
 					radiusB - dist
-				);
+				));
 			}
 		}
 	}
 
 	void check_polygon_polygon(
+		std::vector<rynx::ruleset::physics_2d::collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view> poly1,
 		rynx::ecs::entity<ecs_view> poly2
 	) {
@@ -155,18 +116,15 @@ namespace {
 						float penetration2 = b1 < b2 ? b1 : b2;
 						float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
 
-						store_collision(
+						collisions_accumulator.emplace_back(store_collision(
 							poly1,
 							poly2,
-							rynx::collision_detection::shape_type::Boundary,
-							rynx::collision_detection::shape_type::Boundary,
 							normal,
 							collisionPoint.point(),
 							posA.value,
 							posB.value,
-							penetration,
 							penetration
-						);
+						));
 					}
 				}
 			}
@@ -174,6 +132,7 @@ namespace {
 	}
 
 	void check_projectile_ball(
+		std::vector<rynx::ruleset::physics_2d::collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view>& bulletEntity,
 		rynx::ecs::entity<ecs_view>& dynamicEntity
 	) {
@@ -184,23 +143,21 @@ namespace {
 		auto pointDistanceResult = math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, ballPos);
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
-			store_collision(
+			collisions_accumulator.emplace_back(store_collision(
 				bulletEntity,
 				dynamicEntity,
-				rynx::collision_detection::shape_type::Projectile,
-				rynx::collision_detection::shape_type::Sphere,
 				((bulletPos.value - bulletMotion.velocity) - ballPos).normalizeApprox(),
 				pointDistanceResult.second,
 				bulletPos.value,
 				ballPos,
-				0,
 				0 // NOTE: penetration values don't really mean anything in projectile case.
-			);
+			));
 		}
 	}
 
 	// TODO: optimize if necessary.
 	void check_projectile_polygon(
+		std::vector<rynx::ruleset::physics_2d::collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view>& bulletEntity,
 		rynx::ecs::entity<ecs_view>& dynamicEntity
 	) {
@@ -222,25 +179,33 @@ namespace {
 				);
 
 				if (intersectionTest) {
-					store_collision(
+					collisions_accumulator.emplace_back(store_collision(
 						bulletEntity,
 						dynamicEntity,
-						rynx::collision_detection::shape_type::Projectile,
-						rynx::collision_detection::shape_type::Boundary,
 						math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
 						intersectionTest.point(),
 						bulletPos.value,
 						polyPos,
-						0,
 						0 // NOTE: penetration values don't really mean anything in projectile case.
-					);
+					));
 				}
 			}
 		}
 	}
 }
 
-void rynx::ruleset::physics_2d::check_all(ecs_view ecs, uint64_t entityA, uint64_t entityB, vec3<float> normal, float penetration) {
+void rynx::ruleset::physics_2d::check_all(
+	std::vector<collision_event>& collisions_accumulator,
+	ecs_view ecs,
+	uint64_t entityA,
+	uint64_t entityB,
+	vec3<float> a_pos,
+	float a_radius,
+	vec3<float> b_pos,
+	float b_radius,
+	vec3<float> normal,
+	float penetration)
+{
 	auto entA = ecs[entityA];
 	auto entB = ecs[entityB];
 
@@ -256,10 +221,10 @@ void rynx::ruleset::physics_2d::check_all(ecs_view ecs, uint64_t entityA, uint64
 		if (anyBoundary) {
 			// projectiles do not have boundary shapes. this must be projectile vs polygon check.
 			if (hasProjectileA) {
-				check_projectile_polygon(entA, entB);
+				check_projectile_polygon(collisions_accumulator, entA, entB);
 			}
 			else {
-				check_projectile_polygon(entB, entA);
+				check_projectile_polygon(collisions_accumulator, entB, entA);
 			}
 		}
 		else if (hasProjectileA & hasProjectileB) {
@@ -269,43 +234,35 @@ void rynx::ruleset::physics_2d::check_all(ecs_view ecs, uint64_t entityA, uint64
 		else {
 			// projectile vs ball check.
 			if (hasProjectileA) {
-				check_projectile_ball(entA, entB);
+				check_projectile_ball(collisions_accumulator, entA, entB);
 			}
 			else {
-				check_projectile_ball(entB, entA);
+				check_projectile_ball(collisions_accumulator, entB, entA);
 			}
 		}
 	}
 	else if (anyBoundary) {
 		if (hasBoundaryA & hasBoundaryB) {
-			check_polygon_polygon(entA, entB);
+			check_polygon_polygon(collisions_accumulator, entA, entB);
 		}
 		else if (hasBoundaryA) {
-			check_polygon_ball(entA, entB);
+			check_polygon_ball(collisions_accumulator, entA, entB);
 		}
 		else {
-			check_polygon_ball(entB, entA);
+			check_polygon_ball(collisions_accumulator, entB, entA);
 		}
 	}
 	else {
 		// is ball vs ball collision. no further check needed, sphere tree said the balls collided.
-		vec3<float> pos_a = entA.get<const components::position>().value;
-		vec3<float> pos_b = entB.get<const components::position>().value;
-		float r_a = entA.get<const components::radius>().r;
-		float r_b = entB.get<const components::radius>().r;
-
-		store_collision(
+		collisions_accumulator.emplace_back(store_collision(
 			entA,
 			entB,
-			collision_detection::shape_type::Sphere,
-			collision_detection::shape_type::Sphere,
 			normal,
-			(pos_a + pos_b) * 0.5f + normal * (r_a - r_b),
-			pos_a,
-			pos_b,
-			penetration,
+			(a_pos + b_pos) * 0.5f + normal * (a_radius - b_radius),
+			a_pos,
+			b_pos,
 			penetration
-		);
+		));
 	}
 }
 
