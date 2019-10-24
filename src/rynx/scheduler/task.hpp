@@ -166,6 +166,14 @@ namespace rynx {
 				return *this;
 			}
 
+			// task is not complete until barrier completes.
+			// '&' denotes "both must be complete for dependent tasks to start".
+			task& operator & (barrier bar);
+			task& operator & (task_token& other);
+			
+			// '|' denotes pipe, a | b   == b comes after a.
+			task& operator | (task_token& other);
+
 			// TODO: Rename all task creation functions.
 			template<typename F> task_token make_task(F&& op) {
 				return task_token(m_context->make_task("task", std::forward<F>(op)));
@@ -260,7 +268,7 @@ namespace rynx {
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
 					
 					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
+						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
@@ -303,7 +311,7 @@ namespace rynx {
 					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator>();
 
 					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
+						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
 							std::vector<T>& local_accumulator = accumulator->get_local_storage();
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
@@ -347,7 +355,7 @@ namespace rynx {
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
 
 					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() {
+						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
 							std::vector<T>& local_accumulator = accumulator->get_local_storage();
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
@@ -451,6 +459,12 @@ namespace rynx {
 
 			task* operator -> ();
 			task& operator * () { return m_task; }
+			
+			// chaining tasks with nice api
+			task_token& operator | (task_token& other) {
+				other->depends_on(m_task);
+				return other;
+			}
 
 		private:
 			task m_task;

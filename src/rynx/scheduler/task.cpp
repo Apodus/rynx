@@ -48,3 +48,18 @@ rynx::scheduler::task& rynx::scheduler::task::depends_on(task_token& other) {
 rynx::scheduler::task& rynx::scheduler::task::required_for(task_token& other) {
 	return required_for(*other);
 }
+
+rynx::scheduler::task& rynx::scheduler::task::operator & (barrier bar) {
+	extend_task([]() {})->depends_on(bar);
+	return *this;
+}
+
+rynx::scheduler::task& rynx::scheduler::task::operator & (task_token& other) {
+	completion_blocked_by(*other);
+	return *this;
+}
+
+rynx::scheduler::task& rynx::scheduler::task::operator | (task_token& other) {
+	other->depends_on(*this);
+	return *other;
+}

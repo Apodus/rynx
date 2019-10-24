@@ -114,12 +114,7 @@ namespace rynx {
 				if (check.a == check.b)
 					sphere_tree::collisions_internal_parallel(accumulator, std::forward<F>(f), task, &check.a->root);
 				else {
-					if (check.type == check_type::b_is_static) {
-						sphere_tree::collisions_internal_parallel_b_static(accumulator, std::forward<F>(f), task, &check.a->root, &check.b->root);
-					}
-					else {
-						// sphere_tree::collisions_internal(std::forward<F>(f), &check.a->root, &check.b->root); // single threaded
-					}
+					sphere_tree::collisions_internal_parallel_node_node(accumulator, std::forward<F>(f), task, &check.a->root, &check.b->root);
 				}
 			}
 		}

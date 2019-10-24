@@ -40,7 +40,7 @@ namespace game {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +20.0f + m_random(0.0f, 4.0f);
-							if (m_random() & 1) {
+							if (true || m_random() & 1) {
 								ecs.create(
 									game::components::minilisk(),
 									game::health({ 30, 30 }),

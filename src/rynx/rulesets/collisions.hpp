@@ -180,9 +180,11 @@ namespace rynx {
 				
 				auto collision_resolution_first_stage = [collisions_accumulator](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
-					std::vector<collision_event> overlaps = collisions_accumulator->combine_and_clear();
-					for(int i=0; i<10; ++i)
-					for (auto&& collision : overlaps) {
+					std::shared_ptr<std::vector<collision_event>> overlaps = std::make_shared<std::vector<collision_event>>(collisions_accumulator->combine_and_clear());
+					for (int i = 0; i < 20; ++i)
+					// task & task.parallel().for_each(0, overlaps->size(), [overlaps, ecs](int64_t index) mutable {
+					for(size_t index=0; index < overlaps->size(); ++index) {
+						auto& collision = overlaps->operator[](index);
 						auto entity_a = ecs[collision.a_id];
 						auto entity_b = ecs[collision.b_id];
 
@@ -203,10 +205,11 @@ namespace rynx {
 						float impact_power = -total_rel_v.dot(collision.normal);
 						if (impact_power < 0)
 							continue;
+							// return;
 
 						auto proximity_force = collision.normal * collision.penetration * collision.penetration;
 						rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
-						
+
 						float inertia1 = sqr(collision.normal.cross2d(rel_pos_a)) * collision.a_body.inv_moment_of_inertia;
 						float inertia2 = sqr(collision.normal.cross2d(rel_pos_b)) * collision.b_body.inv_moment_of_inertia;
 						float collision_elasticity = (collision.a_body.collision_elasticity + collision.b_body.collision_elasticity) * 0.5f; // combine some fun way
@@ -216,17 +219,17 @@ namespace rynx {
 
 						float bias = 0.99f + collision.penetration * collision.penetration;
 						float soft_j = bias * top / bot;
-						
+
 						vec3<float> normal = collision.normal;
 						auto soft_impact_force = normal * soft_j;
-						
+
 						float mu = (collision.a_body.friction_multiplier + collision.b_body.friction_multiplier) * 0.5f;
 						vec3<float> tangent = normal.normal2d();
 						if (tangent.dot(total_rel_v) < 0)
 							tangent *= -1;
-						
+
 						float friction_power = -tangent.dot(total_rel_v) * mu;
-						
+
 						// if we want to limit friction according to physics, this would do the trick.
 						if constexpr (false) {
 							while (friction_power * friction_power > soft_j * soft_j)
@@ -235,8 +238,8 @@ namespace rynx {
 
 						tangent *= friction_power;
 
-						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass; // *0.016666f;
-						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass; // *0.016666f;
+						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass;
+						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass;
 
 						{
 							float rotation_force_friction = tangent.cross2d(rel_pos_a);
@@ -249,7 +252,7 @@ namespace rynx {
 							float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
 							motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia;
 						}
-					}
+					};
 				};
 
 				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {

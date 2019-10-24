@@ -688,7 +688,7 @@ private:
 		rynx_assert(a != nullptr, "node cannot be null");
 		auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 		auto leaf_node_count = leaf_nodes.size();
-		task.parallel().for_each_accumulate(accumulator, 0, leaf_node_count, [f, leaf_nodes = std::move(leaf_nodes)](std::vector<T>& acc, int64_t node_index) {
+		task & task.parallel().for_each_accumulate(accumulator, 0, leaf_node_count, [f, leaf_nodes = std::move(leaf_nodes)](std::vector<T>& acc, int64_t node_index) {
 			const node* a = leaf_nodes[node_index];
 			for (size_t i = 0; i < a->m_members.size(); ++i) {
 				const auto& m1 = a->m_members[i];
@@ -704,7 +704,7 @@ private:
 		}, 8);
 	}
 
-	template<typename T, typename F> static void collisions_internal_parallel_b_static(
+	template<typename T, typename F> static void collisions_internal_parallel_node_node(
 		std::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
 		F&& f,
 		rynx::scheduler::task& task_context,
@@ -712,9 +712,13 @@ private:
 		const node* rynx_restrict b)
 	{
 		std::shared_ptr<rynx::unordered_map<const node*, std::vector<const node*>>> leaf_pairs = std::make_shared<rynx::unordered_map<const node*, std::vector<const node*>>>();
-		collisions_internal_gather_leaf_node_pairs(a, b, *leaf_pairs);
+		{
+			rynx_profile("collision detection", "gather node pairs");
+			collisions_internal_gather_leaf_node_pairs(a, b, *leaf_pairs);
+		}
 
-		task_context.parallel().for_each_accumulate(accumulator, 0, leaf_pairs->capacity(), [f, leaf_pairs](std::vector<T>& acc, int64_t i) {
+		rynx_profile("collision detection", "gather entity pairs");
+		task_context & task_context.parallel().for_each_accumulate(accumulator, 0, leaf_pairs->capacity(), [f, leaf_pairs](std::vector<T>& acc, int64_t i) {
 			if (!leaf_pairs->slot_test(i))
 				return;
 
@@ -735,7 +739,7 @@ private:
 					}
 				}
 			}
-		}, 1);
+		}, 8);
 	}
 
 	template<typename T, typename F> static void collisions_internal_parallel(
@@ -745,7 +749,7 @@ private:
 		const node* rynx_restrict a)
 	{
 		collisions_internal_parallel_intra_node(accumulator, std::forward<F>(f), task_context, a);
-		collisions_internal_parallel_b_static(accumulator, std::forward<F>(f), task_context, a, a);
+		collisions_internal_parallel_node_node(accumulator, std::forward<F>(f), task_context, a, a);
 	}
 
 
