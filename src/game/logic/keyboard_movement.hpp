@@ -26,7 +26,7 @@ namespace game {
 			virtual void apply(rynx::ecs& ecs) const {
 				if (ecs.exists(entity)) {
 					auto unit = ecs[entity];
-					unit.get<rynx::components::motion>().acceleration += acceleration;
+					unit.get<rynx::components::motion>().velocity += acceleration;
 				}
 			}
 		};

@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -0.03f, 0));
+		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -1.8f, 0));
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
 		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
 
@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
 	}
 
 	// setup some debug controls
-	float sleepTime = 10.0f;
+	float sleepTime = 0.9f;
 	auto slowTime = gameInput.generateAndBindGameKey('X', "slow time");
 	auto fastTime = gameInput.generateAndBindGameKey('C', "fast time");
 
@@ -387,62 +387,68 @@ int main(int argc, char** argv) {
 		}
 		auto time_logic_end = std::chrono::high_resolution_clock::now();
 
-		auto time_render_start = std::chrono::high_resolution_clock::now();
-		{
-			rynx_profile("Main", "Render");
-			gameRenderer.render(ecs);
-		}
-		auto time_render_end = std::chrono::high_resolution_clock::now();
+		// menu input is part of logic, not visualization. must tick every frame.
+		root.input(gameInput);
+		root.tick(0.016f, application.aspectRatio());
 
-		// visualize collision detection structure.
-		if (conf.visualize_dynamic_collisions) {
-			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-				matrix4 m;
-				m.discardSetTranslate(pos);
-				m.scale(radius);
-				float sign[2] = { -1.0f, +1.0f };
-				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
-			});
-		}
+		// should we render or not.
+		if (tickCounter.load() % 16 == 3) {
+			auto time_render_start = std::chrono::high_resolution_clock::now();
+			{
+				rynx_profile("Main", "Render");
+				gameRenderer.render(ecs);
+			}
+			auto time_render_end = std::chrono::high_resolution_clock::now();
 
-		// visualize collision detection structure.
-		if (conf.visualize_static_collisions) {
-			std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-			collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-				matrix4 m;
-				m.discardSetTranslate(pos);
-				m.scale(radius);
-				float sign[2] = { -1.0f, +1.0f };
-				application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
-			});
-		}
+			// visualize collision detection structure.
+			if (conf.visualize_dynamic_collisions) {
+				std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+				collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+					matrix4 m;
+					m.discardSetTranslate(pos);
+					m.scale(radius);
+					float sign[2] = { -1.0f, +1.0f };
+					application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
+				});
+			}
 
-		{
-			rynx_profile("Main", "Menus");
+			// visualize collision detection structure.
+			if (conf.visualize_static_collisions) {
+				std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+				collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+					matrix4 m;
+					m.discardSetTranslate(pos);
+					m.scale(radius);
+					float sign[2] = { -1.0f, +1.0f };
+					application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
+				});
+			}
 
-			// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
-			// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
-			root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
-			menuCamera->setProjection(0.01f, 50.0f, application.aspectRatio());
-			menuCamera->setPosition({ 0, 0, 1 });
+			{
+				rynx_profile("Main", "Menus");
 
-			application.meshRenderer().setCamera(menuCamera);
-			application.textRenderer().setCamera(menuCamera);
-			application.meshRenderer().cameraToGPU();
+				// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
+				// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
+				root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
+				menuCamera->setProjection(0.01f, 50.0f, application.aspectRatio());
+				menuCamera->setPosition({ 0, 0, 1 });
 
-			root.input(gameInput);
-			root.tick(0.016f, application.aspectRatio());
-			root.visualise(application.meshRenderer(), application.textRenderer());
+				application.meshRenderer().setCamera(menuCamera);
+				application.textRenderer().setCamera(menuCamera);
+				application.meshRenderer().cameraToGPU();
+				root.visualise(application.meshRenderer(), application.textRenderer());
 
-			auto num_entities = ecs.size();
-			auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(time_logic_end - time_logic_start).count();
-			auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
+				auto num_entities = ecs.size();
+				auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(time_logic_end - time_logic_start).count();
+				auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
 
-			float info_text_pos_y = +0.1f;
-			application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-			application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.2f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				float info_text_pos_y = +0.1f;
+				application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.2f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			}
+
+			application.swapBuffers();
 		}
 
 		{
@@ -468,8 +474,6 @@ int main(int argc, char** argv) {
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(sleepTime)));
 		}
-
-		application.swapBuffers();
 	}
 
 	dead_lock_detector_keepalive = false;

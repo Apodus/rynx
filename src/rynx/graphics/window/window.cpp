@@ -82,16 +82,17 @@ void Window::createWindow(int width, int height, std::string name) {
 	}
 
 	// Window hints
-	// glfwWindowHint(GLFW_SAMPLES, 4); // FSAA
+	glfwWindowHint(GLFW_SAMPLES, 4); // FSAA
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // Min OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	// glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	// glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+	
 	m_pWindow = createWindow(name);
 
 	// Make the window's context current
 	glfwMakeContextCurrent(m_pWindow);
+	glfwSwapInterval(0); // No vsync?
 
 	// Initialize GLEW
 	GLenum err = glewInit();
