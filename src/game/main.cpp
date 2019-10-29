@@ -28,6 +28,7 @@
 
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/tech/smooth_value.hpp>
+#include <rynx/tech/timer.hpp>
 
 #include <game/logic/shooting.hpp>
 #include <game/logic/keyboard_movement.hpp>
@@ -36,7 +37,6 @@
 #include <game/logic/enemies/minilisk_spawner.hpp>
 
 #include <game/visual/bullet_rendering.hpp>
-
 #include <rynx/scheduler/task_scheduler.hpp>
 
 #include <memory>
@@ -289,6 +289,7 @@ int main(int argc, char** argv) {
 		});
 
 		megaSlider->alignToOuterEdge(sampleSlider.get(), rynx::menu::Align::BOTTOM);
+		megaSlider->alignToInnerEdge(sampleSlider.get(), rynx::menu::Align::LEFT);
 		megaSlider->onValueChanged([spawner](float f) {
 			spawner->x_spawn = f * 200.0f - 100.0f;
 		});
@@ -314,6 +315,12 @@ int main(int argc, char** argv) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	});
+
+	rynx::timer timer;
+	rynx::numeric_property<float> logic_time;
+	rynx::numeric_property<float> render_time;
+	rynx::numeric_property<float> swap_time;
+	rynx::numeric_property<float> total_time;
 
 	while (!application.isExitRequested()) {
 		rynx_profile("Main", "frame");
@@ -369,7 +376,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		auto time_logic_start = std::chrono::high_resolution_clock::now();
+		timer.reset();
 		{
 			rynx_profile("Main", "Construct frame tasks");
 			base_simulation.generate_tasks();
@@ -385,20 +392,22 @@ int main(int argc, char** argv) {
 			scheduler.wait_until_complete();
 			++tickCounter;
 		}
-		auto time_logic_end = std::chrono::high_resolution_clock::now();
-
+		auto logic_time_us = timer.time_since_last_access_us();
+		logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
+		
 		// menu input is part of logic, not visualization. must tick every frame.
 		root.input(gameInput);
 		root.tick(0.016f, application.aspectRatio());
 
 		// should we render or not.
-		if (tickCounter.load() % 16 == 3) {
-			auto time_render_start = std::chrono::high_resolution_clock::now();
+		if (true || tickCounter.load() % 16 == 3) {
+			timer.reset();
 			{
 				rynx_profile("Main", "Render");
 				gameRenderer.render(ecs);
 			}
-			auto time_render_end = std::chrono::high_resolution_clock::now();
+			auto render_time_us = timer.time_since_last_access_us();
+			render_time.observe_value(render_time_us / 1000.0f);
 
 			// visualize collision detection structure.
 			if (conf.visualize_dynamic_collisions) {
@@ -439,16 +448,26 @@ int main(int argc, char** argv) {
 				root.visualise(application.meshRenderer(), application.textRenderer());
 
 				auto num_entities = ecs.size();
-				auto logic_us = std::chrono::duration_cast<std::chrono::microseconds>(time_logic_end - time_logic_start).count();
-				auto render_us = std::chrono::duration_cast<std::chrono::microseconds>(time_render_end - time_render_start).count();
-
+				
 				float info_text_pos_y = +0.1f;
-				application.textRenderer().drawText(std::string("logic:    ") + std::to_string(float(logic_us / 10) / 100.0f) + "ms", -0.9f, 0.4f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("render:   ") + std::to_string(float(render_us / 10) / 100.0f) + "ms", -0.9f, 0.3f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.2f + info_text_pos_y, 0.07f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+
+				auto get_min_avg_max = [](rynx::numeric_property<float>& prop) {
+					return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
+				};
+
+				application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("render:   ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 			}
 
+			timer.reset();
 			application.swapBuffers();
+			auto swap_time_us = timer.time_since_last_access_us();
+			swap_time.observe_value(swap_time_us / 1000.0f);
+
+			total_time.observe_value((logic_time_us + render_time_us + swap_time_us) / 1000.0f);
 		}
 
 		{

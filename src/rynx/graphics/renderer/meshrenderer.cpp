@@ -37,16 +37,28 @@ void MeshRenderer::init() {
 	m_line = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.f));
 	m_line->build();
 	
-	std::shared_ptr<Shader> shader2d = m_shaders->loadShader("renderer2d", "../shaders/2d_shader_130.vs.glsl", "../shaders/2d_shader_130.fs.glsl");
-	m_shaders->switchToShader("renderer2d");
+	{
+		std::shared_ptr<Shader> shader2d = m_shaders->loadShader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
+		m_shaders->switchToShader("renderer2d");
 
-	m_modelUniform = shader2d->uniform("model");
-	m_viewUniform  = shader2d->uniform("view");
-	m_projectionUniform = shader2d->uniform("projection");
-	m_colorUniform = shader2d->uniform("color");
+		m_modelUniform = shader2d->uniform("model");
+		m_viewUniform = shader2d->uniform("view");
+		m_projectionUniform = shader2d->uniform("projection");
+		m_colorUniform = shader2d->uniform("color");
 
-	m_texSamplerUniform = shader2d->uniform("tex");
-	glUniform1i(m_texSamplerUniform, 0);
+		m_texSamplerUniform = shader2d->uniform("tex");
+		glUniform1i(m_texSamplerUniform, 0);
+	}
+
+	{
+		std::shared_ptr<Shader> shader2d = m_shaders->loadShader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
+		m_shaders->switchToShader("renderer2d_instanced");
+
+		m_viewUniform_instanced = shader2d->uniform("view");
+		m_projectionUniform_instanced = shader2d->uniform("projection");
+		m_texSamplerUniform_instanced = shader2d->uniform("tex");
+		glUniform1i(m_texSamplerUniform, 0);
+	}
 }
 
 void MeshRenderer::setDepthTest(bool depthTestEnabled)
@@ -126,12 +138,26 @@ void MeshRenderer::cameraToGPU() {
 	m_shaders->switchToShader("renderer2d");
 	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().data);
 	glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, m_pCamera->getProjection().data);
+
+	m_shaders->switchToShader("renderer2d_instanced");
+	glUniformMatrix4fv(m_viewUniform_instanced, 1, GL_FALSE, m_pCamera->getView().data);
+	glUniformMatrix4fv(m_projectionUniform_instanced, 1, GL_FALSE, m_pCamera->getProjection().data);
 }
 
 void MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float>& color) {
 	m_shaders->switchToShader("renderer2d");
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
+	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.data);
+	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
+	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
+}
+
+void MeshRenderer::drawMeshInstanced(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float> color) {
+	m_shaders->switchToShader("renderer2d_instanced");
+	mesh.bind();
+	m_textures->bindTexture(0, texture);
+	
 	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.data);
 	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);

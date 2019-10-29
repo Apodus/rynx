@@ -21,6 +21,10 @@ class MeshRenderer {
 	GLuint m_modelUniform, m_viewUniform, m_projectionUniform;
 	GLuint m_texSamplerUniform, m_colorUniform;
 
+	GLuint m_viewUniform_instanced;
+	GLuint m_projectionUniform_instanced;
+	GLuint m_texSamplerUniform_instanced;
+
 	bool verifyNoGLErrors() const;
 
 public:
@@ -36,6 +40,7 @@ public:
 	void drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const vec4<float>& color);
 	void drawRectangle(const matrix4& model, const std::string& texture, const vec4<float>& color = vec4<float>(1, 1, 1, 1));
 	void drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float>& color = vec4<float>(1, 1, 1, 1));
+	void drawMeshInstanced(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float> color = vec4<float>(1, 1, 1, 1));
 
 private:
 	void init();

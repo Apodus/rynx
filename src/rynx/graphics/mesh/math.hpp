@@ -125,11 +125,44 @@ namespace math {
 		return rotatedXY(v, math::sin(radians), math::cos(radians));
 	}
 
-	// approximation, good enough
+	// approximation, good enough: never over estimates. max error ~3%.
 	inline float sqrt_approx(float val) {
-		int* x = (int*)(&val);
-		*x = (1 << 29) + (*x >> 1) - (1 << 22) - 0x4C000;
-		return *((float*)x);
+		int32_t x;
+		std::memcpy(&x, &val, sizeof(val));
+		x = (1 << 29) + (x >> 1) - (1 << 22) - 0x4C000;
+		float result;
+		std::memcpy(&result, &x, sizeof(x));
+		return result;
+	}
+
+	inline float sqrt_inverse_approx(float val) {
+		float x2 = val * 0.5f;
+		int32_t i;
+		
+		std::memcpy(&i, &val, sizeof(val));
+		i = 0x5f3759df - (i >> 1);
+		
+		float y;
+		std::memcpy(&y, &i, sizeof(val));
+		y *= 1.5f - x2 * y * y;
+		y *= 1.5f - x2 * y * y;
+		return y;
+	}
+
+	inline constexpr double exp_approx(double v) {
+		double x = 1.0 + v / 1024.0;
+		x *= x; x *= x; x *= x; x *= x;
+		x *= x; x *= x; x *= x; x *= x;
+		x *= x; x *= x;
+		return x;
+	}
+
+	inline float exp_approx(float x) {
+		x = 1.0f + x / 1024.0f;
+		x *= x; x *= x; x *= x; x *= x;
+		x *= x; x *= x; x *= x; x *= x;
+		x *= x; x *= x;
+		return x;
 	}
 
 	inline vec3<float> velocity_at_point_2d(vec3<float> pos, float angular_velocity) {

@@ -1,0 +1,4 @@
+FONT_LENKA ../textures/font/lenka1024.png
+FONT_CONSOLA_MONO ../textures/font/consola1024.png
+MenuAtlas ../textures/menu.png
+atlas MenuAtlas ../textures/atlas/menu.txt
