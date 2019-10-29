@@ -23,9 +23,9 @@ namespace rynx {
 				bool inScreen(vec3<float> p, float r) {
 					bool out = p.x + r < cameraLeft;
 					out |= p.x - r > cameraRight;
-					out |= p.y + r < cameraTop;
-					out |= p.y - r > cameraBot;
-					return out;
+					out |= p.y + r > cameraTop;
+					out |= p.y - r < cameraBot;
+					return !out;
 				}
 
 				virtual ~ball_renderer() {}
@@ -36,7 +36,10 @@ namespace rynx {
 					cameraTop = m_camera->position().y + m_camera->position().z;
 					cameraBot = m_camera->position().y - m_camera->position().z;
 
-					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().execute([this](
+					std::vector<matrix4> spheres_to_draw;
+					std::vector<vec4<float>> colors;
+					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
+						.execute([this, &spheres_to_draw, &colors](
 						const rynx::components::position pos,
 						const rynx::components::radius r,
 						const rynx::components::color color)
@@ -47,9 +50,12 @@ namespace rynx {
 						matrix4 model;
 						model.discardSetTranslate(pos.value);
 						model.scale(r.r);
-						m_meshRenderer->drawMesh(*m_circleMesh, model, "Empty", color.value);
-						m_meshRenderer->drawLine(pos.value, pos.value + r.r * vec3<float>(std::cos(pos.angle), std::sin(pos.angle), 0), r.r * 0.3f, Color::DARK_GREY);
+						model.rotate(pos.angle, 0, 0, 1);
+						spheres_to_draw.emplace_back(model);
+						colors.emplace_back(color.value);
 					});
+				
+					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw);
 				}
 
 				// Assumes axis aligned top-down camera :(

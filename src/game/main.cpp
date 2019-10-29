@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
 	mesh->build();
 
-	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Empty"));
+	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
 	emptyMesh->build();
 
 	auto emptySquare = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.0f), application.textures().textureLimits("Empty"));

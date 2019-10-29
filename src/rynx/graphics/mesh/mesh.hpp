@@ -35,9 +35,9 @@ private:
 		Shaders must use following attribute layout:
 			layout(location = 0) in vec3 position;
 			layout(location = 1) in vec2 texCoord;
-			layout(location = 2) in vec3 normals;
+			layout(location = 2) in mat4 model;
 	*/
-	enum Attributes { POSITION, TEXCOORD, NORMALS };
+	enum Attributes { POSITION, TEXCOORD, MODEL_MATRIX };
 
 	GLuint vao;
 	GLuint vbo, tbo, nbo, ibo;	// vertices, texcoords, normals, indices

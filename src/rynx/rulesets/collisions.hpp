@@ -49,10 +49,10 @@ namespace rynx {
 						});
 					});
 
-					context.add_task("Apply acceleration and reset", [this](rynx::ecs::view<components::motion, const components::radius> ecs) {
+					context.add_task("Apply acceleration and reset", [this](rynx::ecs::view<components::motion, const components::radius> ecs, rynx::scheduler::task& task_context) {
 						{
 							rynx_profile("Motion", "apply acceleration");
-							ecs.for_each([this](components::motion& m, const components::radius r) {
+							ecs.for_each_parallel(task_context, [this](components::motion& m, const components::radius r) {
 								m.velocity += m.acceleration * m_dt;
 								m.acceleration.set(0, 0, 0);
 								m.angularVelocity += m.angularAcceleration * m_dt;
@@ -72,7 +72,7 @@ namespace rynx {
 
 						{
 							rynx_profile("Motion", "apply velocity");
-							ecs.for_each([dt = m_dt](components::position& p, const components::motion& m) {
+							ecs.for_each_parallel(task_context, [dt = m_dt](components::position& p, const components::motion& m) {
 								p.value += m.velocity;
 								p.angle += m.angularVelocity;
 							});
@@ -81,7 +81,7 @@ namespace rynx {
 				}
 
 				context.add_task("Apply dampening", [](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
-					ecs.for_each_parallel(task.parallel(), [](components::motion& m, components::dampening d) {
+					ecs.for_each_parallel(task, [](components::motion& m, components::dampening d) {
 						m.velocity *= d.linearDampening;
 						m.angularVelocity *= d.angularDampening;
 					});
@@ -103,7 +103,7 @@ namespace rynx {
 						ecs.query()
 							.notIn<const rynx::components::projectile>()
 							.in<const added_to_sphere_tree>()
-							.execute_parallel(task.parallel(),
+							.execute_parallel(task,
 								[&](
 									rynx::ecs::id id,
 									const components::position& pos,
@@ -116,7 +116,7 @@ namespace rynx {
 
 						ecs.query()
 							.in<const rynx::components::projectile, const added_to_sphere_tree>()
-							.execute_parallel(task.parallel(), [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
+							.execute_parallel(task, [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
 						});
 					});
@@ -149,7 +149,7 @@ namespace rynx {
 				auto updateBoundaryWorld = context.add_task(
 					"Update boundary local -> boundary world",
 					[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
-						ecs.for_each_parallel(task_context.parallel(), [](components::position pos, components::boundary& boundary) {
+						ecs.for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
 							float sin_v = math::sin(pos.angle);
 							float cos_v = math::cos(pos.angle);
 							for (size_t i = 0; i < boundary.segments_local.size(); ++i) {
@@ -202,25 +202,6 @@ namespace rynx {
 						collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 						collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
 					}
-
-					/*
-					rynx::unordered_set<rynx::ecs::entity_id_t> entities_in_collision_resolve;
-					
-					size_t num_collisions = overlaps->size();
-					size_t target_island_size = num_collisions / 16;
-					for (;;) {
-						std::vector<collision_event> current;
-						collision_event& first = overlaps->operator[](0);
-						
-						current.emplace_back(first);
-						entities_in_collision_resolve.emplace(first.a_id);
-						entities_in_collision_resolve.emplace(first.b_id);
-
-						while (current.size() < target_island_size) {
-
-						}
-					}
-					*/
 
 					// NOTE TODO: The task is not safe. We are now resolving all collision events in parallel, which means
 					//            that we are resolving multiple collisions for the same entity in parallel, which will yield incorrect results.
@@ -298,7 +279,7 @@ namespace rynx {
 
 				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
 					if (m_gravity.lengthSquared() > 0) {
-						ecs.query().in<components::frame_collisions>().execute_parallel(task.parallel(), [this](components::motion& m) {
+						ecs.query().in<components::frame_collisions>().execute_parallel(task, [this](components::motion& m) {
 							m.acceleration += m_gravity;
 						});
 					}

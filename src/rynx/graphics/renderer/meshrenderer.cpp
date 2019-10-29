@@ -59,6 +59,12 @@ void MeshRenderer::init() {
 		m_texSamplerUniform_instanced = shader2d->uniform("tex");
 		glUniform1i(m_texSamplerUniform, 0);
 	}
+
+	{
+		glGenBuffers(1, &model_matrices_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
+		glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+	}
 }
 
 void MeshRenderer::setDepthTest(bool depthTestEnabled)
@@ -153,12 +159,27 @@ void MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::s
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
 }
 
-void MeshRenderer::drawMeshInstanced(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float> color) {
+void MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const vec4<float> color) {
 	m_shaders->switchToShader("renderer2d_instanced");
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
+
+	const GLuint model_matrix_slot = 2;
+
+	glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
+
+	for (int i = 0; i < 4; ++i) {
+		glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
+		glEnableVertexAttribArray(model_matrix_slot + i);
+		glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
+	}
+
+	glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, models.size() * 4 * 4 * sizeof(GLfloat), models.data());
 	
-	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.data);
+	glVertexAttribDivisor(0, 0); // always reuse the same vertex positions -> 0
+	glVertexAttribDivisor(1, 0); // same texture coordinates always -> 0
+	
 	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
-	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
+	glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, GLsizei(models.size()));
 }

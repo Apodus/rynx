@@ -77,7 +77,7 @@ namespace rynx {
 		}
 
 		numeric_property& resize(size_t window_size) {
-			rynx_assert(window_size & (window_size - 1) == 0, "must be power of 2");
+			rynx_assert((window_size & (window_size - 1)) == 0, "must be power of 2");
 			m_storage.resize(window_size);
 			return *this;
 		}

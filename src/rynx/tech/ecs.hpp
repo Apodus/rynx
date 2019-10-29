@@ -319,7 +319,7 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename Parallel> void for_each_parallel(Parallel&& parallel, F&& op) {
+			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					unpack_types<FArg>();
@@ -331,10 +331,10 @@ namespace rynx {
 					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), std::forward<Parallel>(parallel), ids, entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>()...);
 						}
 						else {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), std::forward<Parallel>(parallel), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
 						}
 					}
 				}
@@ -371,17 +371,17 @@ namespace rynx {
 				}
 			}
 
-			template<bool isIdQuery, typename F, typename Parallel, typename... Ts>
-			static void call_user_op_parallel(F&& op, Parallel&& parallel, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
+			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					parallel.for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
+					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
 						std::apply([&, index](auto... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					parallel.for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
+					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
 						std::apply([&, index](auto... ptrs) {
 							op(ptrs[index]...);
 						}, args);
@@ -517,14 +517,14 @@ namespace rynx {
 				return *this;
 			}
 
-			template<typename F, typename Parallel>
-			query_t& execute_parallel(Parallel&& parallel, F&& op) {
+			template<typename F, typename TaskContext>
+			query_t& execute_parallel(TaskContext&& task_context, F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.for_each_parallel(std::forward<Parallel>(parallel), std::forward<F>(op));
+				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 				return *this;
 			}
 		};
@@ -564,18 +564,18 @@ namespace rynx {
 			it.for_each(std::forward<F>(op));
 		}
 
-		template<typename F, typename Parallel>
-		void for_each_parallel(Parallel&& parallel, F&& op) {
+		template<typename F, typename TaskContext>
+		void for_each_parallel(TaskContext&& task_context, F&& op) {
 			rynx_profile("Ecs", "for_each_parallel");
 			iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
-			it.for_each_parallel(std::forward<Parallel>(parallel), std::forward<F>(op));
+			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 		}
 
-		template<typename F, typename Parallel>
-		void for_each_parallel(Parallel&& parallel, F&& op) const {
+		template<typename F, typename TaskContext>
+		void for_each_parallel(TaskContext&& task_context, F&& op) const {
 			rynx_profile("Ecs", "for_each_parallel");
 			iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
-			it.for_each_parallel(std::forward<Parallel>(parallel), std::forward<F>(op));
+			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 		}
 
 		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
@@ -722,18 +722,18 @@ namespace rynx {
 				it.for_each(std::forward<F>(op));
 			}
 
-			template<typename F, typename Parallel>
-			void for_each_parallel(Parallel&& parallel, F&& op) {
+			template<typename F, typename TaskContext>
+			void for_each_parallel(TaskContext&& task_context, F&& op) {
 				rynx_profile("Ecs", "for_each");
 				iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
-				it.for_each_parallel(std::forward<Parallel>(parallel), std::forward<F>(op));
+				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 			}
 
-			template<typename F, typename Parallel>
-			void for_each_parallel(Parallel&& parallel, F&& op) const {
+			template<typename F, typename TaskContext>
+			void for_each_parallel(TaskContext&& task_context, F&& op) const {
 				rynx_profile("Ecs", "for_each");
 				iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
-				it.for_each_parallel(std::forward<Parallel>(parallel), std::forward<F>(op));
+				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 			}
 
 			bool exists(entity_id_t id) const { return m_ecs->exists(id); }
