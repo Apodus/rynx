@@ -36,6 +36,15 @@ namespace rynx {
 			return result;
 		}
 
+		template<typename Func>
+		void for_each(Func&& op) {
+			for (auto&& entry : m_storage) {
+				if (entry.second.empty())
+					continue;
+				op(entry.second);
+			}
+		}
+
 		std::vector<T> combine_and_clear() {
 			std::vector<T> result;
 			for (auto&& entry : m_storage) {

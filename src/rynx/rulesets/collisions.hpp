@@ -194,20 +194,43 @@ namespace rynx {
 				
 				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
+					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
+
+					/*
 					std::shared_ptr<std::vector<collision_event>> overlaps = std::make_shared<std::vector<collision_event>>(collisions_accumulator->combine_and_clear());
 					if (overlaps->empty())
 						return;
+					*/
 
-					for (auto&& collision : *overlaps) {
-						collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
-						collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
+					collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
+						overlaps_vector.emplace_back(std::make_shared<std::vector<collision_event>>(std::move(overlaps)));
+					});
+
+					{
+						rynx_profile("collisions", "fetch motion components");
+						std::vector<rynx::scheduler::barrier> bars;
+						for (auto&& overlaps : overlaps_vector) {
+							bars.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, ecs](int64_t index) mutable {
+								auto& collision = overlaps->operator[](index);
+								collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
+								collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
+							}, 32));
+						}
+
+						// spin until motion component fetches are complete.
+						while (!bars.empty()) {
+							while (!bars.back()) {}
+							bars.pop_back();
+						}
 					}
 
 					// NOTE TODO: The task is not safe. We are now resolving all collision events in parallel, which means
 					//            that we are resolving multiple collisions for the same entity in parallel, which will yield incorrect results.
 					//            however, in practice this issue doesn't appear to be great. Might be that the iterative nature of approaching
 					//            some global correct solution mitigates the damage the error cases cause.
+					rynx_profile("collisions", "resolve 10x");
 					for (int i = 0; i < 10; ++i)
+					for(auto&& overlaps : overlaps_vector)
 					task & task.parallel().for_each(0, overlaps->size(), [overlaps, ecs, dt](int64_t index) mutable {
 					// for(size_t index=0; index < overlaps->size(); ++index) {
 						auto& collision = overlaps->operator[](index);

@@ -206,8 +206,8 @@ int main(int argc, char** argv) {
 		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.002f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
-		makeBox_outside({ -80, -160, 0 }, -0.3f, 100.0f, 0.f);
-		makeBox_outside({ +80, -160, 0 }, +0.3f, 100.0f, 0.f);
+		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);
+		makeBox_outside({ +80, -160, 0 }, +0.3f, 1000.0f, 0.f);
 	}
 
 	// setup some debug controls
