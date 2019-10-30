@@ -19,6 +19,8 @@ MeshRenderer::~MeshRenderer() {
 
 }
 
+static constexpr int32_t InstancesPerDrawCall = 1024 * 10;
+
 void MeshRenderer::init() {
 	glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -63,7 +65,7 @@ void MeshRenderer::init() {
 	{
 		glGenBuffers(1, &model_matrices_buffer);
 		glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
-		glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 	}
 }
 
@@ -167,19 +169,28 @@ void MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& textur
 	const GLuint model_matrix_slot = 2;
 
 	glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
+	
+	size_t currentIteration = 0;
+	while (models.size() > currentIteration * InstancesPerDrawCall) {
+		for (int i = 0; i < 4; ++i) {
+			glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
+			glEnableVertexAttribArray(model_matrix_slot + i);
+			glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
+		}
 
-	for (int i = 0; i < 4; ++i) {
-		glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
-		glEnableVertexAttribArray(model_matrix_slot + i);
-		glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
+		int32_t remaining = models.size() - currentIteration * InstancesPerDrawCall;
+		int32_t instances_for_current_iteration = remaining > InstancesPerDrawCall ? InstancesPerDrawCall : remaining;
+
+		// Buffer orphaning, a common way to improve streaming perf for some reason.
+		glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * 4 * sizeof(GLfloat), models.data() + currentIteration * InstancesPerDrawCall);
+
+		glVertexAttribDivisor(0, 0); // always reuse the same vertex positions -> 0
+		glVertexAttribDivisor(1, 0); // same texture coordinates always -> 0
+
+		glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
+		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, GLsizei(models.size()));
+
+		++currentIteration;
 	}
-
-	glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, models.size() * 4 * 4 * sizeof(GLfloat), models.data());
-	
-	glVertexAttribDivisor(0, 0); // always reuse the same vertex positions -> 0
-	glVertexAttribDivisor(1, 0); // same texture coordinates always -> 0
-	
-	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
-	glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, GLsizei(models.size()));
 }
