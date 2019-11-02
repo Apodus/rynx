@@ -103,6 +103,8 @@ private:
 			rynx_assert(m_children.empty(), "insert can only be done on leaf nodes");
 			m_members.emplace_back(std::move(item));
 			container->entryMap.insert_or_assign(m_members.back().entityId, std::pair<node*, index_t>(this, index_t(m_members.size() - 1)));
+			
+			// container->node_overflow(this);
 
 			if (m_members.size() >= MaxElementsInNode) {
 				// if we have no parent (we are root node), add a couple of new child nodes under me.
@@ -114,7 +116,6 @@ private:
 						m_children[i % m_children.size()]->insert(std::move(m_members[i]), container);
 					}
 					m_members.clear();
-
 					for (auto& child : m_children) {
 						child->update_single();
 					}
@@ -125,13 +126,10 @@ private:
 					if (m_parent->m_children.size() >= MaxNodesInNode) {
 						// first take the existing children to safety.
 						std::vector<std::unique_ptr<node>> children_of_parent = std::move(m_parent->m_children);
-
-#if 1
 						m_parent->m_children.clear();
 						for (size_t i = 0; i < MaxNodesInNode; ++i) {
 							m_parent->m_children.emplace_back(std::make_unique<node>(children_of_parent[i]->pos, m_parent, m_parent->depth + 1));
 						}
-
 						node* old_parent = m_parent;
 						for (size_t i = 0; i < children_of_parent.size(); ++i) {
 							auto& old_child = children_of_parent[i];
@@ -139,55 +137,12 @@ private:
 							old_child->m_parent = new_parent.get();
 							new_parent->m_children.emplace_back(std::move(old_child));
 						}
-						
 						children_of_parent.clear();
-#else
-						// clear the state of parent's children structure, and add three new nodes there.
-						parent->children.clear();
-						parent->children.emplace_back(std::make_unique<node>(children_of_parent[0]->pos, parent, parent->depth + 1));
-						parent->children.emplace_back(std::make_unique<node>(children_of_parent[1]->pos, parent, parent->depth + 1));
-						parent->children.emplace_back(std::make_unique<node>(children_of_parent[2]->pos, parent, parent->depth + 1));
 
-						node* old_parent = parent;
-
-						auto node0_pos = children_of_parent[0]->pos;
-						auto node1_pos = children_of_parent[1]->pos;
-						auto node2_pos = children_of_parent[2]->pos;
-
-						// assign children to closest new parent nodes.
-						for (size_t i = 0; i < children_of_parent.size(); ++i) {
-							auto& old_child = children_of_parent[i];
-
-							float dist0 = (old_child->pos - node0_pos).lengthSquared();
-							float dist1 = (old_child->pos - node1_pos).lengthSquared();
-							float dist2 = (old_child->pos - node2_pos).lengthSquared();
-
-							if (dist0 < dist1) {
-								if (dist0 < dist2) {
-									old_child->parent = old_parent->children[0].get();
-									old_parent->children[0]->children.emplace_back(std::move(old_child));
-								}
-								else {
-									old_child->parent = old_parent->children[2].get();
-									old_parent->children[2]->children.emplace_back(std::move(old_child));
-								}
-							}
-							else {
-								if (dist1 < dist2) {
-									old_child->parent = old_parent->children[1].get();
-									old_parent->children[1]->children.emplace_back(std::move(old_child));
-								}
-								else {
-									old_child->parent = old_parent->children[2].get();
-									old_parent->children[2]->children.emplace_back(std::move(old_child));
-								}
-							}
-						}
-						children_of_parent.clear();
-#endif
 						for (auto& child : old_parent->m_children) {
 							child->refresh_depths();
 						}
+
 					}
 
 					// now there should be space in parent node's children list, add new siblings to self there.
@@ -201,15 +156,13 @@ private:
 						datap.first = m_parent->m_children.back().get();
 						datap.second = 0; // update mapping of the moved child!
 					}
-
 					if (f1.first != m_members.size() - 1) {
 						auto id = m_members.back().entityId;
 						m_members[f1.first] = std::move(m_members.back());
 						container->entryMap.find(id)->second.second = index_t(f1.first); // also need to update mapping of new f1.first
+
 					}
-
 					m_members.pop_back();
-
 					// these probably should not be called all the time. only after all move ops are done.
 					m_parent->m_children.back()->update_single();
 				}
@@ -387,6 +340,7 @@ private:
 	};
 
 	rynx::unordered_map<uint64_t, std::pair<node*, index_t>> entryMap;
+	std::vector<node*> m_overflowing_nodes;
 	node root;
 	size_t update_next_index = 0;
 	uint64_t update_iteration_counter = 0;
@@ -502,12 +456,10 @@ public:
 			node* new_parent;
 		};
 
-		std::shared_ptr<std::mutex> entity_migrate_mutex = std::make_shared<std::mutex>();
-		std::shared_ptr<std::vector<plip>> found_migrates = std::make_shared<std::vector<plip>>();
 		rynx::scheduler::barrier entities_migrated_bar;
 
 		auto limit = (capacity >> 4) + 1;
-		auto bar = task_context.parallel().for_each(update_next_index, update_next_index + limit, [this, capacity, m = std::move(entity_migrate_mutex), found_migrates](int64_t index) {
+		auto [bar, accumulator_ptr] = task_context.parallel().for_each_accumulate<plip>(update_next_index, update_next_index + limit, [this, capacity](std::vector<plip>& accumulator, int64_t index) {
 			index &= capacity - 1;
 			if (entryMap.slot_test(index)) {
 				auto entry = entryMap.slot_get(index);
@@ -517,20 +469,21 @@ public:
 				// move to new bucket. the lock is kind of annoying, but on the other hand.
 				// there are very few entities migrating per frame. so it should not be terrible, maybe? TODO: Measure.
 				if (newLeaf.first && newLeaf.first != entry.second.first) {
-					std::lock_guard lock(*m);
-					found_migrates->emplace_back(plip{ index, newLeaf.first });
+					accumulator.emplace_back(plip{ index, newLeaf.first });
 				}
 			}
 		});
 
-		task_context.extend_task_execute_parallel([this, found_migrates]() {
-			for (auto&& migratee : *found_migrates) {
-				auto entry = entryMap.slot_get(migratee.map_index);
-				auto item = entry.second.first->m_members[entry.second.second];
+		task_context.extend_task_execute_parallel([this, accumulator_ptr]() {
+			accumulator_ptr->for_each([this](std::vector<plip>& found_migrates){
+				for (auto&& migratee : found_migrates) {
+					auto entry = entryMap.slot_get(migratee.map_index);
+					auto item = entry.second.first->m_members[entry.second.second];
 
-				entry.second.first->entity_migrates(entry.second.second, this);
-				migratee.new_parent->insert(std::move(item), this);
-			}
+					entry.second.first->entity_migrates(entry.second.second, this);
+					migratee.new_parent->insert(std::move(item), this);
+				}
+			});
 		})->depends_on(bar).required_for(entities_migrated_bar);
 
 		update_next_index += limit;
@@ -613,6 +566,9 @@ public:
 	}
 
 private:
+	void node_overflow(node* n) {
+		m_overflowing_nodes.emplace_back(n);
+	}
 
 	static std::vector<const node*> collisions_internal_gather_leaf_nodes(const node* a)
 	{

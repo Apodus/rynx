@@ -16,11 +16,7 @@ namespace rynx {
 			m_storage.reserve(max_threads);
 		}
 
-		~parallel_accumulator() {
-			for (auto&& entry : m_storage) {
-				rynx_assert(entry.second.empty(), "oh man");
-			}
-		}
+		~parallel_accumulator() {}
 
 		std::vector<T>& get_local_storage() {
 			auto initial_cap = m_storage.capacity();

@@ -13,7 +13,9 @@
 
 namespace math {
 
-	const float PI_float = 3.14159f;
+	constexpr float PI_float = 3.14159f;
+	constexpr float PI_inv_float = 1.0f / PI_float;
+
 	template<typename T> inline const T& PI() { return T::PI; }
 	template<> inline const float& PI<float>() { return PI_float; }
 
@@ -92,6 +94,36 @@ namespace math {
 		return ::sin(f);
 	}
 
+	inline float sin_approx(float in) {
+		float number_of_full_rotations = std::roundf(in * PI_inv_float * 0.5f);
+		float x = in - PI_float * 2.0f * number_of_full_rotations;
+		// in range [-2pi, +2pi] now,
+		
+		int32_t outside = x * x > PI_float* PI_float;
+		x += outside * ((x < 0) * 2 - 1) * PI_float * 2.0f;
+		rynx_assert(x >= -PI_float && x <= +PI_float, "modulating to correct range failed: %f", x);
+		
+		float sign = static_cast<float>((x < 0) * 2 - 1);
+		float sin = x * (1.27323954f + sign * 0.405284735f * x);
+		float sign2 = static_cast<float>((sin < 0) * 2 - 1);
+		sin *= -0.255f * sign2 * (sin + 1.0f * sign2) + 1.0f;
+		return sin;
+	}
+
+	inline float cos_approx(float x) {
+		return sin_approx(x + PI_float * 0.5f);
+	}
+
+	inline float atan_approx(float x) {
+		// arctan(-x) = -arctan(x)
+		// arctan(1 / x) = 0.5 * pi - arctan(x)[x > 0]
+		// idea from paper: "Efficient Approximations for the Arctangent Function".
+		// Beware of parameters inf & 0.
+		float absx = x * ((x > 0) * 2 - 1); // we only compute in the positive domain. using identity arctan(-x) above.
+		auto func = [](float x) { return PI_float * 0.25f * x + 0.285f * x * (1.0f - x); };
+		return ((x > 0) * 2 - 1) * ((absx < 1.0f) ? func(absx) : (PI_float * 0.5f - func(1.0f/absx)));
+	}
+
 	inline float cos(float f) {
 		return ::cos(f);
 	}
@@ -102,8 +134,8 @@ namespace math {
 
 	template<class T>
 	inline T& rotateXY(T& v, decltype(T().x) radians) {
-		decltype(T().x) cosVal = math::cos(radians);
-		decltype(T().x) sinVal = math::sin(radians);
+		decltype(T().x) cosVal = math::cos_approx(radians);
+		decltype(T().x) sinVal = math::sin_approx(radians);
 		decltype(T().x) xNew = (v.x * cosVal - v.y * sinVal);
 		decltype(T().x) yNew = (v.x * sinVal + v.y * cosVal);
 		v.x = xNew;
@@ -122,7 +154,7 @@ namespace math {
 
 	template<class T>
 	inline T rotatedXY(const T& v, decltype(T().x) radians) {
-		return rotatedXY(v, math::sin(radians), math::cos(radians));
+		return rotatedXY(v, math::sin_approx(radians), math::cos_approx(radians));
 	}
 
 	// approximation, good enough: never over estimates. max error ~3%.

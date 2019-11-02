@@ -46,6 +46,7 @@
 #include <rynx/menu/Div.hpp>
 
 int main(int argc, char** argv) {
+	
 	Font fontLenka(Fonts::setFontLenka());
 	Font fontConsola(Fonts::setFontConsolaMono());
 
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
 	rynx::application::simulation base_simulation(scheduler);
 
 	std::shared_ptr<Camera> camera = std::make_shared<Camera>();
-	camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
+	camera->setProjection(0.02f, 20000.0f, application.aspectRatio());
 
 	rynx::input::mapped_input gameInput(application.input());
 
@@ -168,7 +169,7 @@ int main(int argc, char** argv) {
 		
 		// TODO: radius calculation from boundary (bounding radius or something)
 		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
-			base_simulation.m_ecs.create(
+			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
@@ -180,7 +181,7 @@ int main(int argc, char** argv) {
 		};
 
 		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
-			base_simulation.m_ecs.create(
+			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
@@ -197,7 +198,7 @@ int main(int argc, char** argv) {
 		*/
 
 		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 65.f, +0.003f);
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.003f);
 
 		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
 		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.004f);

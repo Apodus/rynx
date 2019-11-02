@@ -374,14 +374,14 @@ namespace rynx {
 			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
 			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
+					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) {
+					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ptrs[index]...);
 						}, args);

@@ -308,7 +308,7 @@ namespace rynx {
 				template<typename T, typename F> std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> for_each_accumulate(int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
 					barrier bar;
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
-					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator>();
+					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator<T>>();
 
 					{
 						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
@@ -341,7 +341,7 @@ namespace rynx {
 							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
 								m_parent.m_context->erase_completed_parallel_for_tasks();
 							}
-							return bar;
+							return { bar, accumulator };
 						}
 						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 						for (int64_t i = my_index; i < limit; ++i) {

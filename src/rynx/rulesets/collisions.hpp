@@ -150,8 +150,8 @@ namespace rynx {
 					"Update boundary local -> boundary world",
 					[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
 						ecs.for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
-							float sin_v = math::sin(pos.angle);
-							float cos_v = math::cos(pos.angle);
+							float sin_v = math::sin_approx(pos.angle);
+							float cos_v = math::cos_approx(pos.angle);
 							for (size_t i = 0; i < boundary.segments_local.size(); ++i) {
 								boundary.segments_world[i].p1 = math::rotatedXY(boundary.segments_local[i].p1, sin_v, cos_v) + pos.value;
 								boundary.segments_world[i].p2 = math::rotatedXY(boundary.segments_local[i].p2, sin_v, cos_v) + pos.value;
@@ -192,6 +192,46 @@ namespace rynx {
 				findCollisionsTask->depends_on(collisions_find_barrier);
 				findCollisionsTask->depends_on(updateBoundaryWorld);
 				
+				auto update_ropes = [](rynx::ecs::view<const components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
+					ecs.for_each_parallel(task, [ecs](rynx::ecs::id id, components::rope& rope) mutable {
+						auto entity_a = ecs[rope.id_a];
+						auto entity_b = ecs[rope.id_b];
+
+						auto pos_a = entity_a.get<components::position>();
+						auto pos_b = entity_b.get<components::position>();
+
+						auto& mot_a = entity_a.get<components::motion>();
+						auto& mot_b = entity_b.get<components::motion>();
+
+						const auto& phys_a = entity_a.get<components::physical_body>();
+						const auto& phys_b = entity_b.get<components::physical_body>();
+
+						auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+						auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+						auto world_pos_a = pos_a.value + relative_pos_a;
+						auto world_pos_b = pos_b.value + relative_pos_b;
+
+						auto length = (world_pos_a - world_pos_b).lengthApprox();
+						float over_extension = (length - rope.length) / rope.length;
+
+						over_extension -= (over_extension < 0) * over_extension;
+						float force = rope.strength * (over_extension * over_extension + over_extension);
+						
+						// TODO: Remove rope if too much strain
+						force = force > 1000.0f ? 1000.0f : force;
+
+						auto direction_a_to_b = world_pos_b - world_pos_a;
+						direction_a_to_b.normalizeApprox();
+						direction_a_to_b *= force;
+
+						mot_a.acceleration += direction_a_to_b * phys_a.inv_mass;
+						mot_b.acceleration -= direction_a_to_b * phys_b.inv_mass;
+
+						mot_a.angularAcceleration += direction_a_to_b.dot(relative_pos_a.normal2d()) * phys_a.inv_moment_of_inertia;
+						mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
+					});
+				};
+
 				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
 					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
@@ -306,7 +346,7 @@ namespace rynx {
 							m.acceleration += m_gravity;
 						});
 					}
-				})->depends_on(*findCollisionsTask).then(collision_resolution_first_stage);
+				})->depends_on(*findCollisionsTask).then(update_ropes)->then(collision_resolution_first_stage);
 			}
 
 		private:

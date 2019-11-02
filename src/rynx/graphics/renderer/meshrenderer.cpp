@@ -93,7 +93,7 @@ void MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const 
 	matrix4 model_;
 	vec3<float> mid = (p1 + p2) * 0.5f;
 	model_.discardSetTranslate(mid.x, mid.y, mid.z);
-	model_.rotate(::atan((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
+	model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
 	model_.scale((p1 - p2).lengthApprox(), width, 1.0f);
 	model_ *= model;
 
@@ -170,27 +170,26 @@ void MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& textur
 
 	glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
 	
+	for (int i = 0; i < 4; ++i) {
+		glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
+		glEnableVertexAttribArray(model_matrix_slot + i);
+		glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
+	}
+
+	glVertexAttribDivisor(0, 0); // always reuse the same vertex positions -> 0
+	glVertexAttribDivisor(1, 0); // same texture coordinates always -> 0
+
+	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
+
 	size_t currentIteration = 0;
 	while (models.size() > currentIteration * InstancesPerDrawCall) {
-		for (int i = 0; i < 4; ++i) {
-			glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
-			glEnableVertexAttribArray(model_matrix_slot + i);
-			glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
-		}
-
-		int32_t remaining = models.size() - currentIteration * InstancesPerDrawCall;
+		int32_t remaining = static_cast<int32_t>(models.size() - currentIteration * InstancesPerDrawCall);
 		int32_t instances_for_current_iteration = remaining > InstancesPerDrawCall ? InstancesPerDrawCall : remaining;
 
 		// Buffer orphaning, a common way to improve streaming perf for some reason.
-		glBufferData(GL_ARRAY_BUFFER, 1024 * 10 * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * 4 * sizeof(GLfloat), models.data() + currentIteration * InstancesPerDrawCall);
-
-		glVertexAttribDivisor(0, 0); // always reuse the same vertex positions -> 0
-		glVertexAttribDivisor(1, 0); // same texture coordinates always -> 0
-
-		glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
-		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, GLsizei(models.size()));
-
+		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);
 		++currentIteration;
 	}
 }

@@ -56,6 +56,36 @@ namespace rynx {
 					});
 				
 					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw);
+
+					spheres_to_draw.clear();
+					ecs.for_each([this, &ecs, &spheres_to_draw](const rynx::components::rope& rope) {
+						
+						auto entity_a = ecs[rope.id_a];
+						auto entity_b = ecs[rope.id_b];
+
+						auto pos_a = entity_a.get<components::position>();
+						auto pos_b = entity_b.get<components::position>();
+						auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+						auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+						auto world_pos_a = pos_a.value + relative_pos_a;
+						auto world_pos_b = pos_b.value + relative_pos_b;
+						vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
+						
+						auto direction_vector = world_pos_a - world_pos_b;
+						float length = direction_vector.lengthApprox() * 0.5f;
+						constexpr float width = 0.6f;
+						
+						if (!inScreen(mid, length * 0.5f))
+							return;
+
+						matrix4 model;
+						model.discardSetTranslate(mid.x, mid.y, mid.z);
+						model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
+						model.scale(length, width, 1.0f);
+						spheres_to_draw.emplace_back(model);
+					});
+
+					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw);
 				}
 
 				// Assumes axis aligned top-down camera :(

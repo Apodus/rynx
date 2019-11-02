@@ -17,10 +17,10 @@ namespace Shape {
 			T angle = T(-i * 2) * math::PI<T>() / T(vertices);
 			editor.insertVertex(
 				vec3<T>(
-					x_scale * radius * math::sin(angle),
-					y_scale * radius * math::cos(angle),
+					x_scale * radius * math::sin_approx(angle),
+					y_scale * radius * math::cos_approx(angle),
 					T(0)
-					)
+				)
 			);
 		}
 		return shape;

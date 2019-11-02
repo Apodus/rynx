@@ -120,8 +120,8 @@ int main(int argc, char** argv) {
 
 						ecs.query().in<snake_head>().execute([](rynx::components::position& pos) {
 							constexpr float velocity = 0.5f;
-							float sin_v = math::sin(pos.angle);
-							float cos_v = math::cos(pos.angle);
+							float sin_v = math::sin_approx(pos.angle);
+							float cos_v = math::cos_approx(pos.angle);
 							pos.value.x += cos_v * velocity;
 							pos.value.y += sin_v * velocity;
 						});

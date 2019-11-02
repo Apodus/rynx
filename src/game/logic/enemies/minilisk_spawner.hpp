@@ -36,14 +36,13 @@ namespace game {
 							rynx::components::color,
 							rynx::components::dampening,
 							rynx::components::boundary,
+							rynx::components::rope,
 							rynx::components::frame_collisions> ecs) {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
-							float y = +20.0f + m_random(0.0f, 4.0f);
+							float y = +100.0f + m_random(0.0f, 4.0f);
 							if (true || m_random() & 1) {
-								ecs.create(
-									game::components::minilisk(),
-									game::health({ 30, 30 }),
+								auto id1 = ecs.create(
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
 									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
@@ -53,6 +52,30 @@ namespace game {
 									rynx::components::dampening({ 0.97f, 0.997f }),
 									rynx::components::frame_collisions()
 								);
+
+								for (int k = 1; k < 40; ++k) {
+									auto id2 = ecs.create(
+										rynx::components::position({ x + 1 * k, y + 1 * k, 0 }),
+										rynx::components::motion(),
+										rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
+										rynx::components::radius(1.0f),
+										rynx::components::collision_category(dynamic),
+										rynx::components::color(),
+										rynx::components::dampening({ 0.97f, 0.997f }),
+										rynx::components::frame_collisions()
+									);
+
+									rynx::components::rope joint;
+									joint.id_a = id1;
+									joint.id_b = id2;
+									joint.point_a = vec3<float>(0, 0, 0);
+									joint.point_b = vec3<float>(0, 0, 0);
+									joint.length = 0.6f;
+									joint.strength = 10.0f;
+									ecs.create(joint);
+
+									id1 = id2;
+								}
 							}
 							else {
 								ecs.create(

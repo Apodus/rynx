@@ -101,6 +101,17 @@ namespace rynx {
 			std::vector<entry> collisions;
 		};
 
+		struct rope {
+			rynx::ecs::id id_a;
+			rynx::ecs::id id_b;
+
+			vec3<float> point_a;
+			vec3<float> point_b;
+
+			float length;
+			float strength;
+		};
+
 		struct collision_category {
 			collision_category() : value(-1) {}
 			collision_category(rynx::collision_detection::category_id category) : value(category) {}
