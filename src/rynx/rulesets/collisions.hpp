@@ -218,8 +218,7 @@ namespace rynx {
 						float force = rope.strength * (over_extension * over_extension + over_extension);
 						
 						// Remove rope if too much strain
-						// TODO: Breakpoint should not be a constant. Maybe stronger ropes can handle more pull?
-						if (force > 500.0f)
+						if (force > 75.0f * rope.strength)
 							broken_ropes.emplace_back(id);
 						force = force > 1000.0f ? 1000.0f : force;
 

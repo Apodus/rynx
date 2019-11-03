@@ -54,15 +54,31 @@ int main(int argc, char** argv) {
 	application.openWindow(1920, 1080);
 	application.loadTextures("../textures/textures.txt");
 
-	// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
-	auto mesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
-	mesh->build();
+	rynx::unordered_map<std::string, std::unique_ptr<Mesh>> m_meshes;
 
-	auto emptyMesh = PolygonTesselator<vec3<float>>().tesselate(Shape::makeCircle(1.0f, 32), application.textures().textureLimits("Hero"));
-	emptyMesh->build();
+	{
+		// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
+		auto generate_mesh = [&application](Polygon<vec3<float>> shape, std::string texture) {
+			return PolygonTesselator<vec3<float>>().tesselate(shape, application.textures().textureLimits(texture));
+		};
 
-	auto emptySquare = PolygonTesselator<vec3<float>>().tesselate(Shape::makeBox(1.0f), application.textures().textureLimits("Empty"));
-	emptySquare->build();
+		auto mesh = generate_mesh(Shape::makeCircle(1.0f, 32), "Hero");
+		mesh->build();
+
+		auto emptyMesh = generate_mesh(Shape::makeCircle(1.0f, 32), "Empty");
+		emptyMesh->build();
+
+		auto emptySquare = generate_mesh(Shape::makeBox(1.0f), "Empty");
+		emptySquare->build();
+
+		auto ropeSquare = generate_mesh(Shape::makeBox(1.0f), "Rope");
+		ropeSquare->build();
+
+		m_meshes.emplace("ball", std::move(mesh));
+		m_meshes.emplace("circle_empty", std::move(emptyMesh));
+		m_meshes.emplace("square_empty", std::move(emptySquare));
+		m_meshes.emplace("square_rope", std::move(emptySquare));
+	}
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
@@ -121,7 +137,7 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(emptyMesh.get(), &application.meshRenderer(), &(*camera)));
+	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(m_meshes.find("ball")->second, &application.meshRenderer(), &(*camera)));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
@@ -365,7 +381,7 @@ int main(int argc, char** argv) {
 			matrix4 m;
 			m.discardSetTranslate(mpos);
 			m.scale(0.5f);
-			application.meshRenderer().drawMesh(*mesh, m, "Empty");
+			application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty");
 		}
 
 		{
@@ -418,7 +434,7 @@ int main(int argc, char** argv) {
 					m.discardSetTranslate(pos);
 					m.scale(radius);
 					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
+					application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty", node_colors[depth % node_colors.size()]);
 				});
 			}
 
@@ -430,7 +446,7 @@ int main(int argc, char** argv) {
 					m.discardSetTranslate(pos);
 					m.scale(radius);
 					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*emptyMesh, m, "Empty", node_colors[depth % node_colors.size()]);
+					application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty", node_colors[depth % node_colors.size()]);
 				});
 			}
 

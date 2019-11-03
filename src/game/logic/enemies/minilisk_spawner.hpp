@@ -71,7 +71,7 @@ namespace game {
 									joint.point_a = vec3<float>(0, 0, 0);
 									joint.point_b = vec3<float>(0, 0, 0);
 									joint.length = 0.6f;
-									joint.strength = 10.0f;
+									joint.strength = 6.0f;
 									ecs.create(joint);
 
 									id1 = id2;

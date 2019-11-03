@@ -14,8 +14,8 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::renderer::irenderer {
-				ball_renderer(Mesh* circleMesh, MeshRenderer* meshRenderer, Camera* camera) {
-					m_circleMesh = circleMesh;
+				ball_renderer(std::unique_ptr<Mesh>& circleMesh, MeshRenderer* meshRenderer, Camera* camera) {
+					m_circleMesh = circleMesh.get();
 					m_meshRenderer = meshRenderer;
 					m_camera = camera;
 				}
