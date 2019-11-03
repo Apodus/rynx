@@ -129,4 +129,31 @@ namespace rynx {
 			int m_dependenciesAdded = 0;
 		};
 	}
+
+	// TODO: Where to put these.
+	template<typename T>
+	void wait_spin(std::vector<T>& availabilities) {
+		while (!availabilities.empty()) {
+			while (!availabilities.back()) {}
+			availabilities.pop_back();
+		}
+	}
+
+	class spin_waiter {
+	public:
+		template <typename T>
+		spin_waiter& operator | (T& availability) {
+			while (!availability) {}
+			return *this;
+		}
+
+		template <typename T>
+		spin_waiter& operator | (std::vector<T>& availabilities) {
+			while (!availabilities.empty()) {
+				operator | (availabilities.back());
+				availabilities.pop_back();
+			}
+			return *this;
+		}
+	};
 }

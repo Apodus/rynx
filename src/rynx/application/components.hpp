@@ -112,6 +112,8 @@ namespace rynx {
 			float strength;
 		};
 
+		struct dead {}; // mark entity for cleanup.
+
 		struct collision_category {
 			collision_category() : value(-1) {}
 			collision_category(rynx::collision_detection::category_id category) : value(category) {}

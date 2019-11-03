@@ -12,6 +12,8 @@ namespace rynx {
 		std::mutex m_storage_insert_mutex;
 
 	public:
+		using storage_type = std::vector<T>;
+
 		parallel_accumulator(size_t max_threads = 64) {
 			m_storage.reserve(max_threads);
 		}

@@ -305,7 +305,10 @@ namespace rynx {
 					}
 				}
 
-				template<typename T, typename F> std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> for_each_accumulate(int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
+				template<typename T, typename F>
+				std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> for_each_accumulate(
+					int64_t begin, int64_t end, F&& op, int64_t work_size = 256)
+				{
 					barrier bar;
 					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
 					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator<T>>();

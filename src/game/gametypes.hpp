@@ -12,8 +12,7 @@ namespace game
 	};
 
 	struct hero {}; // tag for player controlled entity.
-	struct dead {}; // tag for hp <= 0. because damage source can't know how to handle death of target.
-
+	
 	struct health {
 		float maxHp = 100;
 		float currentHp = 100;

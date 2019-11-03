@@ -476,12 +476,16 @@ int main(int argc, char** argv) {
 			ecs.for_each([&ecs](rynx::ecs::id id, rynx::components::lifetime& time) {
 				--time.value;
 				if (time.value <= 0) {
-					ecs.attachToEntity(id, game::dead());
+					ecs.attachToEntity(id, rynx::components::dead());
 				}
 			});
 
-			ecs.for_each([&ecs, &collisionDetection](rynx::ecs::id id, game::dead&, rynx::components::collision_category& cat) {
+			ecs.for_each([&ecs, &collisionDetection](rynx::ecs::id id, rynx::components::dead&, rynx::components::collision_category& cat) {
 				collisionDetection.erase(id.value, cat.value);
+				ecs.erase(id);
+			});
+
+			ecs.query().in<rynx::components::dead>().execute([&ecs, &collisionDetection](rynx::ecs::id id) {
 				ecs.erase(id);
 			});
 		}

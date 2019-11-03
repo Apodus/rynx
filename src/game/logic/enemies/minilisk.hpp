@@ -30,7 +30,7 @@ namespace game {
 					const rynx::components::position,
 					game::components::minilisk,
 					rynx::components::motion,
-					game::dead,
+					rynx::components::dead,
 					game::health> ecs
 					) {
 					std::vector<rynx::ecs::id> heroes;
@@ -57,7 +57,7 @@ namespace game {
 								auto& hp = heroEntity.get<game::health>();
 								hp.currentHp -= 5;
 								if (hp.currentHp <= 0) {
-									ecs.attachToEntity(heroes[0].value, game::dead());
+									ecs.attachToEntity(heroes[0].value, rynx::components::dead());
 								}
 							}
 
@@ -152,17 +152,17 @@ namespace game {
 					});
 
 					if (!hits.empty()) {
-						currentTask.extend_task([hits = std::move(hits)](rynx::ecs::edit_view<game::health, game::dead> ecs) {
+						currentTask.extend_task([hits = std::move(hits)](rynx::ecs::edit_view<game::health, rynx::components::dead> ecs) {
 							for (auto&& hit : hits) {
 								if (ecs[hit.targetId].has<game::health>()) {
 									game::health& hp = ecs[hit.targetId].get<game::health>();
 									hp.currentHp -= hit.damage;
 									if (hp.currentHp <= 0) {
-										ecs.attachToEntity(hit.targetId, game::dead());
+										ecs.attachToEntity(hit.targetId, rynx::components::dead());
 									}
 								}
 
-								ecs.attachToEntity(hit.bulletId, game::dead());
+								ecs.attachToEntity(hit.bulletId, rynx::components::dead());
 							}
 						});
 					}

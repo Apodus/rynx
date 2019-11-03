@@ -193,7 +193,7 @@ namespace rynx {
 				findCollisionsTask->depends_on(updateBoundaryWorld);
 				
 				auto update_ropes = [](rynx::ecs::view<const components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
-					ecs.for_each_parallel(task, [ecs](rynx::ecs::id id, components::rope& rope) mutable {
+					auto broken_ropes = ecs.for_each_parallel_accumulate<rynx::ecs::id>(task, [ecs](std::vector<rynx::ecs::id>& broken_ropes, rynx::ecs::id id, components::rope& rope) mutable {
 						auto entity_a = ecs[rope.id_a];
 						auto entity_b = ecs[rope.id_b];
 
@@ -217,7 +217,10 @@ namespace rynx {
 						over_extension -= (over_extension < 0) * over_extension;
 						float force = rope.strength * (over_extension * over_extension + over_extension);
 						
-						// TODO: Remove rope if too much strain
+						// Remove rope if too much strain
+						// TODO: Breakpoint should not be a constant. Maybe stronger ropes can handle more pull?
+						if (force > 500.0f)
+							broken_ropes.emplace_back(id);
 						force = force > 1000.0f ? 1000.0f : force;
 
 						auto direction_a_to_b = world_pos_b - world_pos_a;
@@ -230,9 +233,17 @@ namespace rynx {
 						mot_a.angularAcceleration += direction_a_to_b.dot(relative_pos_a.normal2d()) * phys_a.inv_moment_of_inertia;
 						mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
 					});
+
+					task.extend_task([broken_ropes](rynx::ecs::edit_view<components::rope, components::dead> ecs) {
+						broken_ropes->for_each([ecs](std::vector<rynx::ecs::id>& v) mutable {
+							for (auto&& id : v) {
+								ecs.attachToEntity(id, components::dead());
+							}
+						});
+					});
 				};
 
-				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<const components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
 					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
 
@@ -248,23 +259,19 @@ namespace rynx {
 
 					{
 						rynx_profile("collisions", "fetch motion components");
-						std::vector<rynx::scheduler::barrier> bars;
+						std::vector<rynx::scheduler::barrier> barriers;
 						for (auto&& overlaps : overlaps_vector) {
-							bars.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, ecs](int64_t index) mutable {
+							barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, ecs](int64_t index) mutable {
 								auto& collision = overlaps->operator[](index);
 								collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 								collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
 							}, 32));
 						}
 
-						// spin until motion component fetches are complete.
-						while (!bars.empty()) {
-							while (!bars.back()) {}
-							bars.pop_back();
-						}
+						rynx::spin_waiter() | barriers;
 					}
 
-					// NOTE TODO: The task is not safe. We are now resolving all collision events in parallel, which means
+					// NOTE TODO: The task is not thread-safe. We are now resolving all collision events in parallel, which means
 					//            that we are resolving multiple collisions for the same entity in parallel, which will yield incorrect results.
 					//            however, in practice this issue doesn't appear to be great. Might be that the iterative nature of approaching
 					//            some global correct solution mitigates the damage the error cases cause.
