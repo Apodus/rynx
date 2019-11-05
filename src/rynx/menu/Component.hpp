@@ -9,10 +9,13 @@
 #include <string>
 #include <vector>
 
-class MeshRenderer;
+
 class TextRenderer;
 
 namespace rynx {
+	
+	class MeshRenderer;
+	
 	namespace input {
 		class mapped_input;
 	}

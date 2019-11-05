@@ -44,28 +44,27 @@ namespace {
 	void check_polygon_ball(
 		std::vector<rynx::ruleset::physics_2d::collision_event>& collisions_accumulator, 
 		rynx::ecs::entity<ecs_view> polygon,
-		rynx::ecs::entity<ecs_view> ball
+		rynx::ecs::entity<ecs_view> ball,
+		const vec3<float> polygon_position,
+		const vec3<float> ball_position,
+		const float ball_radius
 	) {
-		const auto& posA = polygon.get<const rynx::components::position>();
-		const auto& posB = ball.get<const rynx::components::position>();
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
-		const float radiusB = ball.get<const rynx::components::radius>().r;
-
 		for (auto&& segment : boundaryA.segments_world) {
-			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, posB.value);
+			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, ball_position);
 			const float dist = pointToLineSegment.first;
-			auto normal = (pointToLineSegment.second - posB.value).normalizeApprox();
-			normal *= 2.0f * (normal.dot(posA.value - pointToLineSegment.second) > 0) - 1.0f;
+			if (dist < ball_radius) {
+				auto normal = (pointToLineSegment.second - ball_position).normalizeApprox();
+				normal *= 2.0f * (normal.dot(polygon_position - pointToLineSegment.second) > 0) - 1.0f;
 
-			if (dist < radiusB) {
 				collisions_accumulator.emplace_back(store_collision(
 					polygon,
 					ball,
 					normal,
 					pointToLineSegment.second,
-					posA.value,
-					posB.value,
-					radiusB - dist
+					polygon_position,
+					ball_position,
+					ball_radius - dist
 				));
 			}
 		}
@@ -246,10 +245,10 @@ void rynx::ruleset::physics_2d::check_all(
 			check_polygon_polygon(collisions_accumulator, entA, entB);
 		}
 		else if (hasBoundaryA) {
-			check_polygon_ball(collisions_accumulator, entA, entB);
+			check_polygon_ball(collisions_accumulator, entA, entB, a_pos, b_pos, b_radius);
 		}
 		else {
-			check_polygon_ball(collisions_accumulator, entB, entA);
+			check_polygon_ball(collisions_accumulator, entB, entA, b_pos, a_pos, a_radius);
 		}
 	}
 	else {

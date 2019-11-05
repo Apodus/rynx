@@ -22,7 +22,7 @@
 namespace game
 {
 	struct hitpoint_bar_renderer : public rynx::application::renderer::irenderer {
-		hitpoint_bar_renderer(MeshRenderer* meshRenderer) {
+		hitpoint_bar_renderer(rynx::MeshRenderer* meshRenderer) {
 			m_meshRenderer = meshRenderer;
 		}
 		virtual ~hitpoint_bar_renderer() {}
@@ -36,6 +36,6 @@ namespace game
 			});
 		}
 
-		MeshRenderer* m_meshRenderer;
+		rynx::MeshRenderer* m_meshRenderer;
 	};
 }

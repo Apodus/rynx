@@ -11,7 +11,7 @@
 namespace game {
 	namespace visual {
 		struct bullet_renderer : public rynx::application::renderer::irenderer {
-			bullet_renderer(MeshRenderer* meshRenderer) {
+			bullet_renderer(rynx::MeshRenderer* meshRenderer) {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~bullet_renderer() {}
@@ -22,7 +22,7 @@ namespace game {
 				});
 			}
 
-			MeshRenderer* m_meshRenderer;
+			rynx::MeshRenderer* m_meshRenderer;
 		};
 	}
 }
@@ -30,7 +30,7 @@ namespace game {
 namespace game {
 	namespace visual {
 		struct hero_renderer : public rynx::application::renderer::irenderer {
-			hero_renderer(MeshRenderer* meshRenderer) {
+			hero_renderer(rynx::MeshRenderer* meshRenderer) {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~hero_renderer() {}
@@ -59,7 +59,7 @@ namespace game {
 				*/
 			}
 
-			MeshRenderer* m_meshRenderer;
+			rynx::MeshRenderer* m_meshRenderer;
 		};
 	}
 }

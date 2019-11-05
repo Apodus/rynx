@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
 	rynx::application::Application application;
 	application.openWindow(1920, 1080);
 	application.loadTextures("../textures/textures.txt");
+	application.meshRenderer().loadDefaultMesh("Empty");
 
 	rynx::unordered_map<std::string, std::unique_ptr<Mesh>> m_meshes;
 
@@ -341,13 +342,18 @@ int main(int argc, char** argv) {
 
 	while (!application.isExitRequested()) {
 		rynx_profile("Main", "frame");
-		application.startFrame();
-
+		
+		{
+			rynx_profile("Main", "start frame");
+			application.startFrame();
+		}
+		
 		auto mousePos = application.input()->getCursorPosition();
-
 		cameraPosition.tick(0.016f * 3);
 
 		{
+			rynx_profile("Main", "update camera");
+			
 			camera->setPosition(cameraPosition);
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 
@@ -378,6 +384,8 @@ int main(int argc, char** argv) {
 		auto mpos = gameInput.mouseWorldPosition();
 
 		{
+			rynx_profile("Main", "draw cursor");
+
 			matrix4 m;
 			m.discardSetTranslate(mpos);
 			m.scale(0.5f);

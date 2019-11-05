@@ -95,19 +95,7 @@ namespace math {
 	}
 
 	inline float sin_approx(float in) {
-		float number_of_full_rotations = std::roundf(in * PI_inv_float * 0.5f);
-		float x = in - PI_float * 2.0f * number_of_full_rotations;
-		// in range [-2pi, +2pi] now,
-		
-		int32_t outside = x * x > PI_float* PI_float;
-		x += outside * ((x < 0) * 2 - 1) * PI_float * 2.0f;
-		rynx_assert(x >= -PI_float && x <= +PI_float, "modulating to correct range failed: %f", x);
-		
-		float sign = static_cast<float>((x < 0) * 2 - 1);
-		float sin = x * (1.27323954f + sign * 0.405284735f * x);
-		float sign2 = static_cast<float>((sin < 0) * 2 - 1);
-		sin *= -0.255f * sign2 * (sin + 1.0f * sign2) + 1.0f;
-		return sin;
+		return std::sin(in);
 	}
 
 	inline float cos_approx(float x) {
@@ -119,9 +107,10 @@ namespace math {
 		// arctan(1 / x) = 0.5 * pi - arctan(x)[x > 0]
 		// idea from paper: "Efficient Approximations for the Arctangent Function".
 		// Beware of parameters inf & 0.
-		float absx = x * ((x > 0) * 2 - 1); // we only compute in the positive domain. using identity arctan(-x) above.
+		int sign_bit = ((x > 0) * 2 - 1);
+		float absx = fabsf(x); // we only compute in the positive domain. using identity arctan(-x) above.
 		auto func = [](float x) { return PI_float * 0.25f * x + 0.285f * x * (1.0f - x); };
-		return ((x > 0) * 2 - 1) * ((absx < 1.0f) ? func(absx) : (PI_float * 0.5f - func(1.0f/absx)));
+		return sign_bit * ((absx < 1.0f) ? func(absx) : (PI_float * 0.5f - func(1.0f/absx)));
 	}
 
 	inline float cos(float f) {

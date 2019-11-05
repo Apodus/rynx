@@ -40,7 +40,7 @@ namespace rynx {
 			virtual void update(float) override;
 
 			virtual void onInput(rynx::input::mapped_input&) override {}
-			virtual void draw(MeshRenderer& meshRenderer, TextRenderer&) const override;
+			virtual void draw(rynx::MeshRenderer& meshRenderer, TextRenderer&) const override;
 		};
 	}
 }

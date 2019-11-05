@@ -37,7 +37,10 @@ namespace rynx {
 					cameraBot = m_camera->position().y - m_camera->position().z;
 
 					std::vector<matrix4> spheres_to_draw;
+					spheres_to_draw.reserve(10 * 1024);
+					
 					std::vector<vec4<float>> colors;
+					
 					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
 						.execute([this, &spheres_to_draw, &colors](
 						const rynx::components::position pos,
@@ -55,7 +58,8 @@ namespace rynx {
 						colors.emplace_back(color.value);
 					});
 				
-					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw);
+					colors.resize(spheres_to_draw.size(), vec4<float>(1, 1, 1, 1));
+					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
 
 					spheres_to_draw.clear();
 					ecs.for_each([this, &ecs, &spheres_to_draw](const rynx::components::rope& rope) {
@@ -85,7 +89,9 @@ namespace rynx {
 						spheres_to_draw.emplace_back(model);
 					});
 
-					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw);
+					colors.clear();
+					colors.resize(spheres_to_draw.size(), vec4<float>(0, 0, 0, 1));
+					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
 				}
 
 				// Assumes axis aligned top-down camera :(

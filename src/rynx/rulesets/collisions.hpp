@@ -245,25 +245,46 @@ namespace rynx {
 				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
 					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
-
-					/*
-					std::shared_ptr<std::vector<collision_event>> overlaps = std::make_shared<std::vector<collision_event>>(collisions_accumulator->combine_and_clear());
-					if (overlaps->empty())
-						return;
-					*/
-
 					collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
 						overlaps_vector.emplace_back(std::make_shared<std::vector<collision_event>>(std::move(overlaps)));
 					});
 
+					struct event_extra_info {
+						vec3<float> relative_position_tangent_a;
+						float relative_position_length_a;
+						vec3<float> relative_position_tangent_b;
+						float relative_position_length_b;
+					};
+
+					std::vector<std::shared_ptr<std::vector<event_extra_info>>> extra_infos;
+					extra_infos.resize(overlaps_vector.size());
+					for (size_t i = 0; i < overlaps_vector.size(); ++i) {
+						extra_infos[i] = std::make_shared<std::vector<event_extra_info>>();
+						extra_infos[i]->resize(overlaps_vector[i]->size());
+					}
+
 					{
 						rynx_profile("collisions", "fetch motion components");
 						std::vector<rynx::scheduler::barrier> barriers;
-						for (auto&& overlaps : overlaps_vector) {
-							barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, ecs](int64_t index) mutable {
+						for (size_t i = 0; i < overlaps_vector.size(); ++i) {
+							auto overlaps = overlaps_vector[i];
+							auto extras = extra_infos[i];
+							
+							barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, extras, ecs](int64_t index) mutable {
 								auto& collision = overlaps->operator[](index);
 								collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 								collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
+
+								auto& extra = extras->operator[](index);
+								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
+								const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
+
+								const float rel_pos_len_a = rel_pos_a.lengthApprox();
+								const float rel_pos_len_b = rel_pos_b.lengthApprox();
+								extra.relative_position_length_a = rel_pos_len_a;
+								extra.relative_position_length_b = rel_pos_len_b;
+								extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
+								extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
 							}, 32));
 						}
 
@@ -276,74 +297,78 @@ namespace rynx {
 					//            some global correct solution mitigates the damage the error cases cause.
 					rynx_profile("collisions", "resolve 10x");
 					for (int i = 0; i < 10; ++i)
-					for(auto&& overlaps : overlaps_vector)
-					task & task.parallel().for_each(0, overlaps->size(), [overlaps, ecs, dt](int64_t index) mutable {
-					// for(size_t index=0; index < overlaps->size(); ++index) {
-						auto& collision = overlaps->operator[](index);
-						components::motion& motion_a = *collision.a_motion;
-						components::motion& motion_b = *collision.b_motion;
+						for (size_t k = 0; k < overlaps_vector.size(); ++k) {
+							auto& overlaps = overlaps_vector[k];
+							auto& extras = extra_infos[k];
+							task& task.parallel().for_each(0, overlaps->size(), [overlaps, extras, ecs, dt](int64_t index) mutable {
+								// for(size_t index=0; index < overlaps->size(); ++index) {
+								const auto& collision = overlaps->operator[](index);
+								components::motion& motion_a = *collision.a_motion;
+								components::motion& motion_b = *collision.b_motion;
 
-						auto velocity_at_point = [dt](vec3<float> relative_pos, const components::motion& m) {
-							return m.velocity + m.acceleration * dt - relative_pos.lengthApprox() * (m.angularVelocity + m.angularAcceleration * dt) * relative_pos.normal2d().normalizeApprox();
-						};
+								auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m, float dt) {
+									return m.velocity + m.acceleration * dt - rel_pos_len * (m.angularVelocity + m.angularAcceleration * dt) * rel_pos_tangent;
+								};
 
-						vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
-						vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
+								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
+								const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
 
-						vec3<float> rel_v_a = velocity_at_point(rel_pos_a, motion_a);
-						vec3<float> rel_v_b = velocity_at_point(rel_pos_b, motion_b);
-						vec3<float> total_rel_v = rel_v_a - rel_v_b;
+								const auto& extra = extras->operator[](index);
+								const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, motion_a, dt);
+								const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, motion_b, dt);
+								const vec3<float> total_rel_v = rel_v_a - rel_v_b;
 
-						float impact_power = -total_rel_v.dot(collision.normal);
-						if (impact_power < 0)
-							// continue;
-							return;
+								const float impact_power = -total_rel_v.dot(collision.normal);
+								if (impact_power < 0)
+									// continue;
+									return;
 
-						auto proximity_force = collision.normal * collision.penetration * collision.penetration;
-						rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
+								const auto proximity_force = collision.normal * collision.penetration * collision.penetration;
+								rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
 
-						float inertia1 = sqr(collision.normal.cross2d(rel_pos_a)) * collision.a_body.inv_moment_of_inertia;
-						float inertia2 = sqr(collision.normal.cross2d(rel_pos_b)) * collision.b_body.inv_moment_of_inertia;
-						float collision_elasticity = (collision.a_body.collision_elasticity + collision.b_body.collision_elasticity) * 0.5f; // combine some fun way
+								const float inertia1 = sqr(collision.normal.cross2d(rel_pos_a)) * collision.a_body.inv_moment_of_inertia;
+								const float inertia2 = sqr(collision.normal.cross2d(rel_pos_b)) * collision.b_body.inv_moment_of_inertia;
+								const float collision_elasticity = (collision.a_body.collision_elasticity + collision.b_body.collision_elasticity) * 0.5f; // combine some fun way
 
-						float top = (1.0f + collision_elasticity) * impact_power;
-						float bot = collision.a_body.inv_mass + collision.b_body.inv_mass + inertia1 + inertia2;
+								const float top = (1.0f + collision_elasticity) * impact_power;
+								const float bot = collision.a_body.inv_mass + collision.b_body.inv_mass + inertia1 + inertia2;
 
-						float soft_j = top / bot;
+								const float soft_j = top / bot;
 
-						vec3<float> normal = collision.normal;
-						auto soft_impact_force = normal * soft_j;
+								const vec3<float> normal = collision.normal;
+								const auto soft_impact_force = normal * soft_j;
 
-						float mu = (collision.a_body.friction_multiplier + collision.b_body.friction_multiplier) * 0.5f;
-						vec3<float> tangent = normal.normal2d();
-						if (tangent.dot(total_rel_v) < 0)
-							tangent *= -1;
+								const float mu = (collision.a_body.friction_multiplier + collision.b_body.friction_multiplier) * 0.5f;
+								vec3<float> tangent = normal.normal2d();
+								if (tangent.dot(total_rel_v) < 0)
+									tangent *= -1;
 
-						float friction_power = -tangent.dot(total_rel_v) * mu;
+								float friction_power = -tangent.dot(total_rel_v) * mu;
 
-						// if we want to limit friction according to physics, this would do the trick.
-						if constexpr (false) {
-							while (friction_power * friction_power > soft_j * soft_j)
-								friction_power *= 0.9f;
+								// if we want to limit friction according to physics, this would do the trick.
+								if constexpr (false) {
+									while (friction_power * friction_power > soft_j * soft_j)
+										friction_power *= 0.9f;
+								}
+
+								tangent *= friction_power;
+
+								motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass / dt;
+								motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass / dt;
+
+								{
+									float rotation_force_friction = tangent.cross2d(rel_pos_a);
+									float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
+									motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia / dt;
+								}
+
+								{
+									float rotation_force_friction = tangent.cross2d(rel_pos_b);
+									float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
+									motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia / dt;
+								}
+							});
 						}
-
-						tangent *= friction_power;
-
-						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass / dt;
-						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass / dt;
-
-						{
-							float rotation_force_friction = tangent.cross2d(rel_pos_a);
-							float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
-							motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia / dt;
-						}
-
-						{
-							float rotation_force_friction = tangent.cross2d(rel_pos_b);
-							float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
-							motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia / dt;
-						}
-					});
 				};
 
 				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
