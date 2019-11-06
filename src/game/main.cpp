@@ -21,6 +21,7 @@
 #include <rynx/application/simulation.hpp>
 
 #include <rynx/rulesets/collisions.hpp>
+#include <rynx/rulesets/particles.hpp>
 
 #include <rynx/application/visualisation/ball_renderer.hpp>
 #include <rynx/application/visualisation/boundary_renderer.hpp>
@@ -55,30 +56,12 @@ int main(int argc, char** argv) {
 	application.loadTextures("../textures/textures.txt");
 	application.meshRenderer().loadDefaultMesh("Empty");
 
-	rynx::unordered_map<std::string, std::unique_ptr<Mesh>> m_meshes;
-
+	auto meshes = application.meshRenderer().meshes();
 	{
-		// Meshes should be stored somewhere? Constructing them should be a bit more pretty.
-		auto generate_mesh = [&application](Polygon<vec3<float>> shape, std::string texture) {
-			return PolygonTesselator<vec3<float>>().tesselate(shape, application.textures().textureLimits(texture));
-		};
-
-		auto mesh = generate_mesh(Shape::makeCircle(1.0f, 32), "Hero");
-		mesh->build();
-
-		auto emptyMesh = generate_mesh(Shape::makeCircle(1.0f, 32), "Empty");
-		emptyMesh->build();
-
-		auto emptySquare = generate_mesh(Shape::makeBox(1.0f), "Empty");
-		emptySquare->build();
-
-		auto ropeSquare = generate_mesh(Shape::makeBox(1.0f), "Rope");
-		ropeSquare->build();
-
-		m_meshes.emplace("ball", std::move(mesh));
-		m_meshes.emplace("circle_empty", std::move(emptyMesh));
-		m_meshes.emplace("square_empty", std::move(emptySquare));
-		m_meshes.emplace("square_rope", std::move(emptySquare));
+		meshes->create("ball", Shape::makeCircle(1.0f, 32), "Hero");
+		meshes->create("circle_empty", Shape::makeCircle(1.0f, 32), "Empty");
+		meshes->create("square_empty", Shape::makeBox(1.0f), "Hero");
+		meshes->create("sqaure_rope", Shape::makeBox(1.0f), "Rope");
 	}
 
 	rynx::scheduler::task_scheduler scheduler;
@@ -119,17 +102,22 @@ int main(int argc, char** argv) {
 	// setup game logic
 	{
 		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -1.8f, 0));
+		auto ruleset_particle_update = std::make_unique<rynx::ruleset::particle_system>();
+		
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
 		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
 
 		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(collisionCategoryDynamic);
+		
 		spawner = ruleset_minilisk_gen.get();
 
 		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
 
 		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
+		base_simulation.add_rule_set(std::move(ruleset_particle_update));
+
 		base_simulation.add_rule_set(std::move(ruleset_shooting));
 		base_simulation.add_rule_set(std::move(ruleset_keyboardMovement));
 
@@ -138,7 +126,7 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(m_meshes.find("ball")->second, &application.meshRenderer(), &(*camera)));
+	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(meshes->get("ball"), &application.meshRenderer(), &(*camera)));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
@@ -180,7 +168,7 @@ int main(int argc, char** argv) {
 					rynx::components::color({ 1,1,0,1 }),
 					rynx::components::motion({ 0, 0, 0 }, 0),
 					rynx::components::dampening({ 0.93f, 0.98f }),
-					rynx::components::frame_collisions()
+					rynx::components::ignore_gravity()
 				);
 		}
 		
@@ -193,7 +181,8 @@ int main(int argc, char** argv) {
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f)
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
+				rynx::components::ignore_gravity()
 			);
 		};
 
@@ -205,7 +194,8 @@ int main(int argc, char** argv) {
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0,1,0,1 }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f)
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
+				rynx::components::ignore_gravity()
 			);
 		};
 
@@ -340,8 +330,11 @@ int main(int argc, char** argv) {
 	rynx::numeric_property<float> swap_time;
 	rynx::numeric_property<float> total_time;
 
+	rynx::timer frame_timer_dt;
+	float dt = 1.0f / 120.0f;
 	while (!application.isExitRequested()) {
 		rynx_profile("Main", "frame");
+		frame_timer_dt.reset();
 		
 		{
 			rynx_profile("Main", "start frame");
@@ -349,7 +342,7 @@ int main(int argc, char** argv) {
 		}
 		
 		auto mousePos = application.input()->getCursorPosition();
-		cameraPosition.tick(0.016f * 3);
+		cameraPosition.tick(dt * 3);
 
 		{
 			rynx_profile("Main", "update camera");
@@ -363,8 +356,8 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			constexpr float camera_translate_multiplier = 0.04f;
-			constexpr float camera_zoom_multiplier = 1.05f;
+			const float camera_translate_multiplier = 4.4f * dt;
+			const float camera_zoom_multiplier = (1.0f - dt * 3.0f);
 			if (gameInput.isKeyDown(cameraUp)) { cameraPosition += vec3<float>{0, camera_translate_multiplier * cameraPosition->z, 0}; }
 			if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += vec3<float>{-camera_translate_multiplier * cameraPosition->z, 0.0f, 0}; }
 			if (gameInput.isKeyDown(cameraRight)) { cameraPosition += vec3<float>{camera_translate_multiplier* cameraPosition->z, 0.0f, 0}; }
@@ -389,7 +382,7 @@ int main(int argc, char** argv) {
 			matrix4 m;
 			m.discardSetTranslate(mpos);
 			m.scale(0.5f);
-			application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty");
+			application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
 		}
 
 		{
@@ -404,7 +397,7 @@ int main(int argc, char** argv) {
 		timer.reset();
 		{
 			rynx_profile("Main", "Construct frame tasks");
-			base_simulation.generate_tasks();
+			base_simulation.generate_tasks(dt);
 		}
 
 		{
@@ -422,7 +415,7 @@ int main(int argc, char** argv) {
 		
 		// menu input is part of logic, not visualization. must tick every frame.
 		root.input(gameInput);
-		root.tick(0.016f, application.aspectRatio());
+		root.tick(dt, application.aspectRatio());
 
 		// should we render or not.
 		if (true || tickCounter.load() % 16 == 3) {
@@ -442,7 +435,7 @@ int main(int argc, char** argv) {
 					m.discardSetTranslate(pos);
 					m.scale(radius);
 					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty", node_colors[depth % node_colors.size()]);
+					application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
 				});
 			}
 
@@ -454,7 +447,7 @@ int main(int argc, char** argv) {
 					m.discardSetTranslate(pos);
 					m.scale(radius);
 					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*m_meshes.find("circle_empty")->second, m, "Empty", node_colors[depth % node_colors.size()]);
+					application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
 				});
 			}
 
@@ -497,8 +490,10 @@ int main(int argc, char** argv) {
 
 		{
 			rynx_profile("Main", "Clean up dead entitites");
-			ecs.for_each([&ecs](rynx::ecs::id id, rynx::components::lifetime& time) {
-				--time.value;
+			dt = std::min(0.016f, std::max(0.001f, frame_timer_dt.time_since_last_access_ms() * 0.001f));
+			
+			ecs.for_each([&ecs, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
+				time.value -= dt;
 				if (time.value <= 0) {
 					ecs.attachToEntity(id, rynx::components::dead());
 				}

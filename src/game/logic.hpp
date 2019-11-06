@@ -12,6 +12,8 @@ namespace game {
 		virtual ~ballCreatingRuleSet() {}
 
 		rynx::collision_detection::category_id m_category;
+		float spawnInterval = 1.0f;
+		float currentTime = 1.0f;
 
 		void createBall(rynx::ecs& ecs) {
 			vec3<float> dir(
@@ -32,12 +34,18 @@ namespace game {
 			);
 		}
 
-		virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
-			scheduler.add_task("createBalls", [this](rynx::ecs& ecs) {
-				createBall(ecs);
-				createBall(ecs);
-				createBall(ecs);
-			});
+		virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
+			currentTime -= dt;
+			if (currentTime < 0) {
+				currentTime += spawnInterval;
+
+				scheduler.add_task("createBalls", [this](rynx::ecs& ecs) {
+					createBall(ecs);
+					createBall(ecs);
+					createBall(ecs);
+				});
+			}
+
 		}
 	};
 }

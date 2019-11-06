@@ -75,7 +75,7 @@ namespace game {
 				return result;
 			}
 
-			virtual void onFrameProcess(rynx::scheduler::context&) override {}
+			virtual void onFrameProcess(rynx::scheduler::context&, float) override {}
 		};
 	}
 }

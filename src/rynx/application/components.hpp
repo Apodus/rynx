@@ -14,6 +14,13 @@
 class Mesh;
 
 namespace rynx {
+	template<typename T> struct value_segment {
+		T begin;
+		T end;
+
+		T linear(float v) const { return begin * v + end * (1.0f - v); }
+	};
+
 	namespace components {
 		struct color {
 			color() {}
@@ -35,9 +42,20 @@ namespace rynx {
 		};
 
 		struct lifetime {
-			lifetime() : value(0) {}
-			lifetime(int frames) : value(frames) {}
-			int value;
+			lifetime() : value(0), max_value(0) {}
+			lifetime(float seconds) : value(seconds), max_value(seconds) {}
+			
+			float operator()() {
+				return value / max_value;
+			}
+			
+			float value;
+			float max_value;
+		};
+
+		struct particle_info {
+			value_segment<vec4<float>> color;
+			value_segment<float> radius;
 		};
 
 		struct physical_body {
@@ -85,7 +103,9 @@ namespace rynx {
 		};
 
 		struct projectile {}; // tag for fast moving items in collision detection.
+		struct ignore_gravity {};
 
+		// TODO: Remove
 		struct frame_collisions {
 			struct entry {
 				entry() = default;
@@ -124,6 +144,7 @@ namespace rynx {
 			Mesh* m;
 		};
 
+		// TODO: Remove.
 		struct texture {
 			std::string tex;
 		};

@@ -13,8 +13,8 @@ namespace rynx {
 				m_context->set_resource<rynx::ecs>(&m_ecs);
 			}
 
-			void generate_tasks() {
-				m_logic.generate_tasks(*m_context);
+			void generate_tasks(float dt) {
+				m_logic.generate_tasks(*m_context, dt);
 			}
 
 			template<typename T>

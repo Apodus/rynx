@@ -59,7 +59,7 @@ namespace game {
 					float bulletRadius = 0.3f;
 
 					ecs.create(
-						rynx::components::lifetime(25),
+						rynx::components::lifetime(3.0f),
 						rynx::components::position(shooterPos.value + direction + shooterMotion.velocity * 1.1f + normalizedDirection * (shooter.get<rynx::components::radius>().r + bulletRadius) * 1.1f),
 						rynx::components::radius(bulletRadius),
 						rynx::components::projectile(),
@@ -104,11 +104,11 @@ namespace game {
 				return {};
 			}
 
-			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
-				scheduler.add_task("tick weapons", [](rynx::ecs::view<game::components::weapon> ecs) {
-					ecs.for_each([](game::components::weapon& weapon) {
-						weapon.cooldownCurrent -= 0.016f; // TODO: should we just express these as number of ticks, instead of seconds?
-						weapon.reloadTimeCurrent -= 0.016f;
+			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
+				scheduler.add_task("tick weapons", [dt](rynx::ecs::view<game::components::weapon> ecs) {
+					ecs.for_each([dt](game::components::weapon& weapon) {
+						weapon.cooldownCurrent -= dt; // TODO: should we just express these as number of ticks, instead of seconds?
+						weapon.reloadTimeCurrent -= dt;
 						if (weapon.reloadTimeCurrent <= 0 && weapon.clipSizeCurrent == 0) {
 							weapon.clipSizeCurrent = weapon.clipSizeMax;
 						}

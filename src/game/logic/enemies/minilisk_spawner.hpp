@@ -22,7 +22,7 @@ namespace game {
 
 			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
 
-			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
+			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
 				if ((++frameCount % how_often_to_spawn) == 0) {
 					scheduler.add_task("create monsters", [this](
 						rynx::ecs::edit_view<

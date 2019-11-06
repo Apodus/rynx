@@ -30,7 +30,7 @@ namespace rynx {
 				virtual ~iruleset() {}
 				virtual std::vector<std::unique_ptr<iaction>> onInput(rynx::input::mapped_input&, const ecs&) { return {}; }
 				
-				void process(rynx::scheduler::context& scheduler);
+				void process(rynx::scheduler::context& scheduler, float dt);
 				rynx::scheduler::barrier barrier() const;
 
 				void depends_on(iruleset& other) { other.required_for(*this); }
@@ -40,7 +40,7 @@ namespace rynx {
 				std::unique_ptr<rynx::scheduler::barrier> m_barrier;
 				std::vector<std::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
 				
-				virtual void onFrameProcess(rynx::scheduler::context&) = 0;
+				virtual void onFrameProcess(rynx::scheduler::context&, float dt) = 0;
 			};
 
 			std::vector<std::unique_ptr<iaction>> onInput(rynx::input::mapped_input& input, const ecs& ecs) const {
@@ -59,9 +59,9 @@ namespace rynx {
 				return *this;
 			}
 
-			void generate_tasks(rynx::scheduler::context& context) {
+			void generate_tasks(rynx::scheduler::context& context, float dt) {
 				for (auto& ruleset : m_rules) {
-					ruleset->process(context);
+					ruleset->process(context, dt);
 				}
 			}
 

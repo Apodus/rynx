@@ -16,7 +16,6 @@ namespace rynx {
 	namespace ruleset {
 		class physics_2d : public application::logic::iruleset {
 			vec3<float> m_gravity;
-			float m_dt = 1.0f / 60.0f;
 		public:
 			struct collision_event {
 				uint64_t a_id;
@@ -35,8 +34,7 @@ namespace rynx {
 			physics_2d(vec3<float> gravity = vec3<float>(0, 0, 0)) : m_gravity(gravity) {}
 			virtual ~physics_2d() {}
 
-			virtual void onFrameProcess(rynx::scheduler::context& context) override {
-
+			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override {
 				rynx::scheduler::barrier position_updates_barrier("position updates");
 				rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");
 
@@ -49,30 +47,37 @@ namespace rynx {
 						});
 					});
 
-					context.add_task("Apply acceleration and reset", [this](rynx::ecs::view<components::motion, const components::radius> ecs, rynx::scheduler::task& task_context) {
+					context.add_task("Apply acceleration and reset", [dt](rynx::ecs::view<components::motion, const components::radius> ecs, rynx::scheduler::task& task_context) {
 						{
 							rynx_profile("Motion", "apply acceleration");
-							ecs.for_each_parallel(task_context, [this](components::motion& m, const components::radius r) {
-								m.velocity += m.acceleration * m_dt;
+							ecs.query().notIn<components::collision_category>().execute_parallel(task_context, [dt](components::motion& m, const components::radius r) {
+								m.velocity += m.acceleration * dt;
 								m.acceleration.set(0, 0, 0);
-								m.angularVelocity += m.angularAcceleration * m_dt;
+								m.angularVelocity += m.angularAcceleration * dt;
+								m.angularAcceleration = 0;
+							});
+							
+							ecs.query().in<components::collision_category>().execute_parallel(task_context, [dt](components::motion& m, const components::radius r) {
+								m.velocity += m.acceleration * dt;
+								m.acceleration.set(0, 0, 0);
+								m.angularVelocity += m.angularAcceleration * dt;
 								m.angularAcceleration = 0;
 
-								if (m.velocity.lengthSquared() > sqr(r.r * 0.25f / m_dt)) {
+								if (m.velocity.lengthSquared() > sqr(r.r * 0.25f / dt)) {
 									m.velocity.normalizeApprox();
-									m.velocity *= r.r * 0.24f / m_dt;
+									m.velocity *= r.r * 0.24f / dt;
 								}
 
-								if (sqr(m.angularVelocity) > sqr(0.10f / m_dt)) {
+								if (sqr(m.angularVelocity) > sqr(0.10f / dt)) {
 									m.angularVelocity = m.angularVelocity > 0 ? +1.0f : -1.0f;
-									m.angularVelocity *= 0.09f / m_dt;
+									m.angularVelocity *= 0.09f / dt;
 								}
 							});
 						}
 
 						{
 							rynx_profile("Motion", "apply velocity");
-							ecs.for_each_parallel(task_context, [dt = m_dt](components::position& p, const components::motion& m) {
+							ecs.for_each_parallel(task_context, [](components::position& p, const components::motion& m) {
 								p.value += m.velocity;
 								p.angle += m.angularVelocity;
 							});
@@ -233,16 +238,51 @@ namespace rynx {
 						mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
 					});
 
-					task.extend_task([broken_ropes](rynx::ecs::edit_view<components::rope, components::dead> ecs) {
-						broken_ropes->for_each([ecs](std::vector<rynx::ecs::id>& v) mutable {
+					task.extend_task([broken_ropes](rynx::ecs& ecs) {
+						broken_ropes->for_each([&ecs](std::vector<rynx::ecs::id>& v) mutable {
 							for (auto&& id : v) {
 								ecs.attachToEntity(id, components::dead());
+
+								
+								components::rope& rope = ecs[id].get<components::rope>();
+								auto pos1 = ecs[rope.id_a].get<components::position>().value;
+								auto pos2 = ecs[rope.id_b].get<components::position>().value;
+
+								auto v1 = ecs[rope.id_a].get<components::motion>().velocity;
+								auto v2 = ecs[rope.id_b].get<components::motion>().velocity;
+
+								math::rand64 random;
+
+								for (int i = 0; i < 20; ++i) {
+									float value = static_cast<float>(i) / 10.0f;
+									auto pos = pos1 + (pos2 - pos1) * value;
+									auto v = v1 + (v2 - v1) * value + vec3<float>(random(-0.1f, +0.1f), random(-0.1f, +0.1f), 0);
+
+									rynx::components::particle_info p_info;
+									float end_c = random(0.3f, 0.7f);
+									float start_c = random(0.0f, 0.3f);
+
+									p_info.color.begin = vec4<float>(start_c, start_c, start_c, 1);
+									p_info.color.end = vec4<float>(end_c, end_c, end_c, 0);
+									p_info.radius.begin = 0.5f + random(-0.2f, +0.2f);
+									p_info.radius.end = 2.5f + random(-1.0f, +0.5f);
+
+									ecs.create(
+										rynx::components::position(pos),
+										rynx::components::radius(),
+										rynx::components::motion(v, 0),
+										rynx::components::lifetime(1.5f),
+										rynx::components::color(),
+										rynx::components::dampening{ 0.95f, 1 },
+										p_info
+									);
+								}
 							}
 						});
 					});
 				};
 
-				auto collision_resolution_first_stage = [dt = m_dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+				auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
 
 					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
 					collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
@@ -371,9 +411,9 @@ namespace rynx {
 						}
 				};
 
-				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::frame_collisions> ecs, rynx::scheduler::task& task) {
+				context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::ignore_gravity> ecs, rynx::scheduler::task& task) {
 					if (m_gravity.lengthSquared() > 0) {
-						ecs.query().in<components::frame_collisions>().execute_parallel(task, [this](components::motion& m) {
+						ecs.query().notIn<components::ignore_gravity>().execute_parallel(task, [this](components::motion& m) {
 							m.acceleration += m_gravity;
 						});
 					}

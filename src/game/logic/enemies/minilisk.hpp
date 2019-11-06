@@ -23,7 +23,7 @@ namespace game {
 		struct minilisk_logic : public rynx::application::logic::iruleset {
 			minilisk_logic() {}
 			
-			virtual void onFrameProcess(rynx::scheduler::context& scheduler) override {
+			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
 				scheduler.add_task("minilisk logic", [](rynx::ecs::edit_view<
 					const game::hero,
 					const rynx::components::radius,
@@ -91,7 +91,7 @@ namespace game {
 			projectiles(projectiles)
 			{}
 			
-			virtual void onFrameProcess(rynx::scheduler::context& context) override {
+			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override {
 				/*
 				context.add_task("modify radius of things", [this](
 					rynx::ecs::view<
