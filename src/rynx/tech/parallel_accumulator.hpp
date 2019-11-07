@@ -43,14 +43,10 @@ namespace rynx {
 			}
 		}
 
-		std::vector<T> combine_and_clear() {
-			std::vector<T> result;
-			for (auto&& entry : m_storage) {
-				result.insert(result.end(), std::move_iterator(std::begin(entry.second)), std::move_iterator(std::end(entry.second)));
-				entry.second.clear();
-			}
-			// m_storage = {};
-			return result;
+		bool empty() {
+			bool any_content = false;
+			for_each([&](const std::vector<T>& v) mutable { any_content |= !v.empty(); });
+			return !any_content;
 		}
 	};
 }

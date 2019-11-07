@@ -24,7 +24,7 @@ namespace game {
 			minilisk_logic() {}
 			
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
-				scheduler.add_task("minilisk logic", [](rynx::ecs::edit_view<
+				scheduler.add_task("minilisk logic", [dt](rynx::ecs::edit_view<
 					const game::hero,
 					const rynx::components::radius,
 					const rynx::components::position,
@@ -42,24 +42,27 @@ namespace game {
 						return; // no players, nothing to do.
 					}
 
-					ecs.for_each([&heroes, &ecs](game::components::minilisk& enemy, const rynx::components::position& pos, rynx::components::motion& m, const rynx::components::radius& r) {
-						enemy.jumpCooldown -= 0.016f;
+					ecs.for_each([&heroes, &ecs, dt](game::components::minilisk& enemy, const rynx::components::position& pos, rynx::components::motion& m, const rynx::components::radius& r) {
+						enemy.jumpCooldown -= dt;
+						
+						// could select closest hero, or random hero, or whatever.
+						auto heroEntity = ecs[heroes[0]];
+						const auto& heroPos = heroEntity.get<const rynx::components::position>();
+						auto direction = heroPos.value - pos.value;
+
+						float maxDistance = heroEntity.get<const rynx::components::radius>().r + r.r + 2.7f;
+						if (direction.lengthSquared() < maxDistance * maxDistance) {
+							auto& hp = heroEntity.get<game::health>();
+							hp.currentHp -= 5 * dt;
+							if (hp.currentHp <= 0) {
+								ecs.attachToEntity(heroes[0].value, rynx::components::dead());
+
+								// TODO: Taking damage should spawn particles.
+							}
+						}
+						
 						if (enemy.jumpCooldown <= 0) {
 							enemy.jumpCooldown = enemy.jumpCooldownMax;
-
-							// could select closest hero, or random hero, or whatever.
-							auto heroEntity = ecs[heroes[0]];
-							const auto& heroPos = heroEntity.get<const rynx::components::position>();
-							auto direction = heroPos.value - pos.value;
-
-							float maxDistance = heroEntity.get<const rynx::components::radius>().r + r.r + 2.7f;
-							if (direction.lengthSquared() < maxDistance * maxDistance) {
-								auto& hp = heroEntity.get<game::health>();
-								hp.currentHp -= 5;
-								if (hp.currentHp <= 0) {
-									ecs.attachToEntity(heroes[0].value, rynx::components::dead());
-								}
-							}
 
 							direction.normalizeApprox();
 							float spreadMultiplier = 2.0f * (float(rand()) / RAND_MAX) - 1;
@@ -91,22 +94,7 @@ namespace game {
 			projectiles(projectiles)
 			{}
 			
-			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override {
-				/*
-				context.add_task("modify radius of things", [this](
-					rynx::ecs::view<
-						const rynx::components::position,
-						rynx::components::radius> ecs
-					)
-					{
-						ecs.query().in<game::components::minilisk>().execute(
-							[](const rynx::components::position& p, rynx::components::radius& r) {
-								r.r = 1.0f + 0.3f * std::sin((p.value.x + p.value.y) * 0.55f);
-							}
-						);
-					}
-				);
-				*/
+			virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override {
 				
 				context.add_task("handle bullet collisions", [this](
 					rynx::ecs::view<

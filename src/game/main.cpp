@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
 		meshes->create("ball", Shape::makeCircle(1.0f, 32), "Hero");
 		meshes->create("circle_empty", Shape::makeCircle(1.0f, 32), "Empty");
 		meshes->create("square_empty", Shape::makeBox(1.0f), "Hero");
+		meshes->create("particle_smoke", Shape::makeBox(1.0f), "Smoke");
 		meshes->create("sqaure_rope", Shape::makeBox(1.0f), "Rope");
 	}
 
@@ -410,6 +411,7 @@ int main(int argc, char** argv) {
 			scheduler.wait_until_complete();
 			++tickCounter;
 		}
+
 		auto logic_time_us = timer.time_since_last_access_us();
 		logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
 		
@@ -420,6 +422,12 @@ int main(int argc, char** argv) {
 		// should we render or not.
 		if (true || tickCounter.load() % 16 == 3) {
 			timer.reset();
+
+			{
+				rynx_profile("Main", "clear buffer");
+				application.meshRenderer().clearScreen();
+			}
+
 			{
 				rynx_profile("Main", "Render");
 				gameRenderer.render(ecs);
@@ -492,21 +500,24 @@ int main(int argc, char** argv) {
 			rynx_profile("Main", "Clean up dead entitites");
 			dt = std::min(0.016f, std::max(0.001f, frame_timer_dt.time_since_last_access_ms() * 0.001f));
 			
-			ecs.for_each([&ecs, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
-				time.value -= dt;
-				if (time.value <= 0) {
+			{
+				std::vector<rynx::ecs::id> ids;
+				ecs.for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
+					time.value -= dt;
+					if (time.value <= 0) {
+						ids.emplace_back(id);
+					}
+				});
+				for(auto&& id : ids)
 					ecs.attachToEntity(id, rynx::components::dead());
+			}
+
+			ecs.query().in<rynx::components::dead>().execute(
+				[&collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
+					collisionDetection.erase(id.value, cat.value);
 				}
-			});
-
-			ecs.for_each([&ecs, &collisionDetection](rynx::ecs::id id, rynx::components::dead&, rynx::components::collision_category& cat) {
-				collisionDetection.erase(id.value, cat.value);
-				ecs.erase(id);
-			});
-
-			ecs.query().in<rynx::components::dead>().execute([&ecs, &collisionDetection](rynx::ecs::id id) {
-				ecs.erase(id);
-			});
+			);
+			ecs.erase(ecs.gather<rynx::components::dead>());
 		}
 
 		{

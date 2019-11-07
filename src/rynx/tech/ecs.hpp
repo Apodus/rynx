@@ -292,12 +292,43 @@ namespace rynx {
 		};
 
 		// TODO: is is ok to have the parallel implementation baked into iterator?
+		
+		template<typename category_source>
+		class gatherer {
+		public:
+			gatherer(category_source& ecs) : m_ecs(ecs) {}
+			gatherer(const category_source& ecs) : m_ecs(const_cast<category_source&>(ecs)) {}
+
+			gatherer& include(dynamic_bitset inTypes) { includeTypes = std::move(inTypes); return *this; }
+			gatherer& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
+
+			template<typename...Ts>
+			void gather(std::vector<rynx::ecs::id>& out) {
+				unpack_types<Ts...>();
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						out.insert(out.end(), ids.begin(), ids.end());
+					}
+				}
+			}
+
+		protected:
+			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
+			template<typename... Ts> void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
+
+			dynamic_bitset includeTypes;
+			dynamic_bitset excludeTypes;
+			category_source& m_ecs;
+		};
+
 		template<DataAccess accessType, typename category_source, typename F> class iterator {};
 		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
-		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> {
+		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> : public gatherer<category_source> {
 		public:
-			iterator(category_source& ecs) : m_ecs(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
-			iterator(const category_source& ecs) : m_ecs(const_cast<category_source&>(ecs)) { m_ecs.template componentTypesAllowed<Args...>(); }
+			iterator(category_source& ecs) : gatherer(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
+			iterator(const category_source& ecs) : gatherer(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
 
 			template<typename F> void for_each(F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
@@ -391,15 +422,12 @@ namespace rynx {
 				}
 			}
 
-
-			iterator& include(dynamic_bitset inTypes) { includeTypes = std::move(inTypes); return *this; }
-			iterator& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
-
 		private:
 			template<bool isIdQuery, typename F>
 			static void call_user_op(F&& op, std::vector<id>& ids) {
+				auto size = ids.size();
 				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
+					std::for_each(ids.data(), ids.data() + size, [=](id entityId) mutable {
 						op(entityId);
 					});
 				}
@@ -407,24 +435,29 @@ namespace rynx {
 					for (size_t i = 0; i < ids.size(); ++i)
 						op();
 				}
+
+				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
 			
 			template<bool isIdQuery, typename F, typename T_first, typename... Ts>
 			static void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
+				auto size = ids.size();
 				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + ids.size(), [=](id entityId) mutable {
+					std::for_each(ids.data(), ids.data() + size, [=](id entityId) mutable {
 						op(entityId, *data_ptrs_first++, (*data_ptrs++)...);
 					});
 				}
 				else {
-					std::for_each(data_ptrs_first, data_ptrs_first + ids.size(), [=](T_first& a) mutable {
+					std::for_each(data_ptrs_first, data_ptrs_first + size, [=](T_first& a) mutable {
 						op(a, (*data_ptrs++)...);
 					});
 				}
+				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
 
 			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
 			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+				auto size = ids.size();
 				if constexpr (isIdQuery) {
 					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
@@ -439,15 +472,8 @@ namespace rynx {
 						}, args);
 					});
 				}
+				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
-
-
-			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
-			template<typename... Ts> void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
-
-			dynamic_bitset includeTypes;
-			dynamic_bitset excludeTypes;
-			category_source& m_ecs;
 		};
 
 		// support for mutable lambdas / non-const member functions
@@ -554,7 +580,7 @@ namespace rynx {
 		public:
 			query_t(category_source& ecs) : m_ecs(ecs) {}
 			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
-			~query_t() { rynx_assert(m_consumed, "did you forgete to execute query object?"); }
+			~query_t() { rynx_assert(m_consumed, "did you forget to execute query object?"); }
 			
 			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
 			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
@@ -568,6 +594,18 @@ namespace rynx {
 				it.exclude(std::move(notInTypes));
 				it.for_each(std::forward<F>(op));
 				return *this;
+			}
+
+			template<typename...Ts>
+			std::vector<rynx::ecs::id> gather() {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				std::vector<rynx::ecs::id> result;
+				gatherer<category_source> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.gather<Ts...>(result);
+				return result;
 			}
 
 			template<typename F, typename TaskContext>
@@ -602,6 +640,14 @@ namespace rynx {
 		entity<ecs, true> operator[](id id) { return entity<ecs, true>(*this, id.value); }
 		const_entity<ecs> operator[](entity_id_t id) const { return const_entity<ecs>(*this, id); }
 		const_entity<ecs> operator[](id id) const { return const_entity<ecs>(*this, id.value); }
+
+		template<typename...Ts>
+		std::vector<rynx::ecs::id> gather() const {
+			std::vector<rynx::ecs::id> result;
+			gatherer<ecs> it(*this);
+			it.gather<Ts...>(result);
+			return result;
+		}
 
 		template<typename F>
 		void for_each(F&& op) {
@@ -648,6 +694,14 @@ namespace rynx {
 				if (operations.second.id != entity_index::InvalidId) {
 					m_idCategoryMap[operations.second.id] = { operations.second.new_category, operations.second.newIndex };
 				}
+			}
+		}
+		
+		// TODO: c++20 Concepts will help here.
+		template<typename T>
+		void erase(const T& iterable) {
+			for (auto&& id : iterable) {
+				erase(id);
 			}
 		}
 
@@ -732,6 +786,7 @@ namespace rynx {
 			template<typename T, bool> friend class rynx::ecs::entity;
 			template<typename T> friend class rynx::ecs::const_entity;
 
+			template<typename category_source> friend class rynx::ecs::gatherer;
 			template<DataAccess accessType, typename category_source> friend class rynx::ecs::query_t;
 			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::iterator;
 
@@ -760,6 +815,14 @@ namespace rynx {
 
 		public:
 			view(const rynx::ecs* ecs) : m_ecs(const_cast<rynx::ecs*>(ecs)) {}
+
+			template<typename...Ts>
+			std::vector<rynx::ecs::id> gather() const {
+				std::vector<rynx::ecs::id> result;
+				gatherer<view> it(*this);
+				it.gather<Ts...>(result);
+				return result;
+			}
 
 			template<typename F>
 			void for_each(F&& op) {

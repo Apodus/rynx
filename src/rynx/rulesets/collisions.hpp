@@ -50,7 +50,7 @@ namespace rynx {
 					context.add_task("Apply acceleration and reset", [dt](rynx::ecs::view<components::motion, const components::radius> ecs, rynx::scheduler::task& task_context) {
 						{
 							rynx_profile("Motion", "apply acceleration");
-							ecs.query().notIn<components::collision_category>().execute_parallel(task_context, [dt](components::motion& m, const components::radius r) {
+							ecs.query().notIn<components::collision_category>().execute_parallel(task_context, [dt](components::motion& m) {
 								m.velocity += m.acceleration * dt;
 								m.acceleration.set(0, 0, 0);
 								m.angularVelocity += m.angularAcceleration * dt;
@@ -126,24 +126,32 @@ namespace rynx {
 						});
 					});
 				
-				positionDataToSphereTree_task.then("sphere tree: add new entities", [](rynx::ecs::edit_view<const components::position,
-					const components::radius,
-					const components::collision_category,
-					const components::projectile,
-					const components::motion,
-					added_to_sphere_tree> ecs,
+				positionDataToSphereTree_task.then("sphere tree: add new entities", [](
+					rynx::ecs::edit_view<const components::position,
+						const components::radius,
+						const components::collision_category,
+						const components::projectile,
+						const components::motion,
+						added_to_sphere_tree>
+					ecs,
 					collision_detection& detection) {
 						// This will always insert to detection datastructures. Can not parallel.
 						// TODO: separate the function from the normal case of update.
+						std::vector<rynx::ecs::id> ids;
 						ecs.query().notIn<const rynx::components::projectile, const added_to_sphere_tree>().execute([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
-							ecs[id].add(added_to_sphere_tree());
+							ids.emplace_back(id);
 						});
 
 						ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().execute([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
-							ecs[id].add(added_to_sphere_tree());
+							ids.emplace_back(id);
 						});
+
+						for (auto&& id : ids) {
+							ecs[id].add(added_to_sphere_tree());
+						}
+
 				})->then("Update sphere tree", [](collision_detection& detection, rynx::scheduler::task& task_context) {
 					detection.update_parallel(task_context);
 				})->required_for(collisions_find_barrier);
@@ -238,48 +246,54 @@ namespace rynx {
 						mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
 					});
 
-					task.extend_task([broken_ropes](rynx::ecs& ecs) {
-						broken_ropes->for_each([&ecs](std::vector<rynx::ecs::id>& v) mutable {
-							for (auto&& id : v) {
-								ecs.attachToEntity(id, components::dead());
+					if (!broken_ropes->empty()) {
+						task.extend_task([broken_ropes](rynx::ecs& ecs) {
+							broken_ropes->for_each([&ecs](std::vector<rynx::ecs::id>& id_vector) mutable {
+								for (auto&& id : id_vector) {
+									ecs.attachToEntity(id, components::dead());
 
-								
-								components::rope& rope = ecs[id].get<components::rope>();
-								auto pos1 = ecs[rope.id_a].get<components::position>().value;
-								auto pos2 = ecs[rope.id_b].get<components::position>().value;
 
-								auto v1 = ecs[rope.id_a].get<components::motion>().velocity;
-								auto v2 = ecs[rope.id_b].get<components::motion>().velocity;
+									components::rope& rope = ecs[id].get<components::rope>();
+									auto pos1 = ecs[rope.id_a].get<components::position>().value;
+									auto pos2 = ecs[rope.id_b].get<components::position>().value;
 
-								math::rand64 random;
+									auto v1 = ecs[rope.id_a].get<components::motion>().velocity;
+									auto v2 = ecs[rope.id_b].get<components::motion>().velocity;
 
-								for (int i = 0; i < 20; ++i) {
-									float value = static_cast<float>(i) / 10.0f;
-									auto pos = pos1 + (pos2 - pos1) * value;
-									auto v = v1 + (v2 - v1) * value + vec3<float>(random(-0.1f, +0.1f), random(-0.1f, +0.1f), 0);
+									math::rand64 random;
 
-									rynx::components::particle_info p_info;
-									float end_c = random(0.3f, 0.7f);
-									float start_c = random(0.0f, 0.3f);
+									for (int i = 0; i < 40; ++i) {
+										float value = static_cast<float>(i) / 10.0f;
+										auto pos = pos1 + (pos2 - pos1) * value;
 
-									p_info.color.begin = vec4<float>(start_c, start_c, start_c, 1);
-									p_info.color.end = vec4<float>(end_c, end_c, end_c, 0);
-									p_info.radius.begin = 0.5f + random(-0.2f, +0.2f);
-									p_info.radius.end = 2.5f + random(-1.0f, +0.5f);
+										rynx::components::particle_info p_info;
+										float weight = random(1.0f, 5.0f);
+										
+										auto v = v1 + (v2 - v1) * value;
+										v += vec3<float>(random(-0.5f, +0.5f) / weight, random(-0.5f, +0.5f) / weight, 0);
 
-									ecs.create(
-										rynx::components::position(pos),
-										rynx::components::radius(),
-										rynx::components::motion(v, 0),
-										rynx::components::lifetime(1.5f),
-										rynx::components::color(),
-										rynx::components::dampening{ 0.95f, 1 },
-										p_info
-									);
+										float end_c = random(0.6f, 0.99f);
+										float start_c = random(0.0f, 0.3f);
+
+										p_info.color.begin = vec4<float>(start_c, start_c, start_c, 1);
+										p_info.color.end = vec4<float>(end_c, end_c, end_c, 0);
+										p_info.radius.begin = weight * 0.25f;
+										p_info.radius.end = weight * 0.50f;
+
+										ecs.create(
+											rynx::components::position(pos),
+											rynx::components::radius(p_info.radius.begin),
+											rynx::components::motion(v, 0),
+											rynx::components::lifetime(0.33f + 0.33f * weight),
+											rynx::components::color(p_info.color.begin),
+											rynx::components::dampening{ 0.95f + 0.03f * (1.0f / weight), 1 },
+											p_info
+										);
+									}
 								}
-							}
+							});
 						});
-					});
+					}
 				};
 
 				auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {

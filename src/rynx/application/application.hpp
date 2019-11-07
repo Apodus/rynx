@@ -42,7 +42,6 @@ namespace rynx {
 			void startFrame() {
 				m_input->update();
 				m_window->pollEvents();
-				m_meshRenderer->clearScreen();
 			}
 
 			void swapBuffers() {
