@@ -423,14 +423,25 @@ int main(int argc, char** argv) {
 		if (true || tickCounter.load() % 16 == 3) {
 			timer.reset();
 
+			rynx_profile("Main", "graphics");
+
 			{
 				rynx_profile("Main", "clear buffer");
 				application.meshRenderer().clearScreen();
 			}
 
 			{
-				rynx_profile("Main", "Render");
-				gameRenderer.render(ecs);
+				{
+					rynx_profile("Main", "prepare");
+					gameRenderer.prepare(base_simulation.m_context);
+					scheduler.start_frame();
+					scheduler.wait_until_complete();
+				}
+
+				{
+					rynx_profile("Main", "draw");
+					gameRenderer.render();
+				}
 			}
 			auto render_time_us = timer.time_since_last_access_us();
 			render_time.observe_value(render_time_us / 1000.0f);

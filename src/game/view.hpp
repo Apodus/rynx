@@ -26,7 +26,11 @@ namespace game
 			m_meshRenderer = meshRenderer;
 		}
 		virtual ~hitpoint_bar_renderer() {}
-		virtual void render(const rynx::ecs& ecs) override {
+		
+		virtual void prepare(rynx::scheduler::context* ctx) override {}
+
+		virtual void render() override {
+			/*
 			rynx_profile("SphereTree", "DrawHitpoints");
 			ecs.for_each([this](const rynx::components::position& pos, const health& hp) {
 				auto drawPos = pos.value + vec3<float>({ -0.5f, 1.0f, 0.0f });
@@ -34,6 +38,7 @@ namespace game
 				auto drawPosTo = drawPos + vec3<float>({ prctage, 0.0f, 0.0f });
 				m_meshRenderer->drawLine(drawPos, drawPosTo, 0.2f, floats4(1.0f, 0.0f, 0.0f, 1.0f));
 			});
+			*/
 		}
 
 		rynx::MeshRenderer* m_meshRenderer;

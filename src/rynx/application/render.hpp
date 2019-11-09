@@ -5,13 +5,18 @@
 #include <vector>
 
 namespace rynx {
+	namespace scheduler {
+		class context;
+	}
+
 	namespace application {
 		class renderer {
 		public:
 			class irenderer {
 			public:
 				virtual ~irenderer() {}
-				virtual void render(const rynx::ecs&) = 0;
+				virtual void render() = 0;
+				virtual void prepare(rynx::scheduler::context* ctx) = 0;
 			};
 
 			renderer& addRenderer(std::unique_ptr<irenderer> renderer) {
@@ -19,9 +24,15 @@ namespace rynx {
 				return *this;
 			}
 
-			void render(const ecs& ecs) {
+			void render() {
 				for (auto& renderer : m_renderers) {
-					renderer->render(ecs);
+					renderer->render();
+				}
+			}
+
+			void prepare(rynx::scheduler::context* ctx) {
+				for (auto& renderer : m_renderers) {
+					renderer->prepare(ctx);
 				}
 			}
 

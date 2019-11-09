@@ -15,11 +15,15 @@ namespace game {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~bullet_renderer() {}
-			virtual void render(const rynx::ecs& ecs) override {
+			
+			virtual void prepare(rynx::scheduler::context* ctx) override {}
+			virtual void render() override {
+				/*
 				rynx_profile("visualisation", "bullets");
 				ecs.for_each([this](const rynx::components::position& pos, const rynx::components::motion& m, const game::components::bullet&, const rynx::components::color& color) {
 					m_meshRenderer->drawLine(pos.value - m.velocity, pos.value, 0.3f, color.value);
 				});
+				*/
 			}
 
 			rynx::MeshRenderer* m_meshRenderer;
@@ -34,7 +38,9 @@ namespace game {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~hero_renderer() {}
-			virtual void render(const rynx::ecs& ecs) override {
+			
+			virtual void prepare(rynx::scheduler::context* ctx) override {}
+			virtual void render() override {
 				/*
 				rynx_profile("visualisation", "hero renderer");
 				ecs.query().execute([this](

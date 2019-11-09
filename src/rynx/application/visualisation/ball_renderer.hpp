@@ -29,21 +29,19 @@ namespace rynx {
 				}
 
 				virtual ~ball_renderer() {}
-				virtual void render(const rynx::ecs& ecs) override {
-					rynx_profile("visualisation", "ball_draw");
-					cameraLeft = m_camera->position().x - m_camera->position().z;
-					cameraRight = m_camera->position().x + m_camera->position().z;
-					cameraTop = m_camera->position().y + m_camera->position().z;
-					cameraBot = m_camera->position().y - m_camera->position().z;
-
-					std::vector<matrix4> spheres_to_draw;
-					spheres_to_draw.reserve(10 * 1024);
-					std::vector<floats4> colors;
-					
-					{
+				
+				virtual void prepare(rynx::scheduler::context* ctx) override {
+					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
 						rynx_profile("visualisation", "model matrices");
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
-							.execute([this, &spheres_to_draw, &colors](
+						
+						cameraLeft = m_camera->position().x - m_camera->position().z;
+						cameraRight = m_camera->position().x + m_camera->position().z;
+						cameraTop = m_camera->position().y + m_camera->position().z;
+						cameraBot = m_camera->position().y - m_camera->position().z;
+						
+						m_balls_matrices = ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
+							.for_each_parallel_accumulate<matrix4>(task_context, [this](
+								std::vector<matrix4>& matrices,
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
@@ -57,48 +55,62 @@ namespace rynx {
 									model.rotate_2d(pos.angle);
 									// model.rotate(pos.angle, 0, 0, 1);
 
-									spheres_to_draw.emplace_back(model);
-									colors.emplace_back(color.value);
+									matrices.emplace_back(model);
+									// colors.emplace_back(color.value);
 								});
-					}
-					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
+					});
 
-					spheres_to_draw.clear();
-					
+					ctx->add_task("rope matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
+						{
+							rynx_profile("visualisation", "model matrices");
+							m_ropes_matrices = ecs.for_each_parallel_accumulate<matrix4>(task_context, [this, &ecs](std::vector<matrix4>& matrices, const rynx::components::rope& rope) {
+								auto entity_a = ecs[rope.id_a];
+								auto entity_b = ecs[rope.id_b];
+
+								auto pos_a = entity_a.get<components::position>();
+								auto pos_b = entity_b.get<components::position>();
+								auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+								auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+								auto world_pos_a = pos_a.value + relative_pos_a;
+								auto world_pos_b = pos_b.value + relative_pos_b;
+								vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
+
+								auto direction_vector = world_pos_a - world_pos_b;
+								float length = direction_vector.length() * 0.5f;
+								constexpr float width = 0.6f;
+
+								if (!inScreen(mid, length * 0.5f))
+									return;
+
+								matrix4 model;
+								model.discardSetTranslate(mid.x, mid.y, mid.z);
+								model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
+								// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
+								model.scale(length, width, 1.0f);
+								matrices.emplace_back(model);
+							});
+						}
+
+					});
+				}
+				
+				virtual void render() override {
 					{
-						rynx_profile("visualisation", "model matrices");
-						ecs.for_each([this, &ecs, &spheres_to_draw](const rynx::components::rope& rope) {
-
-							auto entity_a = ecs[rope.id_a];
-							auto entity_b = ecs[rope.id_b];
-
-							auto pos_a = entity_a.get<components::position>();
-							auto pos_b = entity_b.get<components::position>();
-							auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-							auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
-							auto world_pos_a = pos_a.value + relative_pos_a;
-							auto world_pos_b = pos_b.value + relative_pos_b;
-							vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
-
-							auto direction_vector = world_pos_a - world_pos_b;
-							float length = direction_vector.length() * 0.5f;
-							constexpr float width = 0.6f;
-
-							if (!inScreen(mid, length * 0.5f))
-								return;
-
-							matrix4 model;
-							model.discardSetTranslate(mid.x, mid.y, mid.z);
-							model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
-							// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
-							model.scale(length, width, 1.0f);
-							spheres_to_draw.emplace_back(model);
+						rynx_profile("visualisation", "ball_draw");
+						m_balls_matrices->for_each([this](std::vector<matrix4>& matrices) {
+							std::vector<floats4> colors;
+							colors.resize(matrices.size(), floats4(1, 1, 1, 1));
+							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
-
-					colors.clear();
-					colors.resize(spheres_to_draw.size(), vec4<float>(0, 0, 0, 1));
-					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
+					{
+						rynx_profile("visualisation", "rope_draw");
+						m_ropes_matrices->for_each([this](std::vector<matrix4>& matrices) {
+							std::vector<floats4> colors;
+							colors.resize(matrices.size(), floats4(0, 0, 0, 1));
+							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
+						});
+					}
 				}
 
 				// Assumes axis aligned top-down camera :(
@@ -110,8 +122,8 @@ namespace rynx {
 				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_matrices;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_colors;
 
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_particles_matrices;
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_particles_colors;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_ropes_matrices;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_ropes_colors;
 
 				MeshRenderer* m_meshRenderer;
 				Mesh* m_circleMesh;

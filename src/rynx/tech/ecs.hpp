@@ -635,6 +635,8 @@ namespace rynx {
 				rynx_profile("Ecs", "for_each_parallel_accumulate");
 				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
 				iterator<DataAccess::Mutable, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
 				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
 				return accumulator;
 			}
@@ -644,6 +646,8 @@ namespace rynx {
 				rynx_profile("Ecs", "for_each_parallel_accumulate");
 				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
 				iterator<DataAccess::Const, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
 				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
 				return accumulator;
 			}
@@ -720,7 +724,7 @@ namespace rynx {
 			rynx_profile("Ecs", "for_each_parallel_accumulate");
 			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
 			iterator<DataAccess::Const, ecs, decltype(&F::operator())> it(*this);
-			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
+			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
 			return accumulator;
 		}
 

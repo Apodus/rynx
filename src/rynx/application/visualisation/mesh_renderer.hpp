@@ -19,7 +19,10 @@ namespace rynx {
 					m_meshRenderer = meshRenderer;
 				}
 				virtual ~mesh_renderer() {}
-				virtual void render(const rynx::ecs& ecs) override {
+				
+				virtual void prepare(rynx::scheduler::context* ctx) override {}
+				virtual void render() override {
+					/*
 					rynx_profile("visualisation", "mesh_renderer");
 					ecs.for_each([this](const rynx::components::position& pos, const rynx::components::mesh& m, const rynx::components::texture& t, const rynx::components::color& color) {
 						matrix4 model;
@@ -27,6 +30,7 @@ namespace rynx {
 						model.rotate(pos.angle, 0, 0, 1);
 						m_meshRenderer->drawMesh(*m.m, model, t.tex, color.value);
 					});
+					*/
 				}
 
 				MeshRenderer* m_meshRenderer;
