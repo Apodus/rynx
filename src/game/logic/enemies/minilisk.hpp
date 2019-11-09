@@ -64,7 +64,7 @@ namespace game {
 						if (enemy.jumpCooldown <= 0) {
 							enemy.jumpCooldown = enemy.jumpCooldownMax;
 
-							direction.normalizeApprox();
+							direction.normalize();
 							float spreadMultiplier = 2.0f * (float(rand()) / RAND_MAX) - 1;
 							math::rotateXY(direction, spreadMultiplier * enemy.jumpAngleSpread);
 

@@ -26,11 +26,12 @@ public:
 	}
 
 	void insertTexture(const std::string& subTextureID, int slotX, int slotY, int slotCountX, int slotCountY) {
-		vec4<float> texCoord;
-		texCoord[0] = (slotX + 0.0f) / slotCountX + halfPixelWidth;  // x0
-		texCoord[1] = ((slotY + 1.0f) / slotCountY - halfPixelHeight); // y0
-		texCoord[2] = (slotX + 1.0f) / slotCountX - halfPixelWidth;  // x1
-		texCoord[3] = ((slotY + 0.0f) / slotCountY + halfPixelHeight); // y1
+		vec4<float> texCoord(
+			(slotX + 0.0f) / slotCountX + halfPixelWidth,
+			((slotY + 1.0f) / slotCountY - halfPixelHeight),
+			(slotX + 1.0f) / slotCountX - halfPixelWidth,
+			((slotY + 0.0f) / slotCountY + halfPixelHeight)
+		);
 
 		rynx_assert(textureCoordinates.find(subTextureID) == textureCoordinates.end(), "inserting subtexture that already exists: %s", subTextureID.c_str());
 

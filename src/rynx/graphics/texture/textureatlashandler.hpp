@@ -10,13 +10,11 @@
 class TextureAtlasHandler {
 
 	struct SubTexture {
-		vec4<float> subTextureCoordinates;
+		floats4 subTextureCoordinates;
 		std::string realTextureID;
 
-		SubTexture() {
-		}
-
-		SubTexture(const vec4<float>& subTextureCoordinates, const std::string& realTextureID) {
+		SubTexture() {}
+		SubTexture(floats4 subTextureCoordinates, const std::string& realTextureID) {
 			this->subTextureCoordinates = subTextureCoordinates;
 			this->realTextureID = realTextureID;
 		}
@@ -47,7 +45,7 @@ public:
 		return subTextureID;
 	}
 
-	const vec4<float>& getTextureCoordinateLimits(const std::string& subTextureID) const {
+	floats4 getTextureCoordinateLimits(const std::string& subTextureID) const {
 		auto it = subTextures.find(subTextureID);
 		if(it == subTextures.end()) {
 			logmsg("Could not find %s", subTextureID.c_str());
@@ -56,10 +54,11 @@ public:
 		return it->second.subTextureCoordinates;
 	}
 
-	vec4<float> getTextureCoordinateLimits(const std::string& textureID, vec4<float> uvLimits) const {
-		vec4<float> subtex_limits = getTextureCoordinateLimits(textureID);
+	floats4 getTextureCoordinateLimits(const std::string& textureID, floats4 uvLimits) const {
+		floats4 subtex_limits = getTextureCoordinateLimits(textureID);
 		float width = subtex_limits[2] - subtex_limits[0];
 		float height = subtex_limits[3] - subtex_limits[1];
+		
 		uvLimits[0] *= width;
 		uvLimits[2] *= width;
 		uvLimits[1] *= height;

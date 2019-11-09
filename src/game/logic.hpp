@@ -21,7 +21,7 @@ namespace game {
 				(float(rand()) / RAND_MAX - 0.5f),
 				0.0f
 			);
-			dir.normalizeApprox();
+			dir.normalize();
 			float dist = float(rand()) / RAND_MAX * 3.0f + 10.0f;
 
 			ecs.create(

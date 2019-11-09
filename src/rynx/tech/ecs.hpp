@@ -12,16 +12,18 @@
 #include <tuple>
 #include <algorithm>
 
-template<typename T> struct remove_first_type {};
-template<typename T, typename... Ts> struct remove_first_type<std::tuple<T, Ts...>> { using type = std::tuple<Ts...>; };
-
-template<bool condition, typename TupleType> struct remove_front_if {
-	using type = std::conditional_t<condition, typename remove_first_type<TupleType>::type, TupleType>;
-};
-
-template<typename T, typename... Others> constexpr bool isAny() { return false || (std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<Others>> || ...); }
-
 namespace rynx {
+
+	template<typename T> struct remove_first_type {};
+	template<typename T, typename... Ts> struct remove_first_type<std::tuple<T, Ts...>> { using type = std::tuple<Ts...>; };
+
+	template<bool condition, typename TupleType> struct remove_front_if {
+		using type = std::conditional_t<condition, typename remove_first_type<TupleType>::type, TupleType>;
+	};
+
+	template<typename T, typename... Others> constexpr bool isAny() { return false || (std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<Others>> || ...); }
+	template<typename T, typename... Ts> constexpr T& first_of(T&& t, Ts&&...) { return t; }
+
 	class ecs {
 	public:
 		using type_id_t = uint64_t;
@@ -78,11 +80,13 @@ namespace rynx {
 			virtual ~component_table() {}
 
 			void insert(T&& t) { m_data.emplace_back(std::forward<T>(t)); }
+			void insert(std::vector<T>& v) { m_data.insert(m_data.end(), v.begin(), v.end()); }
 			template<typename...Ts> void emplace_back(Ts&& ... ts) { m_data.emplace_back(std::forward<Ts>(ts)...); }
 			virtual void erase(entity_id_t id) override {
 				m_data[id] = std::move(m_data.back());
 				m_data.pop_back();
 			}
+
 
 			// NOTE: This is required for moving entities between categories reliably.
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) override {
@@ -147,6 +151,13 @@ namespace rynx {
 					return { migrate_move(erasedEntityId.value, 0, nullptr), migrate_move(m_ids[index].value, index, this) };
 				else
 					return { migrate_move(erasedEntityId.value, 0, nullptr), migrate_move(rynx::ecs::entity_index::InvalidId, index, this) };
+			}
+
+			template<typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
+				(table<Components>().insert(components), ...);
+				size_t index = m_ids.size();
+				m_ids.insert(m_ids.end(), ids.begin(), ids.end());
+				return index;
 			}
 
 			template<typename...Components> size_t insertNew(entity_id_t id, Components&& ... components) {
@@ -618,6 +629,24 @@ namespace rynx {
 				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 				return *this;
 			}
+
+			template<typename AccumulateType, typename TaskContext, typename F>
+			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) {
+				rynx_profile("Ecs", "for_each_parallel_accumulate");
+				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
+				iterator<DataAccess::Mutable, category_source, decltype(&F::operator())> it(m_ecs);
+				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
+				return accumulator;
+			}
+
+			template<typename AccumulateType, typename TaskContext, typename F>
+			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) const {
+				rynx_profile("Ecs", "for_each_parallel_accumulate");
+				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
+				iterator<DataAccess::Const, category_source, decltype(&F::operator())> it(m_ecs);
+				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
+				return accumulator;
+			}
 		};
 
 		ecs() = default;
@@ -677,6 +706,24 @@ namespace rynx {
 			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 		}
 
+		template<typename AccumulateType, typename TaskContext, typename F>
+		std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) {
+			rynx_profile("Ecs", "for_each_parallel_accumulate");
+			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
+			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
+			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
+			return accumulator;
+		}
+
+		template<typename AccumulateType, typename TaskContext, typename F>
+		std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) const {
+			rynx_profile("Ecs", "for_each_parallel_accumulate");
+			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
+			iterator<DataAccess::Const, ecs, decltype(&F::operator())> it(*this);
+			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
+			return accumulator;
+		}
+
 		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
 		query_t<DataAccess::Const, ecs> query() const { return query_t<DataAccess::Const, ecs>(*this); }
 
@@ -719,6 +766,31 @@ namespace rynx {
 			category_it->second->insertNew(id, std::forward<Components>(components)...);
 			m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(category_it->second->size() - 1)));
 			return id;
+		}
+
+		template<typename... Components>
+		std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
+			rynx_assert((components.size() & ...) == (components.size() | ...), "components vector sizes do not match!");
+			std::vector<entity_id_t> ids(rynx::first_of(components...).size());
+			
+			// TODO: generate_n might be more efficient. benchmark if this shows up in profiler.
+			for (entity_id_t& id : ids) {
+				id = m_entities.generateOne();
+			}
+			
+			// target category is the same for all entities created in this call.
+			dynamic_bitset targetCategory;
+			(targetCategory.set(m_types.id<Components>()), ...);
+			auto category_it = m_categories.find(targetCategory);
+			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
+			
+
+			auto first_index = category_it->second->size();
+			category_it->second->insertNew(ids, components...);
+			for (size_t i = 0; i < ids.size(); ++i) {
+				m_idCategoryMap.emplace(ids[i], std::make_pair(category_it->second.get(), index_t(first_index + i)));
+			}
+			return ids;
 		}
 
 		template<typename... Components>
@@ -914,6 +986,12 @@ namespace rynx {
 			entity_id_t create(Components&& ... components) {
 				componentTypesAllowed<Components...>();
 				return this->m_ecs->create(std::forward<Components>(components)...);
+			}
+
+			template<typename... Components>
+			std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
+				componentTypesAllowed<Components...>();
+				return this->m_ecs->create(components...);
 			}
 
 			template<typename... Components>

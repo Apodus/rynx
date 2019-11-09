@@ -45,7 +45,7 @@ class PolygonTesselator {
 		unhandled.pop_back();
 	}
 
-	std::unique_ptr<Mesh> buildMeshData(vec4<float> uvLimits) {
+	std::unique_ptr<Mesh> buildMeshData(floats4 uvLimits) {
 		std::unique_ptr<Mesh> polyMesh = std::make_unique<Mesh>();
 
 		float uvHalfWidthX = (uvLimits[2] - uvLimits[0]) * 0.5f;
@@ -132,7 +132,7 @@ public:
 	PolygonTesselator() {
 	}
 
-	std::unique_ptr<Mesh> tesselate(Polygon<T> polygon_, vec4<float> uvLimits = vec4<float>(0.0f, 0.0f, 1.0f, 1.0f)) {
+	std::unique_ptr<Mesh> tesselate(Polygon<T> polygon_, floats4 uvLimits = floats4(0.0f, 0.0f, 1.0f, 1.0f)) {
 		makeTriangles(polygon_);
 		return buildMeshData(uvLimits);
 	}

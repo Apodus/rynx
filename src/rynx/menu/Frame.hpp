@@ -15,7 +15,7 @@ namespace rynx {
 	namespace menu {
 		class Frame : public Component {
 
-			vec4<float> m_color;
+			floats4 m_color;
 			vec3<float> m_prevScale;
 			std::string m_textureID;
 			matrix4 m_modelMatrix;
@@ -32,10 +32,10 @@ namespace rynx {
 				float edgeSize = 0.20f);
 			
 			void buildMesh(float size_x, float size_y);
-			vec4<float>& color() { return m_color; }
+			floats4& color() { return m_color; }
 
 			Frame& edge_size(float v) { m_edgeSize = v; return *this; }
-			Frame& color(vec4<float> v) { m_color = v; return *this; }
+			Frame& color(floats4 v) { m_color = v; return *this; }
 
 			virtual void update(float) override;
 

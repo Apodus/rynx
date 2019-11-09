@@ -18,9 +18,7 @@ public:
 			*this = lineSegment;
 		}
 
-		Segment(const T& a, const T& b, bool c1, bool c2) {
-			this->p1 = a;
-			this->p2 = b;
+		Segment(const T& a, const T& b, bool c1, bool c2) : line_segment(a, b) {
 			convex1 = c1;
 			convex2 = c2;
 		}
@@ -73,10 +71,8 @@ public:
 
 		for (size_t i = 0; i < vertices.size() - 1; ++i) {
 			boundary.emplace_back(Segment(vertices[i], vertices[i + 1], isConvex(int(i)), isConvex(int(i + 1))));
-			boundary.back().computeNormalXY().normalizeApprox();
 		}
 		boundary.emplace_back(Segment(vertices[vertices.size() - 1], vertices[0], isConvex(int(vertices.size() - 1)), isConvex(0)));
-		boundary.back().computeNormalXY().normalizeApprox();
 		return boundary;
 	}
 

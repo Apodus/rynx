@@ -51,7 +51,6 @@ void rynx::menu::Component::updateAttachment() {
 	}
 }
 
-
 void rynx::menu::Component::updatePosition() {
 	if (m_pParent == nullptr) {
 		m_worldPosition = m_position;

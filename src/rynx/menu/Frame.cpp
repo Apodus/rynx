@@ -26,7 +26,7 @@ rynx::menu::Frame::Frame(
 }
 
 void rynx::menu::Frame::initMesh(GPUTextures& textures) {
-	const vec4<float>& limits = textures.textureLimits(m_textureID);
+	floats4 limits = textures.textureLimits(m_textureID);
 
 	float edgeUV_x = m_edgeSize * (limits.data[2] - limits[0]);
 	float edgeUV_y = m_edgeSize * (limits.data[3] - limits[1]);

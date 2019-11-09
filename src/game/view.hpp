@@ -32,7 +32,7 @@ namespace game
 				auto drawPos = pos.value + vec3<float>({ -0.5f, 1.0f, 0.0f });
 				float prctage = hp.currentHp / hp.maxHp;
 				auto drawPosTo = drawPos + vec3<float>({ prctage, 0.0f, 0.0f });
-				m_meshRenderer->drawLine(drawPos, drawPosTo, 0.2f, vec4<float>({ 1.0f, 0.0f, 0.0f, 1.0f }));
+				m_meshRenderer->drawLine(drawPos, drawPosTo, 0.2f, floats4(1.0f, 0.0f, 0.0f, 1.0f));
 			});
 		}
 

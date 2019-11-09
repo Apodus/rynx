@@ -3,8 +3,8 @@
 
 #include <rynx/graphics/texture/image.hpp>
 #include <rynx/graphics/texture/textureatlashandler.hpp>
+#include <rynx/tech/unordered_map.hpp>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -30,8 +30,8 @@ class GPUTextures
 		const std::string& getCurrentTexture(size_t texture_unit) const;
 		unsigned getTextureID(const std::string&) const;
 
-		vec4<float> textureLimits(const std::string&) const;
-		vec4<float> textureLimits(const std::string& name, vec4<float> uvLimits) const;
+		floats4 textureLimits(const std::string&) const;
+		floats4 textureLimits(const std::string& name, vec4<float> uvLimits) const;
 
 		void insertAtlas(const TextureAtlas& atlas);
 		
@@ -44,8 +44,8 @@ class GPUTextures
 		GPUTextures(const GPUTextures&) = delete;
 		GPUTextures& operator=(const GPUTextures&) = delete;
 		
-		std::map<std::string, vec4<short>> textureSizes;
-		std::map<std::string, unsigned> textures;
+		rynx::unordered_map<std::string, vec4<short>> textureSizes;
+		rynx::unordered_map<std::string, unsigned> textures;
 		std::vector<std::string> current_textures;
 
 };

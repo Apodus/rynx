@@ -48,7 +48,7 @@ namespace game {
 					auto shooterPos = shooter.get<rynx::components::position>();
 					auto shooterMotion = shooter.get<rynx::components::motion>();
 					vec3<float> direction = targetPos - shooterPos.value;
-					direction.normalizeApprox();
+					direction.normalize();
 					auto normalizedDirection = direction;
 					direction *= w.projectileSpeed * 0.1f;
 					

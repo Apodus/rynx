@@ -68,17 +68,17 @@ namespace rynx {
 		void clearScreen();
 		void cameraToGPU();
 		void setCamera(std::shared_ptr<Camera> camera);
-		void drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const vec4<float>& color);
-		void drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const vec4<float>& color);
-		void drawRectangle(const matrix4& model, const std::string& texture, const vec4<float>& color = vec4<float>(1, 1, 1, 1));
+		void drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color);
+		void drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color);
+		void drawRectangle(const matrix4& model, const std::string& texture, const floats4& color = floats4(1, 1, 1, 1));
 		
-		void drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float>& color = vec4<float>(1, 1, 1, 1));
-		void drawMesh(const std::string& mesh_name, const matrix4& model, const std::string& texture, const vec4<float>& color = vec4<float>(1, 1, 1, 1)) {
+		void drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color = floats4(1, 1, 1, 1));
+		void drawMesh(const std::string& mesh_name, const matrix4& model, const std::string& texture, const floats4& color = floats4(1, 1, 1, 1)) {
 			drawMesh(*m_meshes->get(mesh_name), model, texture, color);
 		}
 
-		void drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<vec4<float>>& colors);
-		void drawMeshInstanced(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<vec4<float>>& colors) {
+		void drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors);
+		void drawMeshInstanced(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 			drawMeshInstanced(*m_meshes->get(mesh_name), texture, models, colors);
 		}
 

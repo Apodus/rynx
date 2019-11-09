@@ -268,6 +268,6 @@ void ShaderMemory::setUniformVec4(Shader& shader, const std::string& name, float
 
 void ShaderMemory::setUniformMat4(Shader& shader, const std::string& name, const matrix4& matrix) {
 	int pos = shader.uniform(name);
-    glUniformMatrix4fv(pos, 1, false, matrix.data);
+    glUniformMatrix4fv(pos, 1, false, matrix.m);
 }
 

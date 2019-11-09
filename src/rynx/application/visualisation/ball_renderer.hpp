@@ -30,7 +30,7 @@ namespace rynx {
 
 				virtual ~ball_renderer() {}
 				virtual void render(const rynx::ecs& ecs) override {
-					rynx_profile("visualisation", "ball_renderer");
+					rynx_profile("visualisation", "ball_draw");
 					cameraLeft = m_camera->position().x - m_camera->position().z;
 					cameraRight = m_camera->position().x + m_camera->position().z;
 					cameraTop = m_camera->position().y + m_camera->position().z;
@@ -39,7 +39,7 @@ namespace rynx {
 					std::vector<matrix4> spheres_to_draw;
 					spheres_to_draw.reserve(10 * 1024);
 					
-					std::vector<vec4<float>> colors;
+					std::vector<floats4> colors;
 					
 					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
 						.execute([this, &spheres_to_draw, &colors](
@@ -58,7 +58,6 @@ namespace rynx {
 						colors.emplace_back(color.value);
 					});
 				
-					colors.resize(spheres_to_draw.size(), vec4<float>(1, 1, 1, 1));
 					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
 
 					spheres_to_draw.clear();
@@ -76,7 +75,7 @@ namespace rynx {
 						vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
 						
 						auto direction_vector = world_pos_a - world_pos_b;
-						float length = direction_vector.lengthApprox() * 0.5f;
+						float length = direction_vector.length() * 0.5f;
 						constexpr float width = 0.6f;
 						
 						if (!inScreen(mid, length * 0.5f))
@@ -99,6 +98,12 @@ namespace rynx {
 				float cameraRight;
 				float cameraTop;
 				float cameraBot;
+
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_matrices;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_colors;
+
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_particles_matrices;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_particles_colors;
 
 				MeshRenderer* m_meshRenderer;
 				Mesh* m_circleMesh;

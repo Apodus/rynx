@@ -24,8 +24,8 @@ namespace rynx {
 		class Button : public Component {
 		protected:
 			std::string m_text;
-			rynx::smooth<vec4<float>> m_color;
-			rynx::smooth<vec4<float>> m_textColor;
+			rynx::smooth<floats4> m_color;
+			rynx::smooth<floats4> m_textColor;
 
 			vec3<float> m_defaultScale;
 			matrix4 m_model;
@@ -54,8 +54,8 @@ namespace rynx {
 			Button& font(Font* font) { m_font = font; return *this; }
 			Button& text(std::string t, Font* font) { m_text = std::move(t); m_font = font; return *this; }
 			Button& text(std::string t) { m_text = std::move(t); return *this; }
-			Button& color_frame(vec4<float> color) { m_color = color; return *this; }
-			Button& color_text(vec4<float> color) { m_textColor = color; return *this; }
+			Button& color_frame(floats4 color) { m_color = color; return *this; }
+			Button& color_text(floats4 color) { m_textColor = color; return *this; }
 			template<typename F> Button& onClick(F&& op) { m_onClick = std::forward<F>(op); return *this; }
 
 		private:

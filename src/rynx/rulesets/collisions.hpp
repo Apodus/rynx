@@ -64,7 +64,7 @@ namespace rynx {
 								m.angularAcceleration = 0;
 
 								if (m.velocity.lengthSquared() > sqr(r.r * 0.25f / dt)) {
-									m.velocity.normalizeApprox();
+									m.velocity.normalize();
 									m.velocity *= r.r * 0.24f / dt;
 								}
 
@@ -122,7 +122,7 @@ namespace rynx {
 						ecs.query()
 							.in<const rynx::components::projectile, const added_to_sphere_tree>()
 							.execute_parallel(task, [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
+							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f, id.value);
 						});
 					});
 				
@@ -144,7 +144,7 @@ namespace rynx {
 						});
 
 						ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().execute([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.lengthApprox() * 0.5f, id.value);
+							detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f, id.value);
 							ids.emplace_back(id);
 						});
 
@@ -224,7 +224,7 @@ namespace rynx {
 						auto world_pos_a = pos_a.value + relative_pos_a;
 						auto world_pos_b = pos_b.value + relative_pos_b;
 
-						auto length = (world_pos_a - world_pos_b).lengthApprox();
+						auto length = (world_pos_a - world_pos_b).length();
 						float over_extension = (length - rope.length) / rope.length;
 
 						over_extension -= (over_extension < 0) * over_extension;
@@ -236,7 +236,7 @@ namespace rynx {
 						force = force > 1000.0f ? 1000.0f : force;
 
 						auto direction_a_to_b = world_pos_b - world_pos_a;
-						direction_a_to_b.normalizeApprox();
+						direction_a_to_b.normalize();
 						direction_a_to_b *= force;
 
 						mot_a.acceleration += direction_a_to_b * phys_a.inv_mass;
@@ -262,6 +262,16 @@ namespace rynx {
 
 									math::rand64 random;
 
+									constexpr int num_particles = 40;
+
+									std::vector<rynx::components::position> pos_v(num_particles);
+									std::vector<rynx::components::radius> radius_v(num_particles);
+									std::vector<rynx::components::motion> motion_v(num_particles);
+									std::vector<rynx::components::lifetime> lifetime_v(num_particles);
+									std::vector<rynx::components::color> color_v(num_particles);
+									std::vector<rynx::components::dampening> dampening_v(num_particles);
+									std::vector<rynx::components::particle_info> particle_info_v(num_particles);
+
 									for (int i = 0; i < 40; ++i) {
 										float value = static_cast<float>(i) / 10.0f;
 										auto pos = pos1 + (pos2 - pos1) * value;
@@ -280,16 +290,24 @@ namespace rynx {
 										p_info.radius.begin = weight * 0.25f;
 										p_info.radius.end = weight * 0.50f;
 
-										ecs.create(
-											rynx::components::position(pos),
-											rynx::components::radius(p_info.radius.begin),
-											rynx::components::motion(v, 0),
-											rynx::components::lifetime(0.33f + 0.33f * weight),
-											rynx::components::color(p_info.color.begin),
-											rynx::components::dampening{ 0.95f + 0.03f * (1.0f / weight), 1 },
-											p_info
-										);
+										pos_v[i] = rynx::components::position(pos);
+										radius_v[i] = rynx::components::radius(p_info.radius.begin);
+										motion_v[i] = rynx::components::motion(v, 0);
+										lifetime_v[i] = rynx::components::lifetime(0.33f + 0.33f * weight);
+										color_v[i] = rynx::components::color(p_info.color.begin);
+										dampening_v[i] = rynx::components::dampening{ 0.95f + 0.03f * (1.0f / weight), 1 };
+										particle_info_v[i] = p_info;
 									}
+
+									ecs.create_n(
+										pos_v,
+										radius_v,
+										motion_v,
+										lifetime_v,
+										color_v,
+										dampening_v,
+										particle_info_v
+									);
 								}
 							});
 						});
@@ -333,8 +351,8 @@ namespace rynx {
 								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
 								const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
 
-								const float rel_pos_len_a = rel_pos_a.lengthApprox();
-								const float rel_pos_len_b = rel_pos_b.lengthApprox();
+								const float rel_pos_len_a = rel_pos_a.length();
+								const float rel_pos_len_b = rel_pos_b.length();
 								extra.relative_position_length_a = rel_pos_len_a;
 								extra.relative_position_length_b = rel_pos_len_b;
 								extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());

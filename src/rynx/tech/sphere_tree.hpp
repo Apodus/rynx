@@ -653,7 +653,7 @@ private:
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
-						f(acc, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalizeApprox(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+						f(acc, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
 					}
 				}
 			}
@@ -687,7 +687,7 @@ private:
 							float distSqr = (member1.pos - member2.pos).lengthSquared();
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
-								auto normal = (member1.pos - member2.pos).normalizeApprox();
+								auto normal = (member1.pos - member2.pos).normalize();
 								float penetration = std::sqrtf(radiusSqr) - std::sqrtf(distSqr);
 								f(acc, member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 							}
@@ -722,7 +722,7 @@ private:
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
-						f(m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalizeApprox(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+						f(m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
 					}
 				}
 			}
@@ -780,7 +780,7 @@ private:
 							float distSqr = (member1.pos - member2.pos).lengthSquared();
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
-								auto normal = (member1.pos - member2.pos).normalizeApprox();
+								auto normal = (member1.pos - member2.pos).normalize();
 								float penetration = std::sqrtf(radiusSqr) - std::sqrtf(distSqr);
 								f(member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 							}

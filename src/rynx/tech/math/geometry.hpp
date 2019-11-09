@@ -33,7 +33,7 @@ template<typename T> std::pair<size_t, float> farPoint(vec3<float> p, const std:
 	size_t outIndex = 0;
 	for (size_t i = 0; i < points.size(); ++i) {
 		const auto& point = access(points[i]);
-		float pointDist = (point.pos - p).lengthApprox() + point.radius;
+		float pointDist = (point.pos - p).length() + point.radius;
 		if (pointDist > maxDist) {
 			maxDist = pointDist;
 			outIndex = i;
@@ -78,7 +78,7 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 	float maxRadius = radius1 > radius2 ? radius1 : radius2;
 
 	auto atob = b - a;
-	atob.normalizeApprox();
+	atob.normalize();
 
 	auto center = (a + b + atob * (radius2 - radius1)) * 0.5f;
 	std::pair<size_t, float> indexFar3 = farPoint(center, points);
@@ -101,9 +101,9 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 		
 		const auto proposed_center = bounding_sphere_for_points(a, b, c);
 		
-		const auto a_push = (proposed_center - a).normalizeApprox();
-		const auto b_push = (proposed_center - b).normalizeApprox();
-		const auto c_push = (proposed_center - c).normalizeApprox();
+		const auto a_push = (proposed_center - a).normalize();
+		const auto b_push = (proposed_center - b).normalize();
+		const auto c_push = (proposed_center - c).normalize();
 
 		const auto a_fixed = a - a_push * radius1;
 		const auto b_fixed = b - b_push * radius2;
@@ -114,6 +114,6 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 		return { proposed_center_fixed, weighted_radius };
 	}
 	else {
-		return { center, (center - a).lengthApprox() + radius1 };
+		return { center, (center - a).length() + radius1 };
 	}
 }

@@ -54,7 +54,7 @@ namespace {
 			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, ball_position);
 			const float dist = pointToLineSegment.first;
 			if (dist < ball_radius) {
-				auto normal = (pointToLineSegment.second - ball_position).normalizeApprox();
+				auto normal = (pointToLineSegment.second - ball_position).normalize();
 				normal *= 2.0f * (normal.dot(polygon_position - pointToLineSegment.second) > 0) - 1.0f;
 
 				collisions_accumulator.emplace_back(store_collision(
@@ -109,7 +109,6 @@ namespace {
 							normal = segmentA.getNormalXY();
 							normal *= -1.f;
 						}
-						normal.normalizeApprox();
 						
 						float penetration1 = a1 < a2 ? a1 : a2;
 						float penetration2 = b1 < b2 ? b1 : b2;
@@ -145,7 +144,7 @@ namespace {
 			collisions_accumulator.emplace_back(store_collision(
 				bulletEntity,
 				dynamicEntity,
-				((bulletPos.value - bulletMotion.velocity) - ballPos).normalizeApprox(),
+				((bulletPos.value - bulletMotion.velocity) - ballPos).normalize(),
 				pointDistanceResult.second,
 				bulletPos.value,
 				ballPos,
@@ -216,39 +215,41 @@ void rynx::ruleset::physics_2d::check_all(
 	bool anyProjectile = hasProjectileA | hasProjectileB;
 	bool anyBoundary = hasBoundaryA | hasBoundaryB;
 
-	if (anyProjectile) {
-		if (anyBoundary) {
-			// projectiles do not have boundary shapes. this must be projectile vs polygon check.
-			if (hasProjectileA) {
-				check_projectile_polygon(collisions_accumulator, entA, entB);
+	if (anyProjectile | anyBoundary) {
+		if (anyProjectile) {
+			if (anyBoundary) {
+				// projectiles do not have boundary shapes. this must be projectile vs polygon check.
+				if (hasProjectileA) {
+					check_projectile_polygon(collisions_accumulator, entA, entB);
+				}
+				else {
+					check_projectile_polygon(collisions_accumulator, entB, entA);
+				}
+			}
+			else if (hasProjectileA & hasProjectileB) {
+				// projectile vs projectile check.
+				// check_projectile_projectile(entA, entB);
 			}
 			else {
-				check_projectile_polygon(collisions_accumulator, entB, entA);
+				// projectile vs ball check.
+				if (hasProjectileA) {
+					check_projectile_ball(collisions_accumulator, entA, entB);
+				}
+				else {
+					check_projectile_ball(collisions_accumulator, entB, entA);
+				}
 			}
 		}
-		else if (hasProjectileA & hasProjectileB) {
-			// projectile vs projectile check.
-			// check_projectile_projectile(entA, entB);
-		}
 		else {
-			// projectile vs ball check.
-			if (hasProjectileA) {
-				check_projectile_ball(collisions_accumulator, entA, entB);
+			if (hasBoundaryA & hasBoundaryB) {
+				check_polygon_polygon(collisions_accumulator, entA, entB);
+			}
+			else if (hasBoundaryA) {
+				check_polygon_ball(collisions_accumulator, entA, entB, a_pos, b_pos, b_radius);
 			}
 			else {
-				check_projectile_ball(collisions_accumulator, entB, entA);
+				check_polygon_ball(collisions_accumulator, entB, entA, b_pos, a_pos, a_radius);
 			}
-		}
-	}
-	else if (anyBoundary) {
-		if (hasBoundaryA & hasBoundaryB) {
-			check_polygon_polygon(collisions_accumulator, entA, entB);
-		}
-		else if (hasBoundaryA) {
-			check_polygon_ball(collisions_accumulator, entA, entB, a_pos, b_pos, b_radius);
-		}
-		else {
-			check_polygon_ball(collisions_accumulator, entB, entA, b_pos, a_pos, a_radius);
 		}
 	}
 	else {

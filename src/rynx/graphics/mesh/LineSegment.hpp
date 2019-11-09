@@ -16,7 +16,7 @@ public:
 		p1 = a;
 		p2 = b;
 
-		computeNormalXY().normalizeAccurate();
+		computeNormalXY().normalize();
 	}
 
 	line_segment(const line_segment& other) {
@@ -25,12 +25,13 @@ public:
 		normal = other.normal;
 	}
 
-	float lengthApprox() { return (p1 - p2).lengthApprox(); }
+	float length() { return (p1 - p2).length(); }
 
 	// planar normal in xy plane.
 	vec3<float>& computeNormalXY() {
 		normal.x = p2.y - p1.y;
 		normal.y = p1.x - p2.x;
+		normal.normalize();
 		return normal;
 	}
 
@@ -38,6 +39,7 @@ public:
 		vec3<float> normal_;
 		normal_.x = p2.y - p1.y;
 		normal_.y = p1.x - p2.x;
+		normal_.normalize();
 		return normal_;
 	}
 

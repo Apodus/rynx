@@ -84,19 +84,19 @@ void rynx::MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
 	m_pCamera = camera;
 }
 
-void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const vec4<float>& color) {
+void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color) {
 	drawLine(p1, p2, matrix4(), width, color);
 }
 
-void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const vec4<float>& color) {
+void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color) {
 	matrix4 model_;
 	vec3<float> mid = (p1 + p2) * 0.5f;
 	model_.discardSetTranslate(mid.x, mid.y, mid.z);
 	model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
-	model_.scale((p1 - p2).lengthApprox() * 0.5f, width * 0.5f, 1.0f);
+	model_.scale((p1 - p2).length() * 0.5f, width * 0.5f, 1.0f);
 	model_ *= model;
 
-	const vec4<float>& limits = m_textures->textureLimits("Empty");
+	floats4 limits = m_textures->textureLimits("Empty");
 	float botCoordX = limits.data[0];
 	float botCoordY = limits.data[1];
 	float topCoordX = limits.data[2];
@@ -114,8 +114,8 @@ void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, 
 	drawMesh(*m_rectangle, model_, "Empty", color);
 }
 
-void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture, const vec4<float>& color) {
-	const vec4<float>& limits = m_textures->textureLimits(texture);
+void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture, const floats4& color) {
+	floats4 limits = m_textures->textureLimits(texture);
 	float botCoordX = limits.data[0];
 	float botCoordY = limits.data[1];
 	float topCoordX = limits.data[2];
@@ -143,24 +143,24 @@ bool rynx::MeshRenderer::verifyNoGLErrors() const {
 
 void rynx::MeshRenderer::cameraToGPU() {
 	m_shaders->switchToShader("renderer2d");
-	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().data);
-	glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, m_pCamera->getProjection().data);
+	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().m);
+	glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, m_pCamera->getProjection().m);
 
 	m_shaders->switchToShader("renderer2d_instanced");
-	glUniformMatrix4fv(m_viewUniform_instanced, 1, GL_FALSE, m_pCamera->getView().data);
-	glUniformMatrix4fv(m_projectionUniform_instanced, 1, GL_FALSE, m_pCamera->getProjection().data);
+	glUniformMatrix4fv(m_viewUniform_instanced, 1, GL_FALSE, m_pCamera->getView().m);
+	glUniformMatrix4fv(m_projectionUniform_instanced, 1, GL_FALSE, m_pCamera->getProjection().m);
 }
 
-void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const vec4<float>& color) {
+void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
 	m_shaders->switchToShader("renderer2d");
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
-	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.data);
+	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.m);
 	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
 }
 
-void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<vec4<float>>& colors) {
+void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 	m_shaders->switchToShader("renderer2d_instanced");
 	mesh.bind();
 	m_textures->bindTexture(0, texture);

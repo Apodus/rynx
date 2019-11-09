@@ -28,7 +28,7 @@ class TextRenderer {
 
 	matrix4 projectionViewMatrix;
 
-	vec4<float> activeColor;
+	floats4 activeColor;
 
 	std::shared_ptr<GPUTextures> m_textures;
 	std::shared_ptr<Shaders> m_shaders;
@@ -47,19 +47,19 @@ public:
 	TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<Shaders> shaders);
 
 	void setCamera(std::shared_ptr<Camera> pCamera) { m_pCamera = std::move(pCamera); }
-  void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, vec4<float>&)> custom = [](const std::string&, int, float&, float&, float&, float&, vec4<float>&){});
-  void drawText(const std::string& text, float x, float y, float lineHeight, const vec4<float>& color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, vec4<float>&)> custom = [](const std::string&, int, float&, float&, float&, float&, vec4<float>&){});
-  void drawText(const std::string& text, float x, float y, float lineHeight, const vec4<float>& color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, vec4<float>&)> custom = [](const std::string&, int, float&, float&, float&, float&, vec4<float>&){});
+  void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&){});
+  void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&){});
+  void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&){});
 
 	void drawTextBuffers(int textLength);
-  int fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, vec4<float>&)> custom = [](const std::string&, int, float&, float&, float&, float&, vec4<float>&){});
+  int fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&){});
 
-	void fillColorBuffer(const vec4<float>& activeColor_) {
+	void fillColorBuffer(const floats4& activeColor_) {
 		for (int i = 0; i < 6; ++i) {
-			m_colorBuffer.push_back(activeColor_.r);
-			m_colorBuffer.push_back(activeColor_.g);
-			m_colorBuffer.push_back(activeColor_.b);
-			m_colorBuffer.push_back(activeColor_.a);
+			m_colorBuffer.push_back(activeColor_[0]);
+			m_colorBuffer.push_back(activeColor_[1]);
+			m_colorBuffer.push_back(activeColor_[2]);
+			m_colorBuffer.push_back(activeColor_[3]);
 		}
 	}
 
