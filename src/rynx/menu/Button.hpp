@@ -28,8 +28,7 @@ namespace rynx {
 			rynx::smooth<floats4> m_textColor;
 
 			vec3<float> m_defaultScale;
-			matrix4 m_model;
-
+			
 			Frame m_frame;
 			TextRenderer::Align m_align;
 			Font* m_font = nullptr;

@@ -85,14 +85,18 @@ void rynx::MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
 }
 
 void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color) {
-	drawLine(p1, p2, matrix4(), width, color);
+	matrix4 model;
+	model.identity();
+	drawLine(p1, p2, model, width, color);
 }
 
 void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color) {
-	matrix4 model_;
 	vec3<float> mid = (p1 + p2) * 0.5f;
+
+	matrix4 model_;
 	model_.discardSetTranslate(mid.x, mid.y, mid.z);
-	model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
+	model_.rotate_2d(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)));
+	// model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
 	model_.scale((p1 - p2).length() * 0.5f, width * 0.5f, 1.0f);
 	model_ *= model;
 

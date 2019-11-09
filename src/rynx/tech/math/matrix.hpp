@@ -17,7 +17,8 @@ public:
 
 public:
 
-	matrix4() { identity(); }
+	matrix4() {}
+	// matrix4() { identity(); }
 	matrix4(const matrix4& other) { std::memcpy(row, other.row, sizeof(row)); }
 
 	matrix4& identity() {
@@ -41,14 +42,14 @@ public:
 	static void matmult_AVX_8(matrix4& out, const matrix4& A, const matrix4& B)
 	{
 		_mm256_zeroupper();
-		__m256 A01 = _mm256_loadu_ps(&A.m[0 * 4 + 0]);
-		__m256 A23 = _mm256_loadu_ps(&A.m[2 * 4 + 0]);
+		__m256 A01 = _mm256_load_ps(&A.m[0 * 4 + 0]);
+		__m256 A23 = _mm256_load_ps(&A.m[2 * 4 + 0]);
 
 		__m256 out01x = twolincomb_AVX_8(A01, B);
 		__m256 out23x = twolincomb_AVX_8(A23, B);
 
-		_mm256_storeu_ps(&out.m[0 * 4 + 0], out01x);
-		_mm256_storeu_ps(&out.m[2 * 4 + 0], out23x);
+		_mm256_store_ps(&out.m[0 * 4 + 0], out01x);
+		_mm256_store_ps(&out.m[2 * 4 + 0], out23x);
 	}
 
 	matrix4& discardSetLookAt(float eyeX, float eyeY, float eyeZ,
@@ -80,14 +81,10 @@ public:
 		float uy = sz * fx - sx * fz;
 		float uz = sx * fy - sy * fx;
 
-		float tmp[16] = {
-			sx, ux, -fx, 0.0f,
-			sy, uy, -fy, 0.0f,
-			sz, uz, -fz, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		};
-		
-		std::memcpy(m, tmp, sizeof(m));
+		row[0] = vec4f(sx, ux, -fx, 0.0f);
+		row[1] = vec4f(sy, uy, -fy, 0.0f);
+		row[2] = vec4f(sz, uz, -fz, 0.0f);
+		row[3] = vec4f(0.0f, 0.0f, 0.0f, 1.0f);
 		return translate(-eyeX, -eyeY, -eyeZ);
 	}
 
@@ -153,6 +150,16 @@ public:
 		return *this;
 	}
 
+	matrix4& discardSetRotation_z(float angle) {
+		float s = std::sin(angle);
+		float c = std::cos(angle);
+		row[0] = vec4f(c, s, 0, 0);
+		row[1] = vec4f(-s, c, 0, 0);
+		row[2] = vec4f(0, 0, 1, 0);
+		row[3] = vec4f(0, 0, 0, 1);
+		return *this;
+	}
+
 	matrix4& operator = (const matrix4& other) {
 		row[0] = other.row[0];
 		row[1] = other.row[1];
@@ -174,6 +181,7 @@ public:
 
 	matrix4& translate(vec3<float>& out) {
 		matrix4 translation_matrix;
+		translation_matrix.identity();
 		translation_matrix.row[3] = vec4f(out, 1.0f);
 		*this *= translation_matrix;
 		return *this;
@@ -187,6 +195,7 @@ public:
 	matrix4& scale(float scale) { return this->scale(scale, scale, scale); }
 	matrix4& scale(float dx, float dy, float dz) {
 		matrix4 scaleMatrix;
+		scaleMatrix.identity();
 		scaleMatrix[0] = dx;
 		scaleMatrix[5] = dy;
 		scaleMatrix[10] = dz;
@@ -225,6 +234,12 @@ public:
 		return *this *= rotMat;
 	}
 
+	matrix4& rotate_2d(float radians) {
+		matrix4 rotMat;
+		rotMat.discardSetRotation_z(radians);
+		return *this *= rotMat;
+	}
+	
 	float operator [] (size_t index) const {
 		return m[index];
 	}

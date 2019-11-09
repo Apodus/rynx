@@ -16,15 +16,13 @@ namespace rynx {
 		class SlideBarVertical : public Component {
 			
 			std::function<void(float)> m_callback;
-			matrix4 m_modelMatrix;
-
+			
 			float m_minValue;
 			float m_maxValue;
 			float m_currentValue;
 			float m_roundTo;
 
 			bool m_mouseDragActive;
-
 			Div* m_knobDiv = nullptr;
 
 		public:

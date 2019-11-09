@@ -51,9 +51,9 @@ namespace {
 	) {
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
 		for (auto&& segment : boundaryA.segments_world) {
-			const auto pointToLineSegment = math::pointDistanceLineSegment(segment.p1, segment.p2, ball_position);
-			const float dist = pointToLineSegment.first;
-			if (dist < ball_radius) {
+			const auto pointToLineSegment = math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
+			const float distSqr = pointToLineSegment.first;
+			if (distSqr < ball_radius * ball_radius) {
 				auto normal = (pointToLineSegment.second - ball_position).normalize();
 				normal *= 2.0f * (normal.dot(polygon_position - pointToLineSegment.second) > 0) - 1.0f;
 
@@ -64,7 +64,7 @@ namespace {
 					pointToLineSegment.second,
 					polygon_position,
 					ball_position,
-					ball_radius - dist
+					ball_radius - math::sqrt_approx(distSqr)
 				));
 			}
 		}

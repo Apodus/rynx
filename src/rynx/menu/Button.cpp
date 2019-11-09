@@ -53,12 +53,7 @@ void rynx::menu::Button::draw(MeshRenderer& meshRenderer, TextRenderer& textRend
 
 void rynx::menu::Button::update(float dt) {
 	m_frame.tick(dt, aspectRatio());
-
-	m_model.discardSetTranslate(position_world());
-	m_model.scale(scale_world() * 0.5f);
-
 	m_color.tick(dt * 5);
 	m_frame.color(m_color);
-
 	m_textColor.tick(dt * 5);
 }

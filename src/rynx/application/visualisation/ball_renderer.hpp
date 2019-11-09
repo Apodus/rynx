@@ -38,55 +38,63 @@ namespace rynx {
 
 					std::vector<matrix4> spheres_to_draw;
 					spheres_to_draw.reserve(10 * 1024);
-					
 					std::vector<floats4> colors;
 					
-					ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
-						.execute([this, &spheres_to_draw, &colors](
-						const rynx::components::position pos,
-						const rynx::components::radius r,
-						const rynx::components::color color)
 					{
-						if (!inScreen(pos.value, r.r))
-							return;
+						rynx_profile("visualisation", "model matrices");
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
+							.execute([this, &spheres_to_draw, &colors](
+								const rynx::components::position& pos,
+								const rynx::components::radius& r,
+								const rynx::components::color& color)
+								{
+									if (!inScreen(pos.value, r.r))
+										return;
 
-						matrix4 model;
-						model.discardSetTranslate(pos.value);
-						model.scale(r.r);
-						model.rotate(pos.angle, 0, 0, 1);
-						spheres_to_draw.emplace_back(model);
-						colors.emplace_back(color.value);
-					});
-				
+									matrix4 model;
+									model.discardSetTranslate(pos.value);
+									model.scale(r.r);
+									model.rotate_2d(pos.angle);
+									// model.rotate(pos.angle, 0, 0, 1);
+
+									spheres_to_draw.emplace_back(model);
+									colors.emplace_back(color.value);
+								});
+					}
 					m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", spheres_to_draw, colors);
 
 					spheres_to_draw.clear();
-					ecs.for_each([this, &ecs, &spheres_to_draw](const rynx::components::rope& rope) {
-						
-						auto entity_a = ecs[rope.id_a];
-						auto entity_b = ecs[rope.id_b];
+					
+					{
+						rynx_profile("visualisation", "model matrices");
+						ecs.for_each([this, &ecs, &spheres_to_draw](const rynx::components::rope& rope) {
 
-						auto pos_a = entity_a.get<components::position>();
-						auto pos_b = entity_b.get<components::position>();
-						auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-						auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
-						auto world_pos_a = pos_a.value + relative_pos_a;
-						auto world_pos_b = pos_b.value + relative_pos_b;
-						vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
-						
-						auto direction_vector = world_pos_a - world_pos_b;
-						float length = direction_vector.length() * 0.5f;
-						constexpr float width = 0.6f;
-						
-						if (!inScreen(mid, length * 0.5f))
-							return;
+							auto entity_a = ecs[rope.id_a];
+							auto entity_b = ecs[rope.id_b];
 
-						matrix4 model;
-						model.discardSetTranslate(mid.x, mid.y, mid.z);
-						model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
-						model.scale(length, width, 1.0f);
-						spheres_to_draw.emplace_back(model);
-					});
+							auto pos_a = entity_a.get<components::position>();
+							auto pos_b = entity_b.get<components::position>();
+							auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+							auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+							auto world_pos_a = pos_a.value + relative_pos_a;
+							auto world_pos_b = pos_b.value + relative_pos_b;
+							vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
+
+							auto direction_vector = world_pos_a - world_pos_b;
+							float length = direction_vector.length() * 0.5f;
+							constexpr float width = 0.6f;
+
+							if (!inScreen(mid, length * 0.5f))
+								return;
+
+							matrix4 model;
+							model.discardSetTranslate(mid.x, mid.y, mid.z);
+							model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
+							// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
+							model.scale(length, width, 1.0f);
+							spheres_to_draw.emplace_back(model);
+						});
+					}
 
 					colors.clear();
 					colors.resize(spheres_to_draw.size(), vec4<float>(0, 0, 0, 1));

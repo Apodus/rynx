@@ -1,7 +1,8 @@
 #include "camera.hpp"
 
 Camera::Camera() {
-
+	view.identity();
+	projection.identity();
 }
 
 Camera::~Camera() {

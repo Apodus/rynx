@@ -522,10 +522,10 @@ namespace rynx {
 				return nullptr;
 			}
 
-			template<typename... Ts> bool has() const {
+			template<typename... Ts> bool has() const noexcept {
 				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
-				return true && (m_entity_category->types().test(categorySource->template typeId<Ts>()) && ...);
+				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
 			}
 
 			template<typename... Ts> void remove() {
@@ -569,7 +569,7 @@ namespace rynx {
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<Ts...>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
-				return true && (m_entity_category->types().test(categorySource->template typeId<Ts>()) && ...);
+				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
 			}
 
 			template<typename... Ts> void remove() { static_assert(sizeof...(Ts) == 1 && sizeof...(Ts) == 2, "can't remove components from const entity"); }
