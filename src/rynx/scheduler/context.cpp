@@ -8,6 +8,9 @@
 rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
+	
+	// keep track of available for each tasks, but prefer an independent task if they are available.
+	size_t for_each_task_index = ~size_t(0);
 	for (size_t i = 0; i < m_tasks.size(); ++i) {
 		auto& task = m_tasks[i];
 		if (task.barriers().can_start() && resourcesAvailableFor(task)) {
@@ -26,13 +29,19 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 					m_tasks.pop_back();
 				}
 				else {
-					rynx::scheduler::task copy = task;
-					task.completion_blocked_by(copy);
-					return copy;
+					for_each_task_index = i;
 				}
 			}
 		}
 	}
+	
+	if (for_each_task_index != ~size_t(0)) {
+		task& task = m_tasks[for_each_task_index];
+		rynx::scheduler::task copy = task;
+		task.completion_blocked_by(copy);
+		return copy;
+	}
+	
 	return task();
 }
 
