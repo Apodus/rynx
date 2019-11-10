@@ -418,14 +418,14 @@ namespace rynx {
 			template<bool isIdQuery, typename F, typename TaskContext, typename AccumulatedType, typename... Ts>
 			static void call_user_op_parallel_accumulate(F&& op, TaskContext&& task_context, std::shared_ptr<rynx::parallel_accumulator<AccumulatedType>>& accumulator, std::vector<id>& ids, std::tuple<Ts*...> data_ptrs) {
 				if constexpr (isIdQuery) {
-					task_context& task_context.parallel().for_each_accumulate(accumulator, 0, ids.size(), [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
+					task_context& task_context.parallel().for_each(0, ids.size()).execute_accumulate(accumulator, [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(local_storage, ids[index], ptrs[index]...);
 						}, data_ptrs);
 					});
 				}
 				else {
-					task_context& task_context.parallel().for_each_accumulate(accumulator, 0, ids.size(), [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
+					task_context& task_context.parallel().for_each(0, ids.size()).execute_accumulate(accumulator, [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(local_storage, ptrs[index]...);
 						}, data_ptrs);
@@ -470,14 +470,14 @@ namespace rynx {
 			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				auto size = ids.size();
 				if constexpr (isIdQuery) {
-					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					task_context & task_context.parallel().for_each(0, ids.size()).execute([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					task_context & task_context.parallel().for_each(0, ids.size(), [op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					task_context & task_context.parallel().for_each(0, ids.size()).execute([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ptrs[index]...);
 						}, args);

@@ -262,141 +262,184 @@ namespace rynx {
 			struct parallel_operations {
 				parallel_operations(task& parent) : m_parent(parent) {}
 
-				template<typename F> barrier for_each(int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
-					barrier bar;
-					
-					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
-					
-					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
+				struct parallel_for_operation {
+					parallel_for_operation(rynx::scheduler::task& parent) : m_parent(parent) {}
+
+					rynx::scheduler::task& m_parent;
+					int64_t begin = 0;
+					int64_t end = 0;
+					int64_t work_size = 1;
+					bool self_participate = true;
+
+					parallel_for_operation& range_begin(int64_t begin_) {
+						begin = begin_;
+						return *this;
+					}
+
+					parallel_for_operation& range_end(int64_t end_) {
+						end = end_;
+						return *this;
+					}
+
+
+					parallel_for_operation& work_per_iteration(int64_t work_size_) {
+						work_size = work_size_;
+						return *this;
+					}
+
+					parallel_for_operation& deferred_work() {
+						self_participate = false;
+						return *this;
+					}
+
+					template<typename F>
+					barrier execute(F&& op) {
+						barrier bar;
+
+						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
+
+						{
+							task_token work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
+								for (;;) {
+									int64_t my_index = for_each_data->index.fetch_add(work_size);
+									if (my_index >= end) {
+										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+											task_context->erase_completed_parallel_for_tasks();
+										}
+										return;
+									}
+									int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+									for (int64_t i = my_index; i < limit; ++i) {
+										op(i);
+									}
+								}
+							});
+							work->m_for_each = for_each_data;
+							work->required_for(bar);
+						}
+
+						m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+						if (self_participate) {
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
 									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-										task_context->erase_completed_parallel_for_tasks();
+										m_parent.m_context->erase_completed_parallel_for_tasks();
 									}
-									return;
+									return bar;
 								}
 								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 								for (int64_t i = my_index; i < limit; ++i) {
 									op(i);
 								}
 							}
-						});
-						work->m_for_each = for_each_data;
-						work->required_for(bar);
-					}
-					
-					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
-
-					// work on the for_each task myself.
-					for (;;) {
-						int64_t my_index = for_each_data->index.fetch_add(work_size);
-						if (my_index >= end) {
-							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-								m_parent.m_context->erase_completed_parallel_for_tasks();
-							}
-							return bar;
 						}
-						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
-						for (int64_t i = my_index; i < limit; ++i) {
-							op(i);
-						}
+						return bar;
 					}
-				}
 
-				template<typename T, typename F>
-				std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> for_each_accumulate(
-					int64_t begin, int64_t end, F&& op, int64_t work_size = 256)
-				{
-					barrier bar;
-					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
-					std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator<T>>();
+					template<typename T, typename F>
+					std::pair<barrier, std::shared_ptr<rynx::parallel_accumulator<T>>> execute_accumulate(F&& op) {
+						barrier bar;
+						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
+						std::shared_ptr<rynx::parallel_accumulator<T>> accumulator = std::make_shared<rynx::parallel_accumulator<T>>();
 
-					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
-							std::vector<T>& local_accumulator = accumulator->get_local_storage();
+						{
+							task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
+								std::vector<T>& local_accumulator = accumulator->get_local_storage();
+								for (;;) {
+									int64_t my_index = for_each_data->index.fetch_add(work_size);
+									if (my_index >= end) {
+										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+											task_context->erase_completed_parallel_for_tasks();
+										}
+										return;
+									}
+									int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+									for (int64_t i = my_index; i < limit; ++i) {
+										op(local_accumulator, i);
+									}
+								}
+							});
+							work->m_for_each = for_each_data;
+							work->required_for(bar);
+						}
+
+						m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+
+						if (self_participate) {
 							for (;;) {
+								std::vector<T>& local_accumulator = accumulator->get_local_storage();
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
 									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-										task_context->erase_completed_parallel_for_tasks();
+										m_parent.m_context->erase_completed_parallel_for_tasks();
 									}
-									return;
+									return { bar, accumulator };
 								}
 								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 								for (int64_t i = my_index; i < limit; ++i) {
 									op(local_accumulator, i);
 								}
 							}
-						});
-						work->m_for_each = for_each_data;
-						work->required_for(bar);
+						}
+						return { bar, accumulator };
 					}
 
-					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
+					template<typename T, typename F> barrier execute_accumulate(std::shared_ptr<rynx::parallel_accumulator<T>> accumulator, F&& op) {
+						barrier bar;
+						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
 
-					// work on the for_each task myself.
-					for (;;) {
-						std::vector<T>& local_accumulator = accumulator->get_local_storage();
-						int64_t my_index = for_each_data->index.fetch_add(work_size);
-						if (my_index >= end) {
-							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-								m_parent.m_context->erase_completed_parallel_for_tasks();
-							}
-							return { bar, accumulator };
+						{
+							task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
+								std::vector<T>& local_accumulator = accumulator->get_local_storage();
+								for (;;) {
+									int64_t my_index = for_each_data->index.fetch_add(work_size);
+									if (my_index >= end) {
+										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+											task_context->erase_completed_parallel_for_tasks();
+										}
+										return;
+									}
+									int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
+									for (int64_t i = my_index; i < limit; ++i) {
+										op(local_accumulator, i);
+									}
+								}
+							});
+							work->m_for_each = for_each_data;
+							work->required_for(bar);
 						}
-						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
-						for (int64_t i = my_index; i < limit; ++i) {
-							op(local_accumulator, i);
-						}
-					}
-				}
 
-				template<typename T, typename F> barrier for_each_accumulate(std::shared_ptr<rynx::parallel_accumulator<T>> accumulator, int64_t begin, int64_t end, F&& op, int64_t work_size = 256) {
-					barrier bar;
-					std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
+						m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
 
-					{
-						task_token work = m_parent.make_extension_task_execute_parallel("parfor", [accumulator, task_context = m_parent.m_context, work_size, end, for_each_data, op]() mutable {
-							std::vector<T>& local_accumulator = accumulator->get_local_storage();
+						if (self_participate) {
 							for (;;) {
+								std::vector<T>& local_accumulator = accumulator->get_local_storage();
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
 									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-										task_context->erase_completed_parallel_for_tasks();
+										m_parent.m_context->erase_completed_parallel_for_tasks();
 									}
-									return;
+									return bar;
 								}
 								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
 								for (int64_t i = my_index; i < limit; ++i) {
 									op(local_accumulator, i);
 								}
 							}
-						});
-						work->m_for_each = for_each_data;
-						work->required_for(bar);
-					}
-
-					m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
-
-					// work on the for_each task myself.
-					for (;;) {
-						std::vector<T>& local_accumulator = accumulator->get_local_storage();
-						int64_t my_index = for_each_data->index.fetch_add(work_size);
-						if (my_index >= end) {
-							if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-								m_parent.m_context->erase_completed_parallel_for_tasks();
-							}
-							return bar;
 						}
-						int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
-						for (int64_t i = my_index; i < limit; ++i) {
-							op(local_accumulator, i);
-						}
+						return bar;
 					}
+				};
+
+				parallel_for_operation for_each(int64_t begin = 0, int64_t end = 0, int64_t work_size = 256) {
+					parallel_for_operation op(m_parent);
+					op.begin = begin;
+					op.end = end;
+					op.work_size = work_size;
+					return op;
 				}
-
 
 				task& m_parent;
 			};

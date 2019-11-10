@@ -29,7 +29,10 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 					m_tasks.pop_back();
 				}
 				else {
-					for_each_task_index = i;
+					// always work on the first available parallel for op. this way we maximize the speed at which tasks get unblocked.
+					if (for_each_task_index == ~size_t(0)) {
+						for_each_task_index = i;
+					}
 				}
 			}
 		}

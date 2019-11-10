@@ -314,7 +314,10 @@ namespace rynx {
 					}
 				};
 
-				auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](rynx::ecs::view<components::frame_collisions, components::motion> ecs, rynx::scheduler::task& task) {
+				auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](
+					rynx::ecs::view<components::motion> ecs,
+					rynx::scheduler::task& task)
+				{
 
 					std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
 					collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
@@ -342,7 +345,7 @@ namespace rynx {
 							auto overlaps = overlaps_vector[i];
 							auto extras = extra_infos[i];
 							
-							barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), [overlaps, extras, ecs](int64_t index) mutable {
+							barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), 32).execute([overlaps, extras, ecs](int64_t index) mutable {
 								auto& collision = overlaps->operator[](index);
 								collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 								collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
@@ -357,7 +360,7 @@ namespace rynx {
 								extra.relative_position_length_b = rel_pos_len_b;
 								extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
 								extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
-							}, 32));
+							}));
 						}
 
 						rynx::spin_waiter() | barriers;
@@ -372,8 +375,7 @@ namespace rynx {
 						for (size_t k = 0; k < overlaps_vector.size(); ++k) {
 							auto& overlaps = overlaps_vector[k];
 							auto& extras = extra_infos[k];
-							task& task.parallel().for_each(0, overlaps->size(), [overlaps, extras, ecs, dt](int64_t index) mutable {
-								// for(size_t index=0; index < overlaps->size(); ++index) {
+							task & task.parallel().for_each(0, overlaps->size()).deferred_work().execute([overlaps, extras, ecs, dt](int64_t index) mutable {
 								const auto& collision = overlaps->operator[](index);
 								components::motion& motion_a = *collision.a_motion;
 								components::motion& motion_b = *collision.b_motion;
@@ -382,9 +384,6 @@ namespace rynx {
 									return m.velocity + m.acceleration * dt - rel_pos_len * (m.angularVelocity + m.angularAcceleration * dt) * rel_pos_tangent;
 								};
 
-								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
-								const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
-
 								const auto& extra = extras->operator[](index);
 								const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, motion_a, dt);
 								const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, motion_b, dt);
@@ -392,11 +391,13 @@ namespace rynx {
 
 								const float impact_power = -total_rel_v.dot(collision.normal);
 								if (impact_power < 0)
-									// continue;
 									return;
 
 								const auto proximity_force = collision.normal * collision.penetration * collision.penetration;
 								rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
+
+								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
+								const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
 
 								const float inertia1 = sqr(collision.normal.cross2d(rel_pos_a)) * collision.a_body.inv_moment_of_inertia;
 								const float inertia2 = sqr(collision.normal.cross2d(rel_pos_b)) * collision.b_body.inv_moment_of_inertia;
@@ -412,8 +413,7 @@ namespace rynx {
 
 								const float mu = (collision.a_body.friction_multiplier + collision.b_body.friction_multiplier) * 0.5f;
 								vec3<float> tangent = normal.normal2d();
-								if (tangent.dot(total_rel_v) < 0)
-									tangent *= -1;
+								tangent *= ((tangent.dot(total_rel_v) > 0) * 2.0f - 1.0f);
 
 								float friction_power = -tangent.dot(total_rel_v) * mu;
 
@@ -425,19 +425,20 @@ namespace rynx {
 
 								tangent *= friction_power;
 
-								motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass / dt;
-								motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass / dt;
+								float inv_dt = 1.0f / dt;
+								motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
+								motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;
 
 								{
 									float rotation_force_friction = tangent.cross2d(rel_pos_a);
 									float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
-									motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia / dt;
+									motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia * inv_dt;
 								}
 
 								{
 									float rotation_force_friction = tangent.cross2d(rel_pos_b);
 									float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
-									motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia / dt;
+									motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia * inv_dt;
 								}
 							});
 						}
@@ -449,7 +450,7 @@ namespace rynx {
 							m.acceleration += m_gravity;
 						});
 					}
-				})->depends_on(*findCollisionsTask).then(update_ropes)->then(collision_resolution_first_stage);
+				})->depends_on(*findCollisionsTask).then("update ropes", update_ropes)->then("collision resolve", collision_resolution_first_stage);
 			}
 
 		private:

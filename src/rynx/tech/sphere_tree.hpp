@@ -459,7 +459,9 @@ public:
 		rynx::scheduler::barrier entities_migrated_bar;
 
 		auto limit = (capacity >> 4) + 1;
-		auto [bar, accumulator_ptr] = task_context.parallel().for_each_accumulate<plip>(update_next_index, update_next_index + limit, [this, capacity](std::vector<plip>& accumulator, int64_t index) {
+		auto [bar, accumulator_ptr] = task_context.parallel().for_each(update_next_index, update_next_index + limit)
+			.execute_accumulate<plip>([this, capacity](std::vector<plip>& accumulator, int64_t index)
+		{
 			index &= capacity - 1;
 			if (entryMap.slot_test(index)) {
 				auto entry = entryMap.slot_get(index);
@@ -530,9 +532,9 @@ public:
 				// objects is detected one frame late. but this does give 60% performance boost, and the error case of possible late detection isn't too bad.
 				std::reverse(flat_answer.begin(), flat_answer.end());
 				size_t s = flat_answer.size();
-				task_context.parallel().for_each(0, s, [layer = std::move(flat_answer)](int64_t i) {
+				task_context.parallel().for_each(0, s, 8).execute([layer = std::move(flat_answer)](int64_t i) {
 					layer[i]->update_single();
-				}, 8);
+				});
 
 				// This would give 100% correct result in all situations. But it has to sync between layers, which is slow.
 				/*
@@ -644,7 +646,7 @@ private:
 		rynx_assert(a != nullptr, "node cannot be null");
 		auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 		auto leaf_node_count = leaf_nodes.size();
-		task & task.parallel().for_each_accumulate(accumulator, 0, leaf_node_count, [f, leaf_nodes = std::move(leaf_nodes)](std::vector<T>& acc, int64_t node_index) {
+		task & task.parallel().for_each(0, leaf_node_count, 8).execute_accumulate(accumulator, [f, leaf_nodes = std::move(leaf_nodes)](std::vector<T>& acc, int64_t node_index) {
 			const node* a = leaf_nodes[node_index];
 			for (size_t i = 0; i < a->m_members.size(); ++i) {
 				const auto& m1 = a->m_members[i];
@@ -653,19 +655,19 @@ private:
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
-						f(acc, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+						f(acc, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
 					}
 				}
 			}
-		}, 8);
+		});
 	}
 
 	template<typename T, typename F> static void collisions_internal_parallel_node_node(
 		std::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
 		F&& f,
 		rynx::scheduler::task& task_context,
-		const node* rynx_restrict a,
-		const node* rynx_restrict b)
+		const node* a,
+		const node* b)
 	{
 		std::shared_ptr<rynx::unordered_map<const node*, std::vector<const node*>>> leaf_pairs = std::make_shared<rynx::unordered_map<const node*, std::vector<const node*>>>();
 		{
@@ -674,7 +676,7 @@ private:
 		}
 
 		rynx_profile("collision detection", "gather entity pairs");
-		task_context & task_context.parallel().for_each_accumulate(accumulator, 0, leaf_pairs->capacity(), [f, leaf_pairs](std::vector<T>& acc, int64_t i) {
+		task_context & task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).execute_accumulate(accumulator, [f, leaf_pairs](std::vector<T>& acc, int64_t i) {
 			if (!leaf_pairs->slot_test(i))
 				return;
 
@@ -688,14 +690,14 @@ private:
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
 								auto normal = (member1.pos - member2.pos).normalize();
-								float penetration = std::sqrtf(radiusSqr) - std::sqrtf(distSqr);
+								float penetration = math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr);
 								f(acc, member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 							}
 						}
 					}
 				}
 			}
-		}, 8);
+		});
 	}
 
 	template<typename T, typename F> static void collisions_internal_parallel(
@@ -704,8 +706,13 @@ private:
 		rynx::scheduler::task& task_context,
 		const node* rynx_restrict a)
 	{
-		collisions_internal_parallel_intra_node(accumulator, std::forward<F>(f), task_context, a);
-		collisions_internal_parallel_node_node(accumulator, std::forward<F>(f), task_context, a, a);
+		task_context.extend_task_execute_parallel("intra-node", [accumulator, f, a](rynx::scheduler::task& task_context) {
+			collisions_internal_parallel_intra_node(accumulator, f, task_context, a);
+		});
+		
+		task_context.extend_task_execute_parallel("inter-node", [accumulator, f, a](rynx::scheduler::task& task_context) {
+			collisions_internal_parallel_node_node(accumulator, f, task_context, a, a);
+		});
 	}
 
 
@@ -722,7 +729,7 @@ private:
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
-						f(m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), std::sqrtf(radiusSqr) - std::sqrtf(distSqr));
+						f(m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
 					}
 				}
 			}
@@ -781,7 +788,7 @@ private:
 							float radiusSqr = sqr(member1.radius + member2.radius);
 							if (distSqr < radiusSqr) {
 								auto normal = (member1.pos - member2.pos).normalize();
-								float penetration = std::sqrtf(radiusSqr) - std::sqrtf(distSqr);
+								float penetration = math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr);
 								f(member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 							}
 						}

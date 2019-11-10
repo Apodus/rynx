@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rynx/tech/math/vector.hpp>
+#include <rynx/tech/math/math.hpp>
 
 #include <cstring>
 #include <immintrin.h>
@@ -13,7 +14,7 @@ public:
 		vec4f row[4];
 	};
 
-	float length(float x, float y, float z) { return std::sqrtf(x * x + y * y + z * z) + 0.00000001f; }
+	float length(float x, float y, float z) { return math::sqrt_approx(x * x + y * y + z * z) + 0.00000001f; }
 
 public:
 
