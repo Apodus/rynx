@@ -105,6 +105,8 @@ namespace rynx {
 		struct projectile {}; // tag for fast moving items in collision detection.
 		struct ignore_gravity {};
 
+		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
+
 		// TODO: Remove
 		struct frame_collisions {
 			struct entry {

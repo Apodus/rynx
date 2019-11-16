@@ -20,6 +20,7 @@ namespace rynx {
 					m_camera = camera;
 
 					m_balls = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
+					m_balls_translucent = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 				}
 
@@ -43,7 +44,9 @@ namespace rynx {
 						cameraBot = m_camera->position().y - m_camera->position().z;
 						
 						m_balls->clear();
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
+						m_balls_translucent->clear();
+						
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
 							.execute_parallel(task_context, [this] (
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
@@ -60,6 +63,25 @@ namespace rynx {
 
 									m_balls->emplace_back(model);
 									m_balls->emplace_back(color.value);
+								});
+
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().in<rynx::components::translucent>()
+							.execute_parallel(task_context, [this](
+								const rynx::components::position& pos,
+								const rynx::components::radius& r,
+								const rynx::components::color& color)
+								{
+									if (!inScreen(pos.value, r.r))
+										return;
+
+									matrix4 model;
+									model.discardSetTranslate(pos.value);
+									model.scale(r.r);
+									model.rotate_2d(pos.angle);
+									// model.rotate(pos.angle, 0, 0, 1);
+
+									m_balls_translucent->emplace_back(model);
+									m_balls_translucent->emplace_back(color.value);
 								});
 					});
 
@@ -102,14 +124,22 @@ namespace rynx {
 				
 				virtual void render() override {
 					{
-						rynx_profile("visualisation", "ball_draw");
+						rynx_profile("visualisation", "ball draw solids");
 						m_balls->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
+
 					{
-						rynx_profile("visualisation", "rope_draw");
+						rynx_profile("visualisation", "ball draw ropes");
 						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
+							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
+						});
+					}
+
+					{
+						rynx_profile("visualisation", "ball draw translucent");
+						m_balls_translucent->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
@@ -122,6 +152,7 @@ namespace rynx {
 				float cameraBot;
 
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls_translucent;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
 				
 				MeshRenderer* m_meshRenderer;

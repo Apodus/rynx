@@ -300,7 +300,7 @@ namespace rynx {
 										particle_info_v[i] = p_info;
 									}
 
-									ecs.create_n(
+									ecs.create_n<rynx::components::translucent>(
 										pos_v,
 										radius_v,
 										motion_v,

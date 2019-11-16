@@ -90,6 +90,9 @@ namespace rynx {
 				m_data.pop_back();
 			}
 
+			void insert_default(size_t n) {
+				m_data.resize(m_data.size() + n);
+			}
 
 			// NOTE: This is required for moving entities between categories reliably.
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) override {
@@ -156,10 +159,16 @@ namespace rynx {
 					return { migrate_move(erasedEntityId.value, 0, nullptr), migrate_move(rynx::ecs::entity_index::InvalidId, index, this) };
 			}
 
-			template<typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
+			template<typename... Tags, typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
 				(table<Components>().insert(components), ...);
 				size_t index = m_ids.size();
 				m_ids.insert(m_ids.end(), ids.begin(), ids.end());
+				
+				auto insert_tags_table = [num = ids.size()](auto& table) {
+					table.insert_default(num);
+				};
+				(insert_tags_table(table<Tags>()), ...);
+
 				return index;
 			}
 
@@ -685,25 +694,27 @@ namespace rynx {
 			return id;
 		}
 
-		template<typename... Components>
+		// TODO: The api for tags is super unclear for user. Should have some kind of ..
+		//       create_n(ids, vector<Ts>).with_tags<Tag1, Tag2...>(); // style format.
+		template<typename... Tags, typename... Components>
 		std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
 			rynx_assert((components.size() & ...) == (components.size() | ...), "components vector sizes do not match!");
 			std::vector<entity_id_t> ids(rynx::first_of(components...).size());
-			
+
 			// TODO: generate_n might be more efficient. benchmark if this shows up in profiler.
 			for (entity_id_t& id : ids) {
 				id = m_entities.generateOne();
 			}
-			
+
 			// target category is the same for all entities created in this call.
 			dynamic_bitset targetCategory;
 			(targetCategory.set(m_types.id<Components>()), ...);
+			(targetCategory.set(m_types.id<Tags>()), ...);
 			auto category_it = m_categories.find(targetCategory);
 			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
-			
 
 			auto first_index = category_it->second->size();
-			category_it->second->insertNew(ids, components...);
+			category_it->second->insertNew<Tags...>(ids, components...);
 			for (size_t i = 0; i < ids.size(); ++i) {
 				m_idCategoryMap.emplace(ids[i], std::make_pair(category_it->second.get(), index_t(first_index + i)));
 			}
