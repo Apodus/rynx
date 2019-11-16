@@ -48,6 +48,9 @@
 
 int main(int argc, char** argv) {
 	
+	// uses this thread services of rynx, for example in cpu performance profiling.
+	rynx::this_thread::rynx_thread_raii rynx_thread_services_required_token;
+	
 	Font fontLenka(Fonts::setFontLenka());
 	Font fontConsola(Fonts::setFontConsolaMono());
 

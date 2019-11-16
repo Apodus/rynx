@@ -12,8 +12,6 @@ namespace rynx {
 
 	template<typename T, typename U, typename Hash = std::hash<T>, class KeyEqual = std::equal_to<T>>
 	class unordered_map {
-		static constexpr uint32_t npos = ~uint32_t(0);
-
 #if 0
 		// Array of structs layout
 		inline uint32_t next_of_slot(size_t slot) const { return m_info[(slot << 2) + 0]; }
@@ -127,63 +125,6 @@ namespace rynx {
 
 		inline value_type& item_in_slot(size_t slot) { rynx_assert(slot < m_capacity, "index out of bounds"); return *reinterpret_cast<value_type*>(m_data.get() + slot); }
 
-		uint32_t try_pack_neighbors(uint32_t slot, uint32_t hash) {
-			auto tryPackOne = [this](uint32_t slot, uint32_t hash) {
-				auto distance_f = [this](uint32_t slot, uint32_t hash) { return slot > hash ? slot - hash : static_cast<uint32_t>(m_capacity) - hash + slot; };
-				auto move_item_for_packing = [this](uint32_t from, uint32_t to) {
-					new (m_data.get() + to) value_type(std::move(item_in_slot(from)));
-					item_in_slot(from).~value_type();
-
-					auto slot_of_from = hash_of_item(from);
-					auto prev_of_from = prev_of_item(from);
-					auto next_of_from = next_of_item(from);
-					auto next_of_from_hash_slot = next_of_slot(slot_of_from);
-					if (prev_of_from != npos) {
-						update_next_of_item(prev_of_from, to);
-						update_prev_of_item(to, prev_of_from);
-					}
-					if (next_of_from != npos) {
-						update_prev_of_item(next_of_from, to);
-						update_next_of_item(to, next_of_from);
-					}
-					if (next_of_from_hash_slot == from) {
-						update_next_of_slot(slot_of_from, to);
-					}
-
-					update_prev_of_item(from, npos);
-					update_next_of_item(from, npos);
-					update_hash_of_item(from, npos);
-
-					m_presence.reset(from);
-					m_presence.set(to);
-				};
-
-				uint32_t current_distance = distance_f(slot, hash);
-				uint32_t checkPos = (slot - 1) & (m_capacity - 1);
-				uint32_t addedDistanceIfMoved = 1;
-				while (checkPos != hash) {
-
-					uint32_t dist_of_checkPos = distance_f(checkPos, hash_of_item(checkPos));
-					if (dist_of_checkPos + addedDistanceIfMoved < current_distance) {
-						move_item_for_packing(checkPos, slot);
-						return checkPos;
-					}
-
-					++addedDistanceIfMoved;
-					--checkPos;
-					checkPos &= m_capacity - 1;
-				}
-				return slot;
-			};
-
-			for (;;) {
-				uint32_t result = tryPackOne(slot, hash);
-				if (result == slot)
-					return slot;
-				slot = result;
-			}
-		}
-
 		// assumes: entry is not stored prior to insert.
 		std::pair<iterator, bool> insert_unique_(value_type&& value, uint32_t hash) {
 			if (m_capacity - m_size <= m_capacity >> 3) {
@@ -203,14 +144,13 @@ namespace rynx {
 		std::pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
 			++m_size;
 			auto slot_forward = next_of_slot(hash);
-			if (slot_forward == npos) {
+			if (slot_forward == m_capacity) {
 				// find next available slot, and write it to next_of_slot.
 				auto slot = m_presence.nextZero(hash);
 				if (slot == dynamic_bitset::npos) {
 					slot = m_presence.nextZero(0);
 				}
-				// slot = try_pack_neighbors(static_cast<uint32_t>(slot), hash);
-
+				
 				rynx_assert(!m_presence.test(slot), "inserting to reserved slot");
 				new (m_data.get() + slot) value_type(std::move(value));
 				m_presence.set(slot);
@@ -223,7 +163,7 @@ namespace rynx {
 			else {
 				auto next_hash = slot_forward;
 				auto item_forward = next_of_item(next_hash);
-				while (item_forward != npos) {
+				while (item_forward != m_capacity) {
 					next_hash = item_forward;
 					item_forward = next_of_item(next_hash);
 				}
@@ -234,8 +174,7 @@ namespace rynx {
 				if (slot == dynamic_bitset::npos) {
 					slot = m_presence.nextZero(0);
 				}
-				// slot = try_pack_neighbors(static_cast<uint32_t>(slot), hash);
-
+				
 				rynx_assert(!m_presence.test(slot), "inserting to reserved slot");
 				new (m_data.get() + slot) value_type(std::move(value));
 				m_presence.set(slot);
@@ -261,7 +200,7 @@ namespace rynx {
 			m_presence.set(place);
 
 			update_hash_of_item(place, static_cast<uint32_t>(hash));
-			if (next_of_slot(hash) == npos) {
+			if (next_of_slot(hash) == m_capacity) {
 				update_next_of_slot(hash, static_cast<uint32_t>(place));
 			}
 			else {
@@ -279,7 +218,7 @@ namespace rynx {
 
 			auto first = next_of_slot(hash);
 			for (;;) {
-				if (first == npos)
+				if (first == m_capacity)
 					return dynamic_bitset::npos;
 				if (KeyEqual()(reinterpret_cast<value_type*>(m_data.get() + first)->first, key))
 					return first;
@@ -562,11 +501,11 @@ namespace rynx {
 
 	private:
 		void erase_slot(size_t slot_index) {
-			if (next_of_item(slot_index) != npos) {
+			if (next_of_item(slot_index) != m_capacity) {
 				update_prev_of_item(next_of_item(slot_index), prev_of_item(slot_index));
 			}
 
-			if (prev_of_item(slot_index) != npos) {
+			if (prev_of_item(slot_index) != m_capacity) {
 				update_next_of_item(prev_of_item(slot_index), next_of_item(slot_index));
 			}
 			else {
@@ -574,9 +513,9 @@ namespace rynx {
 			}
 
 			// todo: these should be done with one call.
-			update_next_of_item(slot_index, npos);
-			update_prev_of_item(slot_index, npos);
-			update_hash_of_item(slot_index, npos);
+			update_next_of_item(slot_index, m_capacity);
+			update_prev_of_item(slot_index, m_capacity);
+			update_hash_of_item(slot_index, m_capacity);
 
 			// call desctructor
 			item_in_slot(slot_index).~value_type();
@@ -587,10 +526,20 @@ namespace rynx {
 		}
 
 		void reserve_memory_internal(size_t s) {
-			m_data.reset(new std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[s]);
+			m_data.reset(new std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[s + 1]); // +1 for end value.
 			m_info.resize_discard(4 * s, ~uint8_t(0));
 			m_presence.resize_bits(s);
-			m_capacity = s;
+			
+			rynx_assert(s < (1llu << 32), "unordered_map does not supports sizes greater than 2^32");
+			m_capacity = static_cast<uint32_t>(s);
+			new (m_data.get() + m_capacity) value_type();
+
+			for (uint32_t i = 0; i < m_capacity; ++i) {
+				update_next_of_slot(i, m_capacity);
+				update_next_of_item(i, m_capacity);
+				update_hash_of_item(i, m_capacity);
+				update_prev_of_item(i, m_capacity);
+			}
 		}
 
 		void grow_to(size_t s) {
@@ -608,7 +557,7 @@ namespace rynx {
 		dynamic_buffer<uint32_t> m_info;
 		dynamic_bitset m_presence;
 
-		size_t m_capacity = 0;
-		size_t m_size = 0;
+		uint32_t m_capacity = 0;
+		uint32_t m_size = 0;
 	};
 }

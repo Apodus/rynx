@@ -18,6 +18,9 @@ namespace rynx {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
 					m_camera = camera;
+
+					m_balls = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
+					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 				}
 
 				bool inScreen(vec3<float> p, float r) {
@@ -31,7 +34,7 @@ namespace rynx {
 				virtual ~ball_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
-					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
+					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) mutable {
 						rynx_profile("visualisation", "model matrices");
 						
 						cameraLeft = m_camera->position().x - m_camera->position().z;
@@ -39,9 +42,9 @@ namespace rynx {
 						cameraTop = m_camera->position().y + m_camera->position().z;
 						cameraBot = m_camera->position().y - m_camera->position().z;
 						
-						m_balls_matrices = ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
-							.for_each_parallel_accumulate<matrix4>(task_context, [this](
-								std::vector<matrix4>& matrices,
+						m_balls->clear();
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>()
+							.execute_parallel(task_context, [this] (
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
@@ -55,15 +58,16 @@ namespace rynx {
 									model.rotate_2d(pos.angle);
 									// model.rotate(pos.angle, 0, 0, 1);
 
-									matrices.emplace_back(model);
-									// colors.emplace_back(color.value);
+									m_balls->emplace_back(model);
+									m_balls->emplace_back(color.value);
 								});
 					});
 
 					ctx->add_task("rope matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
 						{
 							rynx_profile("visualisation", "model matrices");
-							m_ropes_matrices = ecs.for_each_parallel_accumulate<matrix4>(task_context, [this, &ecs](std::vector<matrix4>& matrices, const rynx::components::rope& rope) {
+							m_ropes->clear();
+							ecs.for_each_parallel(task_context, [this, &ecs](const rynx::components::rope& rope) {
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 
@@ -87,7 +91,9 @@ namespace rynx {
 								model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
 								// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
 								model.scale(length, width, 1.0f);
-								matrices.emplace_back(model);
+								
+								m_ropes->emplace_back(model);
+								m_ropes->emplace_back(floats4(0, 0, 0, 1));
 							});
 						}
 
@@ -97,17 +103,13 @@ namespace rynx {
 				virtual void render() override {
 					{
 						rynx_profile("visualisation", "ball_draw");
-						m_balls_matrices->for_each([this](std::vector<matrix4>& matrices) {
-							std::vector<floats4> colors;
-							colors.resize(matrices.size(), floats4(1, 1, 1, 1));
+						m_balls->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
 					{
 						rynx_profile("visualisation", "rope_draw");
-						m_ropes_matrices->for_each([this](std::vector<matrix4>& matrices) {
-							std::vector<floats4> colors;
-							colors.resize(matrices.size(), floats4(0, 0, 0, 1));
+						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
@@ -119,12 +121,9 @@ namespace rynx {
 				float cameraTop;
 				float cameraBot;
 
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_matrices;
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_balls_colors;
-
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_ropes_matrices;
-				std::shared_ptr<rynx::parallel_accumulator<matrix4>> m_ropes_colors;
-
+				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls;
+				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
+				
 				MeshRenderer* m_meshRenderer;
 				Mesh* m_circleMesh;
 				Camera* m_camera;

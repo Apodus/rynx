@@ -5,7 +5,6 @@
 #include <rynx/tech/type_index.hpp>
 
 #include <rynx/tech/profiling.hpp>
-#include <rynx/tech/parallel_accumulator.hpp>
 
 #include <vector>
 #include <type_traits>
@@ -14,12 +13,16 @@
 
 namespace rynx {
 
-	template<typename T> struct remove_first_type {};
+	template<typename T> struct remove_first_type { using type = std::tuple<>; };
 	template<typename T, typename... Ts> struct remove_first_type<std::tuple<T, Ts...>> { using type = std::tuple<Ts...>; };
 
 	template<bool condition, typename TupleType> struct remove_front_if {
 		using type = std::conditional_t<condition, typename remove_first_type<TupleType>::type, TupleType>;
 	};
+
+	template<typename T, size_t n> struct remove_first_n_type { using type = void; };
+	template<typename... Ts, size_t n> struct remove_first_n_type<std::tuple<Ts...>, n> { using type = typename remove_first_n_type<typename remove_first_type<std::tuple<Ts...>>::type, n - 1>::type; };
+	template<typename... Ts> struct remove_first_n_type<std::tuple<Ts...>, 0> { using type = std::tuple<Ts...>; };
 
 	template<typename T, typename... Others> constexpr bool isAny() { return false || (std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<Others>> || ...); }
 	template<typename T, typename... Ts> constexpr T& first_of(T&& t, Ts&&...) { return t; }
@@ -383,56 +386,6 @@ namespace rynx {
 				}
 			}
 
-			template<typename TaskContext, typename AccumulatedType, typename F>
-			void for_each_parallel_accumulate(
-				TaskContext&& task_context,
-				std::shared_ptr<rynx::parallel_accumulator<AccumulatedType>>& accumulator,
-				F&& op)
-			{
-				using type_args_t = std::tuple<Args...>;
-				using type_args_id_t = typename remove_first_type<type_args_t>::type;
-				constexpr bool is_id_query = std::is_same_v<std::tuple_element_t<0, type_args_t>, rynx::ecs::id>;
-				if constexpr (!is_id_query) {
-					unpack_types<Args...>();
-				}
-				else {
-					unpack_types<type_args_id_t>(std::make_index_sequence<std::tuple_size_v<type_args_id_t>>());
-				}
-
-				auto& categories = m_ecs.categories();
-				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
-						auto& ids = entity_category.second->ids();
-						if constexpr (is_id_query) {
-							call_user_op_parallel_accumulate<is_id_query>(std::forward<F>(op), task_context, accumulator, ids, entity_category.second->template table_datas<accessType, type_args_id_t>());
-						}
-						else {
-							call_user_op_parallel_accumulate<is_id_query>(std::forward<F>(op), task_context, accumulator, ids, entity_category.second->template table_datas<accessType, type_args_t>());
-						}
-					}
-				}
-			}
-
-
-
-			template<bool isIdQuery, typename F, typename TaskContext, typename AccumulatedType, typename... Ts>
-			static void call_user_op_parallel_accumulate(F&& op, TaskContext&& task_context, std::shared_ptr<rynx::parallel_accumulator<AccumulatedType>>& accumulator, std::vector<id>& ids, std::tuple<Ts*...> data_ptrs) {
-				if constexpr (isIdQuery) {
-					task_context& task_context.parallel().for_each(0, ids.size()).execute_accumulate(accumulator, [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
-						std::apply([&, index](auto... ptrs) {
-							op(local_storage, ids[index], ptrs[index]...);
-						}, data_ptrs);
-					});
-				}
-				else {
-					task_context& task_context.parallel().for_each(0, ids.size()).execute_accumulate(accumulator, [op, &ids, data_ptrs](auto& local_storage, int64_t index) mutable {
-						std::apply([&, index](auto... ptrs) {
-							op(local_storage, ptrs[index]...);
-						}, data_ptrs);
-					});
-				}
-			}
-
 		private:
 			template<bool isIdQuery, typename F>
 			static void call_user_op(F&& op, std::vector<id>& ids) {
@@ -454,7 +407,7 @@ namespace rynx {
 			static void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
 				auto size = ids.size();
 				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + size, [=](id entityId) mutable {
+					std::for_each(ids.data(), ids.data() + size, [=](const id entityId) mutable {
 						op(entityId, *data_ptrs_first++, (*data_ptrs++)...);
 					});
 				}
@@ -629,28 +582,6 @@ namespace rynx {
 				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 				return *this;
 			}
-
-			template<typename AccumulateType, typename TaskContext, typename F>
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) {
-				rynx_profile("Ecs", "for_each_parallel_accumulate");
-				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
-				iterator<DataAccess::Mutable, category_source, decltype(&F::operator())> it(m_ecs);
-				it.include(std::move(inTypes));
-				it.exclude(std::move(notInTypes));
-				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
-				return accumulator;
-			}
-
-			template<typename AccumulateType, typename TaskContext, typename F>
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) const {
-				rynx_profile("Ecs", "for_each_parallel_accumulate");
-				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
-				iterator<DataAccess::Const, category_source, decltype(&F::operator())> it(m_ecs);
-				it.include(std::move(inTypes));
-				it.exclude(std::move(notInTypes));
-				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
-				return accumulator;
-			}
 		};
 
 		ecs() = default;
@@ -699,33 +630,15 @@ namespace rynx {
 		template<typename F, typename TaskContext>
 		void for_each_parallel(TaskContext&& task_context, F&& op) {
 			rynx_profile("Ecs", "for_each_parallel");
-			iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
+			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
 			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 		}
 
 		template<typename F, typename TaskContext>
 		void for_each_parallel(TaskContext&& task_context, F&& op) const {
 			rynx_profile("Ecs", "for_each_parallel");
-			iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
-			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
-		}
-
-		template<typename AccumulateType, typename TaskContext, typename F>
-		std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) {
-			rynx_profile("Ecs", "for_each_parallel_accumulate");
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
-			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
-			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
-			return accumulator;
-		}
-
-		template<typename AccumulateType, typename TaskContext, typename F>
-		std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) const {
-			rynx_profile("Ecs", "for_each_parallel_accumulate");
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
 			iterator<DataAccess::Const, ecs, decltype(&F::operator())> it(*this);
-			it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
-			return accumulator;
+			it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 		}
 
 		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
@@ -885,8 +798,8 @@ namespace rynx {
 
 		protected:
 			template<typename...Args> void componentTypesAllowed() const {
-				static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
-				static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
+				// static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
+				// static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
 			}
 
 		public:
@@ -926,24 +839,6 @@ namespace rynx {
 				rynx_profile("Ecs", "for_each");
 				iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
 				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
-			}
-
-			template<typename AccumulateType, typename TaskContext, typename F>
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) {
-				rynx_profile("Ecs", "for_each");
-				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
-				iterator<DataAccess::Mutable, view, decltype(&F::operator())> it(*this);
-				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), accumulator, std::forward<F>(op));
-				return accumulator;
-			}
-
-			template<typename AccumulateType, typename TaskContext, typename F>
-			std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> for_each_parallel_accumulate(TaskContext&& task_context, F&& op) const {
-				rynx_profile("Ecs", "for_each");
-				std::shared_ptr<typename rynx::parallel_accumulator<AccumulateType>> accumulator = std::make_shared<typename rynx::parallel_accumulator<AccumulateType>>();
-				iterator<DataAccess::Const, view, decltype(&F::operator())> it(*this);
-				it.for_each_parallel_accumulate(std::forward<TaskContext>(task_context), std::forward<Accumulator>(accumulator), std::forward<F>(op));
-				return accumulator;
 			}
 
 			bool exists(entity_id_t id) const { return m_ecs->exists(id); }

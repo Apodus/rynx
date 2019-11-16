@@ -206,7 +206,8 @@ namespace rynx {
 				findCollisionsTask->depends_on(updateBoundaryWorld);
 				
 				auto update_ropes = [](rynx::ecs::view<const components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
-					auto broken_ropes = ecs.for_each_parallel_accumulate<rynx::ecs::id>(task, [ecs](std::vector<rynx::ecs::id>& broken_ropes, rynx::ecs::id id, components::rope& rope) mutable {
+					auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
+					ecs.for_each_parallel(task, [broken_ropes, ecs](rynx::ecs::id id, const components::rope& rope) mutable {
 						auto entity_a = ecs[rope.id_a];
 						auto entity_b = ecs[rope.id_b];
 
@@ -232,7 +233,7 @@ namespace rynx {
 						
 						// Remove rope if too much strain
 						if (force > 75.0f * rope.strength)
-							broken_ropes.emplace_back(id);
+							broken_ropes->emplace_back(id);
 						force = force > 1000.0f ? 1000.0f : force;
 
 						auto direction_a_to_b = world_pos_b - world_pos_a;

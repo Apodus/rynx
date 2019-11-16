@@ -1,7 +1,8 @@
 
 #include <rynx/tech/profiling.hpp>
 #include <rynx/tech/unordered_map.hpp>
-#include <thread>
+#include <rynx/thread/this_thread.hpp>
+
 #include <array>
 #include <atomic>
 #include <mutex>
@@ -41,10 +42,6 @@ namespace rynx {
 			};
 		}
 
-		std::atomic<uint64_t> g_tid_counter = 0;
-		rynx::unordered_map<std::thread::id, uint64_t> g_thread_id_map;
-		thread_local uint64_t t_my_tid = ~uint64_t(0);
-
 		constexpr size_t profiling_storage_size = 1024 * 1024;
 		std::array<internal::duration_event, profiling_storage_size>* g_profiling_storage = nullptr;
 		std::atomic<uint64_t> g_event_counter = 0;
@@ -56,14 +53,12 @@ namespace rynx {
 		}
 
 		void init_for_this_thread() {
-			std::unique_lock lock(m_init_mutex);
-			auto my_tid = g_tid_counter.fetch_add(1);
-			g_thread_id_map.insert_or_assign(std::this_thread::get_id(), my_tid);
-			t_my_tid = my_tid;
-
 			if (!g_profiling_storage) {
-				g_start_time = current_time();
-				g_profiling_storage = new std::array<internal::duration_event, profiling_storage_size>();
+				std::unique_lock lock(m_init_mutex);
+				if (!g_profiling_storage) {
+					g_start_time = current_time();
+					g_profiling_storage = new std::array<internal::duration_event, profiling_storage_size>();
+				}
 			}
 		}
 
@@ -72,12 +67,10 @@ namespace rynx {
 			std::string& category,
 			uint64_t pid
 		) {
-			if (t_my_tid == ~uint64_t(0))
-				init_for_this_thread();
-			
+			init_for_this_thread();
 			auto my_index = g_event_counter.fetch_add(1) % g_profiling_storage->size();
 			auto* my_event = &(*g_profiling_storage)[my_index];
-			my_event->m_thread_id = t_my_tid;
+			my_event->m_thread_id = rynx::this_thread::id();
 			my_event->m_name = std::move(name);
 			my_event->m_category = std::move(category);
 			my_event->m_pid = pid;
@@ -90,7 +83,7 @@ namespace rynx {
 		) {
 			auto my_index = g_event_counter.fetch_add(1) % g_profiling_storage->size();
 			auto* my_event = &(*g_profiling_storage)[my_index];
-			my_event->m_thread_id = t_my_tid;
+			my_event->m_thread_id = rynx::this_thread::id();
 			my_event->m_pid = pid;
 			my_event->m_time_point = current_time() - g_start_time;
 			my_event->m_type = 'E';

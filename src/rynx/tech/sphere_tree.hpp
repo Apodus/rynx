@@ -459,8 +459,9 @@ public:
 		rynx::scheduler::barrier entities_migrated_bar;
 
 		auto limit = (capacity >> 4) + 1;
-		auto [bar, accumulator_ptr] = task_context.parallel().for_each(update_next_index, update_next_index + limit)
-			.execute_accumulate<plip>([this, capacity](std::vector<plip>& accumulator, int64_t index)
+		std::shared_ptr<rynx::parallel_accumulator<plip>> accumulator = std::make_shared<rynx::parallel_accumulator<plip>>();
+		auto bar = task_context.parallel().for_each(update_next_index, update_next_index + limit)
+			.execute([this, capacity, accumulator](int64_t index)
 		{
 			index &= capacity - 1;
 			if (entryMap.slot_test(index)) {
@@ -468,16 +469,14 @@ public:
 				auto item = entry.second.first->m_members[entry.second.second];
 				auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
 
-				// move to new bucket. the lock is kind of annoying, but on the other hand.
-				// there are very few entities migrating per frame. so it should not be terrible, maybe? TODO: Measure.
 				if (newLeaf.first && newLeaf.first != entry.second.first) {
-					accumulator.emplace_back(plip{ index, newLeaf.first });
+					accumulator->emplace_back(plip{ index, newLeaf.first });
 				}
 			}
 		});
 
-		task_context.extend_task_execute_parallel([this, accumulator_ptr]() {
-			accumulator_ptr->for_each([this](std::vector<plip>& found_migrates){
+		task_context.extend_task_execute_parallel([this, accumulator]() {
+			accumulator->for_each([this](std::vector<plip>& found_migrates){
 				for (auto&& migratee : found_migrates) {
 					auto entry = entryMap.slot_get(migratee.map_index);
 					auto item = entry.second.first->m_members[entry.second.second];
@@ -646,7 +645,7 @@ private:
 		rynx_assert(a != nullptr, "node cannot be null");
 		auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 		auto leaf_node_count = leaf_nodes.size();
-		task & task.parallel().for_each(0, leaf_node_count, 8).execute_accumulate(accumulator, [f, leaf_nodes = std::move(leaf_nodes)](std::vector<T>& acc, int64_t node_index) {
+		task & task.parallel().for_each(0, leaf_node_count, 8).execute([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
 			const node* a = leaf_nodes[node_index];
 			for (size_t i = 0; i < a->m_members.size(); ++i) {
 				const auto& m1 = a->m_members[i];
@@ -655,7 +654,7 @@ private:
 					float distSqr = (m1.pos - m2.pos).lengthSquared();
 					float radiusSqr = sqr(m1.radius + m2.radius);
 					if (distSqr < radiusSqr) {
-						f(acc, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
+						f(accumulator->get_local_storage<T>(), m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
 					}
 				}
 			}
@@ -676,7 +675,7 @@ private:
 		}
 
 		rynx_profile("collision detection", "gather entity pairs");
-		task_context & task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).execute_accumulate(accumulator, [f, leaf_pairs](std::vector<T>& acc, int64_t i) {
+		task_context & task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).execute([accumulator, f, leaf_pairs](int64_t i) mutable {
 			if (!leaf_pairs->slot_test(i))
 				return;
 
@@ -691,7 +690,7 @@ private:
 							if (distSqr < radiusSqr) {
 								auto normal = (member1.pos - member2.pos).normalize();
 								float penetration = math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr);
-								f(acc, member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
+								f(accumulator->get_local_storage<T>(), member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 							}
 						}
 					}

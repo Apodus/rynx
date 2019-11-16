@@ -89,7 +89,7 @@ namespace entt {
 
 template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 	int64_t count = 0;
-	ecs.for_each([&](Ts& ... ts) {
+	ecs.for_each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
 		});
 	return count;
@@ -97,7 +97,7 @@ template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 
 template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 	int64_t count = 0;
-	ecs.view<Ts...>().each([&](Ts& ... ts) {
+	ecs.view<Ts...>().each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
 		});
 	return count;

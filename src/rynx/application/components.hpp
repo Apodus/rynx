@@ -24,8 +24,8 @@ namespace rynx {
 	namespace components {
 		struct color {
 			color() {}
-			color(vec4<float> value) : value(value) {}
-			vec4<float> value = { 1, 1, 1, 1 };
+			color(floats4 value) : value(value) {}
+			floats4 value = { 1, 1, 1, 1 };
 		};
 
 		struct position {
