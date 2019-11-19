@@ -60,9 +60,7 @@ namespace rynx {
 					(unpack_resource<Args>()(host), ...); // apply the resource constraints to the task.
 				}
 
-				template<typename T> inline auto& getTaskArgParam(context* ctx, rynx::scheduler::task* currentTask) {
-					(void)currentTask; // trust me mr compiler. they are both useful parameters.
-					(void)ctx;
+				template<typename T> inline auto& getTaskArgParam(context* [[maybe_unused]] ctx, rynx::scheduler::task* [[maybe_unused]] currentTask) {
 					if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::scheduler::task>) {
 						return ctx->getTaskArgParam<T>();
 					}

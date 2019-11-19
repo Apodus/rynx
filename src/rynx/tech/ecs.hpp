@@ -72,6 +72,7 @@ namespace rynx {
 		public:
 			virtual ~itable() {}
 			virtual void erase(entity_id_t entityId) = 0;
+			virtual void swap(index_t index1, index_t index2) = 0; // TODO: Individual swaps as virtuals = tons of virtual calls. Should group these.
 			// virtual itable* deepCopy() const = 0;
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
@@ -85,6 +86,11 @@ namespace rynx {
 			void insert(T&& t) { m_data.emplace_back(std::forward<T>(t)); }
 			void insert(std::vector<T>& v) { m_data.insert(m_data.end(), v.begin(), v.end()); }
 			template<typename...Ts> void emplace_back(Ts&& ... ts) { m_data.emplace_back(std::forward<Ts>(ts)...); }
+			
+			virtual void swap(index_t a, index_t b) override {
+				std::swap(m_data[a], m_data[b]);
+			}
+
 			virtual void erase(entity_id_t id) override {
 				m_data[id] = std::move(m_data.back());
 				m_data.pop_back();
@@ -140,7 +146,7 @@ namespace rynx {
 			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
 			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
 
-			std::pair<migrate_move, migrate_move> erase(index_t index) {
+			void erase(index_t index, rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
 				for (auto&& table : m_tables) {
 					if(table)
 						table->erase(index);
@@ -151,12 +157,21 @@ namespace rynx {
 				m_ids[index] = std::move(m_ids.back());
 				m_ids.pop_back();
 				
-				// NOTE: This approach of returning what was done and require caller to react is a little bit sad.
-				//       We could instead pass the datastructures in here and do the modifications right here? or something.
-				if(index != m_ids.size())
-					return { migrate_move(erasedEntityId.value, 0, nullptr), migrate_move(m_ids[index].value, index, this) };
-				else
-					return { migrate_move(erasedEntityId.value, 0, nullptr), migrate_move(rynx::ecs::entity_index::InvalidId, index, this) };
+				// update ecs-wide id<->category mapping
+				idmap.erase(erasedEntityId.value);
+				if (index != m_ids.size()) {
+					idmap[m_ids[index].value] = { this, index };
+				}
+			}
+
+			// NOTE: we don't update idmap eagerly here, because n log n updates in full sort.
+			//       better to update all touched entries once after all swaps are done.
+			void swap(index_t index1, index_t index2) {
+				for (auto&& table : m_tables) {
+					if (table) {
+						table->swap(index1, index2);
+					}
+				}
 			}
 
 			template<typename... Tags, typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
@@ -228,7 +243,12 @@ namespace rynx {
 
 			const dynamic_bitset& types() const { return m_types; }
 
-			std::pair<migrate_move, migrate_move> migrateEntity(const dynamic_bitset& types, entity_category* source, index_t source_index) {
+			void migrateEntity(
+				const dynamic_bitset& types,
+				entity_category* source,
+				index_t source_index,
+				rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap
+			) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					source->m_tables[typeId]->moveFromIndexTo(source_index, m_tables[typeId].get());
@@ -239,19 +259,10 @@ namespace rynx {
 				source->m_ids[source_index] = source->m_ids.back();
 				source->m_ids.pop_back();
 
-				// NOTE: This is a bit unclean solution. If there's time, see if this could be cleaned up.
-				//       If we had access to the mapping within this function, we could avoid this silliness of returning 0, 0, nullptr.
-				if (source->m_ids.size() == source_index) {
-					return std::pair<migrate_move, migrate_move>(
-						migrate_move(m_ids.back().value, index_t(m_ids.size() - 1), this),
-						migrate_move(0, 0, nullptr)
-					);
-				}
-				else {
-					return std::pair<migrate_move, migrate_move>(
-						migrate_move(m_ids.back().value, index_t(m_ids.size() - 1), this),
-						migrate_move(source->m_ids[source_index].value, source_index, source)
-					);
+				// update mapping
+				idmap.find(m_ids.back().value)->second = { this, index_t(m_ids.size() - 1) };
+				if (source->m_ids.size() != source_index) {
+					idmap.find(source->m_ids[source_index].value)->second = { source, index_t(source_index) };
 				}
 			}
 
@@ -341,9 +352,32 @@ namespace rynx {
 			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
 			template<typename... Ts> void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
 
+			template<typename TupleType, size_t...Is> void unpack_types_exclude(std::index_sequence<Is...>) { (excludeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
+			template<typename... Ts> void unpack_types_exclude() { (excludeTypes.set(m_ecs.template typeId<Ts>()), ...); }
+
 			dynamic_bitset includeTypes;
 			dynamic_bitset excludeTypes;
 			category_source& m_ecs;
+		};
+
+		template<typename category_source>
+		class sorter : public gatherer<category_source> {
+		public:
+			sorter(category_source& ecs) : gatherer(ecs) {}
+			sorter(const category_source& ecs) : gatherer(ecs) {}
+
+			template<typename... Args> sorter& in() { unpack_types<Args...>(); return *this; }
+			template<typename... Args> sorter& notIn() { unpack_types_exclude<Args...>(); return *this; }
+
+			template<typename T> void sort_buckets_one_step() {
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						// call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+					}
+				}
+			}
 		};
 
 		template<DataAccess accessType, typename category_source, typename F> class iterator {};
@@ -623,6 +657,13 @@ namespace rynx {
 		}
 
 		template<typename F>
+		void sort_buckets(F&& op) {
+			rynx_profile("Ecs", "for_each");
+			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
+			it.sort_buckets(std::forward<F>(op));
+		}
+
+		template<typename F>
 		void for_each(F&& op) {
 			rynx_profile("Ecs", "for_each");
 			iterator<DataAccess::Mutable, ecs, decltype(&F::operator())> it(*this);
@@ -662,11 +703,7 @@ namespace rynx {
 		void erase(entity_id_t entityId) {
 			auto it = m_idCategoryMap.find(entityId);
 			if (it != m_idCategoryMap.end()) {
-				auto operations = it->second.first->erase(it->second.second);
-				m_idCategoryMap.erase(operations.first.id);
-				if (operations.second.id != entity_index::InvalidId) {
-					m_idCategoryMap[operations.second.id] = { operations.second.new_category, operations.second.newIndex };
-				}
+				it->second.first->erase(it->second.second, m_idCategoryMap);
 			}
 		}
 		
@@ -736,12 +773,14 @@ namespace rynx {
 			}
 
 			// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
-			auto changePair = destinationCategoryIt->second->migrateEntity(initialTypes, it->second.first, it->second.second);
-			//                                                             ^types moved, ^source category, ^source index
+			destinationCategoryIt->second->migrateEntity(
+				initialTypes, // types moved
+				it->second.first, // source category
+				it->second.second, // source index
+				m_idCategoryMap
+			);
+
 			destinationCategoryIt->second->insertComponents(std::forward<Components>(components)...);
-			m_idCategoryMap.find(changePair.first.id)->second = { changePair.first.new_category, changePair.first.newIndex };
-			if (changePair.second.new_category)
-				m_idCategoryMap.find(changePair.second.id)->second = { changePair.second.new_category, changePair.second.newIndex };
 
 			return *this;
 		}
