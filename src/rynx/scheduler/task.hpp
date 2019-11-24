@@ -291,7 +291,7 @@ namespace rynx {
 					}
 
 					template<typename F>
-					barrier execute(F&& op) {
+					barrier for_each(F&& op) {
 						barrier bar;
 
 						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);

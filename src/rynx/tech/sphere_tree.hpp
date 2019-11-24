@@ -461,7 +461,7 @@ public:
 		auto limit = (capacity >> 4) + 1;
 		std::shared_ptr<rynx::parallel_accumulator<plip>> accumulator = std::make_shared<rynx::parallel_accumulator<plip>>();
 		auto bar = task_context.parallel().for_each(update_next_index, update_next_index + limit)
-			.execute([this, capacity, accumulator](int64_t index)
+			.for_each([this, capacity, accumulator](int64_t index)
 		{
 			index &= capacity - 1;
 			if (entryMap.slot_test(index)) {
@@ -531,7 +531,7 @@ public:
 				// objects is detected one frame late. but this does give 60% performance boost, and the error case of possible late detection isn't too bad.
 				std::reverse(flat_answer.begin(), flat_answer.end());
 				size_t s = flat_answer.size();
-				task_context.parallel().for_each(0, s, 8).execute([layer = std::move(flat_answer)](int64_t i) {
+				task_context.parallel().for_each(0, s, 8).for_each([layer = std::move(flat_answer)](int64_t i) {
 					layer[i]->update_single();
 				});
 
@@ -645,7 +645,7 @@ private:
 		rynx_assert(a != nullptr, "node cannot be null");
 		auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 		auto leaf_node_count = leaf_nodes.size();
-		task & task.parallel().for_each(0, leaf_node_count, 8).execute([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
+		task & task.parallel().for_each(0, leaf_node_count, 8).for_each([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
 			const node* a = leaf_nodes[node_index];
 			for (size_t i = 0; i < a->m_members.size(); ++i) {
 				const auto& m1 = a->m_members[i];
@@ -675,7 +675,7 @@ private:
 		}
 
 		rynx_profile("collision detection", "gather entity pairs");
-		task_context & task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).execute([accumulator, f, leaf_pairs](int64_t i) mutable {
+		task_context & task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).for_each([accumulator, f, leaf_pairs](int64_t i) mutable {
 			if (!leaf_pairs->slot_test(i))
 				return;
 

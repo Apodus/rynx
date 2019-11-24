@@ -43,7 +43,7 @@ namespace game {
 			virtual void render() override {
 				/*
 				rynx_profile("visualisation", "hero renderer");
-				ecs.query().execute([this](
+				ecs.query().for_each([this](
 					const rynx::components::position& pos,
 					const rynx::components::radius& r,
 					const rynx::components::color& color)

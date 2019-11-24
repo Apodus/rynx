@@ -31,7 +31,7 @@ namespace rynx {
 					rynx_profile("visualisation", "boundary_renderer");
 					ctx->add_task("fetch polygon boundaries", [this](const rynx::ecs& ecs) {
 						draws.clear();
-						ecs.for_each([this](
+						ecs.query().for_each([this](
 							const rynx::components::boundary& m,
 							const rynx::components::color& color
 							) {

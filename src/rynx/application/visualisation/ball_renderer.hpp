@@ -47,7 +47,7 @@ namespace rynx {
 						m_balls_translucent->clear();
 						
 						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
-							.execute_parallel(task_context, [this] (
+							.for_each_parallel(task_context, [this] (
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
@@ -66,7 +66,7 @@ namespace rynx {
 								});
 
 						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().in<rynx::components::translucent>()
-							.execute_parallel(task_context, [this](
+							.for_each_parallel(task_context, [this](
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
@@ -89,7 +89,7 @@ namespace rynx {
 						{
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
-							ecs.for_each_parallel(task_context, [this, &ecs](const rynx::components::rope& rope) {
+							ecs.query().for_each_parallel(task_context, [this, &ecs](const rynx::components::rope& rope) {
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 

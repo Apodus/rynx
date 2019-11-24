@@ -106,7 +106,7 @@ namespace game {
 
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float dt) override {
 				scheduler.add_task("tick weapons", [dt](rynx::ecs::view<game::components::weapon> ecs) {
-					ecs.for_each([dt](game::components::weapon& weapon) {
+					ecs.query().for_each([dt](game::components::weapon& weapon) {
 						weapon.cooldownCurrent -= dt; // TODO: should we just express these as number of ticks, instead of seconds?
 						weapon.reloadTimeCurrent -= dt;
 						if (weapon.reloadTimeCurrent <= 0 && weapon.clipSizeCurrent == 0) {

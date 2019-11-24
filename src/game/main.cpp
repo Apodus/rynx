@@ -516,7 +516,7 @@ int main(int argc, char** argv) {
 			
 			{
 				std::vector<rynx::ecs::id> ids;
-				ecs.for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
+				ecs.query().for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
 					time.value -= dt;
 					if (time.value <= 0) {
 						ids.emplace_back(id);
@@ -526,7 +526,7 @@ int main(int argc, char** argv) {
 					ecs.attachToEntity(id, rynx::components::dead());
 			}
 
-			ecs.query().in<rynx::components::dead>().execute(
+			ecs.query().in<rynx::components::dead>().for_each(
 				[&collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
 					collisionDetection.erase(id.value, cat.value);
 				}

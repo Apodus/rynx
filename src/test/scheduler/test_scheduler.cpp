@@ -49,7 +49,7 @@ TEST_CASE("scheduler", "[ecs component resource accesses respected]")
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 		int v = 0;
-		kek.for_each([&](const component& a) {
+		kek.query().for_each([&](const component& a) {
 			v += a.a;
 		});
 
@@ -64,7 +64,7 @@ TEST_CASE("scheduler", "[ecs component resource accesses respected]")
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 		int v = 0;
-		kek.for_each([&](const component& a) {
+		kek.query().for_each([&](const component& a) {
 			v += a.a;
 		});
 
@@ -77,7 +77,7 @@ TEST_CASE("scheduler", "[ecs component resource accesses respected]")
 		REQUIRE(tasks_started == 3); // write task added last, will also run last in this case. because there's no reason to not run the tasks created before.
 
 		int v = 0;
-		kek.for_each([&](component& a) {
+		kek.query().for_each([&](component& a) {
 			a.a *= 2; // modify value of components.
 			v += a.a;
 		});

@@ -21,7 +21,7 @@ namespace rynx {
 						const components::particle_info,
 						const components::lifetime> ecs,
 						rynx::scheduler::task& task_context) {
-					ecs.for_each_parallel(task_context, [](components::radius& r, components::color& c, components::lifetime lt, const components::particle_info& pi) {
+					ecs.query().for_each_parallel(task_context, [](components::radius& r, components::color& c, components::lifetime lt, const components::particle_info& pi) {
 						r.r = pi.radius.linear(lt());
 						c.value = pi.color.linear(lt());
 					});

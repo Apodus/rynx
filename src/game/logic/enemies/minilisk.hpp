@@ -34,7 +34,7 @@ namespace game {
 					game::health> ecs
 					) {
 					std::vector<rynx::ecs::id> heroes;
-					ecs.for_each([&heroes](rynx::ecs::id id, const game::hero&) {
+					ecs.query().for_each([&heroes](rynx::ecs::id id, const game::hero&) {
 						heroes.emplace_back(id);
 					});
 
@@ -42,7 +42,7 @@ namespace game {
 						return; // no players, nothing to do.
 					}
 
-					ecs.for_each([&heroes, &ecs, dt](game::components::minilisk& enemy, const rynx::components::position& pos, rynx::components::motion& m, const rynx::components::radius& r) {
+					ecs.query().for_each([&heroes, &ecs, dt](game::components::minilisk& enemy, const rynx::components::position& pos, rynx::components::motion& m, const rynx::components::radius& r) {
 						enemy.jumpCooldown -= dt;
 						
 						// could select closest hero, or random hero, or whatever.
@@ -113,7 +113,7 @@ namespace game {
 
 					std::vector<bullet_hit> hits;
 
-					ecs.for_each([&](rynx::ecs::id id, const rynx::components::frame_collisions& collisions, const rynx::components::projectile&, const game::components::bullet& bullet, const rynx::components::position& pos, const rynx::components::motion& m) {
+					ecs.query().for_each([&](rynx::ecs::id id, const rynx::components::frame_collisions& collisions, const rynx::components::projectile&, const game::components::bullet& bullet, const rynx::components::position& pos, const rynx::components::motion& m) {
 						if (collisions.collisions.empty())
 							return;
 

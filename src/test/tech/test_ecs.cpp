@@ -16,14 +16,14 @@ TEST_CASE("ecs views usable", "verify compiles")
 	{
 		rynx::ecs ecs;
 		rynx::ecs::view<rynx::components::position> view = ecs;
-		view.for_each([](const rynx::components::position&) {}); // is ok.	
-		view.for_each([](rynx::components::position&) {}); // is ok.
+		view.query().for_each([](const rynx::components::position&) {}); // is ok.	
+		view.query().for_each([](rynx::components::position&) {}); // is ok.
 	}
 
 	{
 		rynx::ecs ecs;
 		rynx::ecs::view<const rynx::components::position> view = ecs;
-		view.for_each([](const rynx::components::position&) {}); // is ok.	
+		view.query().for_each([](const rynx::components::position&) {}); // is ok.	
 		// view.for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
 		// view.for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
 	}
@@ -52,7 +52,7 @@ TEST_CASE("ecs for_each iterates correct amount of entities")
 		{
 			uint32_t count = 0;
 			rynx::ecs::view<a> view = db;
-			view.for_each([&count](a&) {
+			view.query().for_each([&count](a&) {
 				++count;
 			});
 
@@ -62,7 +62,7 @@ TEST_CASE("ecs for_each iterates correct amount of entities")
 		{
 			uint32_t count = 0;
 			rynx::ecs::view<b> view = db;
-			view.for_each([&count](b&) {
+			view.query().for_each([&count](b&) {
 				++count;
 			});
 
@@ -72,7 +72,7 @@ TEST_CASE("ecs for_each iterates correct amount of entities")
 		{
 			uint32_t count = 0;
 			rynx::ecs::view<a, b> view = db;
-			view.for_each([&count](a&, b&) {
+			view.query().for_each([&count](a&, b&) {
 				++count;
 			});
 
@@ -89,7 +89,7 @@ namespace entt {
 
 template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 	int64_t count = 0;
-	ecs.for_each([&](Ts ... ts) {
+	ecs.query().for_each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
 		});
 	return count;
@@ -170,7 +170,7 @@ TEST_CASE("rynx ecs: insert & delete")
 		for (int i = 0; i < 100000; ++i) {
 			r.create(two_ints{ i, i + 1 });
 		}
-		r.query().in<two_ints>().execute([&r](rynx::ecs::entity_id_t id) {
+		r.query().in<two_ints>().for_each([&r](rynx::ecs::entity_id_t id) {
 			r.erase(id);
 		});
 		return r.size();

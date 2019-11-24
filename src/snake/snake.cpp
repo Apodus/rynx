@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 						rynx::components::motion,
 						rynx::components::position> ecs, rynx::scheduler::task& task_context) {
 
-						ecs.query().in<snake_head>().execute([this, ecs](rynx::components::position pos) mutable {
+						ecs.query().in<snake_head>().for_each([this, ecs](rynx::components::position pos) mutable {
 							ecs.create(
 								rynx::components::position({ pos.value }),
 								rynx::components::lifetime(150),
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 							);
 						});
 
-						ecs.query().in<snake_head>().execute([](rynx::components::position& pos) {
+						ecs.query().in<snake_head>().for_each([](rynx::components::position& pos) {
 							constexpr float velocity = 0.5f;
 							float sin_v = math::sin_approx(pos.angle);
 							float cos_v = math::cos_approx(pos.angle);
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
 						});
 
 						std::vector<rynx::ecs::id> killed_entities;
-						ecs.query().in<snake_head>().execute([&, ecs](rynx::components::frame_collisions& collisions) {
+						ecs.query().in<snake_head>().for_each([&, ecs](rynx::components::frame_collisions& collisions) {
 							for (auto& collision : collisions.collisions) {
 								if (ecs[collision.idOfOther.value].has<apple>()) {
 									// TODO: award points to snake_head player or something.
@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
 			rynx_profile("Main", "Clean up dead entitites");
 			std::vector<rynx::ecs::id> kill_entities;
 			
-			ecs.query().in<dead>().execute([&](rynx::ecs::id id) {
+			ecs.query().in<dead>().for_each([&](rynx::ecs::id id) {
 				kill_entities.emplace_back(id);
 			});
 			
@@ -406,7 +406,7 @@ int main(int argc, char** argv) {
 				ecs.attachToEntity(id, dead());
 			}
 
-			ecs.query().in<dead>().execute([&ecs, &collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
+			ecs.query().in<dead>().for_each([&ecs, &collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
 				collisionDetection.erase(id.value, cat.value);
 			});
 
