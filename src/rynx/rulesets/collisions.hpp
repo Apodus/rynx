@@ -47,7 +47,12 @@ namespace rynx {
 						});
 					});
 
-					context.add_task("Apply acceleration and reset", [dt](rynx::ecs::view<components::motion, const components::radius> ecs, rynx::scheduler::task& task_context) {
+					context.add_task("Apply acceleration and reset", [dt](
+						rynx::ecs::view<
+							components::motion,
+							components::position,
+							const components::radius,
+							const components::collision_category> ecs, rynx::scheduler::task& task_context) {
 						{
 							rynx_profile("Motion", "apply acceleration");
 							ecs.query().notIn<components::collision_category>().for_each_parallel(task_context, [dt](components::motion& m) {

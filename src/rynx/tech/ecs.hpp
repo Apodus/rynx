@@ -416,12 +416,127 @@ namespace rynx {
 			}
 		};
 
-		template<DataAccess accessType, typename category_source, typename F> class iterator {};
+		template<DataAccess accessType, typename category_source, typename F> class buffer_iterator {};
 		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
-		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> : public gatherer<category_source> {
+		class buffer_iterator<accessType, category_source, Ret(Class::*)(size_t, FArg, Args...) const> : public gatherer<category_source> {
 		public:
-			iterator(category_source& ecs) : gatherer(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
-			iterator(const category_source& ecs) : gatherer(ecs) { m_ecs.template componentTypesAllowed<Args...>(); }
+			buffer_iterator(category_source& ecs) : gatherer(ecs) {
+				m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
+				static_assert(!std::is_same_v<FArg, rynx::ecs::id*>, "id pointer must be const when iterating buffers!");
+				if constexpr (!std::is_same_v<FArg, rynx::ecs::id const*>) {
+					m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
+				}
+			}
+			buffer_iterator(const category_source& ecs) : gatherer(ecs) {
+				m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
+				static_assert(!std::is_same_v<FArg, rynx::ecs::id*>, "id pointer must be const when iterating buffers!");
+				if constexpr (!std::is_same_v<FArg, rynx::ecs::id const*>) {
+					m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
+				}
+			}
+
+			template<typename F> void for_each_buffer(F&& op) {
+				constexpr bool is_id_query = std::is_same_v<std::tuple_element_t<0, std::tuple<FArg, Args...>>, rynx::ecs::id const *>;
+
+				using types_t = std::tuple<std::remove_pointer_t<FArg>, std::remove_pointer_t<Args>...>;
+				using id_types_t = typename rynx::remove_first_type<types_t>::type;
+
+				if constexpr (is_id_query) {
+					unpack_types<id_types_t>(std::index_sequence_for<id_types_t>());
+				}
+				else {
+					unpack_types<types_t>(std::index_sequence_for<types_t>());
+				}
+
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						if constexpr (is_id_query) {
+							auto call_user_op = [size = ids.size(), ids_data = ids.data(), &op](auto*... args) {
+								op(size, ids_data, args...);
+							};
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>());
+						}
+						else {
+							auto call_user_op = [size = ids.size(), &op](auto... args) {
+								op(size, args...);
+							};
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>());
+						}
+					}
+				}
+			}
+		};
+
+		template<DataAccess accessType, typename category_source, typename F> class entity_iterator {};
+		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
+		class entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> : public gatherer<category_source> {
+		public:
+			entity_iterator(category_source& ecs) : gatherer(ecs) {
+				m_ecs.template componentTypesAllowed<Args...>();
+				if constexpr (!std::is_same_v<FArg, rynx::ecs::id>) {
+					m_ecs.template componentTypesAllowed<FArg>();
+				}
+			}
+			
+			entity_iterator(const category_source& ecs) : gatherer(ecs) {
+				m_ecs.template componentTypesAllowed<Args...>();
+				if constexpr (!std::is_same_v<FArg, rynx::ecs::id>) {
+					m_ecs.template componentTypesAllowed<FArg>();
+				}
+			}
+
+			template<typename F> void gather_if(F&& op) {
+				using components_t = std::tuple<FArg, Args...>;
+				using components_without_first_t = std::tuple<Args...>;
+
+				constexpr bool is_id_query = std::is_same_v<std::tuple_element_t<0, components_t>, rynx::ecs::id>;
+				if constexpr (!is_id_query) {
+					unpack_types<components_t>(std::index_sequence_for<components_t>());
+				}
+				else {
+					unpack_types<components_without_first_t>(std::index_sequence_for<components_without_first_t>());
+				}
+
+				std::vector<id> gathered_ids;
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						auto* id_begin = ids.begin();
+						auto* id_end = id_begin + ids.size();
+						
+						if constexpr (is_id_query) {
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>();
+							auto iteration_func = [id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
+								while (id_begin != id_end) {
+									if (op(*id_begin, *ptrs...)) {
+										gathered_ids.emplace_back(*id_begin);
+									}
+									++ptrs...;
+									++id_begin;
+								}
+							};
+							std::apply(iteration_func, parameters_tuple);
+						}
+						else {
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>();
+							auto iteration_func = [id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
+								while (id_begin != id_end) {
+									if (op(*ptrs...)) {
+										gathered_ids.emplace_back(*id_begin);
+									}
+									++ptrs...;
+									++id_begin;
+								}
+							};
+							std::apply(iteration_func, parameters_tuple);
+						}
+					}
+				}
+				return gathered_ids;
+			}
 
 			template<typename F> void for_each(F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
@@ -478,7 +593,6 @@ namespace rynx {
 					for (size_t i = 0; i < ids.size(); ++i)
 						op();
 				}
-
 				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
 			
@@ -521,10 +635,10 @@ namespace rynx {
 
 		// support for mutable lambdas / non-const member functions
 		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
-		class iterator<accessType, category_source, Ret(Class::*)(FArg, Args...)> : public iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> {
+		class entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...)> : public entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> {
 		public:
-			iterator(category_source& ecs) : iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
-			iterator(const category_source& ecs) : iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
+			entity_iterator(category_source& ecs) : entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
+			entity_iterator(const category_source& ecs) : entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const>(ecs) {}
 		};
 
 
@@ -632,10 +746,21 @@ namespace rynx {
 			query_t& for_each(F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
-				iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
 				it.for_each(std::forward<F>(op));
+				return *this;
+			}
+
+			template<typename F>
+			query_t& for_each_buffer(F&& op) {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				buffer_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.for_each_buffer(std::forward<F>(op));
 				return *this;
 			}
 
@@ -655,7 +780,7 @@ namespace rynx {
 			query_t& for_each_parallel(TaskContext&& task_context, F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
-				iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
 				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
@@ -829,7 +954,8 @@ namespace rynx {
 
 			template<typename category_source> friend class rynx::ecs::gatherer;
 			template<DataAccess accessType, typename category_source> friend class rynx::ecs::query_t;
-			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::iterator;
+			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::entity_iterator;
+			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::buffer_iterator;
 
 			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>(); }
 			template<typename T> static constexpr bool typeConstCorrect() {
@@ -850,8 +976,8 @@ namespace rynx {
 
 		protected:
 			template<typename...Args> void componentTypesAllowed() const {
-				// static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
-				// static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
+				static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
+				static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
 			}
 
 		public:
