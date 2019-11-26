@@ -55,7 +55,7 @@ namespace game {
 
 								for (int k = 1; k < 40; ++k) {
 									auto id2 = ecs.create(
-										rynx::components::position({ x + 1 * k, y + 1 * k, 0 }),
+										rynx::components::position({ x + 1.5f * k, y + 1.5f * k, 0 }),
 										rynx::components::motion(),
 										rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
 										rynx::components::radius(1.0f),
@@ -70,8 +70,8 @@ namespace game {
 									joint.id_b = id2;
 									joint.point_a = vec3<float>(0, 0, 0);
 									joint.point_b = vec3<float>(0, 0, 0);
-									joint.length = 0.6f;
-									joint.strength = 6.0f;
+									joint.length = 1.6f;
+									joint.strength = 25.0f;
 									ecs.create(joint);
 
 									id1 = id2;

@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -1.8f, 0));
+		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -60.8f, 0));
 		auto ruleset_particle_update = std::make_unique<rynx::ruleset::particle_system>();
 		
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
@@ -209,13 +209,13 @@ int main(int argc, char** argv) {
 		*/
 
 		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.003f);
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.18f);
 
 		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
-		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.004f);
+		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
 
 		// makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
-		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.002f);
+		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);

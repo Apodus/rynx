@@ -68,32 +68,32 @@ namespace rynx {
 								m.angularVelocity += m.angularAcceleration * dt;
 								m.angularAcceleration = 0;
 
-								if (m.velocity.lengthSquared() > sqr(r.r * 0.25f / dt)) {
+								if (m.velocity.lengthSquared() > sqr(r.r * 1.0f / dt)) {
 									m.velocity.normalize();
-									m.velocity *= r.r * 0.24f / dt;
+									m.velocity *= r.r * 1.0f / dt;
 								}
 
 								if (sqr(m.angularVelocity) > sqr(0.10f / dt)) {
 									m.angularVelocity = m.angularVelocity > 0 ? +1.0f : -1.0f;
-									m.angularVelocity *= 0.09f / dt;
+									m.angularVelocity *= 0.10f / dt;
 								}
 							});
 						}
 
 						{
 							rynx_profile("Motion", "apply velocity");
-							ecs.query().for_each_parallel(task_context, [](components::position& p, const components::motion& m) {
-								p.value += m.velocity;
-								p.angle += m.angularVelocity;
+							ecs.query().for_each_parallel(task_context, [dt](components::position& p, const components::motion& m) {
+								p.value += m.velocity * dt;
+								p.angle += m.angularVelocity * dt;
 							});
 						}
 					});
 				}
 
-				context.add_task("Apply dampening", [](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
-					ecs.query().for_each_parallel(task, [](components::motion& m, components::dampening d) {
-						m.velocity *= d.linearDampening;
-						m.angularVelocity *= d.angularDampening;
+				context.add_task("Apply dampening", [dt](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
+					ecs.query().for_each_parallel(task, [dt](components::motion& m, components::dampening d) {
+						m.velocity *= std::powf(d.linearDampening, dt);
+						m.angularVelocity *= std::powf(d.angularDampening, dt);
 					});
 				})->depends_on(position_updates_barrier);
 
@@ -234,13 +234,12 @@ namespace rynx {
 						float over_extension = (length - rope.length) / rope.length;
 
 						over_extension -= (over_extension < 0) * over_extension;
-						float force = rope.strength * (over_extension * over_extension + over_extension);
+						float force = 60.0f * rope.strength * (over_extension * over_extension + over_extension);
 						
 						// Remove rope if too much strain
-						if (force > 75.0f * rope.strength)
+						if (force > 2000.0f * rope.strength)
 							broken_ropes->emplace_back(id);
-						force = force > 1000.0f ? 1000.0f : force;
-
+						
 						auto direction_a_to_b = world_pos_b - world_pos_a;
 						direction_a_to_b.normalize();
 						direction_a_to_b *= force;
@@ -399,7 +398,8 @@ namespace rynx {
 								if (impact_power < 0)
 									return;
 
-								const auto proximity_force = collision.normal * collision.penetration * collision.penetration;
+								// This *60 is not the same as dt. Just a random constant.
+								const auto proximity_force = collision.normal * collision.penetration * collision.penetration * 60.0f;
 								rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
 
 								const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
