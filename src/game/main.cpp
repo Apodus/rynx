@@ -199,7 +199,8 @@ int main(int argc, char** argv) {
 				rynx::components::color({ 0,1,0,1 }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
-				rynx::components::ignore_gravity()
+				rynx::components::ignore_gravity(),
+				rynx::components::dampening{0.50f, 1.0f}
 			);
 		};
 
@@ -209,7 +210,7 @@ int main(int argc, char** argv) {
 		*/
 
 		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.18f);
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
 
 		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
 		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);

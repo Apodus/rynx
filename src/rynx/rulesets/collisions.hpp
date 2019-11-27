@@ -68,14 +68,23 @@ namespace rynx {
 								m.angularVelocity += m.angularAcceleration * dt;
 								m.angularAcceleration = 0;
 
-								if (m.velocity.lengthSquared() > sqr(r.r * 1.0f / dt)) {
-									m.velocity.normalize();
-									m.velocity *= r.r * 1.0f / dt;
-								}
+								// turns out that limiting object velocities is a really bad idea
+								// if you allow other objects to move faster than the limit of another object.
+								// case in point: quickly rotating bar has a very high linear velocity at the tip
+								//                if this tip hits a small object which has a low maximum velocity
+								//                then the object will simply sink through the rotating bar. this is not good.
+								if constexpr (false) {
+									// cap velocity to be proportional to radius of self.
+									// imagine the collision detection implications.
+									if (m.velocity.lengthSquared() > sqr(r.r * 1.0f / dt)) {
+										m.velocity.normalize();
+										m.velocity *= r.r * 1.0f / dt;
+									}
 
-								if (sqr(m.angularVelocity) > sqr(0.10f / dt)) {
-									m.angularVelocity = m.angularVelocity > 0 ? +1.0f : -1.0f;
-									m.angularVelocity *= 0.10f / dt;
+									if (sqr(m.angularVelocity) > sqr(0.10f / dt)) {
+										m.angularVelocity = m.angularVelocity > 0 ? +1.0f : -1.0f;
+										m.angularVelocity *= 0.10f / dt;
+									}
 								}
 							});
 						}

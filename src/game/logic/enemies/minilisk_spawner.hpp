@@ -78,12 +78,15 @@ namespace game {
 								}
 							}
 							else {
+								float edge_length = 10.5f + 15.0f * (m_random() & 127) / 127.0f;
+								float mass = 5000.0f;
+								auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass / 12.0f * (height * height + width * width); };
 								ecs.create(
 									rynx::components::position(vec3<float>(x, y, 0.0f), i * 2.0f),
 									rynx::components::collision_category(dynamic),
-									rynx::components::boundary({ Shape::makeBox(1.5f + 2.0f * (m_random() & 127) / 127.0f).generateBoundary_Outside() }),
-									rynx::components::radius(math::sqrt_approx(16 + 16)),
-									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
+									rynx::components::boundary({ Shape::makeBox(edge_length).generateBoundary_Outside() }),
+									rynx::components::radius(math::sqrt_approx(2 * edge_length * edge_length)),
+									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
 									rynx::components::dampening({ 0.97f, 0.997f }),
