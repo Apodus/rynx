@@ -243,6 +243,13 @@ namespace rynx {
 						float over_extension = (length - rope.length) / rope.length;
 
 						over_extension -= (over_extension < 0) * over_extension;
+
+						// way too much extension == snap instantly
+						if (over_extension > 3.0f * rope.length) {
+							broken_ropes->emplace_back(id);
+							return;
+						}
+						
 						float force = 240.0f * rope.strength * (over_extension * over_extension + over_extension);
 						
 						rope.cumulative_stress += force * dt;
