@@ -219,9 +219,9 @@ namespace rynx {
 				findCollisionsTask->depends_on(collisions_find_barrier);
 				findCollisionsTask->depends_on(updateBoundaryWorld);
 				
-				auto update_ropes = [](rynx::ecs::view<const components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
+				auto update_ropes = [dt](rynx::ecs::view<components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
 					auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
-					ecs.query().for_each_parallel(task, [broken_ropes, ecs](rynx::ecs::id id, const components::rope& rope) mutable {
+					ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
 						auto entity_a = ecs[rope.id_a];
 						auto entity_b = ecs[rope.id_b];
 
@@ -243,10 +243,13 @@ namespace rynx {
 						float over_extension = (length - rope.length) / rope.length;
 
 						over_extension -= (over_extension < 0) * over_extension;
-						float force = 60.0f * rope.strength * (over_extension * over_extension + over_extension);
+						float force = 240.0f * rope.strength * (over_extension * over_extension + over_extension);
 						
+						rope.cumulative_stress += force * dt;
+						rope.cumulative_stress *= std::pow(0.3f, dt);
+
 						// Remove rope if too much strain
-						if (force > 2000.0f * rope.strength)
+						if (rope.cumulative_stress > 1500.0f * rope.strength)
 							broken_ropes->emplace_back(id);
 						
 						auto direction_a_to_b = world_pos_b - world_pos_a;

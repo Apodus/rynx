@@ -132,6 +132,8 @@ namespace rynx {
 
 			float length;
 			float strength;
+
+			float cumulative_stress = 0;
 		};
 
 		struct dead {}; // mark entity for cleanup.
