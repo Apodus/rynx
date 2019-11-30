@@ -35,7 +35,7 @@ namespace rynx {
 				virtual ~ball_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
-					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) mutable {
+					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
 						rynx_profile("visualisation", "model matrices");
 						
 						cameraLeft = m_camera->position().x - m_camera->position().z;
@@ -46,6 +46,16 @@ namespace rynx {
 						m_balls->clear();
 						m_balls_translucent->clear();
 						
+						/*
+						auto ids = ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
+							.in<rynx::components::position, rynx::components::radius, rynx::components::color>()
+							.gather();
+
+						for (auto id : ids) {
+							ecs.attachToEntity(id, matrix4());
+						}
+						*/
+
 						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
 							.for_each_parallel(task_context, [this] (
 								const rynx::components::position& pos,
