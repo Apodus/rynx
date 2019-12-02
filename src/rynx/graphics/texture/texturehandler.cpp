@@ -183,7 +183,7 @@ unsigned GPUTextures::createTexture(const std::string& name, int width, int heig
 	return textures[name];
 }
 
-unsigned GPUTextures::createDepthTexture(const std::string& name, int width, int height)
+unsigned GPUTextures::createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel)
 {
 	rynx_assert(!name.empty(), "create depth texture called with empty name");
 
@@ -191,16 +191,21 @@ unsigned GPUTextures::createDepthTexture(const std::string& name, int width, int
 	glBindTexture(GL_TEXTURE_2D, textures[name]);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // scale linearly when image bigger than texture
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // scale linearly when image smalled than texture
+	
+	rynx_assert(bits_per_pixel == 16 || bits_per_pixel == 32, "pixel format not supported by this code.");
 
-#ifndef _WIN32
-	// not really sure if this is 100% necessary anyway..
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_COMPARE_MODE, GL_NONE);
-#endif
+	int depth_tex_internal_format = GL_DEPTH_COMPONENT16;
+	int depth_tex_storage_format = GL_UNSIGNED_SHORT;
+	if (bits_per_pixel == 16) {
+		depth_tex_internal_format = GL_DEPTH_COMPONENT16;
+		depth_tex_storage_format = GL_UNSIGNED_SHORT;
+	}
+	if (bits_per_pixel == 32) {
+		depth_tex_internal_format = GL_DEPTH_COMPONENT32;
+		depth_tex_storage_format = GL_UNSIGNED_INT;
+	}
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
-
-	int value;
-	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &value);
+	glTexImage2D(GL_TEXTURE_2D, 0, depth_tex_internal_format, width, height, 0, GL_DEPTH_COMPONENT, depth_tex_storage_format, nullptr);
 	return textures[name];
 }
 
@@ -262,8 +267,7 @@ void GPUTextures::deleteTexture(const std::string& name)
 
 void GPUTextures::unbindTexture(size_t texture_unit)
 {
-	glActiveTexture(GL_TEXTURE0 + int(texture_unit));
-	glDisable(GL_TEXTURE_2D);
+	// glActiveTexture(GL_TEXTURE0 + int(texture_unit));
 	current_textures[texture_unit] = "";
 }
 
@@ -280,9 +284,9 @@ int GPUTextures::bindTexture(size_t texture_unit, const std::string& name)
 	if(textureExists(realName))
 	{
 		glActiveTexture(GL_TEXTURE0 + int(texture_unit));
-		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, textures[realName]);
 		current_textures[texture_unit] = realName;
+		rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 		return 1;
 	}
 	else

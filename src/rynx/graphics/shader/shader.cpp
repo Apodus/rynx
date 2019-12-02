@@ -103,7 +103,7 @@ Shader::Shader(const std::string& vert, const std::string& frag):
 		auto errorValue = glGetError();
 		if (errorValue == GL_NO_ERROR)
 			break;
-		logmsg("gl error value: %d", errorValue);
+		rynx_assert(false, "gl error value: %d", errorValue);
 	}
 	printlogmsg(m_programID);
 }

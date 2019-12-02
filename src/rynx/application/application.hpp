@@ -51,11 +51,12 @@ namespace rynx {
 
 			std::shared_ptr<Window> window() { return m_window; }
 			std::shared_ptr<UserIO> input() { return m_input; }
-			
+			std::shared_ptr<Shaders> shaders() { return m_shaders; }
+
 			MeshRenderer& meshRenderer() { return *m_meshRenderer; }
 			TextRenderer& textRenderer() { return *m_textRenderer; }
 
-			GPUTextures& textures() { return *m_textures; }
+			std::shared_ptr<GPUTextures> textures() { return m_textures; }
 			float aspectRatio() const { return m_window->getAspectRatio(); }
 			bool isExitRequested() const { return m_window->shouldClose(); }
 

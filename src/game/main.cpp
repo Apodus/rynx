@@ -46,6 +46,9 @@
 #include <rynx/menu/Slider.hpp>
 #include <rynx/menu/Div.hpp>
 
+#include <rynx/graphics/framebuffer.hpp>
+#include <rynx/graphics/renderer/screenspace.hpp>
+
 int main(int argc, char** argv) {
 	
 	// uses this thread services of rynx, for example in cpu performance profiling.
@@ -231,9 +234,6 @@ int main(int argc, char** argv) {
 	auto zoomOut = gameInput.generateAndBindGameKey('1', "zoom out");
 	auto zoomIn = gameInput.generateAndBindGameKey('2', "zoom in");
 
-
-	application.meshRenderer().setDepthTest(false);
-
 	auto menuCamera = std::make_shared<Camera>();
 
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
@@ -255,11 +255,11 @@ int main(int argc, char** argv) {
 
 	// construct menus
 	{
-		auto sampleButton = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.14f);
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.16f);
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.18f);
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.14f);
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.16f);
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.18f);
+		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
@@ -329,6 +329,15 @@ int main(int argc, char** argv) {
 		}
 	});
 
+	auto fbo_world_geometry = rynx::graphics::framebuffer::config()
+		.set_default_resolution(1920, 1080)
+		.add_rgba8_target("color")
+		.add_rgba8_target("normal")
+		.add_depth32_target()
+		.construct(application.textures(), "world_geometry");
+
+	rynx::graphics::screenspace_renderer screenspace(application.shaders());
+
 	rynx::timer timer;
 	rynx::numeric_property<float> logic_time;
 	rynx::numeric_property<float> render_time;
@@ -341,6 +350,8 @@ int main(int argc, char** argv) {
 		rynx_profile("Main", "frame");
 		frame_timer_dt.reset();
 		
+		fbo_world_geometry->bind();
+
 		{
 			rynx_profile("Main", "start frame");
 			application.startFrame();
@@ -444,6 +455,7 @@ int main(int argc, char** argv) {
 
 				{
 					rynx_profile("Main", "draw");
+					// application.meshRenderer().setDepthTest(true);
 					gameRenderer.render();
 				}
 			}
@@ -476,7 +488,8 @@ int main(int argc, char** argv) {
 
 			{
 				rynx_profile("Main", "Menus");
-
+				application.meshRenderer().setDepthTest(false);
+				
 				// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
 				// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
 				root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
@@ -501,6 +514,12 @@ int main(int argc, char** argv) {
 				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
 				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+			}
+
+			{
+				rynx::graphics::framebuffer::unbind();
+				application.textures()->bindTexture(0, fbo_world_geometry->get_texture_name_of_render_target("color"));
+				screenspace.draw_fullscreen();
 			}
 
 			timer.reset();

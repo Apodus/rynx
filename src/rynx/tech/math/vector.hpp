@@ -277,3 +277,4 @@ inline vec3<float> operator * (float x, const vec3<float>& other) {
 }
 
 using vec4f = vec4<float>;
+using vec3f = vec3<float>;

@@ -45,9 +45,7 @@ void Mesh::build() {
 
 	auto verifyNoGlErrors = []() {
 		auto error = glGetError();
-		if (error != GL_NO_ERROR) {
-			logmsg("gl error: %d", error);
-		}
+		rynx_assert(error == GL_NO_ERROR, "oh shit");
 		return error == GL_NO_ERROR;
 	};
 
@@ -76,7 +74,7 @@ void Mesh::build() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * indices.size(), &indices[0], GL_STATIC_DRAW);
 
-	rynx_assert(verifyNoGlErrors(), "OpenGL error");
+	verifyNoGlErrors();
 }
 
 void Mesh::rebuildTextureBuffer() {

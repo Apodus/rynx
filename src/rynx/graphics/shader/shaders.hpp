@@ -16,7 +16,6 @@ public:
 	Shaders();
 	~Shaders();
 
-	void init();
 	void release();
 
 	std::shared_ptr<Shader> loadShader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);

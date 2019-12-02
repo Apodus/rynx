@@ -50,7 +50,7 @@ void rynx::MeshRenderer::init() {
 		m_viewUniform_instanced = shader2d->uniform("view");
 		m_projectionUniform_instanced = shader2d->uniform("projection");
 		m_texSamplerUniform_instanced = shader2d->uniform("tex");
-		glUniform1i(m_texSamplerUniform, 0);
+		glUniform1i(m_texSamplerUniform_instanced, 0);
 	}
 
 	{
@@ -62,6 +62,8 @@ void rynx::MeshRenderer::init() {
 		glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
 		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 	}
+
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
 void rynx::MeshRenderer::loadDefaultMesh(const std::string& textureName) {
@@ -77,7 +79,16 @@ void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
 }
 
 void rynx::MeshRenderer::clearScreen() {
+	/*
+	float depth_clear_value = 1.0f;
+	glClearBufferfv(GL_DEPTH, 0, &depth_clear_value);
+	
+	float color_clear[] = { 0, 0, 0, 0 };
+	glClearBufferfv(GL_COLOR, 0, color_clear);
+	glClearBufferfv(GL_COLOR, 1, color_clear);
+	*/
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
 void rynx::MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
@@ -137,14 +148,6 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 	drawMesh(*m_rectangle, model, texture, color);
 }
 
-bool rynx::MeshRenderer::verifyNoGLErrors() const {
-	auto kek = glGetError();
-	if (kek == GL_NO_ERROR)
-		return true;
-	logmsg("gl error: %d", kek);
-	return false;
-}
-
 void rynx::MeshRenderer::cameraToGPU() {
 	m_shaders->switchToShader("renderer2d");
 	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().m);
@@ -158,10 +161,13 @@ void rynx::MeshRenderer::cameraToGPU() {
 void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
 	m_shaders->switchToShader("renderer2d");
 	mesh.bind();
-	m_textures->bindTexture(0, texture);
+
+	m_textures->bindTexture(0, texture);	
 	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.m);
 	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
+
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
 void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
@@ -218,4 +224,6 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);
 		++currentIteration;
 	}
+
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }

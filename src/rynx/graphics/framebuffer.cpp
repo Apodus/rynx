@@ -4,117 +4,214 @@
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/system/assert.hpp>
 
-#include <sstream>
+#include <string>
 #include <stdexcept>
-#include <iomanip>
 
-enum { MAX_TARGETS = 4 };
-
-rynx::unordered_map<std::string, Graphics::Framebuffer> Graphics::Framebuffer::fbos;
-
-Graphics::Framebuffer::Framebuffer(std::shared_ptr<GPUTextures> textures):
-	resolution_x(0),
-	resolution_y(0),
-	location(0),
-	m_textures(textures)
-{
+namespace {
+	constexpr int FboMaxTextures = 16;
+	constexpr int default_resolution = -1;
 }
 
-Graphics::Framebuffer::Framebuffer(std::shared_ptr<GPUTextures> textures, const std::string& prefixx, size_t screen_width, size_t screen_height, bool depth_texture, size_t target_count):
-	prefix(prefixx),
-	resolution_x(screen_width),
-	resolution_y(screen_height),
+rynx::graphics::framebuffer::framebuffer(std::shared_ptr<GPUTextures> textures, const std::string& name):
+	fbo_name(name),
 	location(0),
 	m_textures(textures)
 {
-	rynx_assert(target_count <= MAX_TARGETS, "too many targets");
-	targets.reserve(target_count);
-
+	logmsg("creating FBO '%s'", name.c_str());
 	glGenFramebuffers(1, &location);
 	glBindFramebuffer(GL_FRAMEBUFFER, location);
 
-	for(size_t i = 0; i < target_count; ++i)
-	{
-		targets.push_back(target_name(i));
-		textures->createTexture(targets.back(), int(resolution_x), int(resolution_y));
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + int(i), GL_TEXTURE_2D, textures->getTextureID(targets.back()), 0);
+	rynx_assert(glGetError() == GL_NO_ERROR, "opengl error :(");
+}
+
+rynx::graphics::framebuffer::~framebuffer() {
+	logmsg("framebuffer destroyed");
+	destroy();
+}
+
+std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(std::shared_ptr<GPUTextures> textures, std::string name) {
+	auto fbo = std::make_shared<rynx::graphics::framebuffer>(textures, name);
+	
+	auto add_one = [this, &textures, &name, &fbo](render_target& render_target_instance) {
+		auto add_depth_buffer = [&](int bits_per_pixel) {
+			fbo->depthtexture = name + std::string("_depth") + std::to_string(bits_per_pixel);
+			if (render_target_instance.resolution_x == default_resolution) {
+				textures->createDepthTexture(fbo->depthtexture, int(m_default_resolution_x), int(m_default_resolution_y), bits_per_pixel);
+			}
+			else {
+				textures->createDepthTexture(fbo->depthtexture, render_target_instance.resolution_x, render_target_instance.resolution_y, bits_per_pixel);
+			}
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, textures->getTextureID(fbo->depthtexture), 0);
+		};
+
+		switch (render_target_instance.type) {
+		case render_target_type::rgba8:
+			fbo->targets.emplace_back(name + std::string("_rgba8_slot") + std::to_string(fbo->targets.size()));
+			fbo->m_tex_map.emplace(render_target_instance.name, fbo->targets.back());
+			if (render_target_instance.resolution_x == default_resolution) {
+				textures->createTexture(fbo->targets.back(), int(m_default_resolution_x), int(m_default_resolution_y));
+			}
+			else {
+				textures->createTexture(fbo->targets.back(), render_target_instance.resolution_x, render_target_instance.resolution_y);
+			}
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				GL_COLOR_ATTACHMENT0 + int(fbo->targets.size() - 1),
+				GL_TEXTURE_2D,
+				textures->getTextureID(fbo->targets.back()),
+				0
+			);
+			break;
+
+		case render_target_type::float32:
+			fbo->targets.emplace_back(name + std::string("_float32_slot") + std::to_string(fbo->targets.size()));
+			fbo->m_tex_map.emplace(render_target_instance.name, fbo->targets.back());
+			if (render_target_instance.resolution_x == default_resolution) {
+				textures->createFloatTexture(fbo->targets.back(), int(m_default_resolution_x), int(m_default_resolution_y));
+			}
+			else {
+				textures->createFloatTexture(fbo->targets.back(), render_target_instance.resolution_x, render_target_instance.resolution_y);
+			}
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				GL_COLOR_ATTACHMENT0 + int(fbo->targets.size() - 1),
+				GL_TEXTURE_2D,
+				textures->getTextureID(fbo->targets.back()),
+				0
+			);
+			break;
+
+		case render_target_type::depth16:
+			add_depth_buffer(16);
+			break;
+
+		case render_target_type::depth32:
+			add_depth_buffer(32);
+			break;
+		}
+	};
+
+	for (auto&& render_target_instance : m_targets) {
+		add_one(render_target_instance);
 	}
-	if(!target_count)
-	{
-		glDrawBuffer(GL_NONE);
+	if (m_depth_target.type != render_target_type::none) {
+		add_one(m_depth_target);
 	}
 
-	if(depth_texture)
-	{
-		depthtexture = prefix + "_depthtexture";
-		textures->createDepthTexture(depthtexture, int(resolution_x), int(resolution_y));
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  GL_TEXTURE_2D, textures->getTextureID(depthtexture), 0);
-	}
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if(status != GL_FRAMEBUFFER_COMPLETE)
+	if (status != GL_FRAMEBUFFER_COMPLETE)
 	{
-		std::stringstream ss;
-		ss << "Failed to create FBO: '" << prefix << "', error: 0x" << std::hex << status;
-		throw std::runtime_error(ss.str());
+		throw std::runtime_error(std::string("Failed to create FBO: '") + name + std::string("', error: ") + std::to_string(status));
 	}
+
+	return fbo;
 }
 
-
-void Graphics::Framebuffer::create(const std::string& name, const Framebuffer& fb)
-{
-	fbos[name] = fb;
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::set_default_resolution(int x, int y) {
+	m_default_resolution_x = x;
+	m_default_resolution_y = y;
+	return *this;
 }
 
-void Graphics::Framebuffer::create(std::shared_ptr<GPUTextures> textures, const std::string& prefix, size_t screen_width, size_t screen_height, bool depth_texture, size_t target_count )
-{
-	Framebuffer fb(textures, prefix, screen_width, screen_height, depth_texture, target_count);
-	fbos[prefix] = fb;
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(std::string name, int res_x, int res_y) {
+	m_targets.emplace_back(render_target{ res_x, res_y, render_target_type::rgba8, name });
+	return *this;
 }
 
-Graphics::Framebuffer& Graphics::Framebuffer::get(const std::string& s)
-{
-	return fbos[s];
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(std::string name) {
+	m_targets.emplace_back(render_target{default_resolution, default_resolution, render_target_type::rgba8, name});
+	return *this;
 }
 
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(std::string name, int res_x, int res_y) {
+	m_targets.emplace_back(render_target{ res_x, res_y, render_target_type::float32, name });
+	return *this;
+}
 
-void Graphics::Framebuffer::destroy()
-{
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(std::string name) {
+	m_targets.emplace_back(render_target{ default_resolution, default_resolution, render_target_type::float32, name });
+	return *this;
+}
+
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_depth16_target(int res_x, int res_y) {
+	rynx_assert(m_depth_target.type == render_target_type::none, "depth target has already been added! can't have more than one depth target.");
+	m_depth_target.type = render_target_type::depth16;
+	m_depth_target.resolution_x = res_x;
+	m_depth_target.resolution_y = res_y;
+	return *this;
+}
+
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_depth16_target() {
+	rynx_assert(m_depth_target.type == render_target_type::none, "depth target has already been added! can't have more than one depth target.");
+	m_depth_target.type = render_target_type::depth16;
+	m_depth_target.resolution_x = default_resolution;
+	m_depth_target.resolution_y = default_resolution;
+	return *this;
+}
+
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_depth32_target(int res_x, int res_y) {
+	rynx_assert(m_depth_target.type == render_target_type::none, "depth target has already been added! can't have more than one depth target.");
+	m_depth_target.type = render_target_type::depth32;
+	m_depth_target.resolution_x = res_x;
+	m_depth_target.resolution_y = res_y;
+	return *this;
+}
+
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_depth32_target() {
+	rynx_assert(m_depth_target.type == render_target_type::none, "depth target has already been added! can't have more than one depth target.");
+	m_depth_target.type = render_target_type::depth32;
+	m_depth_target.resolution_x = default_resolution;
+	m_depth_target.resolution_y = default_resolution;
+	return *this;
+}
+
+const std::string& rynx::graphics::framebuffer::operator [](const std::string& name) {
+	auto it = m_tex_map.find(name);
+	rynx_assert(it != m_tex_map.end(), "requested render target does not exist in this FBO");
+	return it->second;
+}
+
+void rynx::graphics::framebuffer::destroy() {
 	glDeleteFramebuffers(1, &location);
 	for(size_t i = 0; i < targets.size(); ++i)
 	{
 		m_textures->deleteTexture(targets[i]);
 	}
+	targets.clear();
+
 	if(!depthtexture.empty())
 	{
 		m_textures->deleteTexture(depthtexture);
 	}
 }
 
-void Graphics::Framebuffer::bind() const
+void rynx::graphics::framebuffer::bind() const
 {
 	bind(targets.size());
 }
 
-void Graphics::Framebuffer::bind(size_t target_count) const
+void rynx::graphics::framebuffer::bind(size_t target_count) const
 {
 	rynx_assert(target_count <= targets.size(), "error");
 	glBindFramebuffer(GL_FRAMEBUFFER, location);
 	bind_helper(target_count);
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
-void Graphics::Framebuffer::bind_for_reading() const
+void rynx::graphics::framebuffer::bind_for_reading() const
 {
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, location);
 }
 
-void Graphics::Framebuffer::bind_for_writing() const
+void rynx::graphics::framebuffer::bind_for_writing() const
 {
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, location);
 	bind_helper(targets.size());
 }
 
-void Graphics::Framebuffer::bind_helper(size_t target_count) const
+void rynx::graphics::framebuffer::bind_helper(size_t target_count) const
 {
 	if(targets.empty())
 	{
@@ -128,52 +225,34 @@ void Graphics::Framebuffer::bind_helper(size_t target_count) const
 	glViewport(0, 0, int(resolution_x), int(resolution_y));
 }
 
-void Graphics::Framebuffer::unbind()
+void rynx::graphics::framebuffer::unbind()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-std::string Graphics::Framebuffer::depth_texture() const
+std::string rynx::graphics::framebuffer::depth_texture() const
 {
 	rynx_assert(!depthtexture.empty(), "??");
 	return depthtexture;
 }
 
-std::string Graphics::Framebuffer::texture(size_t target) const
+std::string rynx::graphics::framebuffer::texture(size_t target) const
 {
 	rynx_assert(target < targets.size(), "??");
 	return targets[target];
 }
 
-std::string Graphics::Framebuffer::target_name(size_t target) const
-{
-	std::stringstream ss;
-	ss << prefix << "_texture" << target;
-	return ss.str();
-}
-
-size_t Graphics::Framebuffer::width() const
+size_t rynx::graphics::framebuffer::width() const
 {
 	return resolution_x;
 }
 
-size_t Graphics::Framebuffer::height() const
+size_t rynx::graphics::framebuffer::height() const
 {
 	return resolution_y;
 }
 
-// this should never be used for graphics things.
-// for general computing it might be good.
-void Graphics::Framebuffer::add_float_target()
-{
-	rynx_assert(targets.size() < MAX_TARGETS, "??");
-	size_t target = targets.size();
-	targets.push_back(target_name(target));
-	m_textures->createFloatTexture(targets.back(), int(resolution_x), int(resolution_y));
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + int(target), GL_TEXTURE_2D, m_textures->getTextureID(targets.back()), 0);
-}
-
-size_t Graphics::Framebuffer::target_count() const
+size_t rynx::graphics::framebuffer::target_count() const
 {
 	return targets.size();
 }

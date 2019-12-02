@@ -46,7 +46,7 @@ namespace game {
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
 									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
-									rynx::components::radius(1.6f),
+									rynx::components::radius(2.0f),
 									rynx::components::collision_category(dynamic),
 									rynx::components::color(),
 									rynx::components::dampening({ 0.97f, 0.997f }),
@@ -55,13 +55,13 @@ namespace game {
 
 								for (int k = 1; k < 40; ++k) {
 									auto id2 = ecs.create(
-										rynx::components::position({ x + 1.5f * k, y + 1.5f * k, 0 }),
+										rynx::components::position({ x + 3.5f * k, y + 3.5f * k, 0 }),
 										rynx::components::motion(),
 										rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
-										rynx::components::radius(1.0f),
+										rynx::components::radius(2.0f),
 										rynx::components::collision_category(dynamic),
 										rynx::components::color(),
-										rynx::components::dampening({ 0.97f, 0.997f }),
+										rynx::components::dampening({ 0.80f, 0.90f }),
 										rynx::components::frame_collisions()
 									);
 
@@ -70,7 +70,7 @@ namespace game {
 									joint.id_b = id2;
 									joint.point_a = vec3<float>(0, 0, 0);
 									joint.point_b = vec3<float>(0, 0, 0);
-									joint.length = 1.6f;
+									joint.length = 4.1f;
 									joint.strength = 25.0f;
 									ecs.create(joint);
 

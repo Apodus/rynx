@@ -7,8 +7,6 @@
 #include <string>
 #include <stdexcept>
 
-using namespace std;
-
 Shaders::Shaders() {
 	GLint n;
 	glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &n);
@@ -47,7 +45,7 @@ std::shared_ptr<Shader> Shaders::loadShader(const std::string& name, const std::
 	return pShader;
 }
 
-GLuint Shaders::operator[](const string& program_name) const {
+GLuint Shaders::operator[](const std::string& program_name) const {
 	auto it = m_shaders.find(program_name);
 	rynx_assert(it != m_shaders.end(), "shader program '%s' not found!", program_name.c_str());
 	return it->second->get_program();

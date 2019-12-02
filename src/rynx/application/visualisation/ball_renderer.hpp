@@ -119,13 +119,13 @@ namespace rynx {
 									return;
 
 								matrix4 model;
-								model.discardSetTranslate(mid.x, mid.y, mid.z);
+								model.discardSetTranslate(mid.x, mid.y, 0.0f);
 								model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
 								// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
 								model.scale(length, width, 1.0f);
 								
 								m_ropes->emplace_back(model);
-								m_ropes->emplace_back(floats4(rope.cumulative_stress / (1500.0f * rope.strength), 0, 0, 1));
+								m_ropes->emplace_back(floats4(rope.cumulative_stress / (700.0f * rope.strength), 0, 0, 1));
 							});
 						}
 

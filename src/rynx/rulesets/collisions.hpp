@@ -240,7 +240,7 @@ namespace rynx {
 						auto world_pos_b = pos_b.value + relative_pos_b;
 
 						auto length = (world_pos_a - world_pos_b).length();
-						float over_extension = (length - rope.length) / rope.length;
+						float over_extension = (length - rope.length);
 
 						over_extension -= (over_extension < 0) * over_extension;
 
@@ -250,13 +250,13 @@ namespace rynx {
 							return;
 						}
 						
-						float force = 240.0f * rope.strength * (over_extension * over_extension + over_extension);
+						float force = 540.0f * rope.strength * over_extension;
 						
 						rope.cumulative_stress += force * dt;
 						rope.cumulative_stress *= std::pow(0.3f, dt);
 
 						// Remove rope if too much strain
-						if (rope.cumulative_stress > 1500.0f * rope.strength)
+						if (rope.cumulative_stress > 700.0f * rope.strength)
 							broken_ropes->emplace_back(id);
 						
 						auto direction_a_to_b = world_pos_b - world_pos_a;
