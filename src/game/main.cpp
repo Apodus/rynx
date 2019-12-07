@@ -518,6 +518,8 @@ int main(int argc, char** argv) {
 
 			{
 				rynx::graphics::framebuffer::unbind();
+				application.window()->set_gl_viewport_to_window_dimensions();
+
 				application.textures()->bindTexture(0, fbo_world_geometry->get_texture_name_of_render_target("color"));
 				screenspace.draw_fullscreen();
 			}

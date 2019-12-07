@@ -32,6 +32,8 @@ public:
 		return m_aspectRatio;
 	}
 
+	void set_gl_viewport_to_window_dimensions() const;
+
 	GLFWwindow* getGLFWwindow() const;
 
 private:

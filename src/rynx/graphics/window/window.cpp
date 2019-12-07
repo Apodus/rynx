@@ -49,7 +49,11 @@ void Window::onResize(int width, int height) {
 	m_width = width;
 	m_height = height;
 	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
-	glViewport(0, 0, width, height);
+	set_gl_viewport_to_window_dimensions();
+}
+
+void Window::set_gl_viewport_to_window_dimensions() const {
+	glViewport(0, 0, m_width, m_height);
 }
 
 GLFWwindow* Window::createWindow(std::string name) {

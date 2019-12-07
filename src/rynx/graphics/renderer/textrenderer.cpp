@@ -34,8 +34,8 @@ TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_pt
 	m_textures(textures),
 	m_shaders(shaders)
 {
-	auto fontShader = m_shaders->loadShader("font", "../shaders/font_130.vs.glsl", "../shaders/font_130.fs.glsl");
-	m_shaders->switchToShader("font");
+	auto fontShader = m_shaders->load_shader("font", "../shaders/font_130.vs.glsl", "../shaders/font_130.fs.glsl");
+	m_shaders->activate_shader("font");
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -88,13 +88,13 @@ void TextRenderer::drawText(const std::string& text, float x, float y, float lin
 }
 
 void TextRenderer::drawTextBuffers(int textLength) {
-	std::shared_ptr<Shader> textShader = m_shaders->switchToShader("font");
+	std::shared_ptr<Shader> textShader = m_shaders->activate_shader("font");
 	const matrix4& projectionMatrix = m_pCamera->getProjection();
 	const matrix4& viewMatrix = m_pCamera->getView();
 
 	projectionViewMatrix.storeMultiply(projectionMatrix, viewMatrix);
-	ShaderMemory::setUniformMat4(*textShader.get(), "MVPMatrix", projectionViewMatrix);
-
+	textShader->uniform("MVPMatrix", projectionViewMatrix);
+	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_vertexBuffer.size(), &m_vertexBuffer[0]);
 

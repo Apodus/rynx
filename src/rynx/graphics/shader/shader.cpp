@@ -1,7 +1,9 @@
 
 #include <rynx/graphics/opengl.hpp>
 #include <rynx/graphics/shader/shader.hpp>
+#include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/system/assert.hpp>
+#include <rynx/tech/math/matrix.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -10,73 +12,77 @@
 #include <sstream>
 #include <iostream>
 
-using namespace std;
-
-std::string Shader::readFile(const std::string& path)
-{
-	std::stringstream ss;
-	std::ifstream file(path);
-	ss << file.rdbuf();
-	file.close();
-	rynx_assert(ss.str().length() > 0, "Shader source code length zero!");
-
-	return ss.str();
-}
-
-GLuint Shader::loadVertexShader(const std::string& filename)
-{
-	std::string str = readFile(filename);
-	const char* data = str.c_str();
-	
-	GLuint ret = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(ret, 1, &data, nullptr);
-	glCompileShader(ret);
-
-	return ret;
-}
-
-GLuint Shader::loadFragmentShader(const std::string& filename)
-{
-	std::string str = readFile(filename);
-	const char* data = str.c_str();
-
-	GLuint ret = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(ret, 1, &data, nullptr);
-	glCompileShader(ret);
-
-	return ret;
-}
-
-GLuint Shader::loadGeometryShader(const string& filename)
-{
-	std::string str = readFile(filename);
-	const char* data = str.c_str();
-
-	GLuint ret = glCreateShader(GL_GEOMETRY_SHADER);
-	glShaderSource(ret, 1, &data, nullptr);
-	glCompileShader(ret);
-
-	return ret;
-}
-
-void Shader::printlogmsg(GLuint obj)
-{
-	int infologLength = 0;
-	char infoLog[1024];
-	
-	if (glIsShader(obj))
-		glGetShaderInfoLog(obj, 1024, &infologLength, infoLog);
-	else
-		glGetProgramInfoLog(obj, 1024, &infologLength, infoLog);
-	
-	if (infoLog[0])
+namespace {
+	std::string readFile(const std::string& path)
 	{
-		printf("Shader build info: %s", infoLog);
+		std::stringstream ss;
+		std::ifstream file(path);
+		ss << file.rdbuf();
+		file.close();
+		rynx_assert(ss.str().length() > 0, "Shader source code length zero!");
+
+		return ss.str();
+	}
+
+	void printlogmsg(GLuint obj)
+	{
+		int infologLength = 0;
+		char infoLog[1024];
+
+		if (glIsShader(obj))
+			glGetShaderInfoLog(obj, 1024, &infologLength, infoLog);
+		else
+			glGetProgramInfoLog(obj, 1024, &infologLength, infoLog);
+
+		if (infoLog[0])
+		{
+			logmsg("Shader build info: %s", infoLog);
+		}
+	}
+
+	GLuint loadVertexShader(const std::string& filename)
+	{
+		std::string str = readFile(filename);
+		const char* data = str.c_str();
+
+		GLuint ret = glCreateShader(GL_VERTEX_SHADER);
+		glShaderSource(ret, 1, &data, nullptr);
+		glCompileShader(ret);
+
+		return ret;
+	}
+
+	GLuint loadFragmentShader(const std::string& filename)
+	{
+		std::string str = readFile(filename);
+		const char* data = str.c_str();
+
+		GLuint ret = glCreateShader(GL_FRAGMENT_SHADER);
+		glShaderSource(ret, 1, &data, nullptr);
+		glCompileShader(ret);
+
+		return ret;
+	}
+
+	GLuint loadGeometryShader(const std::string& filename)
+	{
+		std::string str = readFile(filename);
+		const char* data = str.c_str();
+
+		GLuint ret = glCreateShader(GL_GEOMETRY_SHADER);
+		glShaderSource(ret, 1, &data, nullptr);
+		glCompileShader(ret);
+
+		return ret;
 	}
 }
 
-
-Shader::Shader(const std::string& vert, const std::string& frag):
+Shader::Shader(
+	std::string name,
+	const std::string& vert,
+	const std::string& frag)
+	:
+	m_name(std::move(name)),
 	m_programID(0),
 	m_vertexID(0),
 	m_geometryID(0),
@@ -108,7 +114,16 @@ Shader::Shader(const std::string& vert, const std::string& frag):
 	printlogmsg(m_programID);
 }
 
-Shader::Shader(const std::string& vert, const std::string& frag, const std::string& geom, GLint input, GLint output, GLint vertices):
+Shader::Shader(
+	std::string name,
+	const std::string& vert,
+	const std::string& frag,
+	const std::string& geom,
+	GLint input,
+	GLint output,
+	GLint vertices)
+	:
+	m_name(std::move(name)),
 	m_programID(0),
 	m_vertexID(0),
 	m_geometryID(0),
@@ -175,14 +190,6 @@ Shader::~Shader()
 	}
 }
 
-void Shader::set_texture_unit(size_t unit, const std::string& name)
-{
-	rynx_assert(m_started, "can't set texture unit until program has been set active");
-	GLint texture_unit_location = uniform(name);
-	rynx_assert(texture_unit_location != -1, "WARNING: shader has no sampler with name '%s'", name.c_str());
-	glUniform1i(texture_unit_location, static_cast<GLint>(unit));
-}
-
 GLint Shader::uniform(const std::string& name)
 {
 	rynx_assert(m_started, "looking for uniform when shader has not been started! not good.");
@@ -190,7 +197,7 @@ GLint Shader::uniform(const std::string& name)
 	if(it == m_uniformLocations.end())
 	{
 		GLint location = glGetUniformLocation(m_programID, name.c_str());
-		m_uniformLocations.insert(it, make_pair(name, location));
+		m_uniformLocations.emplace(name, location);
 		rynx_assert(location != -1, "shader has no uniform with name '%s'", name.c_str());
 		return location;
 	}
@@ -200,6 +207,60 @@ GLint Shader::uniform(const std::string& name)
 	}
 }
 
+Shader& Shader::uniform(const std::string& name, float value)
+{
+	glUniform1f(uniform(name), value);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, float value1, float value2)
+{
+	glUniform2f(uniform(name), value1, value2);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, float value1, float value2, float value3)
+{
+	glUniform3f(uniform(name), value1, value2, value3);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, float value1, float value2, float value3, float value4)
+{
+	glUniform4f(uniform(name), value1, value2, value3, value4);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, int32_t value)
+{
+	glUniform1i(uniform(name), value);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2)
+{
+	glUniform2i(uniform(name), value1, value2);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3)
+{
+	glUniform3i(uniform(name), value1, value2, value3);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4)
+{
+	glUniform4i(uniform(name), value1, value2, value3, value4);
+	return *this;
+}
+
+Shader& Shader::uniform(const std::string& name, const matrix4& matrix)
+{
+	glUniformMatrix4fv(uniform(name), 1, false, matrix.m);
+	return *this;
+}
+
 GLint Shader::attribute(const std::string& name)
 {
 	rynx_assert(m_started, "trying to fetch attribute from a shader that is not active!");
@@ -207,7 +268,7 @@ GLint Shader::attribute(const std::string& name)
 	if(it == m_uniformLocations.end())
 	{
 		GLint location = glGetAttribLocation(m_programID, name.c_str());
-		m_uniformLocations.insert(it, make_pair(name, location));
+		m_uniformLocations.emplace(name, location);
 		rynx_assert(location != -1, "WARNING: shader has no attribute with name '%s'", name.c_str());
 		return location;
 	}
@@ -217,57 +278,21 @@ GLint Shader::attribute(const std::string& name)
 	}
 }
 
-void Shader::start()
+void Shader::activate()
 {
 	rynx_assert(m_programID != 0, "trying to start invalid shader");
-	rynx_assert(!m_started, "shader already started!");
+	if (m_started)
+		return;
+	
 	m_started = true;
 	glUseProgram(m_programID);
+
+	if (m_shaders) {
+		m_shaders->activate_shader(m_name);
+	}
 }
 
 void Shader::stop()
 {
-	rynx_assert(m_started, "stopping shader that has not been started");
-	glUseProgram(0);
 	m_started = false;
 }
-
-GLuint Shader::get_program() const
-{
-	return m_programID;
-}
-
-
-
-
-
-
-#include <rynx/tech/math/matrix.hpp>
-
-// it is bad form to ask for positions every time again and again.
-
-void ShaderMemory::setUniformVec1(Shader& shader, const std::string& name, float value) {
-	int pos = shader.uniform(name);
-    glUniform1f(pos, value);
-}
-
-void ShaderMemory::setUniformVec2(Shader& shader, const std::string& name, float value1, float value2) {
-	int pos = shader.uniform(name);
-    glUniform2f(pos, value1, value2);
-}
-
-void ShaderMemory::setUniformVec3(Shader& shader, const std::string& name, float value1, float value2, float value3) {
-    int pos = shader.uniform(name);
-    glUniform3f(pos, value1, value2, value3);
-}
-
-void ShaderMemory::setUniformVec4(Shader& shader, const std::string& name, float value1, float value2, float value3, float value4) {
-    int pos = shader.uniform(name);
-    glUniform4f(pos, value1, value2, value3, value4);
-}
-
-void ShaderMemory::setUniformMat4(Shader& shader, const std::string& name, const matrix4& matrix) {
-	int pos = shader.uniform(name);
-    glUniformMatrix4fv(pos, 1, false, matrix.m);
-}
-

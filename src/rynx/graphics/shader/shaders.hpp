@@ -18,14 +18,12 @@ public:
 
 	void release();
 
-	std::shared_ptr<Shader> loadShader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);
-	std::shared_ptr<Shader> switchToShader(const std::string& name);
-
-	GLuint operator[](const std::string& program_name) const;
-	std::shared_ptr<Shader> operator()(const std::string& program_name);
+	std::shared_ptr<Shader> load_shader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);
+	std::shared_ptr<Shader> activate_shader(const std::string& name);
 
 private:
 	rynx::unordered_map<std::string, std::shared_ptr<Shader>> m_shaders;
+	
 	std::shared_ptr<Shader> m_activeShader;
 	std::string m_activeShaderName;
 };

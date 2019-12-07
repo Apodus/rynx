@@ -84,8 +84,8 @@ namespace rynx
 
 			rynx::unordered_map<std::string, std::string> m_tex_map; // map from render target name to texture name.
 
-			size_t resolution_x;
-			size_t resolution_y;
+			int32_t resolution_x = 0;
+			int32_t resolution_y = 0;
 
 			GLuint location;
 			std::shared_ptr<GPUTextures> m_textures;

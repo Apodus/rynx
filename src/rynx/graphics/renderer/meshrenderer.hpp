@@ -45,6 +45,9 @@ namespace rynx {
 
 		std::shared_ptr<mesh_collection> m_meshes;
 
+		std::shared_ptr<Shader> m_shader2d;
+		std::shared_ptr<Shader> m_shader2d_instanced;
+
 		GLuint m_modelUniform, m_viewUniform, m_projectionUniform;
 		GLuint m_texSamplerUniform, m_colorUniform;
 

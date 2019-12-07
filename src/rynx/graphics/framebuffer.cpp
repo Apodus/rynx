@@ -31,7 +31,9 @@ rynx::graphics::framebuffer::~framebuffer() {
 
 std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(std::shared_ptr<GPUTextures> textures, std::string name) {
 	auto fbo = std::make_shared<rynx::graphics::framebuffer>(textures, name);
-	
+	fbo->resolution_x = m_default_resolution_x;
+	fbo->resolution_y = m_default_resolution_y;
+
 	auto add_one = [this, &textures, &name, &fbo](render_target& render_target_instance) {
 		auto add_depth_buffer = [&](int bits_per_pixel) {
 			fbo->depthtexture = name + std::string("_depth") + std::to_string(bits_per_pixel);
@@ -197,7 +199,8 @@ void rynx::graphics::framebuffer::bind(size_t target_count) const
 	rynx_assert(target_count <= targets.size(), "error");
 	glBindFramebuffer(GL_FRAMEBUFFER, location);
 	bind_helper(target_count);
-	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
+	int32_t error_v = glGetError();
+	rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
 }
 
 void rynx::graphics::framebuffer::bind_for_reading() const
@@ -222,7 +225,7 @@ void rynx::graphics::framebuffer::bind_helper(size_t target_count) const
 		GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
 		glDrawBuffers(GLsizei(target_count), buffers);
 	}
-	glViewport(0, 0, int(resolution_x), int(resolution_y));
+	glViewport(0, 0, resolution_x, resolution_y);
 }
 
 void rynx::graphics::framebuffer::unbind()

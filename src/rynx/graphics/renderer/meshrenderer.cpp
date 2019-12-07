@@ -31,26 +31,23 @@ void rynx::MeshRenderer::init() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	{
-		std::shared_ptr<Shader> shader2d = m_shaders->loadShader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
-		m_shaders->switchToShader("renderer2d");
-
-		m_modelUniform = shader2d->uniform("model");
-		m_viewUniform = shader2d->uniform("view");
-		m_projectionUniform = shader2d->uniform("projection");
-		m_colorUniform = shader2d->uniform("color");
-
-		m_texSamplerUniform = shader2d->uniform("tex");
-		glUniform1i(m_texSamplerUniform, 0);
+		m_shader2d = m_shaders->load_shader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
+		m_shader2d->activate();
+		
+		m_modelUniform = m_shader2d->uniform("model");
+		m_viewUniform = m_shader2d->uniform("view");
+		m_projectionUniform = m_shader2d->uniform("projection");
+		m_colorUniform = m_shader2d->uniform("color");
+		m_shader2d->uniform("tex", 0);
 	}
 
 	{
-		std::shared_ptr<Shader> shader2d = m_shaders->loadShader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
-		m_shaders->switchToShader("renderer2d_instanced");
+		m_shader2d_instanced = m_shaders->load_shader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
+		m_shader2d_instanced->activate();
 
-		m_viewUniform_instanced = shader2d->uniform("view");
-		m_projectionUniform_instanced = shader2d->uniform("projection");
-		m_texSamplerUniform_instanced = shader2d->uniform("tex");
-		glUniform1i(m_texSamplerUniform_instanced, 0);
+		m_viewUniform_instanced = m_shader2d_instanced->uniform("view");
+		m_projectionUniform_instanced = m_shader2d_instanced->uniform("projection");
+		m_shader2d_instanced->uniform("tex", 0);
 	}
 
 	{
@@ -149,17 +146,17 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 }
 
 void rynx::MeshRenderer::cameraToGPU() {
-	m_shaders->switchToShader("renderer2d");
+	m_shader2d->activate();
 	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().m);
 	glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, m_pCamera->getProjection().m);
 
-	m_shaders->switchToShader("renderer2d_instanced");
+	m_shader2d_instanced->activate();
 	glUniformMatrix4fv(m_viewUniform_instanced, 1, GL_FALSE, m_pCamera->getView().m);
 	glUniformMatrix4fv(m_projectionUniform_instanced, 1, GL_FALSE, m_pCamera->getProjection().m);
 }
 
 void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
-	m_shaders->switchToShader("renderer2d");
+	m_shader2d->activate();
 	mesh.bind();
 
 	m_textures->bindTexture(0, texture);	
@@ -171,7 +168,7 @@ void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const 
 }
 
 void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
-	m_shaders->switchToShader("renderer2d_instanced");
+	m_shader2d_instanced->activate();
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
 
