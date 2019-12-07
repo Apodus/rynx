@@ -190,7 +190,6 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 		glVertexAttribDivisor(colors_slot, 1); // colors, use one per entity -> 1
 	}
 
-
 	// If divisor is zero, the attribute at slot index advances once per vertex
 	glVertexAttribDivisor(0, 0); // vertex positions are per vertex data -> 0
 	glVertexAttribDivisor(1, 0); // texture coordinates are per vertex data -> 0

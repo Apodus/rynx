@@ -70,6 +70,7 @@ rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx:
 
 void rynx::graphics::screenspace_renderer::draw_fullscreen() {
 	m_shaders->activate_shader("fbo_color_to_bb");
+	// m_shaders->activate_shader("fbo_color_ripple");
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
