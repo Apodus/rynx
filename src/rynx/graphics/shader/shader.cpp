@@ -77,7 +77,7 @@ namespace {
 	}
 }
 
-Shader::Shader(
+rynx::graphics::Shader::Shader(
 	std::string name,
 	const std::string& vert,
 	const std::string& frag)
@@ -114,7 +114,7 @@ Shader::Shader(
 	printlogmsg(m_programID);
 }
 
-Shader::Shader(
+rynx::graphics::Shader::Shader(
 	std::string name,
 	const std::string& vert,
 	const std::string& frag,
@@ -156,7 +156,7 @@ Shader::Shader(
 	printlogmsg(m_programID);
 }
 
-Shader::~Shader()
+rynx::graphics::Shader::~Shader()
 {
 	if(m_vertexID != 0)
 	{
@@ -190,7 +190,7 @@ Shader::~Shader()
 	}
 }
 
-GLint Shader::uniform(const std::string& name)
+GLint rynx::graphics::Shader::uniform(const std::string& name)
 {
 	rynx_assert(m_started, "looking for uniform when shader has not been started! not good.");
 	auto it = m_uniformLocations.find(name);
@@ -207,61 +207,61 @@ GLint Shader::uniform(const std::string& name)
 	}
 }
 
-Shader& Shader::uniform(const std::string& name, float value)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, float value)
 {
 	glUniform1f(uniform(name), value);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, float value1, float value2)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, float value1, float value2)
 {
 	glUniform2f(uniform(name), value1, value2);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, float value1, float value2, float value3)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, float value1, float value2, float value3)
 {
 	glUniform3f(uniform(name), value1, value2, value3);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, float value1, float value2, float value3, float value4)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, float value1, float value2, float value3, float value4)
 {
 	glUniform4f(uniform(name), value1, value2, value3, value4);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, int32_t value)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, int32_t value)
 {
 	glUniform1i(uniform(name), value);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, int32_t value1, int32_t value2)
 {
 	glUniform2i(uniform(name), value1, value2);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3)
 {
 	glUniform3i(uniform(name), value1, value2, value3);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4)
 {
 	glUniform4i(uniform(name), value1, value2, value3, value4);
 	return *this;
 }
 
-Shader& Shader::uniform(const std::string& name, const matrix4& matrix)
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, const matrix4& matrix)
 {
 	glUniformMatrix4fv(uniform(name), 1, false, matrix.m);
 	return *this;
 }
 
-GLint Shader::attribute(const std::string& name)
+GLint rynx::graphics::Shader::attribute(const std::string& name)
 {
 	rynx_assert(m_started, "trying to fetch attribute from a shader that is not active!");
 	auto it = m_uniformLocations.find(name);
@@ -278,7 +278,7 @@ GLint Shader::attribute(const std::string& name)
 	}
 }
 
-void Shader::activate()
+void rynx::graphics::Shader::activate()
 {
 	rynx_assert(m_programID != 0, "trying to start invalid shader");
 	if (m_started)
@@ -292,7 +292,7 @@ void Shader::activate()
 	}
 }
 
-void Shader::stop()
+void rynx::graphics::Shader::stop()
 {
 	m_started = false;
 }

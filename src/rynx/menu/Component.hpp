@@ -10,10 +10,10 @@
 #include <vector>
 
 
-class TextRenderer;
 
 namespace rynx {
 	
+	class TextRenderer;
 	class MeshRenderer;
 	
 	namespace input {

@@ -40,13 +40,13 @@ namespace rynx {
 		Mesh* m_rectangle;
 		
 		std::shared_ptr<GPUTextures> m_textures;
-		std::shared_ptr<Shaders> m_shaders;
+		std::shared_ptr<rynx::graphics::Shaders> m_shaders;
 		std::shared_ptr<Camera> m_pCamera;
 
 		std::shared_ptr<mesh_collection> m_meshes;
 
-		std::shared_ptr<Shader> m_shader2d;
-		std::shared_ptr<Shader> m_shader2d_instanced;
+		std::shared_ptr<rynx::graphics::Shader> m_shader2d;
+		std::shared_ptr<rynx::graphics::Shader> m_shader2d_instanced;
 
 		GLuint m_modelUniform, m_viewUniform, m_projectionUniform;
 		GLuint m_texSamplerUniform, m_colorUniform;
@@ -62,7 +62,7 @@ namespace rynx {
 		bool verifyNoGLErrors() const;
 
 	public:
-		MeshRenderer(std::shared_ptr<GPUTextures> texture, std::shared_ptr<Shaders> shaders);
+		MeshRenderer(std::shared_ptr<GPUTextures> texture, std::shared_ptr<rynx::graphics::Shaders> shaders);
 
 		void setDepthTest(bool depthTestEnabled);
 		std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }

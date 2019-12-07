@@ -30,7 +30,7 @@ void getColorByCode(char c, floats4& color) {
 	color = getColorByCode(c);
 }
 
-TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<Shaders> shaders) :
+rynx::TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::Shaders> shaders) :
 	m_textures(textures),
 	m_shaders(shaders)
 {
@@ -65,17 +65,15 @@ TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_pt
 	glBindVertexArray(0);
 }
 
-
-
-void TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
+void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
 	drawText(text, x, y, lineHeight, Color::WHITE, font, custom);
 }
 
-void TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
+void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
 	drawText(text, x, y, lineHeight, color, Align::Center, font, custom);
 }
 
-void TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
+void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
 	activeColor = color;
 	rynx_assert(text.length() < MAX_TEXT_LENGTH, "too long text to render!");
 	if (text.length() >= MAX_TEXT_LENGTH) {
@@ -87,8 +85,8 @@ void TextRenderer::drawText(const std::string& text, float x, float y, float lin
 	drawTextBuffers(length);
 }
 
-void TextRenderer::drawTextBuffers(int textLength) {
-	std::shared_ptr<Shader> textShader = m_shaders->activate_shader("font");
+void rynx::TextRenderer::drawTextBuffers(int textLength) {
+	std::shared_ptr<rynx::graphics::Shader> textShader = m_shaders->activate_shader("font");
 	const matrix4& projectionMatrix = m_pCamera->getProjection();
 	const matrix4& viewMatrix = m_pCamera->getView();
 
@@ -113,7 +111,7 @@ void TextRenderer::drawTextBuffers(int textLength) {
 	m_colorBuffer.clear();
 }
 
-int TextRenderer::fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
+int rynx::TextRenderer::fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
 	int skippedCharacters = 0;
 	int length = int(text.length());
 	float textHeight = scaleY;
@@ -162,7 +160,7 @@ int TextRenderer::fillTextBuffers(const std::string& text, const Font& font, flo
 }
 
 
-void TextRenderer::fillTextureCoordinates(const Font& font, char c) {
+void rynx::TextRenderer::fillTextureCoordinates(const Font& font, char c) {
 	floats4 textureCoordinates = font.getTextureCoordinates(c);
 
 	m_texCoordBuffer.push_back(textureCoordinates.left); m_texCoordBuffer.push_back(textureCoordinates.top);

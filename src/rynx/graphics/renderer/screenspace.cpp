@@ -15,7 +15,7 @@ namespace {
 	};
 }
 
-rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<Shaders> shaders) : m_shaders(shaders) {
+rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx::graphics::Shaders> shaders) : m_shaders(shaders) {
 	
 	{
 		std::shared_ptr<Shader> screenspace_shader = shaders->load_shader(

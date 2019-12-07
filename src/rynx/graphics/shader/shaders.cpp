@@ -3,11 +3,9 @@
 #include <rynx/graphics/opengl.hpp>
 #include <rynx/system/assert.hpp>
 
-#include <sstream>
 #include <string>
-#include <stdexcept>
 
-Shaders::Shaders() {
+rynx::graphics::Shaders::Shaders() {
 	GLint n;
 	glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &n);
 	logmsg("Max geometry shader output vertices: %d", n);
@@ -15,15 +13,15 @@ Shaders::Shaders() {
 	logmsg("Max geometry shader output components: %d", n);
 }
 
-Shaders::~Shaders() {
+rynx::graphics::Shaders::~Shaders() {
 	release();
 }
 
-void Shaders::release() {
+void rynx::graphics::Shaders::release() {
 	m_shaders.clear();
 }
 
-std::shared_ptr<Shader> Shaders::activate_shader(const std::string& name) {
+std::shared_ptr<rynx::graphics::Shader> rynx::graphics::Shaders::activate_shader(const std::string& name) {
 	if(m_activeShaderName == name)
 		return m_activeShader;
 
@@ -39,7 +37,7 @@ std::shared_ptr<Shader> Shaders::activate_shader(const std::string& name) {
 	return m_activeShader;
 }
 
-std::shared_ptr<Shader> Shaders::load_shader(
+std::shared_ptr<rynx::graphics::Shader> rynx::graphics::Shaders::load_shader(
 	const std::string& name,
 	const std::string& vertexShader,
 	const std::string& fragmentShader)

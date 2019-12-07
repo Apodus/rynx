@@ -111,6 +111,6 @@ void rynx::menu::Frame::update(float) {
 	m_modelMatrix.scale(parentDimensions.x * .5f, parentDimensions.y * .5f, 1);
 }
 
-void rynx::menu::Frame::draw(rynx::MeshRenderer& meshRenderer, TextRenderer&) const {
+void rynx::menu::Frame::draw(rynx::MeshRenderer& meshRenderer, rynx::TextRenderer&) const {
 	meshRenderer.drawMesh(*m_backgroundMesh, m_modelMatrix, m_textureID, m_color);
 }

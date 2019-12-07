@@ -7,7 +7,7 @@
 
 rynx::MeshRenderer::MeshRenderer(
 	std::shared_ptr<GPUTextures> textures,
-	std::shared_ptr<Shaders> shaders
+	std::shared_ptr<rynx::graphics::Shaders> shaders
 )
 {
 	m_textures = textures;

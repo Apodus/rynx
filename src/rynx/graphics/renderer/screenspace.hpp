@@ -3,10 +3,10 @@
 #include <cstdint>
 #include <memory>
 
-class Shaders;
 
 namespace rynx {
 	namespace graphics {
+		class Shaders;
 		class screenspace_renderer {
 		public:
 			screenspace_renderer(std::shared_ptr<Shaders> shaders);

@@ -509,16 +509,16 @@ int main(int argc, char** argv) {
 					return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
 				};
 
-				application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("render:   ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("render:   ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 			}
 
 			{
 				rynx::graphics::framebuffer::unbind();
-				application.window()->set_gl_viewport_to_window_dimensions();
+				application.set_gl_viewport_to_window_dimensions();
 
 				application.textures()->bindTexture(0, fbo_world_geometry->get_texture_name_of_render_target("color"));
 				screenspace.draw_fullscreen();
