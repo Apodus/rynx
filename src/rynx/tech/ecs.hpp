@@ -372,9 +372,7 @@ namespace rynx {
 			gatherer& include(dynamic_bitset inTypes) { includeTypes = std::move(inTypes); return *this; }
 			gatherer& exclude(dynamic_bitset notInTypes) { excludeTypes = std::move(notInTypes); return *this; }
 
-			template<typename...Ts>
-			void gather(std::vector<rynx::ecs::id>& out) {
-				unpack_types<Ts...>();
+			void ids(std::vector<rynx::ecs::id>& out) const {
 				auto& categories = m_ecs.categories();
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
@@ -382,6 +380,17 @@ namespace rynx {
 						out.insert(out.end(), ids.begin(), ids.end());
 					}
 				}
+			}
+
+			index_t count() const {
+				index_t result = 0;
+				auto& categories = m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						result += static_cast<index_t>(entity_category.second->ids().size());
+					}
+				}
+				return result;
 			}
 
 		protected:
@@ -764,16 +773,24 @@ namespace rynx {
 				return *this;
 			}
 
-			template<typename...Ts>
-			std::vector<rynx::ecs::id> gather() {
+			std::vector<rynx::ecs::id> ids() {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				std::vector<rynx::ecs::id> result;
 				gatherer<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.gather<Ts...>(result);
+				it.ids(result);
 				return result;
+			}
+
+			index_t count() {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				gatherer<category_source> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				return it.count();
 			}
 
 			template<typename F, typename TaskContext>
@@ -809,17 +826,14 @@ namespace rynx {
 		const_entity<ecs> operator[](entity_id_t id) const { return const_entity<ecs>(*this, id); }
 		const_entity<ecs> operator[](id id) const { return const_entity<ecs>(*this, id.value); }
 
-		template<typename...Ts>
-		std::vector<rynx::ecs::id> gather() const {
-			rynx_profile("Ecs", "gather ids");
-			std::vector<rynx::ecs::id> result;
-			gatherer<ecs> it(*this);
-			it.gather<Ts...>(result);
-			return result;
-		}
-
 		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
 		query_t<DataAccess::Const, ecs> query() const { return query_t<DataAccess::Const, ecs>(*this); }
+
+		/*
+		// todo: offering these short-hands is probably detrimental to clarity.
+		template<typename...Ts> std::vector<rynx::ecs::id> ids() const { return query().in<Ts...>().ids(); }
+		template<typename...Ts> index_t count() const { return query().in<Ts...>().count(); }
+		*/
 
 		std::pair<entity_category*, index_t> category_and_index_for(entity_id_t id) const {
 			auto it = m_idCategoryMap.find(id);
@@ -984,10 +998,10 @@ namespace rynx {
 			view(const rynx::ecs* ecs) : m_ecs(const_cast<rynx::ecs*>(ecs)) {}
 
 			template<typename...Ts>
-			std::vector<rynx::ecs::id> gather() const {
+			std::vector<rynx::ecs::id> ids() const {
 				std::vector<rynx::ecs::id> result;
 				gatherer<view> it(*this);
-				it.gather<Ts...>(result);
+				it.ids<Ts...>(result);
 				return result;
 			}
 

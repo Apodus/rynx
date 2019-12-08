@@ -49,7 +49,7 @@ namespace rynx {
 						/*
 						auto ids = ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
 							.in<rynx::components::position, rynx::components::radius, rynx::components::color>()
-							.gather();
+							.ids();
 
 						for (auto id : ids) {
 							ecs.attachToEntity(id, matrix4());
