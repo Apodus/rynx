@@ -10,20 +10,45 @@ namespace rynx {
 	}
 }
 
+TEST_CASE("rynx ecs", "sort")
+{
+	rynx::ecs r;
+	r.type_index_using<int>();
+
+	r.create(3);
+	r.create(7);
+	r.create(-100);
+	r.create(+1000);
+	r.create(-101);
+	r.create(-120);
+	r.create(-110);
+	r.create(-111);
+	r.create(-113);
+	r.create(-112);
+
+	r.query().sort_by<int>();
+
+	int prev = -1000000;
+	r.query().for_each([&prev](int v) {
+		REQUIRE(prev < v);
+		prev = v;
+	});
+}
+
 TEST_CASE("ecs views usable", "verify compiles")
 {
 	// these must compile. that is all.
 	{
 		rynx::ecs ecs;
 		rynx::ecs::view<rynx::components::position> view = ecs;
-		view.query().for_each([](const rynx::components::position&) {}); // is ok.	
+		view.query().for_each([](const rynx::components::position&) {}); // is ok.
 		view.query().for_each([](rynx::components::position&) {}); // is ok.
 	}
 
 	{
 		rynx::ecs ecs;
 		rynx::ecs::view<const rynx::components::position> view = ecs;
-		view.query().for_each([](const rynx::components::position&) {}); // is ok.	
+		view.query().for_each([](const rynx::components::position&) {}); // is ok.
 		// view.for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
 		// view.for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
 	}
@@ -89,9 +114,10 @@ namespace entt {
 
 template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 	int64_t count = 0;
+	ecs.type_index_using<Ts...>();
 	ecs.query().for_each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
-		});
+	});
 	return count;
 }
 
@@ -99,7 +125,7 @@ template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 	int64_t count = 0;
 	ecs.view<Ts...>().each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
-		});
+	});
 	return count;
 }
 
@@ -109,6 +135,8 @@ TEST_CASE("rynx ecs: 50% random components") {
 
 	{
 		rynx::ecs r;
+		r.type_index_using<int, float, double, uint32_t>();
+		
 		srand(1234);
 		for (int i = 0; i < numEntities; ++i) {
 			auto entityId = r.create();
@@ -167,12 +195,13 @@ TEST_CASE("rynx ecs: insert & delete")
 	BENCHMARK("insert & delete")
 	{
 		rynx::ecs r;
-		for (int i = 0; i < 100000; ++i) {
+		r.type_index_using<two_ints>();
+
+		for (int i = 0; i < 10000; ++i) {
 			r.create(two_ints{ i, i + 1 });
 		}
-		r.query().in<two_ints>().for_each([&r](rynx::ecs::entity_id_t id) {
-			r.erase(id);
-		});
+
+		r.erase(r.query().in<two_ints>().ids());
 		return r.size();
 	};
 }

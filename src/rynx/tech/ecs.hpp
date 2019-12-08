@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <tuple>
 #include <algorithm>
+#include <numeric>
 
 namespace rynx {
 
@@ -72,8 +73,10 @@ namespace rynx {
 		public:
 			virtual ~itable() {}
 			virtual void erase(entity_id_t entityId) = 0;
-			virtual void swap(index_t index1, index_t index2) = 0; // TODO: Individual swaps as virtuals = tons of virtual calls. Should group these.
+			
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) = 0;
+			virtual void swap_to_given_order(std::vector<index_t> relative_sort_order) = 0;
+
 			// virtual itable* deepCopy() const = 0;
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
@@ -87,14 +90,31 @@ namespace rynx {
 			void insert(T&& t) { m_data.emplace_back(std::forward<T>(t)); }
 			void insert(std::vector<T>& v) { m_data.insert(m_data.end(), v.begin(), v.end()); }
 			template<typename...Ts> void emplace_back(Ts&& ... ts) { m_data.emplace_back(std::forward<Ts>(ts)...); }
-			
-			virtual void swap(index_t a, index_t b) override {
-				std::swap(m_data[a], m_data[b]);
-			}
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) override {
 				for (auto index : index_points) {
 					std::swap(m_data[index], m_data[index + 1]);
+				}
+			}
+
+			virtual void swap_to_given_order(std::vector<index_t> relative_sort_order) override {
+				std::vector<index_t> current_index_to_original_index(m_data.size()); // contains n of the original ordering
+				std::vector<index_t> original_index_to_current_index(m_data.size()); // n of original is located now in x
+
+				std::iota(current_index_to_original_index.begin(), current_index_to_original_index.end(), 0);
+				std::iota(original_index_to_current_index.begin(), original_index_to_current_index.end(), 0);
+
+				for (index_t i = 0, size = index_t(m_data.size()); i < size; ++i) {
+					index_t mapped_location = original_index_to_current_index[relative_sort_order[i]];
+					if (mapped_location != i) {
+						std::swap(m_data[i], m_data[mapped_location]);
+						
+						std::swap(current_index_to_original_index[i], current_index_to_original_index[mapped_location]);
+						std::swap(
+							original_index_to_current_index[current_index_to_original_index[i]],
+							original_index_to_current_index[current_index_to_original_index[mapped_location]]
+						);
+					}
 				}
 			}
 
@@ -171,16 +191,6 @@ namespace rynx {
 				}
 			}
 
-			// NOTE: we don't update idmap eagerly here, because n log n updates in full sort.
-			//       better to update all touched entries once after all swaps are done.
-			void swap(index_t index1, index_t index2) {
-				for (auto&& table : m_tables) {
-					if (table) {
-						table->swap(index1, index2);
-					}
-				}
-			}
-
 			// TODO: Rename better. This is like bubble-sort single step.
 			// TODO: Use some smarter algorithm?
 			template<typename T> void sort_one_step(rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
@@ -209,6 +219,47 @@ namespace rynx {
 				}
 			}
 
+			template<typename T> void sort(rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
+				auto type_index_of_t = m_typeIndex->id<T>();
+				auto& table_t = table<T>(type_index_of_t);
+
+				std::vector<index_t> relative_sort_order(m_ids.size());
+				std::iota(relative_sort_order.begin(), relative_sort_order.end(), 0);
+				std::sort(relative_sort_order.begin(), relative_sort_order.end(),
+					[&](index_t a, index_t b) {
+						return table_t[a] < table_t[b];
+					}
+				);
+				
+				for (auto& table_ptr : m_tables) {
+					if (table_ptr) {
+						table_ptr->swap_to_given_order(relative_sort_order);
+					}
+				}
+
+				{
+					std::vector<index_t> current_index_to_original_index(m_ids.size());
+					std::vector<index_t> original_index_to_current_index(m_ids.size());
+
+					std::iota(current_index_to_original_index.begin(), current_index_to_original_index.end(), 0);
+					std::iota(original_index_to_current_index.begin(), original_index_to_current_index.end(), 0);
+
+					for (index_t i = 0, size = index_t(m_ids.size()); i < size; ++i) {
+						index_t mapped_location = original_index_to_current_index[relative_sort_order[i]];
+						if (mapped_location != i) {
+							idmap.find(m_ids[i].value)->second.second = mapped_location;
+							idmap.find(m_ids[mapped_location].value)->second.second = index_t(i);
+							std::swap(m_ids[i], m_ids[mapped_location]);
+
+							std::swap(current_index_to_original_index[i], current_index_to_original_index[mapped_location]);
+							std::swap(
+								original_index_to_current_index[current_index_to_original_index[i]],
+								original_index_to_current_index[current_index_to_original_index[mapped_location]]
+							);
+						}
+					}
+				}
+			}
 
 			template<typename... Tags, typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
 				(table<Components>().insert(components), ...);
@@ -414,12 +465,23 @@ namespace rynx {
 			template<typename... Args> sorter& in() { unpack_types<Args...>(); return *this; }
 			template<typename... Args> sorter& notIn() { unpack_types_exclude<Args...>(); return *this; }
 
+			template<typename T> void sort_categories_by() {
+				auto& categories = m_ecs.categories();
+				unpack_types<T>();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+						entity_category.second->sort<T>(m_ecs.m_idCategoryMap);
+					}
+				}
+			}
+
 			template<typename T> void sort_buckets_one_step() {
 				auto& categories = m_ecs.categories();
+				unpack_types<T>();
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
 						auto& ids = entity_category.second->ids();
-						entity_category.second->sort_one_step<T>();
+						entity_category.second->sort_one_step<T>(m_ecs.m_idCategoryMap);
 					}
 				}
 			}
@@ -793,6 +855,26 @@ namespace rynx {
 				return it.count();
 			}
 
+			template<typename T>
+			void sort_by() {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				sorter<category_source> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.sort_categories_by<T>();
+			}
+
+			template<typename T>
+			void sort_single_step_by() {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				sorter<category_source> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.sort_buckets_one_step<T>();
+			}
+
 			template<typename F, typename TaskContext>
 			query_t& for_each_parallel(TaskContext&& task_context, F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
@@ -816,6 +898,16 @@ namespace rynx {
 		// if you don't call this, you will see performance go down the toilet.
 		void sync_type_index() {
 			m_types.sync();
+		}
+
+		// used to tell the type index block which types we are going to use before using them.
+		// calling this is not required. but types which are not synced to the type index will work slower.
+		// you can also call sync_type_index() manually once per frame or at convenient times. when sync is called,
+		// no other operation is allowed to hit the type index.
+		template<typename...Ts>
+		void type_index_using() {
+			(m_types.id<Ts>(), ...);
+			sync_type_index();
 		}
 
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }
