@@ -62,7 +62,7 @@ namespace rynx {
 								m.angularAcceleration = 0;
 							});
 							
-							ecs.query().in<components::collision_category>().for_each_parallel(task_context, [dt](components::motion& m, const components::radius r) {
+							ecs.query().in<components::collision_category>().for_each_parallel(task_context, [dt](components::motion& m) {
 								m.velocity += m.acceleration * dt;
 								m.acceleration.set(0, 0, 0);
 								m.angularVelocity += m.angularAcceleration * dt;

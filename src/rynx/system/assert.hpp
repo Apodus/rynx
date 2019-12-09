@@ -49,15 +49,37 @@ void windowsDebugOut(const char* logBuffer);
 	windowsDebugOut(logBuffer); \
 }
 
+#define logmsg_once_per_milliseconds(interval_ms, x, ...) { \
+	/* printf(x "\n", ##__VA_ARGS__); */         \
+	static std::chrono::time_point<std::chrono::high_resolution_clock> last_triggered; \
+	auto timepoint = std::chrono::high_resolution_clock::now(); \
+	if(std::chrono::duration_cast<std::chrono::milliseconds>(timepoint - last_triggered).count() > interval_ms) { \
+		last_triggered = timepoint; \
+		char logBuffer[2048];                             \
+		sprintf_s(logBuffer, sizeof(logBuffer),  "%s(%d): " x "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+		windowsDebugOut(logBuffer); \
+	} \
+}
+
 #else
 #define logmsg(x, ...) LOG_ACTUAL_DONT_USE__(x, ##__VA_ARGS__)
 #define logs(x, ...) LOG_SIMPLE_ACTUAL_DONT_USE__(x, ##__VA_ARGS__)
 #define logsnl(x, ...) LOG_SIMPLE_NEWLINE_ACTUAL_DONT_USE__(x, ##__VA_ARGS__)
+#define logmsg_once_per_milliseconds(interval_ms, x, ...) { \
+	/* printf(x "\n", ##__VA_ARGS__); */         \
+	static std::chrono::time_point<std::chrono::high_resolution_clock> last_triggered; \
+	auto timepoint = std::chrono::high_resolution_clock::now(); \
+	if(std::chrono::duration_cast<std::chrono::milliseconds>(timepoint - last_triggered).count() > interval_ms) { \
+		last_triggered = timepoint; \
+		LOG_ACTUAL_DONT_USE__(x, ##__VA_ARGS__) \
+	} \
+}
 #endif
 #else
 #define logmsg(x, ...)
 #define logs(x, ...)
 #define logsnl(x, ...)
+#define logmsg_once_per_milliseconds(...)
 #endif
 
 #else // no debug
@@ -70,5 +92,6 @@ void windowsDebugOut(const char* logBuffer);
 #endif
 #define logs(x, ...)
 #define logsnl(x, ...)
+#define logmsg_once_per_milliseconds(...)
 
 #endif

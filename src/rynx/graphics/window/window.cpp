@@ -53,7 +53,7 @@ void Window::onResize(int width, int height) {
 }
 
 void Window::set_gl_viewport_to_window_dimensions() const {
-	glViewport(0, 0, m_width, m_height);
+	glViewport(0, 0, int(m_width), int(m_height));
 }
 
 GLFWwindow* Window::createWindow(std::string name) {

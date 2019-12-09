@@ -75,7 +75,7 @@ namespace rynx {
 			virtual void erase(entity_id_t entityId) = 0;
 			
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) = 0;
-			virtual void swap_to_given_order(std::vector<index_t> relative_sort_order) = 0;
+			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) = 0;
 
 			// virtual itable* deepCopy() const = 0;
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
@@ -97,9 +97,10 @@ namespace rynx {
 				}
 			}
 
-			virtual void swap_to_given_order(std::vector<index_t> relative_sort_order) override {
-				std::vector<index_t> current_index_to_original_index(m_data.size()); // contains n of the original ordering
-				std::vector<index_t> original_index_to_current_index(m_data.size()); // n of original is located now in x
+			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) override {
+				// TODO: No need to alloc these separately for each table. Reuse buffers and memcpy contents.
+				std::vector<index_t> current_index_to_original_index(m_data.size());
+				std::vector<index_t> original_index_to_current_index(m_data.size());
 
 				std::iota(current_index_to_original_index.begin(), current_index_to_original_index.end(), 0);
 				std::iota(original_index_to_current_index.begin(), original_index_to_current_index.end(), 0);
@@ -1190,8 +1191,8 @@ namespace rynx {
 
 		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
-		unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
-		unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
+		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
+		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
 	};
 
 }

@@ -34,7 +34,7 @@ namespace rynx {
 			std::unique_lock lock(m_slow_path_mutex);
 			for (auto&& entry : m_fallback) {
 				if (entry.first == unique_ptr_value) {
-					logmsg("warning - type index using slow path. if this spam does not end, did you forget to call type_index.sync()?");
+					logmsg_once_per_milliseconds(1000, "warning - type index using slow path. if this spam does not end, did you forget to call type_index.sync()?");
 					return entry.second;
 				}
 			}
