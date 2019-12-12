@@ -62,6 +62,23 @@ class PolygonTesselator {
 			polyMesh->putUVCoord(uvX, uvY);
 		}
 
+
+		// build normals buffer
+		{
+			auto push_normal = [this, &polyMesh](size_t prev, size_t current, size_t next) {
+				auto ab = polygon->vertices[prev] - polygon->vertices[current];
+				auto bc = polygon->vertices[current] - polygon->vertices[next];
+				auto normal = (ab.normal2d().normalize() + bc.normal2d().normalize()).normalize();
+				polyMesh->putNormal(normal.x, normal.y, normal.z);
+			};
+			
+			push_normal(polygon->vertices.size()-1, 0, 1);
+			for (size_t i = 1; i < polygon->vertices.size() - 1; ++i) {
+				push_normal(i - 1, i, i + 1);
+			}
+			push_normal(polygon->vertices.size() - 2, polygon->vertices.size() - 1, 0);
+		}
+		
 		// build index buffer
 		for (const typename Polygon<T>::Triangle& t : getTriangles()) {
 			polyMesh->putTriangleIndices(t.a, t.b, t.c);

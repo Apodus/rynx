@@ -45,19 +45,13 @@ namespace rynx {
 
 		std::shared_ptr<mesh_collection> m_meshes;
 
-		std::shared_ptr<rynx::graphics::Shader> m_shader2d;
-		std::shared_ptr<rynx::graphics::Shader> m_shader2d_instanced;
+		std::shared_ptr<rynx::graphics::Shader> shader_single;
+		std::shared_ptr<rynx::graphics::Shader> shader_instanced;
+		std::shared_ptr<rynx::graphics::Shader> shader_instanced_deferred;
 
-		GLuint m_modelUniform, m_viewUniform, m_projectionUniform;
-		GLuint m_texSamplerUniform, m_colorUniform;
-
-		GLuint m_viewUniform_instanced;
-		GLuint m_projectionUniform_instanced;
-		GLuint m_texSamplerUniform_instanced;
-
-		// buffer for model matrices, for instanced rendering.
 		GLuint model_matrices_buffer;
 		GLuint colors_buffer;
+		GLuint normals_buffer;
 
 		bool verifyNoGLErrors() const;
 

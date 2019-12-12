@@ -31,23 +31,18 @@ void rynx::MeshRenderer::init() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	{
-		m_shader2d = m_shaders->load_shader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
-		m_shader2d->activate();
+		shader_single = m_shaders->load_shader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
+		shader_instanced = m_shaders->load_shader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
+		shader_instanced_deferred = m_shaders->load_shader("renderer2d_instanced_deferred", "../shaders/2d_shader_instanced_deferred.vs.glsl", "../shaders/2d_shader_instanced_deferred.fs.glsl");
+
+		shader_single->activate();
+		shader_single->uniform("tex", 0);
 		
-		m_modelUniform = m_shader2d->uniform("model");
-		m_viewUniform = m_shader2d->uniform("view");
-		m_projectionUniform = m_shader2d->uniform("projection");
-		m_colorUniform = m_shader2d->uniform("color");
-		m_shader2d->uniform("tex", 0);
-	}
-
-	{
-		m_shader2d_instanced = m_shaders->load_shader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
-		m_shader2d_instanced->activate();
-
-		m_viewUniform_instanced = m_shader2d_instanced->uniform("view");
-		m_projectionUniform_instanced = m_shader2d_instanced->uniform("projection");
-		m_shader2d_instanced->uniform("tex", 0);
+		shader_instanced->activate();
+		shader_instanced->uniform("tex", 0);
+		
+		shader_instanced_deferred->activate();
+		shader_instanced_deferred->uniform("tex", 0);
 	}
 
 	{
@@ -57,6 +52,10 @@ void rynx::MeshRenderer::init() {
 
 		glGenBuffers(1, &colors_buffer);
 		glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
+		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+
+		glGenBuffers(1, &normals_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, normals_buffer);
 		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 	}
 
@@ -146,34 +145,36 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 }
 
 void rynx::MeshRenderer::cameraToGPU() {
-	m_shader2d->activate();
-	glUniformMatrix4fv(m_viewUniform, 1, GL_FALSE, m_pCamera->getView().m);
-	glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, m_pCamera->getProjection().m);
+	auto set_camera_to_shader = [this](rynx::graphics::Shader& shader) {
+		shader.activate();
+		shader.uniform("view", m_pCamera->getView());
+		shader.uniform("projection", m_pCamera->getProjection());
+	};
 
-	m_shader2d_instanced->activate();
-	glUniformMatrix4fv(m_viewUniform_instanced, 1, GL_FALSE, m_pCamera->getView().m);
-	glUniformMatrix4fv(m_projectionUniform_instanced, 1, GL_FALSE, m_pCamera->getProjection().m);
+	set_camera_to_shader(*shader_single);
+	set_camera_to_shader(*shader_instanced);
+	set_camera_to_shader(*shader_instanced_deferred);
 }
 
 void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
-	m_shader2d->activate();
+	shader_single->activate();
 	mesh.bind();
 
 	m_textures->bindTexture(0, texture);	
-	glUniformMatrix4fv(m_modelUniform, 1, GL_FALSE, model.m);
-	glUniform4f(m_colorUniform, color.r, color.g, color.b, color.a);
-
+	shader_single->uniform("model", model);
+	shader_single->uniform("color", color);
+	
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
 void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
-	m_shader2d_instanced->activate();
+	shader_instanced->activate();
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
 
 	{
-		const GLuint model_matrix_slot = 2;
+		const GLuint model_matrix_slot = shader_instanced->attribute("model");
 		glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
 		for (int i = 0; i < 4; ++i) {
 			glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
@@ -183,7 +184,7 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 	}
 
 	{
-		const GLuint colors_slot = 6;
+		const GLuint colors_slot = shader_instanced->attribute("color");
 		glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
 		glVertexAttribPointer(colors_slot, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, 0);
 		glEnableVertexAttribArray(colors_slot);
@@ -200,19 +201,13 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 		int32_t instances_for_current_iteration = remaining > InstancesPerDrawCall ? InstancesPerDrawCall : remaining;
 
 		{
-			const GLuint model_matrix_slot = 2;
 			glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
-
-			// Buffer orphaning, a common way to improve streaming perf for some reason.
 			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * 4 * sizeof(GLfloat), models.data() + currentIteration * InstancesPerDrawCall);
 		}
 
 		{
-			const GLuint colors_slot = 6;
 			glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
-			
-			// Buffer orphaning, a common way to improve streaming perf for some reason.
 			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * sizeof(GLfloat), colors.data() + currentIteration * InstancesPerDrawCall);
 		}

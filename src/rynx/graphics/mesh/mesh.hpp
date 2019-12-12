@@ -32,16 +32,17 @@ public:
 
 private:
 	/*
-		Shaders must use following attribute layout:
+		Shaders must use following attribute layout for mesh data:
 			layout(location = 0) in vec3 position;
 			layout(location = 1) in vec2 texCoord;
-			layout(location = 2) in mat4 model;
+			layout(location = 2) in vec3 normal;
 	*/
-	enum Attributes { POSITION, TEXCOORD, MODEL_MATRIX };
+	enum Attributes { POSITION, TEXCOORD, NORMAL };
 
 	GLuint vao;
-	GLuint vbo, tbo, nbo, ibo;	// vertices, texcoords, normals, indices
-
-	int numVertices;
-	int numIndices;
+	
+	GLuint vbo;
+	GLuint tbo;
+	GLuint nbo;
+	GLuint ibo;
 };

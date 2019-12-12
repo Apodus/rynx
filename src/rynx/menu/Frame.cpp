@@ -20,8 +20,8 @@ rynx::menu::Frame::Frame(
 	position_local({ 0, 0, 0 });
 	scale_local({ 1, 1, 0 });
 
-	initMesh(textures);
 	buildMesh(0.5f, 0.5f);
+	initMesh(textures);
 	m_backgroundMesh->build();
 }
 
@@ -65,6 +65,8 @@ void rynx::menu::Frame::initMesh(GPUTextures& textures) {
 			m_backgroundMesh->putTriangleIndices(index, index + 1, index + 5);
 		}
 	}
+
+	m_backgroundMesh->normals = m_backgroundMesh->vertices;
 }
 
 void rynx::menu::Frame::buildMesh(float size_x, float size_y) {

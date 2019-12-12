@@ -3,16 +3,12 @@
 #include <rynx/graphics/opengl.hpp>
 #include <rynx/system/assert.hpp>
 
-Mesh::Mesh() {
-	numVertices = 0;
-	numIndices = 0;
-}
+Mesh::Mesh() {}
 
 void Mesh::putVertex(float x, float y, float z) {
 	vertices.push_back(x);
 	vertices.push_back(y);
 	vertices.push_back(z);
-	++numVertices;
 }
 
 void Mesh::putUVCoord(float u, float v) {
@@ -24,7 +20,6 @@ void Mesh::putTriangleIndices(int i1, int i2, int i3) {
 	indices.push_back(static_cast<short>(i1));
 	indices.push_back(static_cast<short>(i2));
 	indices.push_back(static_cast<short>(i3));
-	numIndices += 3;
 }
 
 void Mesh::putNormal(float x, float y, float z) {
@@ -34,11 +29,11 @@ void Mesh::putNormal(float x, float y, float z) {
 }
 
 int Mesh::getVertexCount() const {
-	return numVertices;
+	return int(vertices.size() / 3);
 }
 
 int Mesh::getIndexCount() const {
-	return numIndices;
+	return int(indices.size());
 }
 
 void Mesh::build() {
@@ -48,6 +43,8 @@ void Mesh::build() {
 		rynx_assert(error == GL_NO_ERROR, "oh shit");
 		return error == GL_NO_ERROR;
 	};
+
+	rynx_assert(normals.size() == vertices.size(), "normals vs. vertices size mismatch!");
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -64,11 +61,11 @@ void Mesh::build() {
 	glVertexAttribPointer(TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(TEXCOORD);
 
-	//glGenBuffers(1, &nbo);
-	//glBindBuffer(GL_ARRAY_BUFFER, nbo);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * normals.size(), &normals[0], GL_STATIC_DRAW);
-	//glVertexAttribPointer(NORMALS, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	//glEnableVertexAttribArray(NORMALS);
+	glGenBuffers(1, &nbo);
+	glBindBuffer(GL_ARRAY_BUFFER, nbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * normals.size(), &normals[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(NORMAL, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(NORMAL);
 
 	glGenBuffers(1, &ibo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
