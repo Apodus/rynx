@@ -2,10 +2,12 @@
 
 in vec2 texCoord_pass;
 
-uniform sampler2D tex;
+uniform sampler2D tex_color;
+// uniform sampler2D tex_normal; // not used.
+
 out vec4 frag_color;
 
 void main()
 {
-    frag_color = texture(tex, texCoord_pass);
+    frag_color = texture(tex_color, texCoord_pass);
 }

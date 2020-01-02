@@ -189,46 +189,39 @@ void rynx::graphics::framebuffer::destroy() {
 	}
 }
 
-void rynx::graphics::framebuffer::bind() const
+void rynx::graphics::framebuffer::bind_as_output() const
 {
-	bind(targets.size());
-}
-
-void rynx::graphics::framebuffer::bind(size_t target_count) const
-{
-	rynx_assert(target_count <= targets.size(), "error");
-	glBindFramebuffer(GL_FRAMEBUFFER, location);
-	bind_helper(target_count);
-	int32_t error_v = glGetError();
-	rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
-}
-
-void rynx::graphics::framebuffer::bind_for_reading() const
-{
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, location);
-}
-
-void rynx::graphics::framebuffer::bind_for_writing() const
-{
+	rynx_assert(targets.size() <= targets.size(), "error");
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, location);
-	bind_helper(targets.size());
-}
-
-void rynx::graphics::framebuffer::bind_helper(size_t target_count) const
-{
-	if(targets.empty())
+	
+	if (targets.empty())
 	{
 		glDrawBuffer(GL_NONE);
 	}
 	else
 	{
 		GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
-		glDrawBuffers(GLsizei(target_count), buffers);
+		glDrawBuffers(GLsizei(targets.size()), buffers);
 	}
+	
 	glViewport(0, 0, resolution_x, resolution_y);
+	int32_t error_v = glGetError();
+	rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
 }
 
-void rynx::graphics::framebuffer::unbind()
+void rynx::graphics::framebuffer::bind_as_input(int32_t starting_at_texture_unit) const
+{
+	for(size_t i=0; i<targets.size(); ++i)
+		m_textures->bindTexture(starting_at_texture_unit + i, this->texture(i));
+}
+
+
+void rynx::graphics::framebuffer::bind_for_readback() const
+{
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, location);
+}
+
+void rynx::graphics::framebuffer::bind_backbuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

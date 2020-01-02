@@ -63,11 +63,10 @@ namespace rynx
 			const std::string& get_texture_name_of_render_target(const std::string& name) { return this->operator[](name); }
 			void destroy();
 
-			void bind() const;
-			void bind_for_reading() const;
-			void bind_for_writing() const;
-			void bind(size_t target_count) const;
-
+			void bind_as_output() const;
+			void bind_as_input(int32_t starting_at_texture_unit = 0) const;
+			void bind_for_readback() const;
+			
 			std::string depth_texture() const;
 			std::string texture(size_t target) const;
 
@@ -75,11 +74,9 @@ namespace rynx
 			size_t height() const;
 
 			size_t target_count() const;
-			static void unbind();
+			static void bind_backbuffer();
 
 		private:
-			void bind_helper(size_t target_count) const;
-
 			std::string fbo_name;
 
 			rynx::unordered_map<std::string, std::string> m_tex_map; // map from render target name to texture name.

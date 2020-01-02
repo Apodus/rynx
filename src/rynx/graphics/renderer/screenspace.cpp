@@ -30,6 +30,12 @@ rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx:
 			"../shaders/screenspace_ripple.fs.glsl"
 		);
 
+		std::shared_ptr<Shader> screenspace_lights = shaders->load_shader(
+			"fbo_lights",
+			"../shaders/screenspace.vs.glsl",
+			"../shaders/screenspace_lights.fs.glsl"
+		);
+
 		{
 			int32_t error_v = glGetError();
 			rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
@@ -42,19 +48,61 @@ rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx:
 			rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
 		}
 
-		screenspace_shader->uniform("tex", 0);
-		
+		screenspace_shader->uniform("tex_color", 0);
+		// screenspace_shader->uniform("tex_normal", 1);
+
 		{
 			int32_t error_v = glGetError();
 			rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
 		}
 
 		screenspace_shader_ripple->activate();
-		screenspace_shader_ripple->uniform("tex", 0);
+		// screenspace_shader_ripple->uniform("tex_color", 0);
+		screenspace_shader_ripple->uniform("tex_normal", 1);
 
 		{
 			int32_t error_v = glGetError();
 			rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
+		}
+
+
+
+		{
+			std::vector<floats4> light_colors = {floats4(1.0f, 1.0f, 1.0f, 150.0f), floats4(1.0f, 1.0f, 1.0f, 50.0f) };
+			std::vector<vec3f> light_positions = { vec3f(-50, -50, 0), vec3f(+50, -50, 0) };
+			int num_lights = 2;
+
+			screenspace_lights->activate();
+
+			screenspace_lights->uniform("tex_color", 0);
+			screenspace_lights->uniform("tex_normal", 1);
+			screenspace_lights->uniform("tex_position", 2);
+
+			{
+				int32_t error_v = glGetError();
+				rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
+			}
+
+			screenspace_lights->uniform("lights_colors", light_colors.data(), num_lights);
+
+			{
+				int32_t error_v = glGetError();
+				rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
+			}
+
+			screenspace_lights->uniform("lights_positions", light_positions.data(), num_lights);
+			
+			{
+				int32_t error_v = glGetError();
+				rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
+			}
+
+			screenspace_lights->uniform("lights_num", num_lights);
+
+			{
+				int32_t error_v = glGetError();
+				rynx_assert(error_v == GL_NO_ERROR, "gl error: %d", error_v);
+			}
 		}
 	}
 	
@@ -70,7 +118,9 @@ rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx:
 
 void rynx::graphics::screenspace_renderer::draw_fullscreen() {
 	// m_shaders->activate_shader("fbo_color_to_bb");
-	m_shaders->activate_shader("fbo_color_ripple");
+	// m_shaders->activate_shader("fbo_color_ripple");
+	m_shaders->activate_shader("fbo_lights");
+
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

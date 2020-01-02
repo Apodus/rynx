@@ -1,0 +1,34 @@
+#version 330
+
+in vec2 texCoord_pass;
+
+uniform sampler2D tex_color;
+uniform sampler2D tex_normal;
+uniform sampler2D tex_position;
+
+uniform vec4 lights_colors[16];
+uniform vec3 lights_positions[16];
+uniform int lights_num;
+
+out vec4 frag_color;
+
+void main()
+{
+	vec2 uv = texCoord_pass;
+	vec4 material_color = texture(tex_color, uv);
+	vec3 fragment_position = texture(tex_position, uv).rgb;
+	vec3 fragment_normal = texture(tex_normal, uv).rgb;
+	fragment_normal *= 2.0;
+	fragment_normal -= 0.5;
+	
+	vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
+	for(int i=0; i<lights_num; ++i) {
+		vec3 distance_vector = (lights_positions[i] - fragment_position);
+		float distance_sqr = dot(distance_vector, distance_vector);
+		float agreement = max(0.0, dot(fragment_normal, normalize(distance_vector)));
+		result += vec4((agreement + 0.1) * (material_color.rgb * lights_colors[i].rgb) *
+			(lights_colors[i].a * lights_colors[i].a) / distance_sqr, 1.0);
+	}
+	
+	frag_color = result;
+}

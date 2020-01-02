@@ -136,21 +136,21 @@ namespace rynx {
 					{
 						rynx_profile("visualisation", "ball draw solids");
 						m_balls->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
+							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
 
 					{
 						rynx_profile("visualisation", "ball draw ropes");
 						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
+							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
 
 					{
 						rynx_profile("visualisation", "ball draw translucent");
 						m_balls_translucent->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstanced(*m_circleMesh, "Empty", matrices, colors);
+							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
 						});
 					}
 				}

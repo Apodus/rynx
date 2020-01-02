@@ -55,6 +55,18 @@ namespace rynx {
 
 		bool verifyNoGLErrors() const;
 
+		enum class DrawType {
+			Forward,
+			Deferred
+		};
+
+		void instanced_draw_impl(
+			const Mesh& mesh,
+			const std::string& texture,
+			const std::vector<matrix4>& models,
+			const std::vector<floats4>& colors,
+			DrawType type);
+
 	public:
 		MeshRenderer(std::shared_ptr<GPUTextures> texture, std::shared_ptr<rynx::graphics::Shaders> shaders);
 
@@ -74,9 +86,18 @@ namespace rynx {
 			drawMesh(*m_meshes->get(mesh_name), model, texture, color);
 		}
 
-		void drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors);
+		void drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
+			instanced_draw_impl(mesh, texture, models, colors, DrawType::Forward);
+		}
 		void drawMeshInstanced(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 			drawMeshInstanced(*m_meshes->get(mesh_name), texture, models, colors);
+		}
+
+		void drawMeshInstancedDeferred(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
+			instanced_draw_impl(mesh, texture, models, colors, DrawType::Deferred);
+		}
+		void drawMeshInstancedDeferred(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
+			drawMeshInstancedDeferred(*m_meshes->get(mesh_name), texture, models, colors);
 		}
 
 	private:

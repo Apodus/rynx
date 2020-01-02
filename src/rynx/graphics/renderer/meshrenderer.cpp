@@ -75,15 +75,16 @@ void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
 }
 
 void rynx::MeshRenderer::clearScreen() {
-	/*
+	
 	float depth_clear_value = 1.0f;
 	glClearBufferfv(GL_DEPTH, 0, &depth_clear_value);
 	
 	float color_clear[] = { 0, 0, 0, 0 };
 	glClearBufferfv(GL_COLOR, 0, color_clear);
 	glClearBufferfv(GL_COLOR, 1, color_clear);
-	*/
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearBufferfv(GL_COLOR, 2, color_clear);
+
+	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
@@ -168,13 +169,28 @@ void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const 
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
-void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
-	shader_instanced->activate();
+void rynx::MeshRenderer::instanced_draw_impl(
+	const Mesh& mesh,
+	const std::string& texture,
+	const std::vector<matrix4>& models,
+	const std::vector<floats4>& colors,
+	DrawType type) {
+	
+	rynx::graphics::Shader* shader = nullptr;
+	if (type == DrawType::Forward) {
+		shader = shader_instanced.get();
+	}
+	else if (type == DrawType::Deferred) {
+		shader = shader_instanced_deferred.get();
+	}
+
+	shader->activate();
+
 	mesh.bind();
 	m_textures->bindTexture(0, texture);
 
 	{
-		const GLuint model_matrix_slot = shader_instanced->attribute("model");
+		const GLuint model_matrix_slot = shader->attribute("model");
 		glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
 		for (int i = 0; i < 4; ++i) {
 			glVertexAttribPointer(model_matrix_slot + i, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4 * 4, (void*)(i * 4 * sizeof(float)));
@@ -184,7 +200,7 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 	}
 
 	{
-		const GLuint colors_slot = shader_instanced->attribute("color");
+		const GLuint colors_slot = shader->attribute("color");
 		glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
 		glVertexAttribPointer(colors_slot, 4, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, 0);
 		glEnableVertexAttribArray(colors_slot);
@@ -196,7 +212,7 @@ void rynx::MeshRenderer::drawMeshInstanced(const Mesh& mesh, const std::string& 
 	glVertexAttribDivisor(1, 0); // texture coordinates are per vertex data -> 0
 
 	size_t currentIteration = 0;
-	while (models.size() > currentIteration * InstancesPerDrawCall) {
+	while (models.size() > currentIteration* InstancesPerDrawCall) {
 		int32_t remaining = static_cast<int32_t>(models.size() - currentIteration * InstancesPerDrawCall);
 		int32_t instances_for_current_iteration = remaining > InstancesPerDrawCall ? InstancesPerDrawCall : remaining;
 

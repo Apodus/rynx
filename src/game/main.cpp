@@ -333,6 +333,7 @@ int main(int argc, char** argv) {
 		.set_default_resolution(1920, 1080)
 		.add_rgba8_target("color")
 		.add_rgba8_target("normal")
+		.add_float_target("position")
 		.add_depth32_target()
 		.construct(application.textures(), "world_geometry");
 
@@ -350,7 +351,7 @@ int main(int argc, char** argv) {
 		rynx_profile("Main", "frame");
 		frame_timer_dt.reset();
 		
-		fbo_world_geometry->bind();
+		fbo_world_geometry->bind_as_output();
 
 		{
 			rynx_profile("Main", "start frame");
@@ -518,10 +519,10 @@ int main(int argc, char** argv) {
 			}
 
 			{
-				rynx::graphics::framebuffer::unbind();
+				rynx::graphics::framebuffer::bind_backbuffer();
 				application.set_gl_viewport_to_window_dimensions();
 
-				application.textures()->bindTexture(0, fbo_world_geometry->get_texture_name_of_render_target("color"));
+				fbo_world_geometry->bind_as_input();
 				screenspace.draw_fullscreen();
 			}
 

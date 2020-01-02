@@ -261,6 +261,19 @@ rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name,
 	return *this;
 }
 
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, floats4* v, size_t amount) {
+	static_assert(sizeof(floats4) == 4 * sizeof(float), "can't take array of floats4 directly because of padding.");
+	glUniform4fv(uniform(name), amount, reinterpret_cast<float*>(v));
+	return *this;
+}
+
+rynx::graphics::Shader& rynx::graphics::Shader::uniform(const std::string& name, vec3f* v, size_t amount) {
+	static_assert(sizeof(vec3f) == 3 * sizeof(float), "can't take array of vec3f directly because of padding.");
+	glUniform3fv(uniform(name), amount, reinterpret_cast<float*>(v));
+	return *this;
+}
+
+
 GLint rynx::graphics::Shader::attribute(const std::string& name)
 {
 	rynx_assert(m_started, "trying to fetch attribute from a shader that is not active!");
