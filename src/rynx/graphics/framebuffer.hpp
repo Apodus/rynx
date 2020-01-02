@@ -62,6 +62,7 @@ namespace rynx
 			const std::string& operator [](const std::string& name);
 			const std::string& get_texture_name_of_render_target(const std::string& name) { return this->operator[](name); }
 			void destroy();
+			void clear() const;
 
 			void bind_as_output() const;
 			void bind_as_input(int32_t starting_at_texture_unit = 0) const;

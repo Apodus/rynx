@@ -337,6 +337,11 @@ int main(int argc, char** argv) {
 		.add_depth32_target()
 		.construct(application.textures(), "world_geometry");
 
+	auto fbo_menu = rynx::graphics::framebuffer::config()
+		.set_default_resolution(1920, 1080)
+		.add_rgba8_target("color")
+		.construct(application.textures(), "menu");
+
 	rynx::graphics::screenspace_renderer screenspace(application.shaders());
 
 	rynx::timer timer;
@@ -489,6 +494,9 @@ int main(int argc, char** argv) {
 
 			{
 				rynx_profile("Main", "Menus");
+				fbo_menu->bind_as_output();
+				fbo_menu->clear();
+
 				application.meshRenderer().setDepthTest(false);
 				
 				// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
@@ -511,7 +519,7 @@ int main(int argc, char** argv) {
 				};
 
 				application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("render:   ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+				application.textRenderer().drawText(std::string("draw:     ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 				application.textRenderer().drawText(std::string("bodies:   ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
@@ -522,8 +530,19 @@ int main(int argc, char** argv) {
 				rynx::graphics::framebuffer::bind_backbuffer();
 				application.set_gl_viewport_to_window_dimensions();
 
-				fbo_world_geometry->bind_as_input();
-				screenspace.draw_fullscreen();
+				{
+					// TODO: better storage in code for the effect shaders.
+					//       referencing by name here is silly. should have the shader object at hand.
+					application.shaders()->activate_shader("fbo_lights");
+					fbo_world_geometry->bind_as_input();
+					screenspace.draw_fullscreen();
+				}
+
+				{
+					application.shaders()->activate_shader("fbo_color_to_bb");
+					fbo_menu->bind_as_input();
+					screenspace.draw_fullscreen();
+				}
 			}
 
 			timer.reset();

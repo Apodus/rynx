@@ -221,6 +221,18 @@ void rynx::graphics::framebuffer::bind_for_readback() const
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, location);
 }
 
+void rynx::graphics::framebuffer::clear() const {
+	if (!depthtexture.empty()) {
+		float depth_clear_value = 1.0f;
+		glClearBufferfv(GL_DEPTH, 0, &depth_clear_value);
+	}
+
+	for(size_t i=0; i<targets.size(); ++i) {
+		float color_clear[] = { 0, 0, 0, 0 };
+		glClearBufferfv(GL_COLOR, static_cast<int>(i), color_clear);
+	}
+}
+
 void rynx::graphics::framebuffer::bind_backbuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
