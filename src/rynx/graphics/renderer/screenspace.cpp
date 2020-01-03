@@ -68,7 +68,7 @@ rynx::graphics::screenspace_renderer::screenspace_renderer(std::shared_ptr<rynx:
 
 
 		{
-			std::vector<floats4> light_colors = {floats4(1.0f, 1.0f, 1.0f, 150.0f), floats4(1.0f, 1.0f, 1.0f, 50.0f) };
+			std::vector<floats4> light_colors = {floats4(1.0f, 0.0f, 1.0f, 150.0f), floats4(1.0f, 1.0f, 1.0f, 50.0f) };
 			std::vector<vec3f> light_positions = { vec3f(-150, -50, 0), vec3f(+150, -50, 0) };
 			int num_lights = 2;
 

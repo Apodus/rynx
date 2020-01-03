@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
 	{
 		meshes->create("ball", Shape::makeCircle(1.0f, 32), "Hero");
 		meshes->create("circle_empty", Shape::makeCircle(1.0f, 32), "Empty");
-		meshes->create("square_empty", Shape::makeBox(1.0f), "Hero");
+		meshes->create("square_empty", Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", Shape::makeBox(1.0f), "Smoke");
 		meshes->create("sqaure_rope", Shape::makeBox(1.0f), "Rope");
 	}
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 	}
 
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(meshes->get("ball"), &application.meshRenderer(), &(*camera)));
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(&application.meshRenderer()));
+	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(meshes->get("square_empty"), &application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
 	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
 	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
-				rynx::components::color({ 0,1,0,1 }),
+				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
 				rynx::components::ignore_gravity()
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
 				rynx::components::collision_category(collisionCategoryStatic),
 				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
-				rynx::components::color({ 0,1,0,1 }),
+				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
 				rynx::components::ignore_gravity(),

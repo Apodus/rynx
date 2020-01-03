@@ -81,10 +81,7 @@ void rynx::MeshRenderer::clearScreen() {
 	
 	float color_clear[] = { 0, 0, 0, 0 };
 	glClearBufferfv(GL_COLOR, 0, color_clear);
-	glClearBufferfv(GL_COLOR, 1, color_clear);
-	glClearBufferfv(GL_COLOR, 2, color_clear);
-
-	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
