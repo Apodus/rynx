@@ -2,7 +2,7 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
-#include <rynx/application/render.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 
 #include <rynx/tech/profiling.hpp>
@@ -14,14 +14,14 @@
 namespace rynx {
 	namespace application {
 		namespace visualisation {
-			struct mesh_renderer : public rynx::application::renderer::irenderer {
+			struct mesh_renderer : public rynx::application::graphics_step::igraphics_step {
 				mesh_renderer(MeshRenderer* meshRenderer) {
 					m_meshRenderer = meshRenderer;
 				}
 				virtual ~mesh_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {}
-				virtual void render() override {
+				virtual void execute() override {
 					/*
 					rynx_profile("visualisation", "mesh_renderer");
 					ecs.for_each([this](const rynx::components::position& pos, const rynx::components::mesh& m, const rynx::components::texture& t, const rynx::components::color& color) {

@@ -23,11 +23,6 @@
 #include <rynx/rulesets/collisions.hpp>
 #include <rynx/rulesets/particles.hpp>
 
-#include <rynx/application/visualisation/ball_renderer.hpp>
-#include <rynx/application/visualisation/boundary_renderer.hpp>
-#include <rynx/application/visualisation/mesh_renderer.hpp>
-#include <rynx/application/visualisation/omnilights_effect.hpp>
-
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/tech/smooth_value.hpp>
 #include <rynx/tech/timer.hpp>
@@ -49,6 +44,8 @@
 
 #include <rynx/graphics/framebuffer.hpp>
 #include <rynx/graphics/renderer/screenspace.hpp>
+
+#include <rynx/application/render.hpp>
 
 int main(int argc, char** argv) {
 	
@@ -97,8 +94,6 @@ int main(int argc, char** argv) {
 		collisionDetection.enable_collisions_between(collisionCategoryProjectiles, collisionCategoryDynamic); // projectile <-> dynamic
 	}
 
-	rynx::application::renderer gameRenderer;
-
 	// set additional resources your simulation wants to use.
 	{
 		base_simulation.set_resource(&collisionDetection);
@@ -133,12 +128,9 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::ball_renderer>(meshes->get("ball"), &application.meshRenderer(), &(*camera)));
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::boundary_renderer>(meshes->get("square_empty"), &application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
-	// gameRenderer.addRenderer(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
-	gameRenderer.addRenderer(std::make_unique<game::visual::hero_renderer>(&application.meshRenderer()));
+	// gameRenderer.add_graphics_step(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
+	// gameRenderer.add_graphics_step(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
+	// gameRenderer.add_graphics_step(std::make_unique<game::visual::hero_renderer>(&application.meshRenderer()));
 
 	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
 
@@ -329,21 +321,13 @@ int main(int argc, char** argv) {
 		}
 	});
 
-	auto fbo_world_geometry = rynx::graphics::framebuffer::config()
-		.set_default_resolution(1920, 1080)
-		.add_rgba8_target("color")
-		.add_rgba8_target("normal")
-		.add_float_target("position")
-		.add_depth32_target()
-		.construct(application.textures(), "world_geometry");
-
 	auto fbo_menu = rynx::graphics::framebuffer::config()
 		.set_default_resolution(1920, 1080)
 		.add_rgba8_target("color")
 		.construct(application.textures(), "menu");
 
-	auto screenspace = std::make_shared<rynx::graphics::screenspace_draws>(application.shaders());
-	auto omnilights_visualizer = std::make_shared<rynx::application::visualisation::omnilights_effect>(application.shaders(), screenspace);
+	rynx::graphics::screenspace_draws(); // initialize gpu buffers for screenspace ops.
+	rynx::application::renderer render(application, camera);
 
 	rynx::timer timer;
 	rynx::numeric_property<float> logic_time;
@@ -357,9 +341,6 @@ int main(int argc, char** argv) {
 		rynx_profile("Main", "frame");
 		frame_timer_dt.reset();
 		
-		fbo_world_geometry->bind_as_output();
-		fbo_world_geometry->clear();
-
 		{
 			rynx_profile("Main", "start frame");
 			application.startFrame();
@@ -373,10 +354,6 @@ int main(int argc, char** argv) {
 			
 			camera->setPosition(cameraPosition);
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
-
-			application.meshRenderer().setCamera(camera);
-			application.textRenderer().setCamera(camera);
-			application.meshRenderer().cameraToGPU();
 		}
 
 		{
@@ -445,115 +422,101 @@ int main(int argc, char** argv) {
 		// should we render or not.
 		if (true || tickCounter.load() % 16 == 3) {
 			timer.reset();
-
 			rynx_profile("Main", "graphics");
 
 			{
-				rynx_profile("Main", "clear buffer");
-				application.meshRenderer().clearScreen();
-			}
+				rynx_profile("Main", "prepare");
+				render.prepare(base_simulation.m_context);
+				scheduler.start_frame();
 
-			{
+				// while waiting for computing to be completed, draw menus.
 				{
-					rynx_profile("Main", "prepare");
-					gameRenderer.prepare(base_simulation.m_context);
-					
-					// TODO: this should not be here.
-					omnilights_visualizer->prepare(base_simulation.m_context);
+					rynx_profile("Main", "Menus");
+					fbo_menu->bind_as_output();
+					fbo_menu->clear();
 
-					scheduler.start_frame();
-					scheduler.wait_until_complete();
+					application.meshRenderer().setDepthTest(false);
+
+					// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
+					// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
+					root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
+					menuCamera->setProjection(0.01f, 50.0f, application.aspectRatio());
+					menuCamera->setPosition({ 0, 0, 1 });
+
+					application.meshRenderer().setCamera(menuCamera);
+					application.textRenderer().setCamera(menuCamera);
+					application.meshRenderer().cameraToGPU();
+					root.visualise(application.meshRenderer(), application.textRenderer());
+
+					auto num_entities = ecs.size();
+					float info_text_pos_y = +0.1f;
+					auto get_min_avg_max = [](rynx::numeric_property<float>& prop) {
+						return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
+					};
+
+					application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("draw:     ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("bodies:   ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.15f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 				}
 
-				{
-					rynx_profile("Main", "draw");
-					// application.meshRenderer().setDepthTest(true);
-					gameRenderer.render();
-				}
+				scheduler.wait_until_complete();
 			}
+
 			auto render_time_us = timer.time_since_last_access_us();
 			render_time.observe_value(render_time_us / 1000.0f);
 
-			// visualize collision detection structure.
-			if (conf.visualize_dynamic_collisions) {
-				std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-				collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-					matrix4 m;
-					m.discardSetTranslate(pos);
-					m.scale(radius);
-					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
-				});
-			}
-
-			// visualize collision detection structure.
-			if (conf.visualize_static_collisions) {
-				std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-				collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-					matrix4 m;
-					m.discardSetTranslate(pos);
-					m.scale(radius);
-					float sign[2] = { -1.0f, +1.0f };
-					application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
-				});
-			}
-
 			{
-				rynx_profile("Main", "Menus");
-				fbo_menu->bind_as_output();
-				fbo_menu->clear();
+				rynx_profile("Main", "draw");
 
-				application.meshRenderer().setDepthTest(false);
-				
-				// 2, 2 is the size of the entire screen (in case of 1:1 aspect ratio) for menu camera. left edge is [-1, 0], top right is [+1, +1], etc.
-				// so we make it size 2,2 to cover all of that. and then take aspect ratio into account by dividing the y-size.
-				root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
-				menuCamera->setProjection(0.01f, 50.0f, application.aspectRatio());
-				menuCamera->setPosition({ 0, 0, 1 });
+				render.execute();
 
-				application.meshRenderer().setCamera(menuCamera);
-				application.textRenderer().setCamera(menuCamera);
-				application.meshRenderer().cameraToGPU();
-				root.visualise(application.meshRenderer(), application.textRenderer());
+				// application.meshRenderer().setDepthTest(true);
 
-				auto num_entities = ecs.size();
-				
-				float info_text_pos_y = +0.1f;
+				// TODO: debug visualisations should be drawn on their own fbo.
+				/*
+				{
+					// visualize collision detection structure.
+					if (conf.visualize_dynamic_collisions) {
+						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+						collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+							matrix4 m;
+							m.discardSetTranslate(pos);
+							m.scale(radius);
+							float sign[2] = { -1.0f, +1.0f };
+							application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
+						});
+					}
 
-				auto get_min_avg_max = [](rynx::numeric_property<float>& prop) {
-					return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
-				};
-
-				application.textRenderer().drawText(std::string("logic:    ") + get_min_avg_max(logic_time), -0.9f, 0.40f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("draw:     ") + get_min_avg_max(render_time), -0.9f, 0.35f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("swap:     ") + get_min_avg_max(swap_time), -0.9f, 0.30f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("bodies:   ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-				application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.15f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
-			}
-
-			{
-				rynx::graphics::framebuffer::bind_backbuffer();
-				application.meshRenderer().clearScreen();
-
-				application.set_gl_viewport_to_window_dimensions();
-
-				fbo_world_geometry->bind_as_input();
-				omnilights_visualizer->render();
+					// visualize collision detection structure.
+					if (conf.visualize_static_collisions) {
+						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+						collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+							matrix4 m;
+							m.discardSetTranslate(pos);
+							m.scale(radius);
+							float sign[2] = { -1.0f, +1.0f };
+							application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
+						});
+					}
+				}
+				*/
 
 				{
 					application.shaders()->activate_shader("fbo_color_to_bb");
 					fbo_menu->bind_as_input();
-					screenspace->draw_fullscreen();
+					rynx::graphics::screenspace_draws::draw_fullscreen();
 				}
+
+				timer.reset();
+				application.swapBuffers();
+				auto swap_time_us = timer.time_since_last_access_us();
+				swap_time.observe_value(swap_time_us / 1000.0f);
+
+				total_time.observe_value((logic_time_us + render_time_us + swap_time_us) / 1000.0f);
 			}
-
-			timer.reset();
-			application.swapBuffers();
-			auto swap_time_us = timer.time_since_last_access_us();
-			swap_time.observe_value(swap_time_us / 1000.0f);
-
-			total_time.observe_value((logic_time_us + render_time_us + swap_time_us) / 1000.0f);
 		}
 
 		{

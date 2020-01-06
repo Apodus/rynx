@@ -6,19 +6,15 @@
 
 namespace rynx {
 	namespace graphics {
-		class shaders;
 		class screenspace_draws {
 		public:
-			screenspace_draws(std::shared_ptr<shaders> shaders);
-			void draw_fullscreen();
-			
+			screenspace_draws();
+			static void draw_fullscreen();
+			static void clear_screen();
+
 			// TODO: this is probably not the right place for these.
-			void blend_mode_cumulative();
-			void blend_mode_default();
-		private:
-			std::shared_ptr<shaders> m_shaders;
-			uint32_t vao;
-			uint32_t vbo;
+			static void blend_mode_cumulative();
+			static void blend_mode_default();
 		};
 	}
 }

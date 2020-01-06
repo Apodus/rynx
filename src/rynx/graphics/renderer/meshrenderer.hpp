@@ -74,7 +74,6 @@ namespace rynx {
 		std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
 		void loadDefaultMesh(const std::string& textureName);
-		void clearScreen();
 		void cameraToGPU();
 		void setCamera(std::shared_ptr<Camera> camera);
 		void drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color);

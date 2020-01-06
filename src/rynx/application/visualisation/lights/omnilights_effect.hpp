@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/application/render.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/tech/math/vector.hpp>
 
 namespace rynx {
@@ -13,16 +13,15 @@ namespace rynx {
 
 	namespace application {
 		namespace visualisation {
-			struct omnilights_effect : public rynx::application::renderer::irenderer {
+			struct omnilights_effect : public rynx::application::graphics_step::igraphics_step {
 			public:
 				omnilights_effect(
-					std::shared_ptr<rynx::graphics::shaders> shader_manager,
-					std::shared_ptr<rynx::graphics::screenspace_draws> screenspace
+					std::shared_ptr<rynx::graphics::shaders> shader_manager
 				);
 				
 				virtual ~omnilights_effect() {}
 				virtual void prepare(rynx::scheduler::context* ctx) override;
-				virtual void render() override;
+				virtual void execute() override;
 			
 			private:
 				std::vector<floats4> m_light_colors;
@@ -30,7 +29,6 @@ namespace rynx {
 				std::vector<float> m_light_ambients;
 
 				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
-				std::shared_ptr<rynx::graphics::screenspace_draws> m_screenspace;
 			};
 		}
 	}

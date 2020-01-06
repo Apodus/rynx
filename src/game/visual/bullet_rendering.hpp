@@ -3,21 +3,21 @@
 #include <rynx/system/assert.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
-#include <rynx/application/render.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 #include <rynx/tech/ecs.hpp>
 #include <game/logic/shooting.hpp>
 
 namespace game {
 	namespace visual {
-		struct bullet_renderer : public rynx::application::renderer::irenderer {
+		struct bullet_renderer : public rynx::application::graphics_step::igraphics_step {
 			bullet_renderer(rynx::MeshRenderer* meshRenderer) {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~bullet_renderer() {}
 			
 			virtual void prepare(rynx::scheduler::context* ctx) override {}
-			virtual void render() override {
+			virtual void execute() override {
 				/*
 				rynx_profile("visualisation", "bullets");
 				ecs.for_each([this](const rynx::components::position& pos, const rynx::components::motion& m, const game::components::bullet&, const rynx::components::color& color) {
@@ -33,14 +33,14 @@ namespace game {
 
 namespace game {
 	namespace visual {
-		struct hero_renderer : public rynx::application::renderer::irenderer {
+		struct hero_renderer : public rynx::application::graphics_step::igraphics_step {
 			hero_renderer(rynx::MeshRenderer* meshRenderer) {
 				m_meshRenderer = meshRenderer;
 			}
 			virtual ~hero_renderer() {}
 			
 			virtual void prepare(rynx::scheduler::context* ctx) override {}
-			virtual void render() override {
+			virtual void execute() override {
 				/*
 				rynx_profile("visualisation", "hero renderer");
 				ecs.query().for_each([this](

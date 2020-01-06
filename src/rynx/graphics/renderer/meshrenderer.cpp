@@ -74,17 +74,6 @@ void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
 		glDisable(GL_DEPTH_TEST);
 }
 
-void rynx::MeshRenderer::clearScreen() {
-	
-	float depth_clear_value = 1.0f;
-	glClearBufferfv(GL_DEPTH, 0, &depth_clear_value);
-	
-	float color_clear[] = { 0, 0, 0, 0 };
-	glClearBufferfv(GL_COLOR, 0, color_clear);
-	
-	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
-}
-
 void rynx::MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
 	m_pCamera = camera;
 }

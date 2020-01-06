@@ -2,18 +2,17 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
-#include <rynx/application/render.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 
 #include <rynx/tech/profiling.hpp>
-
-// required for implementation
 #include <rynx/tech/ecs.hpp>
+#include <rynx/scheduler/context.hpp>
 
 namespace rynx {
 	namespace application {
 		namespace visualisation {
-			struct ball_renderer : public rynx::application::renderer::irenderer {
+			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
 				ball_renderer(Mesh* circleMesh, MeshRenderer* meshRenderer, Camera* camera) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
@@ -132,7 +131,7 @@ namespace rynx {
 					});
 				}
 				
-				virtual void render() override {
+				virtual void execute() override {
 					{
 						rynx_profile("visualisation", "ball draw solids");
 						m_balls->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {

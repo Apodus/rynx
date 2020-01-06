@@ -1,43 +1,29 @@
+
+
 #pragma once
 
-#include <rynx/tech/ecs.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
+#include <rynx/graphics/framebuffer.hpp>
 #include <memory>
-#include <vector>
 
+class Camera;
 namespace rynx {
-	namespace scheduler {
-		class context;
-	}
-
 	namespace application {
-		class renderer {
+		class Application;
+
+		class renderer : public rynx::application::igraphics_step {
 		public:
-			class irenderer {
-			public:
-				virtual ~irenderer() {}
-				virtual void render() = 0;
-				virtual void prepare(rynx::scheduler::context* ctx) = 0;
-			};
-
-			renderer& addRenderer(std::unique_ptr<irenderer> renderer) {
-				m_renderers.emplace_back(std::move(renderer));
-				return *this;
-			}
-
-			void render() {
-				for (auto& renderer : m_renderers) {
-					renderer->render();
-				}
-			}
-
-			void prepare(rynx::scheduler::context* ctx) {
-				for (auto& renderer : m_renderers) {
-					renderer->prepare(ctx);
-				}
-			}
+			renderer(rynx::application::Application& application, std::shared_ptr<Camera> camera);
+			virtual void execute() override;
+			virtual void prepare(rynx::scheduler::context* ctx) override;
 
 		private:
-			std::vector<std::unique_ptr<irenderer>> m_renderers;
+			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
+			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
+
+			std::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
+			rynx::application::Application& m_application;
+			std::shared_ptr<Camera> camera;
 		};
 	}
 }

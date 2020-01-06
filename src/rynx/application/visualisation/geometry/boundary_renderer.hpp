@@ -2,18 +2,16 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
-#include <rynx/application/render.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 
 #include <rynx/tech/profiling.hpp>
-
-// required for implementation
 #include <rynx/tech/ecs.hpp>
 
 namespace rynx {
 	namespace application {
 		namespace visualisation {
-			struct boundary_renderer : public rynx::application::renderer::irenderer {
+			struct boundary_renderer : public rynx::application::graphics_step::igraphics_step {
 
 				boundary_renderer(Mesh* boxMesh, MeshRenderer* meshRenderer) {
 					m_boxMesh = boxMesh;
@@ -57,7 +55,7 @@ namespace rynx {
 					});
 				}
 				
-				virtual void render() override {
+				virtual void execute() override {
 					rynx_profile("visualisation", "ball draw solids");
 					m_edges->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 						m_meshRenderer->drawMeshInstancedDeferred(*m_boxMesh, "Empty", matrices, colors);
