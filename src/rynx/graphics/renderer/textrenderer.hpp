@@ -18,7 +18,7 @@ class Font;
 
 namespace rynx {
 	namespace graphics {
-		class Shaders;
+		class shaders;
 	}
 }
 
@@ -36,7 +36,7 @@ namespace rynx {
 		floats4 activeColor;
 
 		std::shared_ptr<GPUTextures> m_textures;
-		std::shared_ptr<rynx::graphics::Shaders> m_shaders;
+		std::shared_ptr<rynx::graphics::shaders> m_shaders;
 		std::shared_ptr<Camera> m_pCamera;
 		GLuint vao;
 		GLuint vbo, cbo, tbo;
@@ -49,7 +49,7 @@ namespace rynx {
 			Right
 		};
 
-		TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::Shaders> shaders);
+		TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
 
 		void setCamera(std::shared_ptr<Camera> pCamera) { m_pCamera = std::move(pCamera); }
 		void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});

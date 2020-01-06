@@ -1,6 +1,7 @@
 
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/context.hpp>
+#include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/tech/profiling.hpp>
 
 rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_task; }
@@ -62,4 +63,8 @@ rynx::scheduler::task& rynx::scheduler::task::operator & (task_token& other) {
 rynx::scheduler::task& rynx::scheduler::task::operator | (task_token& other) {
 	other->depends_on(*this);
 	return *other;
+}
+
+void rynx::scheduler::task::notify_work_available() const {
+	m_context->m_scheduler->wake_up_sleeping_workers();
 }

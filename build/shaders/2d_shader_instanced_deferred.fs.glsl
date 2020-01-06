@@ -14,6 +14,8 @@ layout(location = 2) out vec4 frag_position;
 void main()
 {
     frag_color = texture(tex, uv_pass) * color_pass;
-	frag_normal = normal_pass * 0.5 + 0.5; // rescale to 0-1 for rgba-texture storage. NOTE: the interpolated value will not have length 1!
+	
+	 // rescale normal to 0-1 for rgba-texture storage. NOTE: the interpolated value will not have length 1!
+	frag_normal = normal_pass * 0.5 + 0.5;
 	frag_position = position_pass;
 }

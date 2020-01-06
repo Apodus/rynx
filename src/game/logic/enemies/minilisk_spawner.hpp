@@ -37,7 +37,8 @@ namespace game {
 							rynx::components::dampening,
 							rynx::components::boundary,
 							rynx::components::rope,
-							rynx::components::frame_collisions> ecs) {
+							rynx::components::frame_collisions,
+							rynx::components::light_omni> ecs) {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +100.0f + m_random(0.0f, 4.0f);
@@ -52,6 +53,13 @@ namespace game {
 									rynx::components::dampening({ 0.97f, 0.997f }),
 									rynx::components::frame_collisions()
 								);
+
+								if ((m_random() & 63) > 30) {
+									rynx::components::light_omni light;
+									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
+									light.ambient = m_random(0.0f, 0.1f);
+									ecs.attachToEntity(id1, light);
+								}
 
 								for (int k = 1; k < 40; ++k) {
 									auto id2 = ecs.create(

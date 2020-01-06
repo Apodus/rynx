@@ -5,7 +5,7 @@
 
 #include <string>
 
-rynx::graphics::Shaders::Shaders() {
+rynx::graphics::shaders::shaders() {
 	GLint n;
 	glGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES, &n);
 	logmsg("Max geometry shader output vertices: %d", n);
@@ -13,15 +13,15 @@ rynx::graphics::Shaders::Shaders() {
 	logmsg("Max geometry shader output components: %d", n);
 }
 
-rynx::graphics::Shaders::~Shaders() {
+rynx::graphics::shaders::~shaders() {
 	release();
 }
 
-void rynx::graphics::Shaders::release() {
+void rynx::graphics::shaders::release() {
 	m_shaders.clear();
 }
 
-std::shared_ptr<rynx::graphics::Shader> rynx::graphics::Shaders::activate_shader(const std::string& name) {
+std::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::activate_shader(const std::string& name) {
 	if(m_activeShaderName == name)
 		return m_activeShader;
 
@@ -37,13 +37,13 @@ std::shared_ptr<rynx::graphics::Shader> rynx::graphics::Shaders::activate_shader
 	return m_activeShader;
 }
 
-std::shared_ptr<rynx::graphics::Shader> rynx::graphics::Shaders::load_shader(
+std::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::load_shader(
 	const std::string& name,
 	const std::string& vertexShader,
 	const std::string& fragmentShader)
 {
 	logmsg("loading shader %s", name.c_str());
-	auto pShader = std::make_shared<Shader>(name, vertexShader, fragmentShader);
+	auto pShader = std::make_shared<shader>(name, vertexShader, fragmentShader);
 	pShader->set_shader_manager(this);
 	m_shaders.insert_or_assign(name, pShader);
 	return pShader;

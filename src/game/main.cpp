@@ -26,6 +26,7 @@
 #include <rynx/application/visualisation/ball_renderer.hpp>
 #include <rynx/application/visualisation/boundary_renderer.hpp>
 #include <rynx/application/visualisation/mesh_renderer.hpp>
+#include <rynx/application/visualisation/omnilights_effect.hpp>
 
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/tech/smooth_value.hpp>
@@ -89,7 +90,6 @@ int main(int argc, char** argv) {
 	rynx::collision_detection::category_id collisionCategoryProjectiles = collisionDetection.add_category();
 
 	{
-		// TODO: Do not update static category sphere tree every frame.
 		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryDynamic); // enable dynamic <-> dynamic collisions
 		collisionDetection.enable_collisions_between(collisionCategoryDynamic, collisionCategoryStatic.ignore_collisions()); // enable dynamic <-> static collisions
 
@@ -342,7 +342,8 @@ int main(int argc, char** argv) {
 		.add_rgba8_target("color")
 		.construct(application.textures(), "menu");
 
-	rynx::graphics::screenspace_renderer screenspace(application.shaders());
+	auto screenspace = std::make_shared<rynx::graphics::screenspace_draws>(application.shaders());
+	auto omnilights_visualizer = std::make_shared<rynx::application::visualisation::omnilights_effect>(application.shaders(), screenspace);
 
 	rynx::timer timer;
 	rynx::numeric_property<float> logic_time;
@@ -357,6 +358,7 @@ int main(int argc, char** argv) {
 		frame_timer_dt.reset();
 		
 		fbo_world_geometry->bind_as_output();
+		fbo_world_geometry->clear();
 
 		{
 			rynx_profile("Main", "start frame");
@@ -455,6 +457,10 @@ int main(int argc, char** argv) {
 				{
 					rynx_profile("Main", "prepare");
 					gameRenderer.prepare(base_simulation.m_context);
+					
+					// TODO: this should not be here.
+					omnilights_visualizer->prepare(base_simulation.m_context);
+
 					scheduler.start_frame();
 					scheduler.wait_until_complete();
 				}
@@ -528,20 +534,17 @@ int main(int argc, char** argv) {
 
 			{
 				rynx::graphics::framebuffer::bind_backbuffer();
+				application.meshRenderer().clearScreen();
+
 				application.set_gl_viewport_to_window_dimensions();
 
-				{
-					// TODO: better storage in code for the effect shaders.
-					//       referencing by name here is silly. should have the shader object at hand.
-					application.shaders()->activate_shader("fbo_lights");
-					fbo_world_geometry->bind_as_input();
-					screenspace.draw_fullscreen();
-				}
+				fbo_world_geometry->bind_as_input();
+				omnilights_visualizer->render();
 
 				{
 					application.shaders()->activate_shader("fbo_color_to_bb");
 					fbo_menu->bind_as_input();
-					screenspace.draw_fullscreen();
+					screenspace->draw_fullscreen();
 				}
 			}
 

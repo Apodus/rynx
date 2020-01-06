@@ -30,7 +30,7 @@ void getColorByCode(char c, floats4& color) {
 	color = getColorByCode(c);
 }
 
-rynx::TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::Shaders> shaders) :
+rynx::TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders) :
 	m_textures(textures),
 	m_shaders(shaders)
 {
@@ -86,7 +86,7 @@ void rynx::TextRenderer::drawText(const std::string& text, float x, float y, flo
 }
 
 void rynx::TextRenderer::drawTextBuffers(int textLength) {
-	std::shared_ptr<rynx::graphics::Shader> textShader = m_shaders->activate_shader("font");
+	std::shared_ptr<rynx::graphics::shader> textShader = m_shaders->activate_shader("font");
 	const matrix4& projectionMatrix = m_pCamera->getProjection();
 	const matrix4& viewMatrix = m_pCamera->getView();
 

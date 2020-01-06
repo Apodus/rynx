@@ -12,21 +12,21 @@ typedef unsigned GLuint;
 
 namespace rynx {
 	namespace graphics {
-		class Shaders
+		class shaders
 		{
 		public:
-			Shaders();
-			~Shaders();
+			shaders();
+			~shaders();
 
 			void release();
 
-			std::shared_ptr<Shader> load_shader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);
-			std::shared_ptr<Shader> activate_shader(const std::string& name);
+			std::shared_ptr<shader> load_shader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);
+			std::shared_ptr<shader> activate_shader(const std::string& name);
 
 		private:
-			rynx::unordered_map<std::string, std::shared_ptr<Shader>> m_shaders;
+			rynx::unordered_map<std::string, std::shared_ptr<shader>> m_shaders;
 
-			std::shared_ptr<Shader> m_activeShader;
+			std::shared_ptr<shader> m_activeShader;
 			std::string m_activeShaderName;
 		};
 	}

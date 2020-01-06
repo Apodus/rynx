@@ -6,8 +6,8 @@ uniform sampler2D tex_color;
 uniform sampler2D tex_normal;
 uniform sampler2D tex_position;
 
-uniform vec4 lights_colors[16];
-uniform vec3 lights_positions[16];
+uniform vec4 lights_colors[128];
+uniform vec3 lights_positions[128];
 uniform int lights_num;
 
 out vec4 frag_color;
@@ -17,9 +17,7 @@ void main()
 	vec2 uv = texCoord_pass;
 	vec4 material_color = texture(tex_color, uv);
 	vec3 fragment_position = texture(tex_position, uv).rgb;
-	vec3 fragment_normal = texture(tex_normal, uv).rgb;
-	fragment_normal *= 2.0;
-	fragment_normal -= 0.5;
+	vec3 fragment_normal = normalize(2.0 * texture(tex_normal, uv).rgb - 1.0);
 	
 	vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 	for(int i=0; i<lights_num; ++i) {

@@ -7,7 +7,7 @@
 
 rynx::MeshRenderer::MeshRenderer(
 	std::shared_ptr<GPUTextures> textures,
-	std::shared_ptr<rynx::graphics::Shaders> shaders
+	std::shared_ptr<rynx::graphics::shaders> shaders
 )
 {
 	m_textures = textures;
@@ -143,7 +143,7 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 }
 
 void rynx::MeshRenderer::cameraToGPU() {
-	auto set_camera_to_shader = [this](rynx::graphics::Shader& shader) {
+	auto set_camera_to_shader = [this](rynx::graphics::shader& shader) {
 		shader.activate();
 		shader.uniform("view", m_pCamera->getView());
 		shader.uniform("projection", m_pCamera->getProjection());
@@ -173,7 +173,7 @@ void rynx::MeshRenderer::instanced_draw_impl(
 	const std::vector<floats4>& colors,
 	DrawType type) {
 	
-	rynx::graphics::Shader* shader = nullptr;
+	rynx::graphics::shader* shader = nullptr;
 	if (type == DrawType::Forward) {
 		shader = shader_instanced.get();
 	}

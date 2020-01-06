@@ -316,8 +316,8 @@ namespace rynx {
 							work->required_for(bar);
 						}
 
-						m_parent.m_context->m_scheduler->wake_up_sleeping_workers();
-
+						m_parent.notify_work_available();
+						
 						if (self_participate) {
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
@@ -366,6 +366,8 @@ namespace rynx {
 				return m_for_each->index.load() >= m_for_each->end;
 			}
 			
+			void notify_work_available() const;
+
 			std::string m_name;
 			std::function<void(rynx::scheduler::task*)> m_op;
 			operation_barriers m_barriers;

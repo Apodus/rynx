@@ -123,6 +123,22 @@ namespace rynx {
 			std::vector<entry> collisions;
 		};
 
+		struct light_omni {
+			// fourth value in color encodes light intensity.
+			floats4 color;
+			
+			// light strength at point is clamp(0, 1, object normal dot light direction + ambient) / sqr(dist)
+			// when ambient value = 0, the backside of objects are not illuminated.
+			// when ambient value = 1, objects are evenly illuminated.
+			float ambient = 0;
+		};
+
+		struct light_directed : public light_omni {
+			vec3f direction;
+			float angle = math::PI_float;
+			float edge_softness = 0.1f;
+		};
+
 		struct rope {
 			rynx::ecs::id id_a;
 			rynx::ecs::id id_b;

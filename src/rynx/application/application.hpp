@@ -12,7 +12,7 @@ namespace rynx {
 	class TextRenderer;
 
 	namespace graphics {
-		class Shaders;
+		class shaders;
 	}
 
 	namespace application {
@@ -32,7 +32,7 @@ namespace rynx {
 
 			std::shared_ptr<Window> window() { return m_window; }
 			std::shared_ptr<UserIO> input() { return m_input; }
-			std::shared_ptr<rynx::graphics::Shaders> shaders() { return m_shaders; }
+			std::shared_ptr<rynx::graphics::shaders> shaders() { return m_shaders; }
 
 			MeshRenderer& meshRenderer() { return *m_meshRenderer; }
 			TextRenderer& textRenderer() { return *m_textRenderer; }
@@ -43,7 +43,7 @@ namespace rynx {
 			std::shared_ptr<Window> m_window;
 			std::shared_ptr<UserIO> m_input;
 			std::shared_ptr<GPUTextures> m_textures;
-			std::shared_ptr<rynx::graphics::Shaders> m_shaders;
+			std::shared_ptr<rynx::graphics::shaders> m_shaders;
 
 			std::shared_ptr<MeshRenderer> m_meshRenderer;
 			std::shared_ptr<TextRenderer> m_textRenderer;

@@ -3,10 +3,10 @@
 #include <rynx/tech/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/math/geometry.hpp>
-#include <rynx/tech/profiling.hpp>
-#include <vector>
-
 #include <rynx/tech/parallel_accumulator.hpp>
+#include <rynx/tech/profiling.hpp>
+
+#include <vector>
 
 inline float sqr(float x) { return x * x; };
 
