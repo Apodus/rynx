@@ -126,6 +126,8 @@ struct floats4 {
 		float data[4];
 	};
 
+	floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
+	floats4(const vec3<float>& other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
 	floats4(const floats4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
 	constexpr floats4(float x = 0, float y = 0, float z = 0, float w = 0) : x(x), y(y), z(z), w(w) {}
 

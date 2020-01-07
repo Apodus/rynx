@@ -192,6 +192,7 @@ rynx::graphics::shader::~shader()
 
 GLint rynx::graphics::shader::uniform(const std::string& name)
 {
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 	rynx_assert(m_started, "looking for uniform when shader has not been started! not good.");
 	auto it = m_uniformLocations.find(name);
 	if(it == m_uniformLocations.end())
@@ -273,6 +274,11 @@ rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name,
 	return *this;
 }
 
+rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float* v, size_t amount) {
+	glUniform1fv(uniform(name), amount, v);
+	return *this;
+}
+
 
 GLint rynx::graphics::shader::attribute(const std::string& name)
 {
@@ -293,6 +299,7 @@ GLint rynx::graphics::shader::attribute(const std::string& name)
 
 void rynx::graphics::shader::activate()
 {
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 	rynx_assert(m_programID != 0, "trying to start invalid shader");
 	if (m_started)
 		return;

@@ -6,6 +6,8 @@
 #include <rynx/application/visualisation/geometry/mesh_renderer.hpp>
 
 #include <rynx/application/visualisation/lights/omnilights_effect.hpp>
+#include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
+#include <rynx/application/visualisation/lights/ambient_light_effect.hpp>
 
 #include <memory>
 
@@ -20,6 +22,8 @@ std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisati
 std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_lighting_pass(std::shared_ptr<rynx::graphics::shaders> shaders) {
 	auto lighting_pass = std::make_unique<graphics_step>();
 	lighting_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::omnilights_effect>(shaders));
+	lighting_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::directed_lights_effect>(shaders));
+	lighting_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ambient_light_effect>(shaders));
 	return lighting_pass;
 	// omnilights_visualizer->prepare(base_simulation.m_context);
 }

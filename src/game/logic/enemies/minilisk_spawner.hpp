@@ -38,7 +38,8 @@ namespace game {
 							rynx::components::boundary,
 							rynx::components::rope,
 							rynx::components::frame_collisions,
-							rynx::components::light_omni> ecs) {
+							rynx::components::light_omni,
+							rynx::components::light_directed> ecs) {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +100.0f + m_random(0.0f, 4.0f);
@@ -54,10 +55,21 @@ namespace game {
 									rynx::components::frame_collisions()
 								);
 
-								if ((m_random() & 63) > 30) {
+								if ((m_random() & 63) > 60) {
 									rynx::components::light_omni light;
 									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
+									ecs.attachToEntity(id1, light);
+								}
+								
+								if ((m_random() & 63) > 30) {
+									rynx::components::light_directed light;
+									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
+									light.ambient = m_random(0.0f, 0.1f);
+									light.direction = vec3f(1, 1, 0).normalize();
+									light.edge_softness = m_random(0.5f, 5.0f);
+									light.angle = m_random(1.5f, 4.14f);
+									rynx_assert(light.angle > 1.4f && light.angle < 4.2f);
 									ecs.attachToEntity(id1, light);
 								}
 

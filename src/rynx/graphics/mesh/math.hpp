@@ -59,7 +59,7 @@ namespace math {
 		float operator()(float from, float to) {
 			m_state = math::rand(m_state);
 			float range = to - from;
-			return range * float(m_state & (uint32_t(~0u) >> 4)) / float(uint32_t(~0u) >> 4);
+			return from + range * float(m_state & (uint32_t(~0u) >> 4)) / float(uint32_t(~0u) >> 4);
 		}
 
 		float operator()(float to) {
@@ -69,7 +69,7 @@ namespace math {
 		uint64_t operator()(int64_t from, int64_t to) {
 			m_state = math::rand(m_state);
 			int64_t range = to - from;
-			return m_state % range;
+			return from + (m_state % range);
 		}
 
 		uint64_t operator()(int64_t to) {

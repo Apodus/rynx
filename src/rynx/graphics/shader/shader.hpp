@@ -35,6 +35,7 @@ namespace rynx {
 			
 			shader& uniform(const std::string& name, floats4* v, size_t amount);
 			shader& uniform(const std::string& name, vec3f* v, size_t amount);
+			shader& uniform(const std::string& name, float* v, size_t amount);
 
 			shader& uniform(const std::string& name, int32_t value);
 			shader& uniform(const std::string& name, int32_t value1, int32_t value2);
