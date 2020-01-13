@@ -264,18 +264,18 @@ rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name,
 
 rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, floats4* v, size_t amount) {
 	static_assert(sizeof(floats4) == 4 * sizeof(float), "can't take array of floats4 directly because of padding.");
-	glUniform4fv(uniform(name), amount, reinterpret_cast<float*>(v));
+	glUniform4fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
 	return *this;
 }
 
 rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, vec3f* v, size_t amount) {
 	static_assert(sizeof(vec3f) == 3 * sizeof(float), "can't take array of vec3f directly because of padding.");
-	glUniform3fv(uniform(name), amount, reinterpret_cast<float*>(v));
+	glUniform3fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
 	return *this;
 }
 
 rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float* v, size_t amount) {
-	glUniform1fv(uniform(name), amount, v);
+	glUniform1fv(uniform(name), GLsizei(amount), v);
 	return *this;
 }
 

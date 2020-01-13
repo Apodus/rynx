@@ -69,7 +69,6 @@ namespace game {
 									light.direction = vec3f(1, 1, 0).normalize();
 									light.edge_softness = m_random(0.5f, 5.0f);
 									light.angle = m_random(1.5f, 4.14f);
-									rynx_assert(light.angle > 1.4f && light.angle < 4.2f);
 									ecs.attachToEntity(id1, light);
 								}
 

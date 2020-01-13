@@ -262,29 +262,43 @@ namespace rynx {
 				}
 			}
 
+
+		private:
+			// private implementation details for insertion operations.
+			// virtual types are not added because they hold no data by definition.
+			template<typename T> void insertSingleComponent(T&& component) {
+				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
+					table<T>().emplace_back(std::forward<T>(component));
+				}
+			}
+
+			template<typename T> void insertSingleComponentVector(std::vector<T>& component) {
+				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
+					table<T>().insert(component);
+				}
+			}
+
+		public:
 			template<typename... Tags, typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
-				(table<Components>().insert(components), ...);
+				(insertSingleComponentVector(components), ...);
 				size_t index = m_ids.size();
 				m_ids.insert(m_ids.end(), ids.begin(), ids.end());
-				
-				auto insert_tags_table = [num = ids.size()](auto& table) {
-					table.insert_default(num);
-				};
+
+				auto insert_tags_table = [num = ids.size()](auto& table) { table.insert_default(num); };
 				(insert_tags_table(table<Tags>()), ...);
 
 				return index;
 			}
 
+			template<typename...Components> void insertComponents(Components&& ... components) {
+				(insertSingleComponent(std::forward<Components>(components)), ...);
+			}
+
 			template<typename...Components> size_t insertNew(entity_id_t id, Components&& ... components) {
-				(table<Components>().emplace_back(std::forward<Components>(components)), ...);
+				insertComponents(std::forward<Components>(components)...);
 				size_t index = m_ids.size();
 				m_ids.emplace_back(id);
 				return index;
-			}
-
-			// these always operate on the last entity, when called directly on a category.
-			template<typename...Components> void insertComponents(Components&& ... components) {
-				(table<Components>().emplace_back(std::forward<Components>(components)), ...);
 			}
 
 			template<typename Component> void eraseComponentFromIndex(index_t index) {
@@ -292,6 +306,7 @@ namespace rynx {
 				t[index] = std::move(t.back());
 				t.pop_back();
 			}
+
 			template<typename...Components> void eraseComponentsFromIndex(index_t index) { (eraseComponentFromIndex<Components>(index), ...); }
 
 			void copyTypesFrom(entity_category* other, const dynamic_bitset& types) {
@@ -953,11 +968,25 @@ namespace rynx {
 
 		template<typename...Args> void componentTypesAllowed() const {}
 
+		template<typename T> type_id_t type_id_for([[maybe_unused]] const T& t) {
+			if constexpr (std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
+				return t.type_value;
+			}
+			else {
+				return m_types.id<T>();
+			}
+		}
+
+		template<typename T> type_id_t type_id_for([[maybe_unused]] const std::vector<T>& t) {
+			return m_types.id<T>();
+		}
+
+
 		template<typename... Components>
 		entity_id_t create(Components&& ... components) {
 			entity_id_t id = m_entities.generateOne();
 			dynamic_bitset targetCategory;
-			(targetCategory.set(m_types.id<Components>()), ...);
+			(targetCategory.set(type_id_for(components)), ...);
 			auto category_it = m_categories.find(targetCategory);
 			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
 			category_it->second->insertNew(id, std::forward<Components>(components)...);
@@ -979,7 +1008,7 @@ namespace rynx {
 
 			// target category is the same for all entities created in this call.
 			dynamic_bitset targetCategory;
-			(targetCategory.set(m_types.id<Components>()), ...);
+			(targetCategory.set(type_id_for(components)), ...);
 			(targetCategory.set(m_types.id<Tags>()), ...);
 			auto category_it = m_categories.find(targetCategory);
 			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
@@ -998,7 +1027,7 @@ namespace rynx {
 			rynx_assert(it != m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
 			const dynamic_bitset& initialTypes = it->second.first->types();
 			dynamic_bitset resultTypes = initialTypes;
-			(resultTypes.set(m_types.id<Components>()), ...);
+			(resultTypes.set(type_id_for(components)), ...);
 
 			auto destinationCategoryIt = m_categories.find(resultTypes);
 			if (destinationCategoryIt == m_categories.end()) {

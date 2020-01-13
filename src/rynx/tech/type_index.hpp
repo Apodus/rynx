@@ -5,10 +5,21 @@
 #include <mutex>
 #include <vector>
 
+#include <atomic>
+
 namespace rynx {
 	class type_index {
-		mutable uint64_t runningTypeIndex = 0;
+		enum class type_model {
+			Global,
+			Local
+		};
+		
+		static constexpr type_model type_index_model = type_model::Global;
+
+		mutable std::atomic<uint64_t> runningTypeIndex = 0;
+		static std::atomic<uint64_t> runningTypeIndex_global;
 		static constexpr uint64_t no_type = ~uint64_t(0);
+
 		mutable unordered_map<uintptr_t, uint64_t> m_typeMap;
 		mutable std::mutex m_slow_path_mutex;
 		mutable std::vector<std::pair<uintptr_t, uint64_t>> m_fallback;
@@ -20,7 +31,14 @@ namespace rynx {
 #else
 		template<typename T> static constexpr char const*const unique_str_for_type() { return __PRETTY_FUNCTION__; }
 #endif
-		template<typename T> uint64_t id_private() const {
+		// all type indices will share values of types. requires static linkage of all use sites.
+		template<typename T> uint64_t id_private__global_ids() const {
+			static uint64_t type_id_value = runningTypeIndex_global++;
+			return type_id_value;
+		}
+
+		// all type indices will have private values of types. still requires static linkage of all use sites.
+		template<typename T> uint64_t id_private__local_ids() const {
 			constexpr char const * const unique_type_name_ptr = unique_str_for_type<T>();
 			uintptr_t unique_ptr_value = uintptr_t(unique_type_name_ptr);
 			
@@ -42,7 +60,20 @@ namespace rynx {
 			return m_fallback.back().second;
 		}
 
+		template<typename T> uint64_t id_private() const {
+			if constexpr (type_index_model == type_model::Global) {
+				return id_private__global_ids<T>();
+			}
+			else {
+				return id_private__local_ids<T>();
+			}
+		}
+
 	public:
+		struct virtual_type {
+			uint64_t type_value;
+		};
+
 		type_index() {
 			m_typeMap.reserve(1024);
 		}
@@ -55,6 +86,15 @@ namespace rynx {
 				m_typeMap.insert(std::move(entry));
 			}
 			m_fallback.clear();
+		}
+
+		virtual_type create_virtual_type() {
+			if constexpr (type_index_model == type_model::Global) {
+				return virtual_type{ runningTypeIndex_global++ };
+			}
+			else {
+				return virtual_type{ runningTypeIndex++ };
+			}
 		}
 
 		template<typename T> uint64_t id() const {
