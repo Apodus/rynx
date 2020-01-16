@@ -13,14 +13,20 @@
 namespace game {
 	namespace logic {
 		struct minilisk_test_spawner_logic : public rynx::application::logic::iruleset {
+			std::shared_ptr<rynx::mesh_collection> m_meshes;
 			rynx::collision_detection::category_id dynamic;
 			uint64_t frameCount = 0;
 			uint64_t how_often_to_spawn = 300;
 			float x_spawn = -20.9f;
 			
 			math::rand64 m_random;
+			rynx::type_index::virtual_type m_virtual_type_id;
+			rynx::type_index::virtual_type m_virtual_type_id2;
 
-			minilisk_test_spawner_logic(rynx::collision_detection::category_id dynamic) : dynamic(dynamic) {}
+			minilisk_test_spawner_logic(
+				std::shared_ptr<rynx::mesh_collection> meshes,
+				rynx::collision_detection::category_id dynamic
+			) : m_meshes(meshes), dynamic(dynamic) {}
 
 			virtual void onFrameProcess(rynx::scheduler::context& scheduler, float /* dt */) override {
 				if ((++frameCount % how_often_to_spawn) == 0) {
@@ -39,7 +45,14 @@ namespace game {
 							rynx::components::rope,
 							rynx::components::frame_collisions,
 							rynx::components::light_omni,
-							rynx::components::light_directed> ecs) {
+							rynx::components::mesh,
+							rynx::components::light_directed,
+							rynx::matrix4> ecs) {
+						if (m_virtual_type_id == rynx::type_index::virtual_type::invalid) {
+							m_virtual_type_id = ecs.create_virtual_type();
+							m_virtual_type_id2 = ecs.create_virtual_type();
+						}
+
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +100.0f + m_random(0.0f, 4.0f);
@@ -52,7 +65,10 @@ namespace game {
 									rynx::components::collision_category(dynamic),
 									rynx::components::color(),
 									rynx::components::dampening({ 0.97f, 0.997f }),
-									rynx::components::frame_collisions()
+									rynx::components::mesh{ m_meshes->get("ball") },
+									rynx::type_index::virtual_type{ m_virtual_type_id },
+									rynx::components::frame_collisions(),
+									rynx::matrix4()
 								);
 
 								if ((m_random() & 63) > 60) {
@@ -81,7 +97,10 @@ namespace game {
 										rynx::components::collision_category(dynamic),
 										rynx::components::color(),
 										rynx::components::dampening({ 0.80f, 0.90f }),
-										rynx::components::frame_collisions()
+										rynx::components::mesh{ m_meshes->get("square_empty") },
+										rynx::type_index::virtual_type{ m_virtual_type_id2 },
+										rynx::components::frame_collisions(),
+										rynx::matrix4()
 									);
 
 									rynx::components::rope joint;

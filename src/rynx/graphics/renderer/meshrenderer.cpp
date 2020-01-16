@@ -158,8 +158,9 @@ void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const 
 void rynx::MeshRenderer::instanced_draw_impl(
 	const Mesh& mesh,
 	const std::string& texture,
-	const std::vector<matrix4>& models,
-	const std::vector<floats4>& colors,
+	size_t num_instances,
+	const matrix4* models,
+	const floats4* colors,
 	DrawType type) {
 	
 	rynx::graphics::shader* shader = nullptr;
@@ -198,20 +199,20 @@ void rynx::MeshRenderer::instanced_draw_impl(
 	glVertexAttribDivisor(1, 0); // texture coordinates are per vertex data -> 0
 
 	size_t currentIteration = 0;
-	while (models.size() > currentIteration* InstancesPerDrawCall) {
-		int32_t remaining = static_cast<int32_t>(models.size() - currentIteration * InstancesPerDrawCall);
+	while (num_instances > currentIteration* InstancesPerDrawCall) {
+		int32_t remaining = static_cast<int32_t>(num_instances - currentIteration * InstancesPerDrawCall);
 		int32_t instances_for_current_iteration = remaining > InstancesPerDrawCall ? InstancesPerDrawCall : remaining;
 
 		{
 			glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);
 			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * 4 * sizeof(GLfloat), models.data() + currentIteration * InstancesPerDrawCall);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * 4 * sizeof(GLfloat), models + currentIteration * InstancesPerDrawCall);
 		}
 
 		{
 			glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
 			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * sizeof(GLfloat), colors.data() + currentIteration * InstancesPerDrawCall);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * sizeof(GLfloat), colors + currentIteration * InstancesPerDrawCall);
 		}
 
 		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);

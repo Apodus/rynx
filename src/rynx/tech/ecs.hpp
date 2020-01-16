@@ -266,7 +266,7 @@ namespace rynx {
 		private:
 			// private implementation details for insertion operations.
 			// virtual types are not added because they hold no data by definition.
-			template<typename T> void insertSingleComponent(T&& component) {
+			template<typename T> void insertSingleComponent([[maybe_unused]] T&& component) {
 				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
 					table<T>().emplace_back(std::forward<T>(component));
 				}
@@ -354,7 +354,11 @@ namespace rynx {
 			) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
-					source->m_tables[typeId]->moveFromIndexTo(source_index, m_tables[typeId].get());
+					// virtual types are present in bitset, but do not have a table.
+					// TODO: mark virtual types in a separate bitset or something and compare against that. this nullcheck can hide actual bugs.
+					if (m_tables[typeId]) {
+						source->m_tables[typeId]->moveFromIndexTo(source_index, m_tables[typeId].get());
+					}
 					typeId = types.nextOne(typeId + 1);
 				}
 
@@ -461,7 +465,9 @@ namespace rynx {
 			}
 
 		protected:
-			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) { (includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
+			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) {
+				(includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...);
+			}
 			template<typename... Ts> void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
 
 			template<typename TupleType, size_t...Is> void unpack_types_exclude(std::index_sequence<Is...>) { (excludeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
@@ -480,6 +486,10 @@ namespace rynx {
 
 			template<typename... Args> sorter& in() { unpack_types<Args...>(); return *this; }
 			template<typename... Args> sorter& notIn() { unpack_types_exclude<Args...>(); return *this; }
+
+			sorter& in(rynx::type_index::virtual_type t) { includeTypes.set(t.type_value); return *this; }
+			sorter& notIn(rynx::type_index::virtual_type t) { excludeTypes.set(t.type_value); return *this; }
+
 
 			template<typename T> void sort_categories_by() {
 				auto& categories = m_ecs.categories();
@@ -523,16 +533,19 @@ namespace rynx {
 			}
 
 			template<typename F> void for_each_buffer(F&& op) {
-				constexpr bool is_id_query = std::is_same_v<std::tuple_element_t<0, std::tuple<FArg, Args...>>, rynx::ecs::id const *>;
+				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id const *>;
 
-				using types_t = std::tuple<std::remove_pointer_t<FArg>, std::remove_pointer_t<Args>...>;
+				using types_t = std::tuple<
+					std::remove_const_t<std::remove_pointer_t<FArg>>,
+					std::remove_const_t<std::remove_pointer_t<Args>>...
+				>;
 				using id_types_t = typename rynx::remove_first_type<types_t>::type;
 
 				if constexpr (is_id_query) {
-					unpack_types<id_types_t>(std::index_sequence_for<id_types_t>());
+					unpack_types<id_types_t>(std::make_index_sequence<std::tuple_size<id_types_t>::value>());
 				}
 				else {
-					unpack_types<types_t>(std::index_sequence_for<types_t>());
+					unpack_types<types_t>(std::make_index_sequence<std::tuple_size<types_t>::value>());
 				}
 
 				auto& categories = m_ecs.categories();
@@ -761,6 +774,11 @@ namespace rynx {
 				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
 			}
 
+			bool has(rynx::type_index::virtual_type t) const noexcept {
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->types().test(t.type_value);
+			}
+
 			template<typename... Ts> void remove() {
 				static_assert(allowEditing && sizeof...(Ts) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
 				categorySource->template removeFromEntity<Ts...>(m_id);
@@ -769,6 +787,7 @@ namespace rynx {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
 				categorySource->template attachToEntity<T>(m_id, std::forward<T>(t));
 			}
+
 			entity_id_t id() const { return m_id; }
 		private:
 			category_source* categorySource;
@@ -803,6 +822,10 @@ namespace rynx {
 				categorySource->template componentTypesAllowed<Ts...>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
 				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
+			}
+			bool has(rynx::type_index::virtual_type t) const noexcept {
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->types().test(t.type_value);
 			}
 
 			template<typename... Ts> void remove() { static_assert(sizeof...(Ts) == 1 && sizeof...(Ts) == 2, "can't remove components from const entity"); }
@@ -917,7 +940,8 @@ namespace rynx {
 		}
 
 		// used to tell the type index block which types we are going to use before using them.
-		// calling this is not required. but types which are not synced to the type index will work slower.
+		// calling this is not required. but types which are not synced to the type index will work slower, if the
+		// type index is using local type indexing.
 		// you can also call sync_type_index() manually once per frame or at convenient times. when sync is called,
 		// no other operation is allowed to hit the type index.
 		template<typename...Ts>
@@ -1063,17 +1087,38 @@ namespace rynx {
 			}
 
 			it->second.first->eraseComponentsFromIndex<Components...>(it->second.second);
-			auto changePair = destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second);
-
-			m_idCategoryMap.find(changePair.first.id)->second = { changePair.first.new_category, changePair.first.newIndex };
-			if (changePair.second.new_category)
-				m_idCategoryMap.find(changePair.second.id)->second = { changePair.second.new_category, changePair.second.newIndex };
+			destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second, m_idCategoryMap);
 			return *this;
 		}
 
+		ecs& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
+			auto it = m_idCategoryMap.find(id);
+			rynx_assert(it != m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
+			const dynamic_bitset& initialTypes = it->second.first->types();
+			dynamic_bitset resultTypes = initialTypes;
+			resultTypes.reset(t.type_value);
+
+			auto destinationCategoryIt = m_categories.find(resultTypes);
+			if (destinationCategoryIt == m_categories.end()) {
+				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
+				destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
+			}
+
+			// normally we would need to erase the components from source category entity first.
+			// but no need to erase any actual data from actual vectors here, since virtual types do not describe actual data types.
+			destinationCategoryIt->second->migrateEntity(
+				resultTypes,
+				it->second.first,
+				it->second.second,
+				m_idCategoryMap
+			);
+			return *this;
+		}
 
 		template<typename... Components> ecs& attachToEntity(id id, Components&& ... components) { attachToEntity(id.value, std::forward<Components>(components)...); return *this; }
 		template<typename... Components> ecs& removeFromEntity(id id) { removeFromEntity<Components...>(id.value); return *this; }
+
+		rynx::type_index::virtual_type create_virtual_type() { return m_types.create_virtual_type(); }
 
 	private:
 		auto& categories() { return m_categories; }
@@ -1093,17 +1138,17 @@ namespace rynx {
 			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::entity_iterator;
 			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::buffer_iterator;
 
-			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>(); }
+			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, rynx::type_index::virtual_type, std::remove_const_t<TypeConstraints>...>(); }
 			template<typename T> static constexpr bool typeConstCorrect() {
 				if constexpr (std::is_reference_v<T>) {
 					if constexpr (std::is_const_v<T>)
-						return isAny<T, id, std::add_const_t<TypeConstraints>...>(); // user must have requested any access to type (read/write both acceptable).
+						return isAny<T, id, rynx::type_index::virtual_type, std::add_const_t<TypeConstraints>...>(); // user must have requested any access to type (read/write both acceptable).
 					else
-						return isAny<T, id, TypeConstraints...>(); // verify user has requested a write access.
+						return isAny<T, id, rynx::type_index::virtual_type, TypeConstraints...>(); // verify user has requested a write access.
 				}
 				else {
 					// user is taking a copy, so it is always const with regards to what we have stored.
-					return isAny<std::remove_const_t<T>, id, std::remove_const_t<TypeConstraints>...>();
+					return isAny<std::remove_const_t<T>, id, rynx::type_index::virtual_type, std::remove_const_t<TypeConstraints>...>();
 				}
 			}
 
@@ -1138,6 +1183,8 @@ namespace rynx {
 
 			query_t<DataAccess::Mutable, view> query() { return query_t<DataAccess::Mutable, view>(*this); }
 			query_t<DataAccess::Const, view> query() const { return query_t<DataAccess::Const, view>(*this); }
+
+			rynx::type_index::virtual_type create_virtual_type() { return m_ecs->create_virtual_type(); }
 
 		private:
 			auto& categories() { return m_ecs->categories(); }

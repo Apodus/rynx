@@ -8,9 +8,9 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
-class matrix4;
 
 namespace rynx {
+	class matrix4;
 	namespace graphics {
 		class shaders;
 		class shader
@@ -41,7 +41,7 @@ namespace rynx {
 			shader& uniform(const std::string& name, int32_t value1, int32_t value2);
 			shader& uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3);
 			shader& uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4);
-			shader& uniform(const std::string& name, const matrix4& mat);
+			shader& uniform(const std::string& name, const rynx::matrix4& mat);
 
 			GLint attribute(const std::string& name);
 			// TODO: Friendly attribute setting api.

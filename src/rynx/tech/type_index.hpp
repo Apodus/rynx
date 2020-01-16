@@ -71,7 +71,9 @@ namespace rynx {
 
 	public:
 		struct virtual_type {
-			uint64_t type_value;
+			static constexpr uint64_t invalid = ~uint64_t(0);
+			uint64_t type_value = invalid;
+			bool operator == (uint64_t other) const noexcept { return other == type_value; }
 		};
 
 		type_index() {

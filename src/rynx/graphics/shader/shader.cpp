@@ -256,7 +256,7 @@ rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name,
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, const matrix4& matrix)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, const rynx::matrix4& matrix)
 {
 	glUniformMatrix4fv(uniform(name), 1, false, matrix.m);
 	return *this;

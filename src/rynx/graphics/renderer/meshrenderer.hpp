@@ -63,8 +63,9 @@ namespace rynx {
 		void instanced_draw_impl(
 			const Mesh& mesh,
 			const std::string& texture,
-			const std::vector<matrix4>& models,
-			const std::vector<floats4>& colors,
+			size_t num_instances,
+			const matrix4* models,
+			const floats4* colors,
 			DrawType type);
 
 	public:
@@ -86,17 +87,20 @@ namespace rynx {
 		}
 
 		void drawMeshInstanced(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
-			instanced_draw_impl(mesh, texture, models, colors, DrawType::Forward);
+			instanced_draw_impl(mesh, texture, models.size(), models.data(), colors.data(), DrawType::Forward);
 		}
 		void drawMeshInstanced(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 			drawMeshInstanced(*m_meshes->get(mesh_name), texture, models, colors);
 		}
 
 		void drawMeshInstancedDeferred(const Mesh& mesh, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
-			instanced_draw_impl(mesh, texture, models, colors, DrawType::Deferred);
+			instanced_draw_impl(mesh, texture, models.size(), models.data(), colors.data(), DrawType::Deferred);
 		}
 		void drawMeshInstancedDeferred(const std::string& mesh_name, const std::string& texture, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 			drawMeshInstancedDeferred(*m_meshes->get(mesh_name), texture, models, colors);
+		}
+		void drawMeshInstancedDeferred(const Mesh& mesh, const std::string& texture, size_t num, const matrix4* models, const floats4* colors) {
+			instanced_draw_impl(mesh, texture, num, models, colors, DrawType::Deferred);
 		}
 
 	private:

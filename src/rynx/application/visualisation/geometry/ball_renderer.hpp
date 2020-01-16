@@ -45,16 +45,6 @@ namespace rynx {
 						m_balls->clear();
 						m_balls_translucent->clear();
 						
-						/*
-						auto ids = ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
-							.in<rynx::components::position, rynx::components::radius, rynx::components::color>()
-							.ids();
-
-						for (auto id : ids) {
-							ecs.attachToEntity(id, matrix4());
-						}
-						*/
-
 						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
 							.for_each_parallel(task_context, [this] (
 								const rynx::components::position& pos,

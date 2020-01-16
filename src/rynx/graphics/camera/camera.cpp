@@ -41,10 +41,10 @@ void Camera::setPosition(vec3<float> cameraPosition_) {
 	);
 }
 
-const matrix4& Camera::getView() const {
+const rynx::matrix4& Camera::getView() const {
 	return view;
 }
 
-const matrix4& Camera::getProjection() const {
+const rynx::matrix4& Camera::getProjection() const {
 	return projection;
 }

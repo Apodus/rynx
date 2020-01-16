@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
 		meshes->create("circle_empty", Shape::makeCircle(1.0f, 32), "Empty");
 		meshes->create("square_empty", Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", Shape::makeBox(1.0f), "Smoke");
-		meshes->create("sqaure_rope", Shape::makeBox(1.0f), "Rope");
+		meshes->create("square_rope", Shape::makeBox(1.0f), "Rope");
 	}
 
 	rynx::scheduler::task_scheduler scheduler;
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
 
 		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
-		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(collisionCategoryDynamic);
+		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		
 		spawner = ruleset_minilisk_gen.get();
 
@@ -380,7 +380,7 @@ int main(int argc, char** argv) {
 		{
 			rynx_profile("Main", "draw cursor");
 
-			matrix4 m;
+			rynx::matrix4 m;
 			m.discardSetTranslate(mpos);
 			m.scale(0.5f);
 			application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");

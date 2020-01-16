@@ -14,9 +14,9 @@ public:
 
 	vec3<float> position() const { return cameraPosition; }
 
-	const matrix4& getView() const;
-	const matrix4& getProjection() const;
+	const rynx::matrix4& getView() const;
+	const rynx::matrix4& getProjection() const;
 private:
-	matrix4 view, projection;
+	rynx::matrix4 view, projection;
 	vec3<float> cameraPosition;
 };
