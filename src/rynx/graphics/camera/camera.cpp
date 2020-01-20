@@ -3,6 +3,10 @@
 Camera::Camera() {
 	view.identity();
 	projection.identity();
+
+	m_position = vec3f(0, 0, 0);
+	m_direction = vec3f(0, 0, -1);
+	m_up = vec3f(0, 1, 0);
 }
 
 Camera::~Camera() {
@@ -28,16 +32,27 @@ void Camera::setOrtho(float width, float height, float zNear, float zFar)
 	);
 }
 
-void Camera::setPosition(vec3<float> cameraPosition_) {
-	cameraPosition = cameraPosition_;
-	vec3<float> center(cameraPosition);
-	vec3<float> up(0.f, 1.f, 0.f);
-	center.z -= 10;
+void Camera::setPosition(vec3<float> cameraPosition) {
+	m_position = cameraPosition;
+}
+
+void Camera::setDirection(vec3<float> cameraDirection) {
+	m_direction = cameraDirection;
+}
+
+void Camera::setUpVector(vec3<float> upVector) {
+	m_up = upVector;
+}
+
+void Camera::rebuild_view_matrix() {
+	m_local_left = m_direction.normalize().cross(m_up).normalize();
+	m_local_up = m_local_left.cross(m_direction).normalize();
+	m_local_forward = m_direction;
 
 	view.discardSetLookAt(
-		cameraPosition.x, cameraPosition.y, cameraPosition.z, 
-		center.x, center.y, center.z, 
-		up.x, up.y, up.z
+		m_position,
+		m_direction,
+		m_up
 	);
 }
 

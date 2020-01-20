@@ -54,40 +54,19 @@ namespace rynx {
 			_mm256_store_ps(&out.m[2 * 4 + 0], out23x);
 		}
 
-		matrix4& discardSetLookAt(float eyeX, float eyeY, float eyeZ,
-			float centerX, float centerY, float centerZ,
-			float upX, float upY, float upZ) {
-			float fx = centerX - eyeX;
-			float fy = centerY - eyeY;
-			float fz = centerZ - eyeZ;
+		matrix4& discardSetLookAt(
+			vec3f eye_position,
+			vec3f eye_direction,
+			vec3f up)
+		{
+			vec3f eye_left = eye_direction.normalize().cross(up).normalize();
+			vec3f eye_up = eye_left.cross(eye_direction).normalize();
 
-			// Normalize f
-			float rlf = 1.0f / length(fx, fy, fz);
-			fx *= rlf;
-			fy *= rlf;
-			fz *= rlf;
-
-			// compute s = f x up (x means "cross product")
-			float sx = fy * upZ - fz * upY;
-			float sy = fz * upX - fx * upZ;
-			float sz = fx * upY - fy * upX;
-
-			// and normalize s
-			float rls = 1.0f / length(sx, sy, sz);
-			sx *= rls;
-			sy *= rls;
-			sz *= rls;
-
-			// compute u = s x f
-			float ux = sy * fz - sz * fy;
-			float uy = sz * fx - sx * fz;
-			float uz = sx * fy - sy * fx;
-
-			row[0] = vec4f(sx, ux, -fx, 0.0f);
-			row[1] = vec4f(sy, uy, -fy, 0.0f);
-			row[2] = vec4f(sz, uz, -fz, 0.0f);
+			row[0] = vec4f(eye_left.x, eye_up.x, -eye_direction.x, 0.0f);
+			row[1] = vec4f(eye_left.y, eye_up.y, -eye_direction.y, 0.0f);
+			row[2] = vec4f(eye_left.z, eye_up.z, -eye_direction.z, 0.0f);
 			row[3] = vec4f(0.0f, 0.0f, 0.0f, 1.0f);
-			return translate(-eyeX, -eyeY, -eyeZ);
+			return translate(-eye_position);
 		}
 
 		matrix4& discardSetFrustum(
@@ -181,7 +160,12 @@ namespace rynx {
 			return storeMultiply(*this, other);
 		}
 
-		matrix4& translate(vec3<float>& out) {
+		matrix4 operator * (const matrix4& other) {
+			matrix4 copy = *this;
+			return copy.storeMultiply(copy, other);
+		}
+
+		matrix4& translate(vec3<float> out) {
 			matrix4 translation_matrix;
 			translation_matrix.identity();
 			translation_matrix.row[3] = vec4f(out, 1.0f);
@@ -205,7 +189,7 @@ namespace rynx {
 		}
 
 		// TODO:
-		matrix4& scale(const vec3<float>& v) {
+		matrix4& scale(vec3<float> v) {
 			return scale(v.x, v.y, v.z);
 		}
 
@@ -251,7 +235,7 @@ namespace rynx {
 		}
 
 		vec3<float> operator *(const vec3<float>& v) const {
-#if 0
+#if 1
 			float tmp[3];
 			for (int i = 0; i < 3; ++i) {
 				float sum = m[i * 4 + 0] * v.x;

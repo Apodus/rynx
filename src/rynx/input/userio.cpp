@@ -113,6 +113,7 @@ void UserIO::update() {
 		keyState &= ~(KEY_PRESSED | KEY_RELEASED | KEY_REPEAT | KEY_CLICK | KEY_CONSUMED);
 	}
 	m_mouseScroll = 0;
+	m_mouseDelta = vec3f(0, 0, 0);
 }
 
 void UserIO::onKeyEvent(int key, int /* scancode */, int action, int /* mods */) {
@@ -151,8 +152,14 @@ void UserIO::onMouseScrollEvent(double /* xoffset */, double yoffset) {
 }
 
 void UserIO::onMouseMoveEvent(double xpos, double ypos) {
-	m_mousePosition.x = 2.0f * static_cast<float>(xpos) / m_window->width() - 1.0f;
-	m_mousePosition.y = 1.0f - 2.0f * static_cast<float>(ypos) / m_window->height();
+	vec3f newPos(
+		2.0f * static_cast<float>(xpos) / m_window->width() - 1.0f,
+		1.0f - 2.0f * static_cast<float>(ypos) / m_window->height(),
+		0
+	);
+
+	m_mouseDelta = newPos - m_mousePosition;
+	m_mousePosition = newPos;
 }
 
 void UserIO::onMouseEnterEvent(int entered) {

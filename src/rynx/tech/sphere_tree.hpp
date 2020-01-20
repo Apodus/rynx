@@ -301,7 +301,7 @@ private:
 			if ((pos - point).lengthSquared() < sqr(radius + range)) {
 				if (m_children.empty()) {
 					for (auto&& item : m_members) {
-						if ((item.pos - point).lengthSquared() < range * range) {
+						if ((item.pos - point).lengthSquared() < sqr(item.radius + range)) {
 							f(item.entityId, item.pos, item.radius);
 						}
 					}
@@ -309,6 +309,24 @@ private:
 				else {
 					for (auto&& child : m_children) {
 						child->inRange(point, range, std::forward<F>(f));
+					}
+				}
+			}
+		}
+
+		template<typename F>
+		void not_in_range(vec3<float> point, float range, F&& f) {
+			if ((range < radius) | ((pos - point).lengthSquared() > sqr(range - radius))) {
+				if (m_children.empty()) {
+					for (auto&& item : m_members) {
+						if ((item.pos - point).lengthSquared() > sqr(range - item.radius)) {
+							f(item.entityId, item.pos, item.radius);
+						}
+					}
+				}
+				else {
+					for (auto&& child : m_children) {
+						child->not_in_range(point, range, std::forward<F>(f));
 					}
 				}
 			}

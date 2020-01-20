@@ -26,6 +26,10 @@ namespace rynx {
 				return *this;
 			}
 
+			vec3<float> mouseDelta() {
+				return userIO->getCursorDelta();
+			}
+
 			vec3<float> mouseMenuPosition(float aspectRatio) {
 				return mouseScreenPosition() * vec3<float>(1, 1.0f / aspectRatio, 1);
 			}

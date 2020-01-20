@@ -21,6 +21,7 @@ class UserIO
 	void onMouseEnterEvent(int entered);
 
 	std::array<uint8_t, 512> m_buttonStates;
+	vec3<float> m_mouseDelta;
 	vec3<float> m_mousePosition;
 	vec3<float> m_mousePosition_clickBegin;
 	std::shared_ptr<Window> m_window;
@@ -53,6 +54,11 @@ public:
 	vec3<float> getCursorPosition() const
 	{
 		return m_mousePosition;
+	}
+
+	vec3<float> getCursorDelta() const
+	{
+		return m_mouseDelta;
 	}
 
 	bool isKeyClicked(int key) const;

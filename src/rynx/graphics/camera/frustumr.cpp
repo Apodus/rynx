@@ -69,11 +69,11 @@ void FrustumR::setCamDef(const vec3<float>& p, const vec3<float>& l, const vec3<
 	Z.normalize();
 
 	// X axis of camera of given "up" vector and Z axis
-	X = u * Z;
+	X = u.cross(Z);
 	X.normalize();
 
 	// the real "up" vector is the cross product of Z and X
-	Y = Z * X;
+	Y = Z.cross(X);
 
 	// compute the center of the near and far planeanes
 	nc = p - Z * near;

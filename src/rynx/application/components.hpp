@@ -106,6 +106,7 @@ namespace rynx {
 		struct ignore_gravity {};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
+		struct frustum_culled {}; // object is not visible due to frustum culling.
 
 		// TODO: Remove
 		struct frame_collisions {
