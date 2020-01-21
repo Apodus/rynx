@@ -47,6 +47,8 @@
 
 #include <rynx/application/render.hpp>
 
+#include <rynx/graphics/camera/frustumr.hpp>
+
 int main(int argc, char** argv) {
 	
 	// uses this thread services of rynx, for example in cpu performance profiling.
@@ -366,12 +368,28 @@ int main(int argc, char** argv) {
 			rotator_x.discardSetRotation(camera_direction.x, 0, 1, 0);
 			rotator_y.discardSetRotation(camera_direction.y, -1, 0, 0);
 
-			vec3f direction = rotator_x * rotator_y * vec3f(0, 0, -1);
+			vec3f direction = rotator_y * rotator_x * vec3f(0, 0, -1);
 
 			camera->setPosition(cameraPosition);
 			camera->setDirection(direction);
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 			camera->rebuild_view_matrix();
+
+			const rynx::matrix4& view_matrix = camera->getView();
+			const rynx::matrix4& projection_matrix = camera->getProjection();
+			rynx::matrix4 view_projection_matrix = projection_matrix * view_matrix;
+
+			frustum f;
+			f.set_viewprojection(view_projection_matrix);
+
+			ecs.query().for_each([&f](rynx::components::color& color, rynx::components::position pos, rynx::components::radius r) {
+				if (f.is_sphere_not_outside(pos.value, r.r)) {
+					color.value = {0, 1, 0, 1};
+				}
+				else {
+					color.value = { 1, 1, 1, 1 };
+				}
+			});
 		}
 
 		{

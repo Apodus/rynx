@@ -3,51 +3,20 @@
 
 #include <rynx/tech/math/vector.hpp>
 #include <rynx/graphics/plane/plane.hpp>
+#include <array>
 
-#ifdef near
-#undef near
-#endif
+namespace rynx {
+	class matrix4;
+}
 
-#ifdef far
-#undef far
-#endif
-
-class FrustumR
+class frustum
 {
 public:
-	void setCamInternals(float angle, float radius, float nearD, float farD);
-	void setCamDef(const vec3<float>& p, const vec3<float>& l, const vec3<float>& u);
+	void set_viewprojection(const rynx::matrix4& viewProjection);
+	bool is_point_inside(vec3<float> p) const;
+	bool is_sphere_inside(vec3<float> p, float radius) const;
+	bool is_sphere_not_outside(vec3f p, float radius) const;
 
-	enum FrustumResult { OUTSIDE, INTERSECT, INSIDE };
-	FrustumResult pointInFrustum(const vec3<float>& p) const;
-	FrustumResult sphereInFrustum(const vec3<float>& p, float radius) const;
-
-	vec3<float> ntl,ntr,nbl,nbr;
-	vec3<float> ftl,ftr,fbl,fbr;
 private:
-
-	enum
-	{
-		TOP = 0,
-		BOTTOM,
-		LEFT,
-		RIGHT,
-		NEARP,
-		FARP
-	};
-
-	void setFrustum(float* m);
-
-	Plane plane[6];
-
-	vec3<float> X,Y,Z;
-	vec3<float> camPos;
-	float near;
-	float far;
-	float ratio;
-	float angle;
-
-	float sphereFactorX, sphereFactorY;
-	float tang;
-	float nw,nh,fw,fh;
+	std::array<plane, 6> m_planes;
 };

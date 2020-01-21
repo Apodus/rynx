@@ -160,7 +160,7 @@ namespace rynx {
 			return storeMultiply(*this, other);
 		}
 
-		matrix4 operator * (const matrix4& other) {
+		matrix4 operator * (const matrix4& other) const {
 			matrix4 copy = *this;
 			return copy.storeMultiply(copy, other);
 		}

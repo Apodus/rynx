@@ -3,20 +3,19 @@
 
 #include <rynx/tech/math/vector.hpp>
 
-class Plane
+class plane
 {
 public:
-	vec3<float> normal;
+	plane() = default;
 
-	Plane(const vec3<float>& v1, const vec3<float>& v2, const vec3<float>& v3);
-	Plane();
+	void set_coefficients(float a, float b, float c, float d);
 
-	void set3Points(const vec3<float>& v1, const vec3<float>& v2, const vec3<float>& v3);
-	void setNormalAndPoint(const vec3<float>& normal, const vec3<float>& point);
-	void setCoefficients(float a, float b, float c, float d);
+	float distance(vec3f p) const;
+	bool point_right_of_plane(vec3f p) const;
+	bool sphere_right_of_plane(vec3f p, float radius) const;
+	bool sphere_not_left_of_plane(vec3f p, float radius) const;
 
-	float distance(const vec3<float>& p) const;
 private:
-	vec3<float> point;
+	vec3<float> normal;
 	float d;
 };
