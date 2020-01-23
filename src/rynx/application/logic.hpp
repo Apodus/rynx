@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 
+#include <rynx/tech/ecs.hpp>
+
 namespace rynx {
 	class ecs;
 	class object_storage;
@@ -36,11 +38,13 @@ namespace rynx {
 				void depends_on(iruleset& other) { other.required_for(*this); }
 				void required_for(iruleset& other);
 
+				virtual void on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::ecs::id>&) {}
+
 			private:
+				virtual void onFrameProcess(rynx::scheduler::context&, float dt) = 0;
+				
 				std::unique_ptr<rynx::scheduler::barrier> m_barrier;
 				std::vector<std::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
-				
-				virtual void onFrameProcess(rynx::scheduler::context&, float dt) = 0;
 			};
 
 			std::vector<std::unique_ptr<iaction>> onInput(rynx::input::mapped_input& input, const ecs& ecs) const {
@@ -62,6 +66,12 @@ namespace rynx {
 			void generate_tasks(rynx::scheduler::context& context, float dt) {
 				for (auto& ruleset : m_rules) {
 					ruleset->process(context, dt);
+				}
+			}
+
+			void entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
+				for (auto& ruleset : m_rules) {
+					ruleset->on_entities_erased(context, ids);
 				}
 			}
 

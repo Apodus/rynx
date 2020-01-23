@@ -565,7 +565,10 @@ int main(int argc, char** argv) {
 					collisionDetection.erase(id.value, cat.value);
 				}
 			);
-			ecs.erase(ecs.query().in<rynx::components::dead>().ids());
+			
+			auto erasedIds = ecs.query().in<rynx::components::dead>().ids();
+			ecs.erase(erasedIds);
+			base_simulation.m_logic.entities_erased(*base_simulation.m_context, erasedIds);
 		}
 
 		{

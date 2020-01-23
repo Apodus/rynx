@@ -27,7 +27,8 @@ namespace rynx {
 	private:
 		static constexpr int MaxElementsInNode = 128; // this is an arbitrary constant. might be smarter ways to pick it.
 		static constexpr int MaxNodesInNode = MaxElementsInNode >> 1;
-
+		static constexpr int MinimumBranchingFactor = 8;
+		
 		struct entry {
 			entry() = default;
 			entry(vec3<float> p, float r, uint64_t i) : pos(p), radius(r), entityId(i) {}
@@ -156,19 +157,18 @@ namespace rynx {
 
 			void remove_empty_nodes() {
 				for (int32_t i = 0; i < m_children.size(); ++i) {
-					auto& child = m_children[i];
-					child->remove_empty_nodes();
-
+					m_children[i]->remove_empty_nodes();
+					
 					// if 1 child left: adopt child to parent, and remove the empty node.
-					if (child->m_children.size() == 1) {
-						child->m_children[0]->m_parent = this;
-						m_children.emplace_back(std::move(child->m_children[0]));
-						m_children.back()->depth -= 1;
-						remove_child(i);
-						--i;
-					}
-					// if child is an empty leaf node, then just erase him.
-					else if (child->m_children.empty() & child->m_members.empty()) {
+					if ((m_children[i]->m_children.size() < MinimumBranchingFactor) & m_children[i]->m_members.empty()) {
+						while (!m_children[i]->m_children.empty()) {
+							m_children[i]->m_children.back()->m_parent = this;
+							auto grand_child = std::move(m_children[i]->m_children.back());
+							m_children[i]->m_children.pop_back();
+							m_children.emplace_back(std::move(grand_child));
+							m_children.back()->depth -= 1;
+							m_children.back()->refresh_depths();
+						}
 						remove_child(i);
 						--i;
 					}
@@ -369,13 +369,16 @@ namespace rynx {
 			}
 		}
 
-		void eraseEntity(uint64_t entityId) {
+		std::pair<vec3f, float> eraseEntity(uint64_t entityId) {
 			auto it = entryMap.find(entityId);
 			if (it != entryMap.end()) {
+				auto entry = it->second.first->m_members[it->second.second];
 				uint64_t id_of_erased = it->second.first->entity_migrates(it->second.second, this);
 				rynx_assert(id_of_erased == entityId, "mismatch of erased entity vs expected");
 				entryMap.erase(it);
+				return { entry.pos, entry.radius };
 			}
+			return { vec3f(), 0.0f };
 		}
 
 		void update() {
@@ -538,22 +541,22 @@ namespace rynx {
 					// objects is detected one frame late. but this does give 60% performance boost, and the error case of possible late detection isn't too bad.
 					std::reverse(flat_answer.begin(), flat_answer.end());
 					size_t s = flat_answer.size();
-					task_context.parallel().for_each(0, s, 8).for_each([layer = std::move(flat_answer)](int64_t i) {
+					task_context.parallel().for_each(0, s, 128).for_each([layer = std::move(flat_answer)](int64_t i) {
 						layer[i]->update_single();
 					});
 
 					// This would give 100% correct result in all situations. But it has to sync between layers, which is slow.
-					/*
-					// update node positions & radii from leaf to root. sync between layers.
-					for (auto it = node_levels.rbegin(); it != node_levels.rend(); ++it) {
-						task_context.extend_task_execute_sequential("update node pos & r", [this, layer = std::move(*it)](rynx::scheduler::task& task_context) {
-							size_t size = layer.size();
-							task_context.parallel().for_each(0, size, [layer = std::move(layer)](int64_t i) {
-								layer[i]->update_single();
-							}, 8);
-						});
+					if constexpr (false) {
+						// update node positions & radii from leaf to root. sync between layers.
+						for (auto it = node_levels.rbegin(); it != node_levels.rend(); ++it) {
+							task_context.extend_task_execute_sequential("update node pos & r", [this, layer = std::move(*it)](rynx::scheduler::task& task_context) {
+								size_t size = layer.size();
+								task_context.parallel().for_each(0, size, 8).for_each([layer = std::move(layer)](int64_t i) {
+									layer[i]->update_single();
+								});
+							});
+						}
 					}
-					*/
 				}
 			})->depends_on(entities_migrated_bar).required_for(update_complete_barrier);
 			return update_complete_barrier;
@@ -710,7 +713,7 @@ namespace rynx {
 						}
 					}
 				}
-				});
+			});
 		}
 
 		template<typename T, typename F> static void collisions_internal_parallel(
@@ -721,11 +724,11 @@ namespace rynx {
 		{
 			task_context.extend_task_execute_parallel("intra-node", [accumulator, f, a](rynx::scheduler::task& task_context) {
 				collisions_internal_parallel_intra_node(accumulator, f, task_context, a);
-				});
+			});
 
 			task_context.extend_task_execute_parallel("inter-node", [accumulator, f, a](rynx::scheduler::task& task_context) {
 				collisions_internal_parallel_node_node(accumulator, f, task_context, a, a);
-				});
+			});
 		}
 
 
