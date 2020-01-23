@@ -47,7 +47,7 @@
 
 #include <rynx/application/render.hpp>
 
-#include <rynx/graphics/camera/frustumr.hpp>
+#include <rynx/rulesets/frustum_culling.hpp>
 
 int main(int argc, char** argv) {
 	
@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
 		
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
 		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
+		auto ruleset_frustum_culling = std::make_unique<rynx::ruleset::frustum_culling>(camera);
 
 		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
@@ -121,6 +122,7 @@ int main(int argc, char** argv) {
 
 		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
 		base_simulation.add_rule_set(std::move(ruleset_particle_update));
+		base_simulation.add_rule_set(std::move(ruleset_frustum_culling));
 
 		base_simulation.add_rule_set(std::move(ruleset_shooting));
 		base_simulation.add_rule_set(std::move(ruleset_keyboardMovement));
@@ -374,22 +376,6 @@ int main(int argc, char** argv) {
 			camera->setDirection(direction);
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 			camera->rebuild_view_matrix();
-
-			const rynx::matrix4& view_matrix = camera->getView();
-			const rynx::matrix4& projection_matrix = camera->getProjection();
-			rynx::matrix4 view_projection_matrix = projection_matrix * view_matrix;
-
-			frustum f;
-			f.set_viewprojection(view_projection_matrix);
-
-			ecs.query().for_each([&f](rynx::components::color& color, rynx::components::position pos, rynx::components::radius r) {
-				if (f.is_sphere_not_outside(pos.value, r.r)) {
-					color.value = {0, 1, 0, 1};
-				}
-				else {
-					color.value = { 1, 1, 1, 1 };
-				}
-			});
 		}
 
 		{
@@ -497,6 +483,8 @@ int main(int argc, char** argv) {
 					application.textRenderer().drawText(std::string("total:    ") + get_min_avg_max(total_time), -0.9f, 0.25f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 					application.textRenderer().drawText(std::string("bodies:   ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()), -0.9f, 0.20f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 					application.textRenderer().drawText(std::string("entities: ") + std::to_string(num_entities), -0.9f, 0.15f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("frustum culled: ") + std::to_string(ecs.query().in<rynx::components::frustum_culled>().count()), -0.9f, 0.10f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
+					application.textRenderer().drawText(std::string("visible: ") + std::to_string(ecs.query().notIn<rynx::components::frustum_culled>().count()), -0.9f, 0.05f + info_text_pos_y, 0.05f, Color::DARK_GREEN, rynx::TextRenderer::Align::Left, fontConsola);
 				}
 
 				scheduler.wait_until_complete();

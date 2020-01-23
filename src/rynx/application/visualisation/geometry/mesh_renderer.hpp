@@ -40,7 +40,7 @@ namespace rynx {
 						m_bufs.clear();
 
 						// update model matrices
-						ecs.query().notIn<rynx::components::translucent>()
+						ecs.query().notIn<rynx::components::translucent, components::frustum_culled>()
 							.for_each_parallel(task_context, [this](
 								rynx::components::position pos,
 								rynx::components::radius r,
@@ -52,7 +52,7 @@ namespace rynx {
 								});
 						
 						// collect buffers for drawing
-						ecs.query().notIn<rynx::components::translucent>()
+						ecs.query().notIn<rynx::components::translucent, components::frustum_culled>()
 							.for_each_buffer([this](
 								size_t num_entities,
 								const rynx::components::mesh* meshes,

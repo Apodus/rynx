@@ -173,8 +173,11 @@ namespace rynx {
 			task& operator | (task_token& other);
 
 			// TODO: Rename all task creation functions.
+			template<typename F> task_token make_task(std::string name, F&& op) {
+				return task_token(m_context->make_task(name, std::forward<F>(op)));
+			}
 			template<typename F> task_token make_task(F&& op) {
-				return task_token(m_context->make_task("task", std::forward<F>(op)));
+				return make_task("task", std::forward<F>(op));
 			}
 
 			template<typename F> task_token extend_task(std::string name, F&& op) {

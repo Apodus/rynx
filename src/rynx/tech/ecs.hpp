@@ -312,7 +312,10 @@ namespace rynx {
 			void copyTypesFrom(entity_category* other, const dynamic_bitset& types) {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
-					other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
+					// TODO: Get rid of null check :( it is guarding against virtual types now.
+					if (other->m_tables[typeId]) {
+						other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
+					}
 					typeId = types.nextOne(typeId + 1);
 				}
 			}

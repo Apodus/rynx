@@ -82,6 +82,13 @@ bool frustum::is_sphere_inside(vec3<float> p, float radius) const
 	return in;
 }
 
+bool frustum::is_sphere_outside(vec3f p, float radius) const {
+	bool out = false;
+	for (const auto& plane : m_planes)
+		out |= plane.sphere_left_of_plane(p, radius);
+	return out;
+}
+
 bool frustum::is_sphere_not_outside(vec3f p, float radius) const {
 	bool in = true;
 	for (const auto& plane : m_planes)

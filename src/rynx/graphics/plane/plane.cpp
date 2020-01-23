@@ -19,6 +19,11 @@ bool plane::sphere_right_of_plane(vec3f p, float radius) const
 	return distance(p) > radius;
 }
 
+bool plane::sphere_left_of_plane(vec3f p, float radius) const
+{
+	return distance(p) < -radius;
+}
+
 bool plane::sphere_not_left_of_plane(vec3f p, float radius) const
 {
 	return distance(p) > -radius;

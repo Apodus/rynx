@@ -70,8 +70,8 @@ namespace rynx {
 			return *this;
 		}
 		
-		template<typename F> void inRange(category_id category, vec3<float> point, float radius, F&& f) {
-			m_sphere_trees[category.value]->inRange(pos, radius std::forward<F>(f));
+		template<typename F> void in_radius(category_id category, vec3<float> point, float radius, F&& f) {
+			m_sphere_trees[category.value]->in_radius(pos, radius std::forward<F>(f));
 		}
 
 		void update() {
