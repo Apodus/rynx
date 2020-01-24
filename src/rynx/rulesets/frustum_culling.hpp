@@ -81,7 +81,7 @@ namespace rynx {
 								rynx_profile("culling", "update culled sphere tree items");
 								ecs.query()
 									.in<components::frustum_culled>()
-									.for_each([this](rynx::ecs::id id, components::position pos, components::radius r) {
+									.for_each_parallel(task_context, [this](rynx::ecs::id id, components::position pos, components::radius r) {
 									m_out_frustum.updateEntity(pos.value, r.r, id.value);
 								});
 							}
@@ -90,7 +90,7 @@ namespace rynx {
 								rynx_profile("culling", "update visible sphere tree items");
 								ecs.query()
 									.notIn<components::frustum_culled>()
-									.for_each([this](rynx::ecs::id id, components::position pos, components::radius r) {
+									.for_each_parallel(task_context, [this](rynx::ecs::id id, components::position pos, components::radius r) {
 									m_in_frustum.updateEntity(pos.value, r.r, id.value);
 								});
 							}
@@ -132,7 +132,7 @@ namespace rynx {
 
 								m_out_frustum.in_volume(
 									[&f](vec3f pos, float r) {
-										return f.is_sphere_not_outside(pos, r);
+										return !f.is_sphere_outside(pos, r);
 									},
 									[&move_to_inside](uint64_t id, vec3f, float) {
 										move_to_inside.emplace_back(id);
