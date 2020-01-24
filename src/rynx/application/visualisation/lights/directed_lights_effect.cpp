@@ -38,7 +38,7 @@ void rynx::application::visualisation::directed_lights_effect::prepare(rynx::sch
 	m_light_edge_softness.clear();
 
 	ctx->add_task("directed lights prepare", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) {
-		ecs.query().for_each([this](
+		ecs.query().notIn<rynx::components::frustum_culled>().for_each([this](
 			const rynx::components::position& pos,
 			const rynx::components::light_directed& light)
 		{
