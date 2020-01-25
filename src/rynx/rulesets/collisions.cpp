@@ -293,83 +293,19 @@ namespace {
 
 
 void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context, float dt) {
-	rynx::scheduler::barrier position_updates_barrier("position updates");
 	rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");
 
 	{
-		rynx::scheduler::scoped_barrier_after scope(context, position_updates_barrier);
-
 		context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::frame_collisions> ecs) {
 			ecs.query().for_each([&](rynx::components::frame_collisions& collisions) {
-				collisions.collisions.clear();
-				});
+				collisions.collision_indices.clear();
 			});
-
-		context.add_task("Apply acceleration and reset", [dt](
-			rynx::ecs::view<
-			components::motion,
-			components::position,
-			const components::radius,
-			const components::collision_category> ecs, rynx::scheduler::task& task_context)
-			{
-				{
-					rynx_profile("Motion", "apply acceleration");
-					ecs.query().notIn<components::collision_category>().for_each_parallel(task_context, [dt](components::motion& m) {
-						m.velocity += m.acceleration * dt;
-						m.acceleration.set(0, 0, 0);
-						m.angularVelocity += m.angularAcceleration * dt;
-						m.angularAcceleration = 0;
-					});
-
-					ecs.query().in<components::collision_category>().for_each_parallel(task_context, [dt](components::motion& m) {
-						m.velocity += m.acceleration * dt;
-						m.acceleration.set(0, 0, 0);
-						m.angularVelocity += m.angularAcceleration * dt;
-						m.angularAcceleration = 0;
-
-						// turns out that limiting object velocities is a really bad idea
-						// if you allow other objects to move faster than the limit of another object.
-						// case in point: quickly rotating bar has a very high linear velocity at the tip
-						//                if this tip hits a small object which has a low maximum velocity
-						//                then the object will simply sink through the rotating bar. this is not good.
-						if constexpr (false) {
-							// cap velocity to be proportional to radius of self.
-							// imagine the collision detection implications.
-							if (m.velocity.lengthSquared() > sqr(r.r * 1.0f / dt)) {
-								m.velocity.normalize();
-								m.velocity *= r.r * 1.0f / dt;
-							}
-
-							if (sqr(m.angularVelocity) > sqr(0.10f / dt)) {
-								m.angularVelocity = m.angularVelocity > 0 ? +1.0f : -1.0f;
-								m.angularVelocity *= 0.10f / dt;
-							}
-						}
-					});
-				}
-
-				{
-					rynx_profile("Motion", "apply velocity");
-					ecs.query().for_each_parallel(task_context, [dt](components::position& p, const components::motion& m) {
-						p.value += m.velocity * dt;
-						p.angle += m.angularVelocity * dt;
-					});
-				}
-			}
-		);
+		});
 	}
-
-	context.add_task("Apply dampening", [dt](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
-		ecs.query().for_each_parallel(task, [dt](components::motion& m, components::dampening d) {
-			m.velocity *= std::powf(d.linearDampening, dt);
-			m.angularVelocity *= std::powf(d.angularDampening, dt);
-			});
-		}
-	)->depends_on(position_updates_barrier);
 
 	struct added_to_sphere_tree {};
 
-	auto positionDataToSphereTree_task = context.make_task("Update position info to collision detection.", [](
+	auto positionDataToSphereTree_task = context.add_task("Update position info to collision detection.", [](
 		rynx::ecs::view<const components::position,
 		const components::radius,
 		const components::collision_category,
@@ -401,7 +337,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			});
 		});
 
-	positionDataToSphereTree_task.then("sphere tree: add new entities", [](
+	positionDataToSphereTree_task->then("sphere tree: add new entities", [](
 		rynx::ecs::edit_view<const components::position,
 		const components::radius,
 		const components::collision_category,
@@ -416,12 +352,12 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			ecs.query().notIn<const rynx::components::projectile, const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
 				detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
 				ids.emplace_back(id);
-				});
+			});
 
 			ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 				detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f, id.value);
 				ids.emplace_back(id);
-				});
+			});
 
 			for (auto&& id : ids) {
 				ecs[id].add(added_to_sphere_tree());
@@ -430,9 +366,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	})->then("Update sphere tree", [](collision_detection& detection, rynx::scheduler::task& task_context) {
 		detection.update_parallel(task_context);
 	})->required_for(collisions_find_barrier);
-
-	positionDataToSphereTree_task.depends_on(position_updates_barrier);
-	context.add_task(std::move(positionDataToSphereTree_task));
 
 	auto updateBoundaryWorld = context.add_task(
 		"Update boundary local -> boundary world",
@@ -482,124 +415,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	findCollisionsTask->depends_on(collisions_find_barrier);
 	findCollisionsTask->depends_on(updateBoundaryWorld);
 
-	auto update_ropes = [dt](rynx::ecs::view<components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
-		auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
-		ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
-			auto entity_a = ecs[rope.id_a];
-			auto entity_b = ecs[rope.id_b];
-
-			auto pos_a = entity_a.get<components::position>();
-			auto pos_b = entity_b.get<components::position>();
-
-			auto& mot_a = entity_a.get<components::motion>();
-			auto& mot_b = entity_b.get<components::motion>();
-
-			const auto& phys_a = entity_a.get<components::physical_body>();
-			const auto& phys_b = entity_b.get<components::physical_body>();
-
-			auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-			auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
-			auto world_pos_a = pos_a.value + relative_pos_a;
-			auto world_pos_b = pos_b.value + relative_pos_b;
-
-			auto length = (world_pos_a - world_pos_b).length();
-			float over_extension = (length - rope.length);
-
-			over_extension -= (over_extension < 0) * over_extension;
-
-			// way too much extension == snap instantly
-			if (over_extension > 3.0f * rope.length) {
-				broken_ropes->emplace_back(id);
-				return;
-			}
-
-			float force = 540.0f * rope.strength * over_extension;
-
-			rope.cumulative_stress += force * dt;
-			rope.cumulative_stress *= std::pow(0.3f, dt);
-
-			// Remove rope if too much strain
-			if (rope.cumulative_stress > 700.0f * rope.strength)
-				broken_ropes->emplace_back(id);
-
-			auto direction_a_to_b = world_pos_b - world_pos_a;
-			direction_a_to_b.normalize();
-			direction_a_to_b *= force;
-
-			mot_a.acceleration += direction_a_to_b * phys_a.inv_mass;
-			mot_b.acceleration -= direction_a_to_b * phys_b.inv_mass;
-
-			mot_a.angularAcceleration += direction_a_to_b.dot(relative_pos_a.normal2d()) * phys_a.inv_moment_of_inertia;
-			mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
-			});
-
-		if (!broken_ropes->empty()) {
-			task.extend_task([broken_ropes](rynx::ecs& ecs) {
-				broken_ropes->for_each([&ecs](std::vector<rynx::ecs::id>& id_vector) mutable {
-					for (auto&& id : id_vector) {
-						ecs.attachToEntity(id, components::dead());
-
-
-						components::rope& rope = ecs[id].get<components::rope>();
-						auto pos1 = ecs[rope.id_a].get<components::position>().value;
-						auto pos2 = ecs[rope.id_b].get<components::position>().value;
-
-						auto v1 = ecs[rope.id_a].get<components::motion>().velocity;
-						auto v2 = ecs[rope.id_b].get<components::motion>().velocity;
-
-						math::rand64 random;
-
-						constexpr int num_particles = 40;
-
-						std::vector<rynx::components::position> pos_v(num_particles);
-						std::vector<rynx::components::radius> radius_v(num_particles);
-						std::vector<rynx::components::motion> motion_v(num_particles);
-						std::vector<rynx::components::lifetime> lifetime_v(num_particles);
-						std::vector<rynx::components::color> color_v(num_particles);
-						std::vector<rynx::components::dampening> dampening_v(num_particles);
-						std::vector<rynx::components::particle_info> particle_info_v(num_particles);
-
-						for (int i = 0; i < 40; ++i) {
-							float value = static_cast<float>(i) / 10.0f;
-							auto pos = pos1 + (pos2 - pos1) * value;
-
-							rynx::components::particle_info p_info;
-							float weight = random(1.0f, 5.0f);
-
-							auto v = v1 + (v2 - v1) * value;
-							v += vec3<float>(random(-0.5f, +0.5f) / weight, random(-0.5f, +0.5f) / weight, 0);
-
-							float end_c = random(0.6f, 0.99f);
-							float start_c = random(0.0f, 0.3f);
-
-							p_info.color.begin = vec4<float>(start_c, start_c, start_c, 1);
-							p_info.color.end = vec4<float>(end_c, end_c, end_c, 0);
-							p_info.radius.begin = weight * 0.25f;
-							p_info.radius.end = weight * 0.50f;
-
-							pos_v[i] = rynx::components::position(pos);
-							radius_v[i] = rynx::components::radius(p_info.radius.begin);
-							motion_v[i] = rynx::components::motion(v, 0);
-							lifetime_v[i] = rynx::components::lifetime(0.33f + 0.33f * weight);
-							color_v[i] = rynx::components::color(p_info.color.begin);
-							dampening_v[i] = rynx::components::dampening{ 0.95f + 0.03f * (1.0f / weight), 1 };
-							particle_info_v[i] = p_info;
-						}
-
-						ecs.create_n<rynx::components::translucent>(
-							pos_v,
-							radius_v,
-							motion_v,
-							lifetime_v,
-							color_v,
-							dampening_v,
-							particle_info_v);
-					}
-				});
-			});
-		}
-	};
-
 	auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](
 		rynx::ecs::view<components::motion> ecs,
 		rynx::scheduler::task& task)
@@ -608,7 +423,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		std::vector<std::shared_ptr<std::vector<collision_event>>> overlaps_vector;
 		collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
 			overlaps_vector.emplace_back(std::make_shared<std::vector<collision_event>>(std::move(overlaps)));
-			});
+		});
 
 		struct event_extra_info {
 			vec3<float> relative_position_tangent_a;
@@ -661,7 +476,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			for (size_t k = 0; k < overlaps_vector.size(); ++k) {
 				auto& overlaps = overlaps_vector[k];
 				auto& extras = extra_infos[k];
-				task& task.parallel().for_each(0, overlaps->size(), 2048).deferred_work().for_each([overlaps, extras, ecs, dt](int64_t index) mutable {
+				task.parallel().for_each(0, overlaps->size(), 2048).deferred_work().for_each([overlaps, extras, ecs, dt](int64_t index) mutable {
 					const auto& collision = overlaps->operator[](index);
 					components::motion& motion_a = *collision.a_motion;
 					components::motion& motion_b = *collision.b_motion;
@@ -731,12 +546,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			}
 	};
 
-	context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::ignore_gravity> ecs, rynx::scheduler::task& task) {
-		if (m_gravity.lengthSquared() > 0) {
-			ecs.query().notIn<components::ignore_gravity>().for_each_parallel(task, [this](components::motion& m) {
-				m.acceleration += m_gravity;
-				});
-		}
-	})->depends_on(*findCollisionsTask).then("update ropes", update_ropes)->then("collision resolve", collision_resolution_first_stage);
+	context.add_task("collisions resolve", collision_resolution_first_stage)->depends_on(findCollisionsTask);
 }
 

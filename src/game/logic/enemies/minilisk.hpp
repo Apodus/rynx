@@ -95,7 +95,7 @@ namespace game {
 			{}
 			
 			virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override {
-				
+				/*
 				context.add_task("handle bullet collisions", [this](
 					rynx::ecs::view<
 						const rynx::components::projectile,
@@ -155,6 +155,7 @@ namespace game {
 						});
 					}
 				});
+				*/
 			}
 		};
 	}

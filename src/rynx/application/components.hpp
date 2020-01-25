@@ -108,20 +108,9 @@ namespace rynx {
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
 		struct frustum_culled {}; // object is not visible due to frustum culling.
 
-		// TODO: Remove
 		struct frame_collisions {
-			struct entry {
-				entry() = default;
-				rynx::ecs::id idOfOther = 0;
-				rynx::collision_detection::category_id categoryOfOther = 0;
-				rynx::collision_detection::shape_type shapeOfOther = rynx::collision_detection::shape_type::Sphere;
-				vec3<float> collisionNormal;
-				vec3<float> collisionPointRelative;
-				vec3<float> collisionPointRelativeVelocity;
-				float penetration;
-				bool other_has_collision_response;
-			};
-			std::vector<entry> collisions;
+			// values used to index a collision detection structure to access the actual data.
+			std::vector<uint32_t> collision_indices;
 		};
 
 		struct light_omni {

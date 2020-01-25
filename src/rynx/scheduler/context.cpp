@@ -23,10 +23,18 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 			}
 			else {
 				// is for each task
-				if (task.is_for_each_done()) {
-					task.barriers().on_complete();
-					m_tasks[i] = std::move(m_tasks.back());
-					m_tasks.pop_back();
+				if (task.for_each_no_work_available()) {
+					if (task.for_each_all_work_completed())
+					{
+						task.barriers().on_complete();
+						m_tasks[i] = std::move(m_tasks.back());
+						m_tasks.pop_back();
+						
+						// need to check earlier tasks again,
+						// in case for each task unblocked some of them.
+						i = 0;
+						for_each_task_index = ~size_t(0);
+					}
 				}
 				else {
 					// always work on the first available parallel for op. this way we maximize the speed at which tasks get unblocked.
@@ -54,11 +62,15 @@ void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 	for (size_t i = 0; i< m_tasks.size(); ++i) {
 		rynx::scheduler::task& task = m_tasks[i];
 		if (task.is_for_each()) {
-			if (task.is_for_each_done()) {
-				task.barriers().on_complete();
-				
-				m_tasks[i] = std::move(m_tasks.back());
-				m_tasks.pop_back();
+			if (!task.m_for_each->work_available()) {
+				if (task.m_for_each->all_work_completed())
+				{
+					task.barriers().on_complete();
+
+					m_tasks[i] = std::move(m_tasks.back());
+					m_tasks.pop_back();
+					--i;
+				}
 			}
 		}
 	}
@@ -69,6 +81,7 @@ void rynx::scheduler::context::dump() {
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
 	for (auto&& task : m_tasks) {
 		(void)task;
-		logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
+		std::cout << task.name() << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << std::endl;
+		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 	}
 }

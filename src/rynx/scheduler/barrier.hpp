@@ -30,12 +30,6 @@ namespace rynx {
 
 		class operation_barriers {
 		public:
-			/*
-			~operation_barriers() {
-				on_complete();
-			}
-			*/
-
 			operation_barriers() = default;
 			operation_barriers(operation_barriers&&) = default;
 			operation_barriers(const operation_barriers& other) {
@@ -135,7 +129,7 @@ namespace rynx {
 		};
 	}
 
-	// TODO: Where to put these.
+	// TODO: Delete these. We should never spin.
 	template<typename T>
 	void wait_spin(std::vector<T>& availabilities) {
 		while (!availabilities.empty()) {

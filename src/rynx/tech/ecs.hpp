@@ -719,14 +719,14 @@ namespace rynx {
 			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				auto size = ids.size();
 				if constexpr (isIdQuery) {
-					task_context & task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					task_context & task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ptrs[index]...);
 						}, args);

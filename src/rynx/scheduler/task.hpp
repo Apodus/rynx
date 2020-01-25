@@ -97,12 +97,9 @@ namespace rynx {
 			
 			// TODO: PRIVATE!!
 		public:
-			// NOTE:
-			// copying tasks does not increment barrier counters because we don't know if user actually wants that or not.
-			// that also makes the copying api very surprising, and that is why it is hidden from end users as private.
 			task(const task& other) = default; // copy is required in parallel_for case.
+		
 		public:
-			
 			operation_barriers& barriers() { return m_barriers; }
 			const operation_barriers& barriers() const { return m_barriers; }
 
@@ -166,7 +163,6 @@ namespace rynx {
 
 			// task is not complete until barrier completes.
 			// '&' denotes "both must be complete for dependent tasks to start".
-			task& operator & (barrier bar);
 			task& operator & (task_token& other);
 			
 			// '|' denotes pipe, a | b   == b comes after a.
@@ -247,8 +243,18 @@ namespace rynx {
 
 		private:
 			struct parallel_for_each_data {
-				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end), task_is_cleaned_up(0) {}
-				std::atomic<int64_t> index;
+				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end), work_remaining(end - begin), task_is_cleaned_up(0) {}
+				
+				bool work_available() const {
+					return index < end;
+				}
+
+				bool all_work_completed() const {
+					return work_remaining <= 0;
+				}
+
+				std::atomic<int64_t> index; // used when reserving new chunk of work. is updated when starting to work.
+				std::atomic<int64_t> work_remaining; // used when checking if task is done. is updated when work chunk is completed.
 				std::atomic<int> task_is_cleaned_up;
 				const int64_t end;
 			};
@@ -304,8 +310,10 @@ namespace rynx {
 								for (;;) {
 									int64_t my_index = for_each_data->index.fetch_add(work_size);
 									if (my_index >= end) {
-										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-											task_context->erase_completed_parallel_for_tasks();
+										if (for_each_data->work_remaining.load() <= 0) {
+											if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+												task_context->erase_completed_parallel_for_tasks();
+											}
 										}
 										return;
 									}
@@ -313,6 +321,7 @@ namespace rynx {
 									for (int64_t i = my_index; i < limit; ++i) {
 										op(i);
 									}
+									for_each_data->work_remaining -= work_size;
 								}
 							});
 							work->m_for_each = for_each_data;
@@ -325,8 +334,10 @@ namespace rynx {
 							for (;;) {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
-									if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-										m_parent.m_context->erase_completed_parallel_for_tasks();
+									if (for_each_data->work_remaining <= 0) {
+										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+											m_parent.m_context->erase_completed_parallel_for_tasks();
+										}
 									}
 									return bar;
 								}
@@ -334,6 +345,7 @@ namespace rynx {
 								for (int64_t i = my_index; i < limit; ++i) {
 									op(i);
 								}
+								for_each_data->work_remaining -= work_size;
 							}
 						}
 						return bar;
@@ -365,7 +377,11 @@ namespace rynx {
 				return static_cast<bool>(m_for_each);
 			}
 
-			bool is_for_each_done() const {
+			bool for_each_all_work_completed() const {
+				return m_for_each->work_remaining.load() <= 0;
+			}
+
+			bool for_each_no_work_available() const {
 				return m_for_each->index.load() >= m_for_each->end;
 			}
 			

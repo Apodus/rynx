@@ -48,6 +48,8 @@
 #include <rynx/application/render.hpp>
 
 #include <rynx/rulesets/frustum_culling.hpp>
+#include <rynx/rulesets/motion.hpp>
+#include <rynx/rulesets/physics/springs.hpp>
 
 int main(int argc, char** argv) {
 	
@@ -101,11 +103,12 @@ int main(int argc, char** argv) {
 		base_simulation.set_resource(&collisionDetection);
 	}
 
+	// TODO: use std::observer_ptr
 	game::logic::minilisk_test_spawner_logic* spawner = nullptr;
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>(vec3<float>(0, -60.8f, 0));
+		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>();
 		auto ruleset_particle_update = std::make_unique<rynx::ruleset::particle_system>();
 		
 		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
@@ -116,9 +119,19 @@ int main(int argc, char** argv) {
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		
+		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, -60.8f, 0));
+		auto ruleset_physical_springs = std::make_unique<rynx::ruleset::physics::springs>();
+
 		spawner = ruleset_minilisk_gen.get();
 
 		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
+		ruleset_physical_springs->depends_on(*ruleset_motion_updates);
+		ruleset_collisionDetection->depends_on(*ruleset_motion_updates);
+		ruleset_frustum_culling->depends_on(*ruleset_motion_updates);
+
+
+		base_simulation.add_rule_set(std::move(ruleset_motion_updates));
+		base_simulation.add_rule_set(std::move(ruleset_physical_springs));
 
 		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
 		base_simulation.add_rule_set(std::move(ruleset_particle_update));
@@ -321,7 +334,7 @@ int main(int argc, char** argv) {
 				return;
 			}
 			prev_tick = tickCounter;
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}
 	});
 

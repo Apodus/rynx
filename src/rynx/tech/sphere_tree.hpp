@@ -356,6 +356,21 @@ namespace rynx {
 			return entryMap.size();
 		}
 
+		void insert_entity(uint64_t entityId, vec3f pos, float radius) {
+			rynx_assert(entryMap.find(entityId) == entryMap.end(), "entity already in sphere tree");
+			auto res = root.findNearestLeaf(pos, std::numeric_limits<float>::max());
+			res.first->insert(entry(pos, radius, entityId), this);
+		}
+
+		void update_entity(uint64_t entityId, vec3f pos, float radius) {
+			auto it = entryMap.find(entityId);
+			rynx_assert(it != entryMap.end(), "entity not in sphere tree");
+			auto& data = it->second.first->m_members[it->second.second];
+			data.pos = pos;
+			data.radius = radius;
+		}
+
+		// TODO: REMOVE
 		void updateEntity(vec3<float> pos, float radius, uint64_t entityId) {
 			auto it = entryMap.find(entityId);
 			if (it != entryMap.end()) {
@@ -662,7 +677,7 @@ namespace rynx {
 			rynx_assert(a != nullptr, "node cannot be null");
 			auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 			auto leaf_node_count = leaf_nodes.size();
-			task& task.parallel().for_each(0, leaf_node_count, 8).for_each([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
+			task.parallel().for_each(0, leaf_node_count, 8).for_each([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
 				const node* a = leaf_nodes[node_index];
 				for (size_t i = 0; i < a->m_members.size(); ++i) {
 					const auto& m1 = a->m_members[i];
@@ -692,7 +707,7 @@ namespace rynx {
 			}
 
 			rynx_profile("collision detection", "gather entity pairs");
-			task_context& task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).for_each([accumulator, f, leaf_pairs](int64_t i) mutable {
+			task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).for_each([accumulator, f, leaf_pairs](int64_t i) mutable {
 				if (!leaf_pairs->slot_test(i))
 					return;
 
