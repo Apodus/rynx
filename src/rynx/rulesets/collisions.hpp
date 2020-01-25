@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rynx/tech/object_storage.hpp>
 #include <rynx/application/logic.hpp>
 #include <rynx/tech/math/vector.hpp>
 
