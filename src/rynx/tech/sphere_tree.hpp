@@ -27,7 +27,7 @@ namespace rynx {
 	private:
 		static constexpr int MaxElementsInNode = 128; // this is an arbitrary constant. might be smarter ways to pick it.
 		static constexpr int MaxNodesInNode = MaxElementsInNode >> 1;
-		static constexpr int MinimumBranchingFactor = 8;
+		static constexpr int MinimumBranchingFactor = 4;
 		
 		struct entry {
 			entry() = default;
