@@ -370,8 +370,7 @@ namespace rynx {
 			data.radius = radius;
 		}
 
-		// TODO: REMOVE
-		void updateEntity(vec3<float> pos, float radius, uint64_t entityId) {
+		void insert_or_update_entity(uint64_t entityId, vec3<float> pos, float radius) {
 			auto it = entryMap.find(entityId);
 			if (it != entryMap.end()) {
 				auto& data = it->second.first->m_members[it->second.second];

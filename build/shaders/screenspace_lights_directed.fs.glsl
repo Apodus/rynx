@@ -26,17 +26,14 @@ void main()
 		vec3 light_dir = lights_directions[i].rgb;
 		float light_min_agr = lights_directions[i].a;
 		vec3 distance_vector = (lights_positions[i] - fragment_position);
+		vec3 distance_unit = normalize(distance_vector);
+		float dir_agr = -dot(distance_unit, light_dir) - light_min_agr;
+		float soft_agr = clamp(dir_agr * lights_softness[i], 0.0, 1.0);
 		
-		vec3 distance_unit_vec = normalize(distance_vector);
-		
-		float dir_agr = -dot(distance_unit_vec, light_dir) - light_min_agr;
-		float soft = lights_softness[i];
-		float soft_agr = clamp(dir_agr * soft, 0.0, 1.0);
-		
-		float distance_sqr = dot(distance_vector, distance_vector);
-		float agreement = max(0.0, dot(fragment_normal, normalize(distance_vector)));
+		float distance_sqr = dot(distance_vector, distance_vector) + 1.0;
+		float agreement = max(0.0, dot(fragment_normal, distance_unit));
 		result += vec4(soft_agr * (agreement + 0.1) * (material_color.rgb * lights_colors[i].rgb) *
-			(lights_colors[i].a * lights_colors[i].a) / distance_sqr, 1.0);
+			(lights_colors[i].a * lights_colors[i].a) / distance_sqr, 0.0);
 	}
 	
 	frag_color = result;

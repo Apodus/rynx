@@ -315,7 +315,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		collision_detection& detection,
 		rynx::scheduler::task& task) {
 			// This will never insert. Always update existing. Can run parallel.
-			// TODO: separate the updateEntity function -> update/insert versions.
 			ecs.query()
 				.notIn<const rynx::components::projectile>()
 				.in<const added_to_sphere_tree>()
@@ -326,14 +325,14 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						const components::radius& r,
 						const components::collision_category& category)
 					{
-						detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
+						detection.get(category.value)->update_entity(id.value, pos.value, r.r);
 					}
 			);
 
 			ecs.query()
 				.in<const rynx::components::projectile, const added_to_sphere_tree>()
 				.for_each_parallel(task, [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-				detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f, id.value);
+				detection.get(category.value)->update_entity(id.value, p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f);
 			});
 		});
 
@@ -347,15 +346,14 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		ecs,
 		collision_detection& detection) {
 			// This will always insert to detection datastructures. Can not parallel.
-			// TODO: separate the function from the normal case of update.
 			std::vector<rynx::ecs::id> ids;
 			ecs.query().notIn<const rynx::components::projectile, const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
-				detection.get(category.value)->updateEntity(pos.value, r.r, id.value);
+				detection.get(category.value)->insert_entity(id.value, pos.value, r.r);
 				ids.emplace_back(id);
 			});
 
 			ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-				detection.get(category.value)->updateEntity(p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f, id.value);
+				detection.get(category.value)->insert_entity(id.value, p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f);
 				ids.emplace_back(id);
 			});
 
