@@ -12,6 +12,8 @@ public class RynxProject : Project
                 Optimization.Debug | Optimization.Release | Optimization.Retail
             )
         );
+		
+		AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
 	}
 	
 	[Configure()]
@@ -89,7 +91,8 @@ public class RynxProject : Project
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\src\");
 		
 		conf.Output = Project.Configuration.OutputType.Lib;
-        conf.ProjectPath = @"[project.SharpmakeCsPath]/../build_temp/projects/";
+        conf.ProjectPath = @"[project.SharpmakeCsPath]/../generate/build/projects/";
+		
 		conf.IntermediatePath = @"[conf.ProjectPath]/intermediate/[project.Name]_[target.Name]";
 		conf.TargetLibraryPath = @"[project.SharpmakeCsPath]\..\build_temp\lib_[target.Optimization]";
 		conf.SolutionFolder = "Rynx";
