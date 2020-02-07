@@ -5,7 +5,10 @@
 
 #include <cstring>
 #include <immintrin.h>
+
+#ifdef _WIN32
 #include <intrin.h>
+#endif
 
 namespace rynx {
 	class matrix4 {
@@ -31,6 +34,7 @@ namespace rynx {
 			return *this;
 		}
 
+#ifdef _WIN32
 		static inline __m256 twolincomb_AVX_8(__m256 A01, const matrix4& B)
 		{
 			__m256 result;
@@ -53,6 +57,7 @@ namespace rynx {
 			_mm256_store_ps(&out.m[0 * 4 + 0], out01x);
 			_mm256_store_ps(&out.m[2 * 4 + 0], out23x);
 		}
+#endif
 
 		matrix4& discardSetLookAt(
 			vec3f eye_position,
@@ -151,7 +156,20 @@ namespace rynx {
 
 		matrix4& storeMultiply(const matrix4& a, const matrix4& b) {
 			matrix4 result;
+			
+#ifdef _WIN32
 			matmult_AVX_8(result, b, a);
+#else
+			for(int x=0; x<4; ++x) {
+				for(int y=0; y<4; ++y) {
+					float point_res = 0;
+					for(int j=0; j<4; ++j) {
+						point_res += a.m[x + j*4] * b.m[j + y*4];
+					}
+					result.m[x + y*4] = point_res;
+				}
+			}
+#endif			
 			*this = result;
 			return *this;
 		}

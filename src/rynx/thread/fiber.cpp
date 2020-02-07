@@ -1,5 +1,5 @@
 
-#include "Fiber.hpp"
+#include <rynx/thread/fiber.hpp>
 
 void* Fiber::getFiberAddress() {
 	return m_fiber;

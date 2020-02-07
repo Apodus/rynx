@@ -1223,19 +1223,19 @@ namespace rynx {
 
 			template<typename... Components>
 			entity_id_t create(Components&& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				return this->m_ecs->create(std::forward<Components>(components)...);
 			}
 
 			template<typename... Components>
 			std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				return this->m_ecs->create(components...);
 			}
 
 			template<typename... Components>
 			edit_view& attachToEntity(entity_id_t id, Components&& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				this->m_ecs->attachToEntity(id, std::forward<Components>(components)...);
 				return *this;
 			}
@@ -1243,7 +1243,7 @@ namespace rynx {
 
 			template<typename... Components>
 			edit_view& removeFromEntity(entity_id_t id) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				this->m_ecs->template removeFromEntity<Components...>(id);
 				return *this;
 			}

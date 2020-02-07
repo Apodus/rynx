@@ -1,7 +1,10 @@
 #pragma once
 
 
+#ifdef _WIN32
 #include <intrin.h>
+#endif
+
 #include <rynx/system/assert.hpp>
 #include <rynx/tech/math/math.hpp>
 
@@ -53,12 +56,62 @@ struct vec3 {
 	T z;
 };
 
+struct floats4 {
+
+#pragma warning (disable : 4201)
+	union {
+		struct {
+			float x, y, z, w;
+		};
+		struct {
+			float r, g, b, a;
+		};
+		struct {
+			float left, right, top, bottom;
+		};
+		float data[4];
+	};
+
+	floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
+	floats4(const vec3<float>& other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
+	floats4(const floats4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
+	constexpr floats4(float x = 0, float y = 0, float z = 0, float w = 0) : x(x), y(y), z(z), w(w) {}
+
+	floats4 operator*(float scalar) const { return floats4(x * scalar, y * scalar, z * scalar, w * scalar); }
+	floats4 operator/(float scalar) const { return operator*(1.0f / scalar); }
+
+	floats4 operator/(const floats4& other) const { return floats4(x / other.x, y / other.y, z / other.z, w / other.w); }
+	floats4 operator*(const floats4& other) const { return floats4(x * other.x, y * other.y, z * other.z, w * other.w); }
+	floats4 operator+(const floats4& other) const { return floats4(x + other.x, y + other.y, z + other.z, w + other.w); }
+	floats4 operator-(const floats4& other) const { return floats4(x - other.x, y - other.y, z - other.z, w - other.w); }
+	floats4 operator-() { return floats4(-x, -y, -z, -w); }
+
+	floats4& operator+=(const floats4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
+	floats4& operator-=(const floats4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
+
+
+	const float& operator [](int index) const {
+		rynx_assert(index >= 0 && index < 4, "index out of bounds");
+		return data[index];
+	}
+
+	float& operator [](int index) {
+		rynx_assert(index >= 0 && index < 4, "index out of bounds");
+		return data[index];
+	}
+};
+
 template <class T>
 struct vec4 {
 	vec4(const vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
+	vec4(vec3<float> other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
+	vec4(float w, vec3<float> other) : x(w), y(other.x), z(other.y), w(other.z) {}
+	
 	constexpr vec4(T x = 0, T y = 0, T z = 0, T w = 0) : x(x), y(y), z(z), w(w) {}
 
 	template<typename U> explicit operator vec4<U>() const { return vec4<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)); }
+
+	operator floats4() const { return floats4(x, y, z, w); }
 
 	vec4 normal() { T l = 1.0f / length(); return *this * l; }
 	vec4& normalize() { T l = 1.0f / length(); *this *= l; return *this; }
@@ -110,52 +163,9 @@ struct vec4 {
 	};
 };
 
-struct floats4 {
-
-#pragma warning (disable : 4201)
-	union {
-		struct {
-			float x, y, z, w;
-		};
-		struct {
-			float r, g, b, a;
-		};
-		struct {
-			float left, right, top, bottom;
-		};
-		float data[4];
-	};
-
-	floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
-	floats4(const vec3<float>& other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
-	floats4(const floats4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
-	constexpr floats4(float x = 0, float y = 0, float z = 0, float w = 0) : x(x), y(y), z(z), w(w) {}
-
-	floats4 operator*(float scalar) const { return floats4(x * scalar, y * scalar, z * scalar, w * scalar); }
-	floats4 operator/(float scalar) const { return operator*(1.0f / scalar); }
-
-	floats4 operator/(const floats4& other) const { return floats4(x / other.x, y / other.y, z / other.z, w / other.w); }
-	floats4 operator*(const floats4& other) const { return floats4(x * other.x, y * other.y, z * other.z, w * other.w); }
-	floats4 operator+(const floats4& other) const { return floats4(x + other.x, y + other.y, z + other.z, w + other.w); }
-	floats4 operator-(const floats4& other) const { return floats4(x - other.x, y - other.y, z - other.z, w - other.w); }
-	floats4 operator-() { return floats4(-x, -y, -z, -w); }
-
-	floats4& operator+=(const floats4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
-	floats4& operator-=(const floats4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
-
-
-	const float& operator [](int index) const {
-		rynx_assert(index >= 0 && index < 4, "index out of bounds");
-		return data[index];
-	}
-
-	float& operator [](int index) {
-		rynx_assert(index >= 0 && index < 4, "index out of bounds");
-		return data[index];
-	}
-};
-
 template<typename T> struct vec4;
+
+#ifdef _WIN32
 
 template<>
 struct vec4<float> {
@@ -261,6 +271,8 @@ struct vec4<float> {
 		return kek1.x * kek2.y - kek1.y * kek2.x;
 	}
 };
+
+#endif
 
 /*
 template <>

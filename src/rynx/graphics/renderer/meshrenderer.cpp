@@ -3,7 +3,7 @@
 #include <rynx/graphics/opengl.hpp>
 #include <rynx/graphics/mesh/polygonTesselator.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
-#include <rynx/graphics/camera/Camera.hpp>
+#include <rynx/graphics/camera/camera.hpp>
 
 rynx::MeshRenderer::MeshRenderer(
 	std::shared_ptr<GPUTextures> textures,

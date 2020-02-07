@@ -16,7 +16,7 @@ namespace rynx {
 
 // for parallel collision detection
 // TODO: get rid of this include. move functionality to some other file?
-#include <rynx/scheduler/task.hpp>
+#include <rynx/scheduler/context.hpp>
 
 namespace rynx {
 	class sphere_tree {
@@ -685,7 +685,7 @@ namespace rynx {
 						float distSqr = (m1.pos - m2.pos).lengthSquared();
 						float radiusSqr = sqr(m1.radius + m2.radius);
 						if (distSqr < radiusSqr) {
-							f(accumulator->get_local_storage<T>(), m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
+							f(accumulator->template get_local_storage<T>(), m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
 						}
 					}
 				}
@@ -721,7 +721,7 @@ namespace rynx {
 								if (distSqr < radiusSqr) {
 									auto normal = (member1.pos - member2.pos).normalize();
 									float penetration = math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr);
-									f(accumulator->get_local_storage<T>(), member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
+									f(accumulator->template get_local_storage<T>(), member1.entityId, member2.entityId, member1.pos, member1.radius, member2.pos, member2.radius, normal, penetration);
 								}
 							}
 						}
