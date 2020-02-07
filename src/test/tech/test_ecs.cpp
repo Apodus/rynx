@@ -121,6 +121,7 @@ template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 	return count;
 }
 
+/*
 template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 	int64_t count = 0;
 	ecs.view<Ts...>().each([&](Ts ... ts) {
@@ -128,6 +129,7 @@ template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 	});
 	return count;
 }
+*/
 
 TEST_CASE("rynx ecs: 50% random components") {
 	constexpr int numEntities = 100000;

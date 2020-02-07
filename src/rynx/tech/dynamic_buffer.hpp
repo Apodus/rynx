@@ -3,6 +3,7 @@
 #include <rynx/system/assert.hpp>
 #include <type_traits>
 #include <memory>
+#include <cstring>
 
 namespace rynx {
 	template<typename T>
