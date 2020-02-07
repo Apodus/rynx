@@ -56,6 +56,26 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	return task();
 }
 
+rynx::scheduler::task rynx::scheduler::context::make_task(std::string taskName) {
+	return task(*this, std::move(taskName));
+}
+
+rynx::scheduler::task_token rynx::scheduler::context::add_task(task task) {
+	return task_token(std::move(task));
+}
+
+bool rynx::scheduler::context::resourcesAvailableFor(const task& t) const {
+	int resources_in_use = 0;
+	for (uint64_t readResource : t.resources().read_requirements()) {
+		resources_in_use += m_resource_counters[readResource].writers.load();
+	}
+	for (uint64_t writeResource : t.resources().write_requirements()) {
+		resources_in_use += m_resource_counters[writeResource].writers.load();
+		resources_in_use += m_resource_counters[writeResource].readers.load();
+	}
+	return resources_in_use == 0;
+}
+
 void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 	rynx_profile("Profiler", "Erase completed parallel for tasks");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
@@ -74,6 +94,11 @@ void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 			}
 		}
 	}
+}
+
+void rynx::scheduler::context::schedule_task(task task) {
+	std::lock_guard<std::mutex> lock(m_taskMutex);
+	m_tasks.emplace_back(std::move(task));
 }
 
 void rynx::scheduler::context::dump() {

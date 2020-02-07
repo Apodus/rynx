@@ -8,6 +8,7 @@
 
 #include <string>
 #include <functional>
+#include <memory>
 
 namespace rynx {
 	namespace scheduler {
@@ -15,6 +16,21 @@ namespace rynx {
 		class context;
 		class task;
 		class task_token;
+
+		class task_token {
+		public:
+			task_token(task&& task);
+			~task_token();
+
+			task* operator -> ();
+			task& operator * ();
+			
+			// chaining tasks with nice api
+			task_token& operator | (task_token& other);
+
+		private:
+			std::unique_ptr<task> m_pTask;
+		};
 
 		class task {
 		private:
@@ -36,18 +52,18 @@ namespace rynx {
 					}
 				};
 
-				template<typename... Args>
-				struct unpack_resource<rynx::ecs::view<Args...>> {
+				template<typename... Ts>
+				struct unpack_resource<rynx::ecs::view<Ts...>> {
 					void operator()(task& host) {
-						(unpack_resource<Args>()(host), ...);
+						(unpack_resource<Ts>()(host), ...);
 						unpack_resource<const rynx::ecs&>()(host); // also mark us as reading the ecs. this prevents any view tasks to run simultaneously with a mutable ecs& task.
 					}
 				};
 
-				template<typename... Args>
-				struct unpack_resource<rynx::ecs::edit_view<Args...>> {
+				template<typename... Ts>
+				struct unpack_resource<rynx::ecs::edit_view<Ts...>> {
 					void operator()(task& host) {
-						(unpack_resource<Args>()(host), ...);
+						(unpack_resource<Ts>()(host), ...);
 						unpack_resource<rynx::ecs&>()(host); // also mark us as writing to the entire ecs. this is because adding/removing components can move any types of data around the ecs categories.
 					}
 				};
@@ -60,7 +76,7 @@ namespace rynx {
 					(unpack_resource<Args>()(host), ...); // apply the resource constraints to the task.
 				}
 
-				template<typename T> inline auto& getTaskArgParam(context* [[maybe_unused]] ctx, rynx::scheduler::task* [[maybe_unused]] currentTask) {
+				template<typename T> inline auto& getTaskArgParam([[maybe_unused]] context* ctx, [[maybe_unused]] rynx::scheduler::task* currentTask) {
 					if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::scheduler::task>) {
 						return ctx->getTaskArgParam<T>();
 					}
@@ -421,24 +437,6 @@ namespace rynx {
 			std::shared_ptr<parallel_for_each_data> m_for_each;
 
 			context* m_context = nullptr;
-		};
-
-		class task_token {
-		public:
-			task_token(task&& task) : m_task(std::move(task)) {}
-			~task_token();
-
-			task* operator -> ();
-			task& operator * () { return m_task; }
-			
-			// chaining tasks with nice api
-			task_token& operator | (task_token& other) {
-				other->depends_on(m_task);
-				return other;
-			}
-
-		private:
-			task m_task;
 		};
 	}
 }

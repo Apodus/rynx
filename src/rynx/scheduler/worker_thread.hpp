@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rynx/thread/semaphore.hpp>
+#include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/task.hpp>
 
 #include <thread>

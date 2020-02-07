@@ -6,8 +6,9 @@
 
 #include <rynx/tech/ecs.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
+#include <thread>
 
-TEST_CASE("scheduler", "[tasks + barriers]")
+TEST_CASE("tasks and barriers", "scheduler")
 {
 	rynx::scheduler::task_scheduler scheduler;
 	auto* context = scheduler.make_context();
@@ -27,7 +28,7 @@ TEST_CASE("scheduler", "[tasks + barriers]")
 }
 
 
-TEST_CASE("scheduler", "[ecs component resource accesses respected]")
+TEST_CASE("ecs component resource accesses respected", "scheduler")
 {
 	struct component {
 		int a;
