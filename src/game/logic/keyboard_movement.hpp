@@ -89,7 +89,7 @@ namespace game {
 						angularAcceleration -= 0.01f;
 					}
 
-					if (total.lengthSquared() + angularAcceleration * angularAcceleration > 0) {
+					if (total.length_squared() + angularAcceleration * angularAcceleration > 0) {
 						result.emplace_back(std::make_unique<actions::movement>(localPlayer, total, angularAcceleration));
 					}
 				}

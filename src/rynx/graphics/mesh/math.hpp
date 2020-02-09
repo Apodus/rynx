@@ -121,7 +121,7 @@ namespace math {
 	}
 
 	inline std::pair<float, vec3<float>> pointDistanceLineSegment(vec3<float> v, vec3<float> w, vec3<float> p) {
-		const float l2 = (v - w).lengthSquared();
+		const float l2 = (v - w).length_squared();
 		if (l2 == 0.0) return { (p - v).length(), v };
 		float bound = (p - v).dot(w - v) / l2;
 		bound = bound < 1 ? bound : 1;
@@ -131,13 +131,13 @@ namespace math {
 	}
 
 	inline std::pair<float, vec3<float>> pointDistanceLineSegmentSquared(vec3<float> v, vec3<float> w, vec3<float> p) {
-		const float l2 = (v - w).lengthSquared();
-		if (l2 == 0.0) return { (p - v).lengthSquared(), v };
+		const float l2 = (v - w).length_squared();
+		if (l2 == 0.0) return { (p - v).length_squared(), v };
 		float bound = (p - v).dot(w - v) / l2;
 		bound = bound < 1 ? bound : 1;
 		bound = bound > 0 ? bound : 0;
 		const vec3<float> projection = v + (w - v) * bound;
-		return { (p - projection).lengthSquared(), projection };
+		return { (p - projection).length_squared(), projection };
 	}
 
 	template<class P>

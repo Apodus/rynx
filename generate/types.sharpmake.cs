@@ -12,8 +12,6 @@ public class RynxProject : Project
                 Optimization.Debug | Optimization.Release | Optimization.Retail
             )
         );
-		
-		AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
 	}
 	
 	[Configure()]

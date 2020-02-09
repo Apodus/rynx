@@ -103,7 +103,7 @@ void rynx::menu::Frame::update(float) {
 	const auto& parentPosition = parent()->position_world();
 	const auto& parentDimensions = parent()->scale_world();
 	
-	if ((m_prevScale - parentDimensions).lengthSquared() > 0.001f * parentDimensions.lengthSquared()) {
+	if ((m_prevScale - parentDimensions).length_squared() > 0.001f * parentDimensions.length_squared()) {
 		m_prevScale = parentDimensions;
 		buildMesh(parentDimensions.x, parentDimensions.y);
 		m_backgroundMesh->rebuildVertexBuffer();

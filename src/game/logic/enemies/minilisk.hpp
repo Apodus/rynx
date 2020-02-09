@@ -51,7 +51,7 @@ namespace game {
 						auto direction = heroPos.value - pos.value;
 
 						float maxDistance = heroEntity.get<const rynx::components::radius>().r + r.r + 2.7f;
-						if (direction.lengthSquared() < maxDistance * maxDistance) {
+						if (direction.length_squared() < maxDistance * maxDistance) {
 							auto& hp = heroEntity.get<game::health>();
 							hp.currentHp -= 5 * dt;
 							if (hp.currentHp <= 0) {

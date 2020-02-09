@@ -138,7 +138,7 @@ void UserIO::onMouseButtonEvent(int key, int action, int /* mods */) {
 
 	if (action == GLFW_RELEASE) {
 		uint8_t value = KEY_RELEASED;
-		if ((m_mousePosition - m_mousePosition_clickBegin).lengthSquared() < 0.02f * 0.02f)
+		if ((m_mousePosition - m_mousePosition_clickBegin).length_squared() < 0.02f * 0.02f)
 		{
 			value |= KEY_CLICK;
 		}
