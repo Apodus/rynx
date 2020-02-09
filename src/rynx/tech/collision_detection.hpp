@@ -71,7 +71,7 @@ namespace rynx {
 		}
 		
 		template<typename F> void in_radius(category_id category, vec3<float> point, float radius, F&& f) {
-			m_sphere_trees[category.value]->in_radius(pos, radius std::forward<F>(f));
+			m_sphere_trees[category.value]->in_radius(point, radius, std::forward<F>(f));
 		}
 
 		void update() {
@@ -93,7 +93,7 @@ namespace rynx {
 		sphere_tree* get(category_id category) { return m_sphere_trees[category.value].get(); }
 
 		template<typename F> void collisions_for(category_id category, F&& f) {
-			sphere_tree::collisions_internal(std::forward<F>(f), &m_sphere_trees[category]->root);
+			sphere_tree::collisions_internal(std::forward<F>(f), &m_sphere_trees[category.value]->root);
 		}
 
 		template<typename F> void collisions_for(category_id category1, category_id category2, F&& f) {

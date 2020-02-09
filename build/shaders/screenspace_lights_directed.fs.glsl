@@ -7,7 +7,7 @@ uniform sampler2D tex_normal;
 uniform sampler2D tex_position;
 
 uniform vec4 lights_colors[128];
-uniform vec3 lights_positions[128];
+uniform vec4 lights_positions[128];
 uniform vec4 lights_directions[128]; // rgb = direction, a = arc
 uniform float lights_softness[128];
 uniform int lights_num;
@@ -25,7 +25,7 @@ void main()
 	for(int i=0; i<lights_num; ++i) {
 		vec3 light_dir = lights_directions[i].rgb;
 		float light_min_agr = lights_directions[i].a;
-		vec3 distance_vector = (lights_positions[i] - fragment_position);
+		vec3 distance_vector = (lights_positions[i].xyz - fragment_position);
 		vec3 distance_unit = normalize(distance_vector);
 		float dir_agr = -dot(distance_unit, light_dir) - light_min_agr;
 		float soft_agr = clamp(dir_agr * lights_softness[i], 0.0, 1.0);

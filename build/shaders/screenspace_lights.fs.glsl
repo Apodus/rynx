@@ -7,7 +7,7 @@ uniform sampler2D tex_normal;
 uniform sampler2D tex_position;
 
 uniform vec4 lights_colors[128];
-uniform vec3 lights_positions[128];
+uniform vec4 lights_positions[128];
 uniform int lights_num;
 
 out vec4 frag_color;
@@ -21,7 +21,7 @@ void main()
 	
 	vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 	for(int i=0; i<lights_num; ++i) {
-		vec3 distance_vector = (lights_positions[i] - fragment_position);
+		vec3 distance_vector = (lights_positions[i].xyz - fragment_position);
 		float distance_sqr = dot(distance_vector, distance_vector) + 1.0;
 		float agreement = max(0.0, dot(fragment_normal, normalize(distance_vector)));
 		result += vec4((agreement + 0.1) * (material_color.rgb * lights_colors[i].rgb) *

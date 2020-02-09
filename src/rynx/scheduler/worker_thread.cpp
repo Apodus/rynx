@@ -3,6 +3,8 @@
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/thread/this_thread.hpp>
 
+#include <thread>
+
 rynx::scheduler::task_thread::task_thread(task_scheduler* pTaskMaster, int myIndex) {
 	m_scheduler = pTaskMaster;
 	m_sleeping = true;

@@ -1,6 +1,7 @@
 
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/scheduler/barrier.hpp>
+#include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/worker_thread.hpp>
 

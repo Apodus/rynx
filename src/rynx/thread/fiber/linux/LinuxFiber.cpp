@@ -3,18 +3,12 @@
 
 #include <ucontext.h>
 #include <cstdint>
-#include <memory>
-#include <functional>
 
-#include <iostream>
-
-#include "util/logging.hpp"
-#include "util/attributes.hpp"
-#include "thread/fiber/Fiber.hpp"
+#include <rynx/thread/fiber.hpp>
 
 // TLS pointer, since multiple threads can be in fiber mode.
-THREAD_LOCAL ucontext_t g_activeContext;
-THREAD_LOCAL ucontext_t g_prevContext;
+thread_local ucontext_t g_activeContext;
+thread_local ucontext_t g_prevContext;
 
 void linuxFiberStart(unsigned a, unsigned b) {
 	Fiber* ptr = reinterpret_cast<Fiber*>((static_cast<uint64_t>(a) << 32) | static_cast<uint64_t>(b));
@@ -63,7 +57,6 @@ void Fiber::exitFiberMode(Fiber* mainFiber) {
 }
 
 void* Fiber::getCurrentPlatformFiber() {
-	ASSERT(false, "no no no");
 	return &g_activeContext; // NOTE: this hack breaks down if trying to use a fiber from inside a fiber.
 }
 

@@ -1,7 +1,10 @@
 #pragma once
 
 
+#ifdef _WIN32
 #include <intrin.h>
+#endif
+
 #include <rynx/system/assert.hpp>
 #include <rynx/tech/math/math.hpp>
 
@@ -11,8 +14,9 @@
 
 #pragma warning (disable : 4201) // language extension used, anonymous structs
 
+// generic 3d vector template. has vectorized specialization for type float for windows due to bad optimizer.
 template <class T>
-struct vec3 {
+struct alignas(16) vec3 {
 	vec3(const vec3& other) : x(other.x), y(other.y), z(other.z) {}
 	vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
 	
@@ -55,8 +59,10 @@ struct vec3 {
 	T z;
 };
 
+#ifdef _WIN32
+
 template<>
-struct vec3<float> {
+struct alignas(16) vec3<float> {
 	vec3(__m128 vec) : xmm(vec) {}
 	vec3(const vec3& other) : xmm(other.xmm) {}
 	vec3(float x = 0, float y = 0, float z = 0) { set(x, y, z); }
@@ -111,7 +117,7 @@ struct vec3<float> {
 
 	// vec3 normal() const { return _mm_div_ps(xmm, _mm_sqrt_ps(_mm_dp_ps(xmm, xmm, 0xff))); }
 	// vec3& normalize() { xmm = normal().xmm; return *this; }
-	
+
 	vec3 normal2d() const { return vec3(-y, +x, 0); }
 	float cross2d(vec3 other) const { return x * other.y - y * other.x; }
 
@@ -120,7 +126,7 @@ struct vec3<float> {
 		int32_t test = _mm_movemask_epi8(vcmp);
 		return test != 0;
 	}
-	
+
 	bool operator == (const vec3& other) { return !((*this) != other); }
 
 	vec3& set(float xx, float yy, float zz) { xmm = _mm_set_ps(0.0f, zz, yy, xx); return *this; }
@@ -144,63 +150,10 @@ struct vec3<float> {
 	};
 };
 
-template <class T>
-struct vec4 {
-	vec4(const vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
-	constexpr vec4(T x = 0, T y = 0, T z = 0, T w = 0) : x(x), y(y), z(z), w(w) {}
+#endif
 
-	template<typename U> explicit operator vec4<U>() const { return vec4<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)); }
-
-	vec4 normal() { T l = 1.0f / length(); return *this * l; }
-	vec4& normalize() { T l = 1.0f / length(); *this *= l; return *this; }
-	
-	vec4& operator*=(T scalar) { x *= scalar; y *= scalar; z *= scalar; w *= scalar; return *this; }
-	vec4& operator/=(T scalar) { x /= scalar; y /= scalar; z /= scalar; w /= scalar; return *this; }
-	vec4& operator+=(const vec4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
-	vec4& operator-=(const vec4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
-	
-	vec4 operator+(const vec4& other) const { return vec4(x + other.x, y + other.y, z + other.z, w + other.w); }
-	vec4 operator-(const vec4& other) const { return vec4(x - other.x, y - other.y, z - other.z, w - other.w); }
-	vec4 operator*(const vec4& other) const { return vec4(x * other.x, y * other.y, z * other.z, w * other.w); }
-	
-	vec4 operator*(T scalar) const { return vec4(x * scalar, y * scalar, z * scalar, w * scalar); }
-	vec4 operator/(T scalar) const { return vec4(x / scalar, y / scalar, z / scalar, w / scalar); }
-	vec4 operator-() const { return vec4(-x, -y, -z, -w); }
-
-	bool operator != (const vec4& other) { return (x != other.x) | (y != other.y) | (z != other.z) | (w != other.w); }
-	bool operator == (const vec4& other) { return !((*this) != other); }
-
-	vec4& set(T xx, T yy, T zz, T ww) { x = xx; y = yy; z = zz; w = ww; return *this; }
-	T dot(const vec4<T>& other) const { return x * other.x + y * other.y + z * other.z + w * other.w; }
-	T length() const { return math::sqrt_approx(length_squared()); }
-	T length_squared() const { return dot(*this); }
-
-	const T& operator [](int index) const {
-		rynx_assert(index >= 0 && index < 4, "index out of bounds");
-		return data[index];
-	}
-
-	T& operator [](int index) {
-		rynx_assert(index >= 0 && index < 4, "index out of bounds");
-		return data[index];
-	}
-
-	union {
-		struct {
-			T x, y, z, w;
-		};
-		struct {
-			T r, g, b, a;
-		};
-		struct {
-			T left, right, top, bottom;
-		};
-		T data[4];
-	};
-};
-
+// not simd representation of four consecutive float values.
 struct floats4 {
-
 #pragma warning (disable : 4201)
 	union {
 		struct {
@@ -244,7 +197,67 @@ struct floats4 {
 	}
 };
 
-template<typename T> struct vec4;
+template <class T>
+struct alignas(16) vec4 {
+	vec4(const vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
+	vec4(vec3<float> other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
+	vec4(float w, vec3<float> other) : x(w), y(other.x), z(other.y), w(other.z) {}
+
+	constexpr vec4(T x = 0, T y = 0, T z = 0, T w = 0) : x(x), y(y), z(z), w(w) {}
+
+	template<typename U> explicit operator vec4<U>() const { return vec4<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)); }
+
+	operator floats4() const { return floats4(x, y, z, w); }
+
+	vec4 normal() { T l = 1.0f / length(); return *this * l; }
+	vec4& normalize() { T l = 1.0f / length(); *this *= l; return *this; }
+
+	vec4& operator*=(T scalar) { x *= scalar; y *= scalar; z *= scalar; w *= scalar; return *this; }
+	vec4& operator/=(T scalar) { x /= scalar; y /= scalar; z /= scalar; w /= scalar; return *this; }
+	vec4& operator+=(const vec4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
+	vec4& operator-=(const vec4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
+
+	vec4 operator+(const vec4& other) const { return vec4(x + other.x, y + other.y, z + other.z, w + other.w); }
+	vec4 operator-(const vec4& other) const { return vec4(x - other.x, y - other.y, z - other.z, w - other.w); }
+	vec4 operator*(const vec4& other) const { return vec4(x * other.x, y * other.y, z * other.z, w * other.w); }
+
+	vec4 operator*(T scalar) const { return vec4(x * scalar, y * scalar, z * scalar, w * scalar); }
+	vec4 operator/(T scalar) const { return vec4(x / scalar, y / scalar, z / scalar, w / scalar); }
+	vec4 operator-() const { return vec4(-x, -y, -z, -w); }
+
+	bool operator != (const vec4& other) { return (x != other.x) | (y != other.y) | (z != other.z) | (w != other.w); }
+	bool operator == (const vec4& other) { return !((*this) != other); }
+
+	vec4& set(T xx, T yy, T zz, T ww) { x = xx; y = yy; z = zz; w = ww; return *this; }
+	T dot(const vec4<T>& other) const { return x * other.x + y * other.y + z * other.z + w * other.w; }
+	T length() const { return math::sqrt_approx(length_squared()); }
+	T length_squared() const { return dot(*this); }
+
+	const T& operator [](int index) const {
+		rynx_assert(index >= 0 && index < 4, "index out of bounds");
+		return data[index];
+	}
+
+	T& operator [](int index) {
+		rynx_assert(index >= 0 && index < 4, "index out of bounds");
+		return data[index];
+	}
+
+	union {
+		struct {
+			T x, y, z, w;
+		};
+		struct {
+			T r, g, b, a;
+		};
+		struct {
+			T left, right, top, bottom;
+		};
+		T data[4];
+	};
+};
+
+#ifdef _WIN32
 
 template<>
 struct vec4<float> {
@@ -350,6 +363,8 @@ struct vec4<float> {
 		return kek1.x * kek2.y - kek1.y * kek2.x;
 	}
 };
+
+#endif
 
 /*
 template <>

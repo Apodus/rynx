@@ -4,7 +4,7 @@
 #include <functional>
 #include <memory>
 
-#if PLATFORM_LINUX
+#ifndef _WIN32
 #include <ucontext.h>
 #endif
 
@@ -32,7 +32,7 @@ private:
 	std::function<void(Fiber*)> m_func;
 	bool m_isThread;
 
-#if PLATFORM_WIN
+#ifdef _WIN32
 	static void __stdcall fiberStartingFunction(void*);
 #else
 public:
@@ -43,7 +43,8 @@ private:
 	void* m_callingFiber;
 	void* m_fiber;
 
-#if PLATFORM_LINUX
+#ifndef _WIN32
+	// assume linux
 	ucontext_t caller;
 	ucontext_t callee;
 #endif

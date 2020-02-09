@@ -1,20 +1,32 @@
 
-#include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/context.hpp>
+#include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/tech/profiling.hpp>
 
-rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return &m_task; }
+rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return m_pTask.get(); }
 rynx::scheduler::task_token::~task_token() {
-	m_task.m_context->schedule_task(std::move(m_task));
+	m_pTask->m_context->schedule_task(std::move(*m_pTask));
 }
 
+rynx::scheduler::task_token::task_token(task&& task) {
+	m_pTask = std::make_unique<rynx::scheduler::task>(std::move(task));
+}
+
+rynx::scheduler::task& rynx::scheduler::task_token::operator * () {
+	return *m_pTask;
+}
+
+rynx::scheduler::task_token& rynx::scheduler::task_token::operator | (task_token& other) {
+	other->depends_on(*m_pTask);
+	return other;
+}
 
 void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*m_resources); }
 
 void rynx::scheduler::task::run() {
 	rynx_profile("Scheduler", m_name);
-	rynx_assert(m_op, "no op in task that is being run!");
+	rynx_assert(static_cast<bool>(m_op), "no op in task that is being run!");
 	rynx_assert(m_barriers.can_start(), "task is being run while still blocked by barriers!");
 
 	{

@@ -23,6 +23,7 @@ namespace rynx {
 		class logic {
 		public:
 			struct iaction {
+				virtual ~iaction() {}
 				virtual void apply(rynx::ecs& ecs) const = 0;
 			};
 

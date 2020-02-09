@@ -484,33 +484,37 @@ namespace rynx {
 		template<typename category_source>
 		class sorter : public gatherer<category_source> {
 		public:
-			sorter(category_source& ecs) : gatherer(ecs) {}
-			sorter(const category_source& ecs) : gatherer(ecs) {}
+			sorter(category_source& ecs) : gatherer<category_source>(ecs) {}
+			sorter(const category_source& ecs) : gatherer<category_source>(ecs) {}
 
 			template<typename... Args> sorter& in() { unpack_types<Args...>(); return *this; }
 			template<typename... Args> sorter& notIn() { unpack_types_exclude<Args...>(); return *this; }
 
-			sorter& in(rynx::type_index::virtual_type t) { includeTypes.set(t.type_value); return *this; }
-			sorter& notIn(rynx::type_index::virtual_type t) { excludeTypes.set(t.type_value); return *this; }
+			sorter& in(rynx::type_index::virtual_type t) { this->includeTypes.set(t.type_value); return *this; }
+			sorter& notIn(rynx::type_index::virtual_type t) { this->excludeTypes.set(t.type_value); return *this; }
 
 
 			template<typename T> void sort_categories_by() {
-				auto& categories = m_ecs.categories();
-				unpack_types<T>();
+				auto& categories = this->m_ecs.categories();
+				this->template unpack_types<T>();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
-						entity_category.second->sort<T>(m_ecs.m_idCategoryMap);
+					if (entity_category.second->includesAll(this->includeTypes) &
+						entity_category.second->includesNone(this->excludeTypes))
+					{
+						entity_category.second->template sort<T>(this->m_ecs.m_idCategoryMap);
 					}
 				}
 			}
 
 			template<typename T> void sort_buckets_one_step() {
-				auto& categories = m_ecs.categories();
-				unpack_types<T>();
+				auto& categories = this->m_ecs.categories();
+				this->template unpack_types<T>();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+					if (entity_category.second->includesAll(this->includeTypes) &
+						entity_category.second->includesNone(this->excludeTypes))
+					{
 						auto& ids = entity_category.second->ids();
-						entity_category.second->sort_one_step<T>(m_ecs.m_idCategoryMap);
+						entity_category.second->template sort_one_step<T>(this->m_ecs.m_idCategoryMap);
 					}
 				}
 			}
@@ -520,18 +524,18 @@ namespace rynx {
 		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
 		class buffer_iterator<accessType, category_source, Ret(Class::*)(size_t, FArg, Args...) const> : public gatherer<category_source> {
 		public:
-			buffer_iterator(category_source& ecs) : gatherer(ecs) {
-				m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
+			buffer_iterator(category_source& ecs) : gatherer<category_source>(ecs) {
+				this->m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
 				static_assert(!std::is_same_v<FArg, rynx::ecs::id*>, "id pointer must be const when iterating buffers!");
 				if constexpr (!std::is_same_v<FArg, rynx::ecs::id const*>) {
-					m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
+					this->m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
 				}
 			}
-			buffer_iterator(const category_source& ecs) : gatherer(ecs) {
-				m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
+			buffer_iterator(const category_source& ecs) : gatherer<category_source>(ecs) {
+				this->m_ecs.template componentTypesAllowed<std::remove_pointer_t<Args>...>();
 				static_assert(!std::is_same_v<FArg, rynx::ecs::id*>, "id pointer must be const when iterating buffers!");
 				if constexpr (!std::is_same_v<FArg, rynx::ecs::id const*>) {
-					m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
+					this->m_ecs.template componentTypesAllowed<std::remove_pointer_t<FArg>>();
 				}
 			}
 
@@ -545,15 +549,15 @@ namespace rynx {
 				using id_types_t = typename rynx::remove_first_type<types_t>::type;
 
 				if constexpr (is_id_query) {
-					unpack_types<id_types_t>(std::make_index_sequence<std::tuple_size<id_types_t>::value>());
+					this->template unpack_types<id_types_t>(std::make_index_sequence<std::tuple_size<id_types_t>::value>());
 				}
 				else {
-					unpack_types<types_t>(std::make_index_sequence<std::tuple_size<types_t>::value>());
+					this->template unpack_types<types_t>(std::make_index_sequence<std::tuple_size<types_t>::value>());
 				}
 
-				auto& categories = m_ecs.categories();
+				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							auto call_user_op = [size = ids.size(), ids_data = ids.data(), &op](auto*... args) {
@@ -576,48 +580,48 @@ namespace rynx {
 		template<DataAccess accessType, typename category_source, typename Ret, typename Class, typename FArg, typename... Args>
 		class entity_iterator<accessType, category_source, Ret(Class::*)(FArg, Args...) const> : public gatherer<category_source> {
 		public:
-			entity_iterator(category_source& ecs) : gatherer(ecs) {
-				m_ecs.template componentTypesAllowed<Args...>();
+			entity_iterator(category_source& ecs) : gatherer<category_source>(ecs) {
+				this->m_ecs.template componentTypesAllowed<Args...>();
 				if constexpr (!std::is_same_v<FArg, rynx::ecs::id>) {
-					m_ecs.template componentTypesAllowed<FArg>();
+					this->m_ecs.template componentTypesAllowed<FArg>();
 				}
 			}
 			
-			entity_iterator(const category_source& ecs) : gatherer(ecs) {
-				m_ecs.template componentTypesAllowed<Args...>();
+			entity_iterator(const category_source& ecs) : gatherer<category_source>(ecs) {
+				this->m_ecs.template componentTypesAllowed<Args...>();
 				if constexpr (!std::is_same_v<FArg, rynx::ecs::id>) {
-					m_ecs.template componentTypesAllowed<FArg>();
+					this->m_ecs.template componentTypesAllowed<FArg>();
 				}
 			}
 
-			template<typename F> void gather_if(F&& op) {
+			template<typename F> std::vector<id> gather_if(F&& op) {
 				using components_t = std::tuple<FArg, Args...>;
 				using components_without_first_t = std::tuple<Args...>;
 
 				constexpr bool is_id_query = std::is_same_v<std::tuple_element_t<0, components_t>, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
-					unpack_types<components_t>(std::index_sequence_for<components_t>());
+					this->template unpack_types<components_t>(std::index_sequence_for<components_t>());
 				}
 				else {
-					unpack_types<components_without_first_t>(std::index_sequence_for<components_without_first_t>());
+					this->template unpack_types<components_without_first_t>(std::index_sequence_for<components_without_first_t>());
 				}
 
 				std::vector<id> gathered_ids;
-				auto& categories = m_ecs.categories();
+				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						auto* id_begin = ids.begin();
 						auto* id_end = id_begin + ids.size();
 						
 						if constexpr (is_id_query) {
 							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>();
-							auto iteration_func = [id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
+							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*id_begin, *ptrs...)) {
 										gathered_ids.emplace_back(*id_begin);
 									}
-									++ptrs...;
+									(++ptrs, ...);
 									++id_begin;
 								}
 							};
@@ -625,12 +629,12 @@ namespace rynx {
 						}
 						else {
 							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>();
-							auto iteration_func = [id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
+							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*ptrs...)) {
 										gathered_ids.emplace_back(*id_begin);
 									}
-									++ptrs...;
+									(++ptrs, ...);
 									++id_begin;
 								}
 							};
@@ -644,13 +648,13 @@ namespace rynx {
 			template<typename F> void for_each(F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
-					unpack_types<FArg>();
+					this->template unpack_types<FArg>();
 				}
-				unpack_types<Args...>();
+				this->template unpack_types<Args...>();
 				
-				auto& categories = m_ecs.categories();
+				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
@@ -665,13 +669,13 @@ namespace rynx {
 			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
-					unpack_types<FArg>();
+					this->template unpack_types<FArg>();
 				}
-				unpack_types<Args...>();
+				this->template unpack_types<Args...>();
 
-				auto& categories = m_ecs.categories();
+				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
-					if (entity_category.second->includesAll(includeTypes) & entity_category.second->includesNone(excludeTypes)) {
+					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>()...);
@@ -904,7 +908,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.sort_categories_by<T>();
+				it.template sort_categories_by<T>();
 			}
 
 			template<typename T>
@@ -914,7 +918,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.sort_buckets_one_step<T>();
+				it.template sort_buckets_one_step<T>();
 			}
 
 			template<typename F, typename TaskContext>
@@ -1171,7 +1175,7 @@ namespace rynx {
 			std::vector<rynx::ecs::id> ids() const {
 				std::vector<rynx::ecs::id> result;
 				gatherer<view> it(*this);
-				it.ids<Ts...>(result);
+				it.template ids<Ts...>(result);
 				return result;
 			}
 
@@ -1214,24 +1218,24 @@ namespace rynx {
 			entity<edit_view, true> operator[](entity_id_t id) { return entity<edit_view, true>(*this, id); }
 			entity<edit_view, true> operator[](id id) { return entity<edit_view, true>(*this, id.value); }
 
-			const_entity<view> operator[](entity_id_t id) const { return const_entity<view>(*this, id); }
-			const_entity<view> operator[](id id) const { return const_entity<view>(*this, id.value); }
+			auto operator[](entity_id_t id) const { return const_entity<view<TypeConstraints...>>(*this, id); }
+			auto operator[](id id) const { return const_entity<view<TypeConstraints...>>(*this, id.value); }
 
 			template<typename... Components>
 			entity_id_t create(Components&& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				return this->m_ecs->create(std::forward<Components>(components)...);
 			}
 
 			template<typename... Components>
 			std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				return this->m_ecs->create(components...);
 			}
 
 			template<typename... Components>
 			edit_view& attachToEntity(entity_id_t id, Components&& ... components) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				this->m_ecs->attachToEntity(id, std::forward<Components>(components)...);
 				return *this;
 			}
@@ -1239,7 +1243,7 @@ namespace rynx {
 
 			template<typename... Components>
 			edit_view& removeFromEntity(entity_id_t id) {
-				componentTypesAllowed<Components...>();
+				this->template componentTypesAllowed<Components...>();
 				this->m_ecs->template removeFromEntity<Components...>(id);
 				return *this;
 			}

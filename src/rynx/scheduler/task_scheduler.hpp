@@ -4,9 +4,9 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/system/assert.hpp>
 
-#include <rynx/scheduler/task.hpp>
-#include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/barrier.hpp>
+#include <rynx/scheduler/context.hpp>
+#include <rynx/scheduler/task.hpp>
 #include <rynx/thread/semaphore.hpp>
 
 #include <array>

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/scheduler/task.hpp>
+#include <rynx/scheduler/barrier.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/object_storage.hpp>
 #include <rynx/tech/ecs.hpp>
@@ -110,17 +110,7 @@ namespace rynx {
 
 		public:
 
-			[[nodiscard]] bool resourcesAvailableFor(const task& t) const {
-				int resources_in_use = 0;
-				for (uint64_t readResource : t.resources().read_requirements()) {
-					resources_in_use += m_resource_counters[readResource].writers.load();
-				}
-				for (uint64_t writeResource : t.resources().write_requirements()) {
-					resources_in_use += m_resource_counters[writeResource].writers.load();
-					resources_in_use += m_resource_counters[writeResource].readers.load();
-				}
-				return resources_in_use == 0;
-			}
+			[[nodiscard]] bool resourcesAvailableFor(const task& t) const;
 
 			context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler) {
 				m_resource_counters.resize(1024);
@@ -144,24 +134,24 @@ namespace rynx {
 				return m_resources.get<T>();
 			}
 
-			template<typename F> [[nodiscard]] task make_task(std::string taskName, F&& op) { return task(*this, std::move(taskName), std::forward<F>(op)); }
-			[[nodiscard]] task make_task(std::string taskName) { return task(*this, std::move(taskName)); }
+			template<typename F> [[nodiscard]] task make_task(std::string taskName, F&& op);
+			[[nodiscard]] task make_task(std::string taskName);
+			task_token add_task(task task);
 
-			task_token add_task(task task) {
-				return task_token(std::move(task));
-			}
+			template<typename F> task_token add_task(std::string taskName, F&& taskOp);
 
-			template<typename F>
-			task_token add_task(std::string taskName, F&& taskOp) {
-				return add_task(task(*this, std::move(taskName), std::forward<F>(taskOp)));
-			}
-
-			void schedule_task(task task) {
-				std::lock_guard<std::mutex> lock(m_taskMutex);
-				m_tasks.emplace_back(std::move(task));
-			}
-
+			void schedule_task(task task);
 			void dump();
 		};
 	}
+}
+
+#include <rynx/scheduler/task.hpp>
+
+template<typename F> rynx::scheduler::task rynx::scheduler::context::make_task(std::string taskName, F&& op) {
+	return task(*this, std::move(taskName), std::forward<F>(op));
+}
+
+template<typename F> rynx::scheduler::task_token rynx::scheduler::context::add_task(std::string taskName, F&& taskOp) {
+	return add_task(task(*this, std::move(taskName), std::forward<F>(taskOp)));
 }

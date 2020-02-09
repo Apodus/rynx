@@ -34,8 +34,8 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 
 	context.add_task("Apply dampening", [dt](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
 		ecs.query().for_each_parallel(task, [dt](components::motion& m, components::dampening d) {
-			m.velocity *= std::powf(d.linearDampening, dt);
-			m.angularVelocity *= std::powf(d.angularDampening, dt);
+			m.velocity *= ::powf(d.linearDampening, dt);
+			m.angularVelocity *= ::powf(d.angularDampening, dt);
 			});
 		}
 	)->depends_on(position_updates);
