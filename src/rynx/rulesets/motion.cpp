@@ -41,7 +41,7 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 	)->depends_on(position_updates);
 
 	context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::ignore_gravity> ecs, rynx::scheduler::task& task) {
-		if (m_gravity.lengthSquared() > 0) {
+		if (m_gravity.length_squared() > 0) {
 			ecs.query().notIn<components::ignore_gravity>().for_each_parallel(task, [this](components::motion& m) {
 				m.acceleration += m_gravity;
 			});

@@ -120,6 +120,7 @@ class Tech : RynxProject
     public Tech()
     {
         SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\tech\";
+		AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
     }
 
     [Configure]

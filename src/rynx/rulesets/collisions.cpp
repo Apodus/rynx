@@ -43,8 +43,8 @@ namespace {
 		vec3<float> pos_b,
 		float penetration
 	) {
-		rynx_assert(normal.lengthSquared() > 0.9f, "normal must be unit length");
-		rynx_assert(normal.lengthSquared() < 1.1f, "normal must be unit length");
+		rynx_assert(normal.length_squared() > 0.9f, "normal must be unit length");
+		rynx_assert(normal.length_squared() < 1.1f, "normal must be unit length");
 
 		collision_event event;
 		event.a_id = a.id();
@@ -494,7 +494,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 					// This *60 is not the same as dt. Just a random constant.
 					const auto proximity_force = collision.normal * collision.penetration * collision.penetration * 60.0f;
-					rynx_assert(collision.normal.lengthSquared() < 1.1f, "normal should be unit length");
+					rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
 
 					const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
 					const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;

@@ -132,9 +132,10 @@ template<typename...Ts> int64_t ecs_for_each(entt::registry& ecs) {
 */
 
 TEST_CASE("rynx ecs: 50% random components") {
-	constexpr int numEntities = 100000;
+	constexpr int numEntities = 10000;
 	constexpr int fillrate = 50;
-
+	
+	/*
 	{
 		rynx::ecs r;
 		r.type_index_using<int, float, double, uint32_t>();
@@ -185,10 +186,12 @@ TEST_CASE("rynx ecs: 50% random components") {
 			return ecs_for_each<float, int, uint32_t, double>(r);
 		};
 	}
+	*/
 }
 
 TEST_CASE("rynx ecs: insert & delete")
 {
+	/*
 	struct two_ints
 	{
 		int a, b;
@@ -199,11 +202,12 @@ TEST_CASE("rynx ecs: insert & delete")
 		rynx::ecs r;
 		r.type_index_using<two_ints>();
 
-		for (int i = 0; i < 10000; ++i) {
+		for (int i = 0; i < 1000; ++i) {
 			r.create(two_ints{ i, i + 1 });
 		}
 
 		r.erase(r.query().in<two_ints>().ids());
 		return r.size();
 	};
+	*/
 }

@@ -254,11 +254,11 @@ namespace rynx {
 					if (!child->m_members.empty())
 						continue;
 
-					float potentialSqrDist = (child->pos - point).lengthSquared() - child->radius * child->radius; // TODO: This is not true.
+					float potentialSqrDist = (child->pos - point).length_squared() - child->radius * child->radius; // TODO: This is not true.
 					if (potentialSqrDist < ans.second) {
 						if (source_depth > child->depth) {
 							if (source_depth == child->depth + 1) {
-								std::pair<node*, float> potentialAns = { child.get(), (child->pos - point).lengthSquared() };
+								std::pair<node*, float> potentialAns = { child.get(), (child->pos - point).length_squared() };
 								if (potentialAns.second < ans.second) {
 									ans = potentialAns;
 								}
@@ -306,7 +306,7 @@ namespace rynx {
 			template<typename F>
 			void in_radius(vec3<float> point, float range, F&& f) {
 				in_volume(
-					[point, range](const vec3f p, float r) { return (point - p).lengthSquared() < sqr(range + r); },
+					[point, range](const vec3f p, float r) { return (point - p).length_squared() < sqr(range + r); },
 					std::forward<F>(f)
 				);
 			}
@@ -314,19 +314,19 @@ namespace rynx {
 			template<typename F>
 			void not_in_radius(vec3<float> point, float range, F&& f) {
 				in_volume(
-					[point, range](const vec3f p, float r) { return (point - p).lengthSquared() > sqr(range + r); },
+					[point, range](const vec3f p, float r) { return (point - p).length_squared() > sqr(range + r); },
 					std::forward<F>(f)
 				);
 			}
 
 			std::pair<node*, float> findNearestLeaf(vec3<float> point, float maxDistSqr) {
 				if (m_children.empty()) {
-					return { this, (point - pos).lengthSquared() };
+					return { this, (point - pos).length_squared() };
 				}
 
 				std::pair<node*, float> ans(nullptr, maxDistSqr);
 				for (auto&& child : m_children) {
-					float potentialSqrDist = (child->pos - point).lengthSquared() - child->radius * child->radius;
+					float potentialSqrDist = (child->pos - point).length_squared() - child->radius * child->radius;
 					if (potentialSqrDist < ans.second) {
 						auto potentialAns = child->findNearestLeaf(point, ans.second);
 						if (potentialAns.second < ans.second) {
@@ -412,7 +412,7 @@ namespace rynx {
 					}
 
 					auto item = it->second.first->m_members[it->second.second];
-					auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).lengthSquared() * 1.001f);
+					auto newLeaf = root.findNearestLeaf(item.pos, (it->second.first->pos - item.pos).length_squared() * 1.001f);
 					if (!newLeaf.first || newLeaf.first == it->second.first) {
 						continue;
 					}
@@ -491,7 +491,7 @@ namespace rynx {
 				if (entryMap.slot_test(index)) {
 					auto entry = entryMap.slot_get(index);
 					auto item = entry.second.first->m_members[entry.second.second];
-					auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).lengthSquared() * 1.001f);
+					auto newLeaf = root.findNearestLeaf(item.pos, (entry.second.first->pos - item.pos).length_squared() * 1.001f);
 
 					if (newLeaf.first && newLeaf.first != entry.second.first) {
 						accumulator->emplace_back(plip{ index, newLeaf.first });
@@ -633,7 +633,7 @@ namespace rynx {
 			const node* rynx_restrict b,
 			rynx::unordered_map<const node*, std::vector<const node*>>& leaf_pairs)
 		{
-			if ((b->pos - a->pos).lengthSquared() > sqr(a->radius + b->radius)) {
+			if ((b->pos - a->pos).length_squared() > sqr(a->radius + b->radius)) {
 				return;
 			}
 
@@ -682,7 +682,7 @@ namespace rynx {
 					const auto& m1 = a->m_members[i];
 					for (size_t k = i + 1; k < a->m_members.size(); ++k) {
 						const auto& m2 = a->m_members[k];
-						float distSqr = (m1.pos - m2.pos).lengthSquared();
+						float distSqr = (m1.pos - m2.pos).length_squared();
 						float radiusSqr = sqr(m1.radius + m2.radius);
 						if (distSqr < radiusSqr) {
 							f(accumulator->template get_local_storage<T>(), m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
@@ -714,9 +714,9 @@ namespace rynx {
 				const node* a = entry.first;
 				for (const node* b : entry.second) {
 					for (const auto& member1 : a->m_members) {
-						if ((member1.pos - b->pos).lengthSquared() < sqr(member1.radius + b->radius)) {
+						if ((member1.pos - b->pos).length_squared() < sqr(member1.radius + b->radius)) {
 							for (const auto& member2 : b->m_members) {
-								float distSqr = (member1.pos - member2.pos).lengthSquared();
+								float distSqr = (member1.pos - member2.pos).length_squared();
 								float radiusSqr = sqr(member1.radius + member2.radius);
 								if (distSqr < radiusSqr) {
 									auto normal = (member1.pos - member2.pos).normalize();
@@ -756,7 +756,7 @@ namespace rynx {
 					const auto& m1 = a->m_members[i];
 					for (size_t k = i + 1; k < a->m_members.size(); ++k) {
 						const auto& m2 = a->m_members[k];
-						float distSqr = (m1.pos - m2.pos).lengthSquared();
+						float distSqr = (m1.pos - m2.pos).length_squared();
 						float radiusSqr = sqr(m1.radius + m2.radius);
 						if (distSqr < radiusSqr) {
 							f(m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
@@ -779,7 +779,7 @@ namespace rynx {
 						rynx_assert(child2 != nullptr, "node cannot be null");
 						rynx_assert(child2 != child1, "nodes must differ");
 
-						if ((child1->pos - child2->pos).lengthSquared() < sqr(child1->radius + child2->radius)) {
+						if ((child1->pos - child2->pos).length_squared() < sqr(child1->radius + child2->radius)) {
 							collisions_internal(std::forward<F>(f), child1, child2);
 						}
 					}
@@ -792,7 +792,7 @@ namespace rynx {
 			rynx_assert(b != nullptr, "node cannot be null");
 			rynx_assert(a != b, "nodes must differ");
 
-			if ((b->pos - a->pos).lengthSquared() > sqr(a->radius + b->radius)) {
+			if ((b->pos - a->pos).length_squared() > sqr(a->radius + b->radius)) {
 				return;
 			}
 
@@ -812,9 +812,9 @@ namespace rynx {
 					}
 
 					for (const auto& member1 : a->m_members) {
-						if ((member1.pos - b->pos).lengthSquared() < sqr(member1.radius + b->radius)) {
+						if ((member1.pos - b->pos).length_squared() < sqr(member1.radius + b->radius)) {
 							for (const auto& member2 : b->m_members) {
-								float distSqr = (member1.pos - member2.pos).lengthSquared();
+								float distSqr = (member1.pos - member2.pos).length_squared();
 								float radiusSqr = sqr(member1.radius + member2.radius);
 								if (distSqr < radiusSqr) {
 									auto normal = (member1.pos - member2.pos).normalize();

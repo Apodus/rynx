@@ -268,9 +268,11 @@ rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name,
 	return *this;
 }
 
+// due to aligment requirements of simd instructions, vec3f is 4floats in size.
+// transmitting them to gpu we agree that they are of type vec4 from gpu perspective.
 rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, vec3f* v, size_t amount) {
-	static_assert(sizeof(vec3f) == 3 * sizeof(float), "can't take array of vec3f directly because of padding.");
-	glUniform3fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
+	static_assert(sizeof(vec3f) == 4 * sizeof(float), "can't take array of vec3f directly because of padding.");
+	glUniform4fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
 	return *this;
 }
 

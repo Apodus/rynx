@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010"> 
+  <Type Name="rynx::unordered_map&lt;*,*,*,*&gt;">
+    <DisplayString>{{size = {m_size}, capacity = {m_capacity}}}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000" ExcludeView="Test">
+        <Variable Name="slot_index" InitialValue="0" />
+        <Variable Name="presence_slot" InitialValue="0" />
+        <Variable Name="presence_bit" InitialValue="0" />
+        <Variable Name="presence_value" InitialValue="0ull" />
+        <Variable Name="found_items" InitialValue="0" />
+
+        <Size>m_size</Size>
+        <Loop>
+          <Exec>presence_slot = slot_index / 64 </Exec>
+          <Exec>presence_bit = (slot_index &amp; 63) </Exec>
+          <Exec>presence_value = m_presence.m_index_data.m_data._Mypair._Myval2[presence_slot]</Exec>
+          <If Condition="(presence_value &gt;&gt; presence_bit) &amp; 1 == 1">
+            <Item>*(std::pair&lt;$T1,$T2&gt;*)&amp;(m_data._Mypair._Myval2[slot_index])</Item>
+            <Exec>found_items++</Exec>
+          </If>
+          <Break Condition="found_items == m_size" />
+          <Exec>slot_index++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="rynx::unordered_set&lt;*,*,*&gt;">
+    <DisplayString>{{size = {m_size}, capacity = {m_capacity}}}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000" ExcludeView="Test">
+        <Variable Name="slot_index" InitialValue="0" />
+        <Variable Name="presence_slot" InitialValue="0" />
+        <Variable Name="presence_bit" InitialValue="0" />
+        <Variable Name="presence_value" InitialValue="0ull" />
+        <Variable Name="found_items" InitialValue="0" />
+
+        <Size>m_size</Size>
+        <Loop>
+          <Exec>presence_slot = slot_index / 64 </Exec>
+          <Exec>presence_bit = (slot_index &amp; 63) </Exec>
+          <Exec>presence_value = m_presence.m_index_data.m_data._Mypair._Myval2[presence_slot]</Exec>
+          <If Condition="(presence_value &gt;&gt; presence_bit) &amp; 1 == 1">
+            <Item>*($T1*)&amp;(m_data._Mypair._Myval2[slot_index])</Item>
+            <Exec>found_items++</Exec>
+          </If>
+          <Break Condition="found_items == m_size" />
+          <Exec>slot_index++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="rynx::dynamic_bitset">
+    <DisplayString>{{bits={m_index_data.m_size * 64}}}</DisplayString>
+    <Expand>
+      <CustomListItems MaxItemsPerView="5000" ExcludeView="Test">
+        <Variable Name="slot_index" InitialValue="0" />
+        <Variable Name="presence_slot" InitialValue="0" />
+        <Variable Name="presence_bit" InitialValue="0" />
+        <Variable Name="presence_value" InitialValue="0ull" />
+
+        <Loop>
+          <Break Condition="slot_index==m_index_data.m_size * 64" />
+          <Exec>presence_slot = slot_index / 64 </Exec>
+          <Exec>presence_bit = (slot_index &amp; 63) </Exec>
+          <Exec>presence_value = m_index_data.m_data._Mypair._Myval2[presence_slot]</Exec>
+          <If Condition="(presence_value &gt;&gt; presence_bit) &amp; 1 == 1">
+            <Item>slot_index</Item>
+          </If>
+          <Exec>slot_index++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  
+</AutoVisualizer>

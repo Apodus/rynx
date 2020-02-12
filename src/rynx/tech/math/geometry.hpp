@@ -56,9 +56,9 @@ Sphere::Sphere(const Point& O, const Point& A, const Point& B, const Point& C)
 		b.x, b.y, b.z,
 		c.x, c.y, c.z);
 
-	Vector o = (c.lengthSquared()) * (a_cross_b) +
-		(b.lengthSquared()) * (c_cross_a) +
-		(a.lengthSquared()) * (b_cross_c)) / Denominator;
+	Vector o = (c.length_squared()) * (a_cross_b) +
+		(b.length_squared()) * (c_cross_a) +
+		(a.length_squared()) * (b_cross_c)) / Denominator;
 
 	radius = length(o);
 	center = O + o;
@@ -93,9 +93,9 @@ template<typename T> std::pair<vec3<float>, float> bounding_sphere(std::vector<T
 			const auto b_ = c - a;
 
 			const auto a_cross_b = a_.cross(b_);
-			float Denominator = 2.0f * a_cross_b.lengthSquared();
+			float Denominator = 2.0f * a_cross_b.length_squared();
 
-			auto o = (a_cross_b.cross(a_) * b_.lengthSquared() + b_.cross(a_cross_b) * a_.lengthSquared()) / Denominator;
+			auto o = (a_cross_b.cross(a_) * b_.length_squared() + b_.cross(a_cross_b) * a_.length_squared()) / Denominator;
 			return a + o;
 		};
 		

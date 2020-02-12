@@ -144,8 +144,7 @@ namespace rynx {
 		}
 
 		dynamic_bitset& resize_bits(size_t bits) {
-			m_bits = bits;
-			m_index_data.resize(((m_bits + 63) >> 6), uint8_t(0));
+			m_index_data.resize(((bits + 63) >> 6), uint8_t(0));
 			return *this;
 		}
 
@@ -215,6 +214,5 @@ namespace rynx {
 
 	private:
 		dynamic_buffer<uint64_t> m_index_data;
-		size_t m_bits = 0;
 	};
 }

@@ -12,8 +12,11 @@
 #include <cmath>
 #include <limits>
 
+#pragma warning (disable : 4201) // language extension used, anonymous structs
+
+// generic 3d vector template. has vectorized specialization for type float for windows due to bad optimizer.
 template <class T>
-struct vec3 {
+struct alignas(16) vec3 {
 	vec3(const vec3& other) : x(other.x), y(other.y), z(other.z) {}
 	vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
 	
@@ -48,16 +51,109 @@ struct vec3 {
 	float cross2d(const vec3& other) const { return x * other.y - y * other.x; }
 	T dot(const vec3& other) const { return x * other.x + y * other.y + z * other.z; }
 	
-	T length() const { return math::sqrt_approx(lengthSquared()); }
-	T lengthSquared() const { return dot(*this); }
+	T length() const { return math::sqrt_approx(length_squared()); }
+	T length_squared() const { return dot(*this); }
 
 	T x;
 	T y;
 	T z;
 };
 
-struct floats4 {
+#ifdef _WIN32
 
+template<>
+struct alignas(16) vec3<float> {
+	vec3(__m128 vec) : xmm(vec) {}
+	vec3(const vec3& other) : xmm(other.xmm) {}
+	vec3(float x = 0, float y = 0, float z = 0) { set(x, y, z); }
+
+	template<typename U> explicit operator vec3<U>() const { return vec3<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z)); }
+
+	vec3 operator * (const vec3& v) const { return vec3(_mm_mul_ps(xmm, v.xmm)); }
+	vec3 operator + (const vec3& v) const { return vec3(_mm_add_ps(xmm, v.xmm)); }
+	vec3 operator - (const vec3& v) const { return vec3(_mm_sub_ps(xmm, v.xmm)); }
+	vec3 operator / (const vec3& v) const { return vec3(_mm_div_ps(xmm, v.xmm)); }
+
+	vec3& operator *= (const vec3& v) { xmm = _mm_mul_ps(xmm, v.xmm); return *this; }
+	vec3& operator += (const vec3& v) { xmm = _mm_add_ps(xmm, v.xmm); return *this; }
+	vec3& operator -= (const vec3& v) { xmm = _mm_sub_ps(xmm, v.xmm); return *this; }
+	vec3& operator /= (const vec3& v) { xmm = _mm_div_ps(xmm, v.xmm); return *this; }
+
+	vec3 operator -() const { return operator *(-1.0f); }
+
+	vec3 operator * (float s) const {
+		const __m128 scalar = _mm_set1_ps(s);
+		return _mm_mul_ps(xmm, scalar);
+	}
+
+	vec3& operator *= (float s) {
+		const __m128 scalar = _mm_set1_ps(s);
+		return operator *= (scalar);
+	}
+
+	vec3 operator / (float scalar) const { return operator*(1.0f / scalar); }
+	vec3& operator /= (float scalar) { return operator *= (1.0f / scalar); }
+
+	float length() const {
+		return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(xmm, xmm, 0xff)));
+	}
+
+	float length_squared() const {
+		return _mm_cvtss_f32(_mm_dp_ps(xmm, xmm, 0xff));
+	}
+
+	vec3 cross(const vec3 v2) const {
+		__m128 t1 = _mm_shuffle_ps(xmm, xmm, 0xc9);
+		__m128 t2 = _mm_shuffle_ps(xmm, xmm, 0xd2);
+		__m128 t3 = _mm_shuffle_ps(v2.xmm, v2.xmm, 0xd2);
+		__m128 t4 = _mm_shuffle_ps(v2.xmm, v2.xmm, 0xc9);
+		__m128 t5 = _mm_mul_ps(t1, t3);
+		__m128 t6 = _mm_mul_ps(t2, t4);
+		return _mm_sub_ps(t5, t6);
+	}
+
+	vec3 normal() { float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }
+	vec3& normalize() { float l = length() + std::numeric_limits<float>::epsilon(); *this *= 1.0f / l; return *this; }
+
+	// vec3 normal() const { return _mm_div_ps(xmm, _mm_sqrt_ps(_mm_dp_ps(xmm, xmm, 0xff))); }
+	// vec3& normalize() { xmm = normal().xmm; return *this; }
+
+	vec3 normal2d() const { return vec3(-y, +x, 0); }
+	float cross2d(vec3 other) const { return x * other.y - y * other.x; }
+
+	bool operator != (const vec3& other) {
+		__m128i vcmp = _mm_castps_si128(_mm_cmpneq_ps(xmm, other.xmm));
+		int32_t test = _mm_movemask_epi8(vcmp);
+		return test != 0;
+	}
+
+	bool operator == (const vec3& other) { return !((*this) != other); }
+
+	vec3& set(float xx, float yy, float zz) { xmm = _mm_set_ps(0.0f, zz, yy, xx); return *this; }
+	float dot(const vec3& other) const {
+		__m128 r1 = _mm_mul_ps(xmm, other.xmm);
+		__m128 shuf = _mm_shuffle_ps(r1, r1, _MM_SHUFFLE(2, 3, 0, 1));
+		__m128 sums = _mm_add_ps(r1, shuf);
+		shuf = _mm_movehl_ps(shuf, sums);
+		sums = _mm_add_ss(sums, shuf);
+		return _mm_cvtss_f32(sums);
+	}
+
+	union {
+		__m128 xmm;
+		struct {
+			float x;
+			float y;
+			float z;
+			float w;
+		};
+	};
+};
+
+#endif
+
+// not simd representation of four consecutive float values.
+struct floats4 {
 #pragma warning (disable : 4201)
 	union {
 		struct {
@@ -102,11 +198,11 @@ struct floats4 {
 };
 
 template <class T>
-struct vec4 {
+struct alignas(16) vec4 {
 	vec4(const vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
 	vec4(vec3<float> other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
 	vec4(float w, vec3<float> other) : x(w), y(other.x), z(other.y), w(other.z) {}
-	
+
 	constexpr vec4(T x = 0, T y = 0, T z = 0, T w = 0) : x(x), y(y), z(z), w(w) {}
 
 	template<typename U> explicit operator vec4<U>() const { return vec4<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)); }
@@ -115,16 +211,16 @@ struct vec4 {
 
 	vec4 normal() { T l = 1.0f / length(); return *this * l; }
 	vec4& normalize() { T l = 1.0f / length(); *this *= l; return *this; }
-	
+
 	vec4& operator*=(T scalar) { x *= scalar; y *= scalar; z *= scalar; w *= scalar; return *this; }
 	vec4& operator/=(T scalar) { x /= scalar; y /= scalar; z /= scalar; w /= scalar; return *this; }
 	vec4& operator+=(const vec4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
 	vec4& operator-=(const vec4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
-	
+
 	vec4 operator+(const vec4& other) const { return vec4(x + other.x, y + other.y, z + other.z, w + other.w); }
 	vec4 operator-(const vec4& other) const { return vec4(x - other.x, y - other.y, z - other.z, w - other.w); }
 	vec4 operator*(const vec4& other) const { return vec4(x * other.x, y * other.y, z * other.z, w * other.w); }
-	
+
 	vec4 operator*(T scalar) const { return vec4(x * scalar, y * scalar, z * scalar, w * scalar); }
 	vec4 operator/(T scalar) const { return vec4(x / scalar, y / scalar, z / scalar, w / scalar); }
 	vec4 operator-() const { return vec4(-x, -y, -z, -w); }
@@ -134,8 +230,8 @@ struct vec4 {
 
 	vec4& set(T xx, T yy, T zz, T ww) { x = xx; y = yy; z = zz; w = ww; return *this; }
 	T dot(const vec4<T>& other) const { return x * other.x + y * other.y + z * other.z + w * other.w; }
-	T length() const { return math::sqrt_approx(lengthSquared()); }
-	T lengthSquared() const { return dot(*this); }
+	T length() const { return math::sqrt_approx(length_squared()); }
+	T length_squared() const { return dot(*this); }
 
 	const T& operator [](int index) const {
 		rynx_assert(index >= 0 && index < 4, "index out of bounds");
@@ -146,8 +242,6 @@ struct vec4 {
 		rynx_assert(index >= 0 && index < 4, "index out of bounds");
 		return data[index];
 	}
-
-#pragma warning (disable : 4201) // language extension used, anonymous structs
 
 	union {
 		struct {
@@ -162,8 +256,6 @@ struct vec4 {
 		T data[4];
 	};
 };
-
-template<typename T> struct vec4;
 
 #ifdef _WIN32
 
