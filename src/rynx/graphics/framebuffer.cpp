@@ -47,6 +47,9 @@ std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config
 		};
 
 		switch (render_target_instance.type) {
+		case render_target_type::none:
+			break;
+			
 		case render_target_type::rgba8:
 			fbo->targets.emplace_back(name + std::string("_rgba8_slot") + std::to_string(fbo->targets.size()));
 			fbo->m_tex_map.emplace(render_target_instance.name, fbo->targets.back());

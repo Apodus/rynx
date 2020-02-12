@@ -6,11 +6,15 @@
 
 #include <utility>
 #include <memory>
-#include <functional> // for std::equal_to<T>
 
 namespace rynx {
+	template<typename T>
+    struct equal_to
+    {
+      constexpr bool operator()(const T& x, const T& y) const { return x == y; }
+    };
 
-	template<typename T, typename U, typename Hash = std::hash<T>, class KeyEqual = std::equal_to<T>>
+	template<typename T, typename U, typename Hash = std::hash<T>, class KeyEqual = rynx::equal_to<T>>
 	class unordered_map {
 #if 0
 		// Array of structs layout

@@ -8,6 +8,10 @@
 
 class Camera;
 namespace rynx {
+	namespace graphics {
+		class shader;
+	}
+	
 	namespace application {
 		class Application;
 
@@ -21,7 +25,10 @@ namespace rynx {
 			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
 			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
 
+			std::shared_ptr<rynx::graphics::shader> shader_copy_color;
 			std::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
+			std::shared_ptr<rynx::graphics::framebuffer> fbo_lights;
+			
 			rynx::application::Application& m_application;
 			std::shared_ptr<Camera> camera;
 		};

@@ -1,19 +1,19 @@
 
 #include "window.hpp"
+#include <rynx/tech/unordered_map.hpp>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
-#include <unordered_map>
 #include <functional>
 #include <iostream>
 #include <memory>
 
 #include <rynx/system/assert.hpp>
 
-using ResizeEventMapper = std::unordered_map<GLFWwindow*, std::function<void(int, int)>>;
+using ResizeEventMapper = rynx::unordered_map<GLFWwindow*, std::function<void(int, int)>>;
 
 static std::unique_ptr<ResizeEventMapper>  g_resizeEventMapper;
 
@@ -23,7 +23,7 @@ static ResizeEventMapper& getResizeEventMapper()
 	{
 		g_resizeEventMapper = std::make_unique<ResizeEventMapper>();
 	}
-	return *g_resizeEventMapper.get();
+	return *g_resizeEventMapper;
 }
 
 void global_scope_windowResizeCallback(GLFWwindow* window, int width, int height) {

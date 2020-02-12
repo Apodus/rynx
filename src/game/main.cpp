@@ -409,17 +409,6 @@ int main(int argc, char** argv) {
 				mousePos * vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
 			);
 		}
-		
-		auto mpos = gameInput.mouseWorldPosition();
-
-		{
-			rynx_profile("Main", "draw cursor");
-
-			rynx::matrix4 m;
-			m.discardSetTranslate(mpos);
-			m.scale(0.5f);
-			application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
-		}
 
 		{
 			rynx_profile("Main", "Input handling");
@@ -505,6 +494,18 @@ int main(int argc, char** argv) {
 
 			auto render_time_us = timer.time_since_last_access_us();
 			render_time.observe_value(render_time_us / 1000.0f);
+
+			/*
+			auto mpos = gameInput.mouseWorldPosition();
+			{
+				rynx_profile("Main", "draw cursor");
+
+				rynx::matrix4 m;
+				m.discardSetTranslate(mpos);
+				m.scale(0.5f);
+				application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
+			}
+			*/
 
 			{
 				rynx_profile("Main", "draw");

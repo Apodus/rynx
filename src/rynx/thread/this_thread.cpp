@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <vector>
 
 namespace {
 	std::atomic<uint64_t> g_tid_counter = 0;

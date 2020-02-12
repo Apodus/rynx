@@ -11,25 +11,30 @@
 #include <rynx/graphics/renderer/textrenderer.hpp>
 
 rynx::application::renderer::renderer(rynx::application::Application& application, std::shared_ptr<Camera> camera) : m_application(application), camera(camera) {
-	std::shared_ptr<rynx::graphics::shader> copy_operation = application.shaders()->load_shader(
+	shader_copy_color = application.shaders()->load_shader(
 		"fbo_color_to_bb",
 		"../shaders/screenspace.vs.glsl",
 		"../shaders/screenspace_color_passthrough.fs.glsl"
 	);
 
-	copy_operation->activate();
-	copy_operation->uniform("tex_color", 0);
+	shader_copy_color->activate();
+	shader_copy_color->uniform("tex_color", 0);
 
 	lighting_pass = rynx::application::visualisation::default_lighting_pass(application.shaders());
 	geometry_pass = rynx::application::visualisation::default_geometry_pass(&application.meshRenderer(), camera.get());
 
 	fbo_world_geometry = rynx::graphics::framebuffer::config()
-		.set_default_resolution(1920, 1080)
+		.set_default_resolution(1920 / 4, 1080 / 4)
 		.add_rgba8_target("color")
 		.add_rgba8_target("normal")
 		.add_float_target("position")
 		.add_depth32_target()
 		.construct(application.textures(), "world_geometry");
+
+	fbo_lights = rynx::graphics::framebuffer::config()
+		.set_default_resolution(1920 / 4, 1080 / 4)
+		.add_rgba8_target("color")
+		.construct(application.textures(), "world_colorized");
 }
 
 void rynx::application::renderer::execute() {
@@ -47,11 +52,19 @@ void rynx::application::renderer::execute() {
 	}
 
 	{
-		m_application.set_gl_viewport_to_window_dimensions();
 		fbo_world_geometry->bind_as_input();
-		rynx::graphics::framebuffer::bind_backbuffer();
+		fbo_lights->bind_as_output();
 		rynx::graphics::screenspace_draws::clear_screen();
 		lighting_pass->execute();
+	}
+
+	{
+		m_application.set_gl_viewport_to_window_dimensions();
+		shader_copy_color->activate();
+		fbo_lights->bind_as_input();
+		rynx::graphics::framebuffer::bind_backbuffer();
+		rynx::graphics::screenspace_draws::clear_screen();
+		rynx::graphics::screenspace_draws::draw_fullscreen();
 	}
 }
 
