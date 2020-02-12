@@ -1200,6 +1200,7 @@ namespace rynx {
 			template<typename T> type_id_t typeId() const { return m_ecs->template typeId<T>(); }
 			auto category_and_index_for(entity_id_t id) const { return m_ecs->category_and_index_for(id); }
 
+		protected:
 			template<typename T>
 			static constexpr bool type_verify() {
 				if constexpr (std::is_const_v<T>) {
@@ -1259,9 +1260,9 @@ namespace rynx {
 			}
 			template<typename... Components> edit_view& removeFromEntity(id id) { return removeFromEntity<Components...>(id.value); }
 
-			template<typename...Args> operator edit_view<Args...>() const {
-				static_assert((isAny<Args, TypeConstraints...>() && ...), "all requested types must be present in parent view");
-				return edit_view<Args...>(this);
+			template<typename...Args> operator edit_view<Args...>() {
+				static_assert((view::type_verify<Args>() && ...), "all requested types must be present in parent view");
+				return edit_view<Args...>(this->m_ecs);
 			}
 		};
 
