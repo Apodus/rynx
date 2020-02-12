@@ -1200,9 +1200,19 @@ namespace rynx {
 			template<typename T> type_id_t typeId() const { return m_ecs->template typeId<T>(); }
 			auto category_and_index_for(entity_id_t id) const { return m_ecs->category_and_index_for(id); }
 
+			template<typename T>
+			static constexpr bool type_verify() {
+				if constexpr (std::is_const_v<T>) {
+					return isAny<T, std::add_const_t<TypeConstraints>...>();
+				}
+				else {
+					return isAny<T, TypeConstraints...>();
+				}
+			}
+
 		public:
 			template<typename...Args> operator view<Args...>() const {
-				static_assert((isAny<Args, TypeConstraints...>() && ...), "all requested types must be present in parent view");
+				static_assert((type_verify<Args>() && ...), "all requested types must be present in parent view");
 				return view<Args...>(m_ecs);
 			}
 
