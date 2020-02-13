@@ -34,6 +34,11 @@ namespace rynx {
 		using entity_id_t = uint64_t;
 		using index_t = uint32_t;
 
+		struct range {
+			index_t begin = 0;
+			index_t step = 0;
+		};
+
 	private:
 		enum class DataAccess {
 			Mutable,
@@ -594,7 +599,7 @@ namespace rynx {
 				}
 			}
 
-			template<typename F> std::vector<id> gather_if(F&& op) {
+			template<typename F> std::vector<id> ids_if(F&& op) {
 				using components_t = std::tuple<FArg, Args...>;
 				using components_without_first_t = std::tuple<Args...>;
 
@@ -666,6 +671,52 @@ namespace rynx {
 				}
 			}
 
+			template<typename F> void for_each_partial(range r, F&& op) {
+				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
+				if constexpr (!is_id_query) {
+					this->template unpack_types<FArg>();
+				}
+				this->template unpack_types<Args...>();
+
+				index_t current_index = 0;
+
+				auto& categories = this->m_ecs.categories();
+				for (auto&& entity_category : categories) {
+					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
+						auto& ids = entity_category.second->ids();
+						auto ids_size = index_t(ids.size());
+
+						if ((current_index + ids_size <= r.begin) | (current_index >= r.begin + r.step)) {
+							current_index += ids_size;
+							continue;
+						}
+
+						range category_range;
+
+						if (r.begin < current_index) {
+							category_range.begin = 0;
+							index_t step_offset = current_index % r.step;
+							category_range.step = (category_range.begin + r.step - step_offset <= ids_size) ? r.step - step_offset : ids_size - category_range.begin;
+						}
+						else {
+							category_range.begin = r.begin - current_index;
+							category_range.step = (category_range.begin + r.step <= ids_size) ? r.step : ids_size - category_range.begin;
+						}
+
+						rynx_assert(category_range.begin < ids_size, "hehe");
+						rynx_assert(category_range.step <= ids_size, "hehe");
+						current_index += ids_size;
+
+						if constexpr (is_id_query) {
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
+						}
+						else {
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+						}
+					}
+				}
+			}
+
 			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
@@ -688,6 +739,7 @@ namespace rynx {
 			}
 
 		private:
+			/*
 			template<bool isIdQuery, typename F>
 			static void call_user_op(F&& op, std::vector<id>& ids) {
 				auto size = ids.size();
@@ -697,26 +749,45 @@ namespace rynx {
 					});
 				}
 				else {
-					for (size_t i = 0; i < ids.size(); ++i)
+					for (size_t i = 0, size = ids.size(); i < size; ++i)
 						op();
 				}
 				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
+			*/
 			
-			template<bool isIdQuery, typename F, typename T_first, typename... Ts>
-			static void call_user_op(F&& op, std::vector<id>& ids, T_first * rynx_restrict data_ptrs_first, Ts * rynx_restrict ... data_ptrs) {
-				auto size = ids.size();
+			template<bool isIdQuery, typename F, typename... Ts>
+			static void call_user_op(F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+				[[maybe_unused]] auto ids_size = ids.size();
 				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + size, [=](const id entityId) mutable {
-						op(entityId, *data_ptrs_first++, (*data_ptrs++)...);
+					std::for_each(ids.data(), ids.data() + ids_size, [=](const id entityId) mutable {
+						op(entityId, (*data_ptrs++)...);
 					});
 				}
 				else {
-					std::for_each(data_ptrs_first, data_ptrs_first + size, [=](T_first& a) mutable {
-						op(a, (*data_ptrs++)...);
+					for (size_t i = 0; i < ids_size; ++i) {
+						op((*data_ptrs++)...);
+					}
+				}
+				rynx_assert(ids.size() == ids_size, "creating/deleting entities is not allowed during iteration.");
+			}
+
+			template<bool isIdQuery, typename F, typename... Ts>
+			static void call_user_op_range(range iteration_range, F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+				[[maybe_unused]] auto ids_size = ids.size();
+				((data_ptrs += iteration_range.begin), ...);
+				if constexpr (isIdQuery) {
+					std::for_each(ids.data() + iteration_range.begin, ids.data() + (iteration_range.begin + iteration_range.step), [=](const id entityId) mutable {
+						op(entityId, (*data_ptrs++)...);
 					});
 				}
-				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
+				else {
+					// TODO: optimize for case sizeof...(data_ptrs) > 0, iterating an extra counter "i" is unnecessary
+					for (size_t i = 0, size_ = iteration_range.step; i < size_; ++i) {
+						op((*data_ptrs++)...);
+					}
+				}
+				rynx_assert(ids.size() == ids_size, "creating/deleting entities is not allowed during iteration.");
 			}
 
 			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
@@ -871,6 +942,24 @@ namespace rynx {
 			}
 
 			template<typename F>
+			range for_each_partial(range r, F&& op) {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.for_each_partial(r, std::forward<F>(op));
+				index_t num = it.count();
+				
+				r.begin += r.step;
+				if (r.begin >= num) {
+					r.begin = 0;
+				}
+
+				return r;
+			}
+
+			template<typename F>
 			query_t& for_each_buffer(F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
@@ -890,6 +979,16 @@ namespace rynx {
 				it.exclude(std::move(notInTypes));
 				it.ids(result);
 				return result;
+			}
+
+			template<typename F>
+			std::vector<rynx::ecs::id> ids_if(F&& f) {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				return it.ids_if(std::forward<F>(f));
 			}
 
 			index_t count() {

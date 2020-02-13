@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
 	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
 
 	rynx::ecs& ecs = base_simulation.m_ecs;
-
+	
 	// setup simulation initial state
 	{
 		/*

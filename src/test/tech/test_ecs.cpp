@@ -47,11 +47,50 @@ TEST_CASE("ecs views usable", "verify compiles")
 
 	{
 		rynx::ecs ecs;
-		rynx::ecs::view<const rynx::components::position> view = ecs;
+		rynx::ecs::view<rynx::components::position> mutable_view = ecs;
+		rynx::ecs::view<const rynx::components::position> view = mutable_view;
 		view.query().for_each([](const rynx::components::position&) {}); // is ok.
 		// view.for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
 		// view.for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
 	}
+}
+
+TEST_CASE("ecs range for_each")
+{
+	rynx::ecs ecs;
+	for (int i = 0; i < 100; ++i)
+		ecs.create(int(i));
+	for (int i = 0; i < 100; ++i)
+		ecs.create(unsigned(200 + i));
+	for (int i = 0; i < 100; ++i)
+		ecs.create(int(100 + i), unsigned(100 + i));
+
+	int counter = 0;
+	auto stop_point = ecs.query().for_each_partial(rynx::ecs::range{ 0, 50 }, [&](int a) {
+		counter += a;
+	});
+
+	counter = 0;
+	stop_point = ecs.query().for_each_partial(stop_point, [&](int a) {
+		counter += a;
+	});
+	REQUIRE(counter == 100 * 99 / 2 - 50 * 49 / 2);
+
+	for (int i = 1; i < 101; ++i) {
+		rynx::ecs::range iter{0, i};
+		counter = 0;
+		while (1) {
+			iter = ecs.query().for_each_partial(iter, [&](int a) {
+				counter += a;
+			});
+
+			if (iter.begin == 0)
+				break;
+		}
+
+		REQUIRE(counter == 200 * 199 / 2);
+	}
+
 }
 
 TEST_CASE("ecs for_each iterates correct amount of entities")
