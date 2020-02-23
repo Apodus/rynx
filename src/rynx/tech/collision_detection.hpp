@@ -1,12 +1,18 @@
 #pragma once
 
-#include <rynx/tech/object_storage.hpp>
-#include <rynx/tech/sphere_tree.hpp>
-#include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/tech/math/vector.hpp>
 #include <vector>
+#include <memory>
 
 namespace rynx {
+	class sphere_tree;
+	template <typename... Ts> class parallel_accumulator;
+	
+	namespace scheduler {
+		class task;
+	}
+	
 	class collision_detection {
 	private:
 		enum class check_type {
@@ -34,8 +40,8 @@ namespace rynx {
 				category_id v(value);
 				v.m_ignore_collisions = true;
 				return v;
-			};
-
+			}
+			
 			int32_t value;
 			bool m_ignore_collisions = false;
 		};
@@ -46,51 +52,18 @@ namespace rynx {
 			Projectile
 		};
 
-		category_id add_category() {
-			m_sphere_trees.emplace_back(std::make_unique<sphere_tree>());
-			return category_id(int32_t(m_sphere_trees.size()) - 1);
-		}
-		
-		collision_detection& enable_collisions_between(category_id category1, category_id category2) {
-			rynx_assert(!(category1.m_ignore_collisions && category2.m_ignore_collisions), "checking collisions between two categories who both ignore collisions, makes no sense");
-			if (category1.m_ignore_collisions) {
-				m_collision_checks.emplace_back(
-					m_sphere_trees[category2.value].get(),
-					m_sphere_trees[category1.value].get(),
-					check_type::b_is_static
-				);
-			}
-			else {
-				m_collision_checks.emplace_back(
-					m_sphere_trees[category1.value].get(),
-					m_sphere_trees[category2.value].get(),
-					category2.m_ignore_collisions ? check_type::b_is_static : check_type::both_are_dynamic
-				);
-			}
-			return *this;
-		}
+		category_id add_category();
+		collision_detection& enable_collisions_between(category_id category1, category_id category2);
 		
 		template<typename F> void in_radius(category_id category, vec3<float> point, float radius, F&& f) {
 			m_sphere_trees[category.value]->in_radius(point, radius, std::forward<F>(f));
 		}
 
-		void update() {
-			for (auto& tree : m_sphere_trees) {
-				tree->update();
-			}
-		}
+		void update();
+		void update_parallel(rynx::scheduler::task& task_context);
 
-		void update_parallel(rynx::scheduler::task& task_context) {
-			for (auto& tree : m_sphere_trees) {
-				tree->update_parallel(task_context);
-			}
-		}
-
-		void erase(uint64_t entityId, category_id from) {
-			m_sphere_trees[from.value]->eraseEntity(entityId);
-		}
-
-		sphere_tree* get(category_id category) { return m_sphere_trees[category.value].get(); }
+		void erase(uint64_t entityId, category_id from);
+		sphere_tree* get(category_id category);
 
 		template<typename F> void collisions_for(category_id category, F&& f) {
 			sphere_tree::collisions_internal(std::forward<F>(f), &m_sphere_trees[category.value]->root);

@@ -3,11 +3,9 @@
 
 #include <rynx/tech/ecs.hpp>
 #include <rynx/tech/object_storage.hpp>
-#include <rynx/tech/sphere_tree.hpp>
 #include <rynx/graphics/mesh/polygon.hpp>
-
-#include <rynx/tech/collision_detection.hpp>
 #include <rynx/tech/math/vector.hpp>
+#include <rynx/tech/collision_detection.hpp>
 
 #include <string>
 

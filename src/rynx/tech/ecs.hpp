@@ -271,21 +271,21 @@ namespace rynx {
 		private:
 			// private implementation details for insertion operations.
 			// virtual types are not added because they hold no data by definition.
-			template<typename T> void insertSingleComponent([[maybe_unused]] T&& component) {
+			template<typename T> void insertSingleComponent([[maybe_unused]] const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, [[maybe_unused]] T&& component) {
 				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
-					table<T>().emplace_back(std::forward<T>(component));
+					table<T>(typeAliases).emplace_back(std::forward<T>(component));
 				}
 			}
 
-			template<typename T> void insertSingleComponentVector(std::vector<T>& component) {
+			template<typename T> void insertSingleComponentVector(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, std::vector<T>& component) {
 				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
-					table<T>().insert(component);
+					table<T>(typeAliases).insert(component);
 				}
 			}
 
 		public:
-			template<typename... Tags, typename...Components> size_t insertNew(std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
-				(insertSingleComponentVector(components), ...);
+			template<typename... Tags, typename...Components> size_t insertNew(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
+				(insertSingleComponentVector(typeAliases, components), ...);
 				size_t index = m_ids.size();
 				m_ids.insert(m_ids.end(), ids.begin(), ids.end());
 
@@ -295,24 +295,24 @@ namespace rynx {
 				return index;
 			}
 
-			template<typename...Components> void insertComponents(Components&& ... components) {
-				(insertSingleComponent(std::forward<Components>(components)), ...);
+			template<typename...Components> void insertComponents(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, Components&& ... components) {
+				(insertSingleComponent(typeAliases, std::forward<Components>(components)), ...);
 			}
 
-			template<typename...Components> size_t insertNew(entity_id_t id, Components&& ... components) {
-				insertComponents(std::forward<Components>(components)...);
+			template<typename...Components> size_t insertNew(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, entity_id_t id, Components&& ... components) {
+				insertComponents(typeAliases, std::forward<Components>(components)...);
 				size_t index = m_ids.size();
 				m_ids.emplace_back(id);
 				return index;
 			}
 
-			template<typename Component> void eraseComponentFromIndex(index_t index) {
-				auto& t = table<Component>();
+			template<typename Component> void eraseComponentFromIndex(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, index_t index) {
+				auto& t = table<Component>(typeAliases);
 				t[index] = std::move(t.back());
 				t.pop_back();
 			}
 
-			template<typename...Components> void eraseComponentsFromIndex(index_t index) { (eraseComponentFromIndex<Components>(index), ...); }
+			template<typename...Components> void eraseComponentsFromIndex(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, index_t index) { (eraseComponentFromIndex<Components>(typeAliases, index), ...); }
 
 			void copyTypesFrom(entity_category* other, const dynamic_bitset& types) {
 				type_id_t typeId = types.nextOne(0);
@@ -344,12 +344,12 @@ namespace rynx {
 				return getTables<accessType, ComponentsTuple>()(*this);
 			}
 
-			template<DataAccess accessType, typename ComponentsTuple> auto table_datas() {
-				return getTableDatas<accessType, ComponentsTuple>()(*this);
+			template<DataAccess accessType, typename ComponentsTuple> auto table_datas(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				return getTableDatas<accessType, ComponentsTuple>()(*this, typeAliases);
 			}
 
-			template<DataAccess accessType, typename T> auto table_data() {
-				return getTableData<accessType, T>()(*this);
+			template<DataAccess accessType, typename T> auto* table_data(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				return getTableData<accessType, T>()(*this, typeAliases);
 			}
 
 			const dynamic_bitset& types() const { return m_types; }
@@ -395,8 +395,18 @@ namespace rynx {
 				return table<U>(typeIndex);
 			}
 
+			template<typename T> auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				type_id_t original = m_typeIndex->id<T>();
+				auto it = typeAliases.find(original);
+				if (it == typeAliases.end()) {
+					return this->table<T>(original);
+				}
+				return this->table<T>(it->second);
+			}
+
 			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
+			template<typename T> const auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) const { return const_cast<entity_category*>(this)->table<T>(typeAliases); }
 
 		private:
 			template<DataAccess, typename Ts> struct getTables {};
@@ -413,23 +423,23 @@ namespace rynx {
 
 			template<DataAccess, typename Ts> struct getTableDatas {};
 			template<DataAccess accessType, typename... Ts> struct getTableDatas<accessType, std::tuple<Ts...>> {
-				auto operator()(entity_category& categorySource) {
+				[[nodiscard]] auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
 					if constexpr (accessType == DataAccess::Const) {
-						return std::make_tuple(const_cast<const entity_category&>(categorySource).table<Ts>().data()...);
+						return std::make_tuple(const_cast<const entity_category&>(categorySource).table<Ts>(typeAliases).data()...);
 					}
 					else {
-						return std::make_tuple(categorySource.table<Ts>().data()...);
+						return std::make_tuple(categorySource.table<Ts>(typeAliases).data()...);
 					}
 				}
 			};
 
 			template<DataAccess accessType, typename T> struct getTableData {
-				auto operator()(entity_category& categorySource) {
+				auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
 					if constexpr (accessType == DataAccess::Const) {
-						return const_cast<const entity_category&>(categorySource).table<T>().data();
+						return const_cast<const entity_category&>(categorySource).table<T>(typeAliases).data();
 					}
 					else {
-						return categorySource.table<T>().data();
+						return categorySource.table<T>(typeAliases).data();
 					}
 				}
 			};
@@ -472,17 +482,53 @@ namespace rynx {
 				return result;
 			}
 
+			gatherer& type_aliases(rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				m_typeAliases = &typeAliases;
+				return *this;
+			}
+
+			type_id_t use_mapped_type_if_present(type_id_t v) {
+				auto it = m_typeAliases->find(v);
+				if (it != m_typeAliases->end()) {
+					return it->second;
+				}
+				return v;
+			}
 		protected:
 			template<typename TupleType, size_t...Is> void unpack_types(std::index_sequence<Is...>) {
-				(includeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...);
+				(includeTypes.set(
+					use_mapped_type_if_present(
+						m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()
+					)
+				), ...);
 			}
-			template<typename... Ts> void unpack_types() { (includeTypes.set(m_ecs.template typeId<Ts>()), ...); }
+			template<typename... Ts> void unpack_types() {
+				(includeTypes.set(
+					use_mapped_type_if_present(
+						m_ecs.template typeId<Ts>()
+					)
+				), ...);
+			}
 
-			template<typename TupleType, size_t...Is> void unpack_types_exclude(std::index_sequence<Is...>) { (excludeTypes.set(m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()), ...); }
-			template<typename... Ts> void unpack_types_exclude() { (excludeTypes.set(m_ecs.template typeId<Ts>()), ...); }
+			template<typename TupleType, size_t...Is> void unpack_types_exclude(std::index_sequence<Is...>) {
+				(excludeTypes.set(
+					use_mapped_type_if_present(
+						m_ecs.template typeId<typename std::tuple_element<Is, TupleType>::type>()
+					)
+				), ...);
+			}
+			
+			template<typename... Ts> void unpack_types_exclude() {
+				(excludeTypes.set(
+					use_mapped_type_if_present(
+						m_ecs.template typeId<Ts>()
+					)
+				), ...);
+			}
 
 			dynamic_bitset includeTypes;
 			dynamic_bitset excludeTypes;
+			rynx::unordered_map<type_id_t, type_id_t>* m_typeAliases;
 			category_source& m_ecs;
 		};
 
@@ -497,7 +543,6 @@ namespace rynx {
 
 			sorter& in(rynx::type_index::virtual_type t) { this->includeTypes.set(t.type_value); return *this; }
 			sorter& notIn(rynx::type_index::virtual_type t) { this->excludeTypes.set(t.type_value); return *this; }
-
 
 			template<typename T> void sort_categories_by() {
 				auto& categories = this->m_ecs.categories();
@@ -568,13 +613,13 @@ namespace rynx {
 							auto call_user_op = [size = ids.size(), ids_data = ids.data(), &op](auto*... args) {
 								op(size, ids_data, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>());
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>(*m_typeAliases));
 						}
 						else {
 							auto call_user_op = [size = ids.size(), &op](auto... args) {
 								op(size, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>());
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>(*m_typeAliases));
 						}
 					}
 				}
@@ -620,7 +665,7 @@ namespace rynx {
 						auto* id_end = id_begin + ids.size();
 						
 						if constexpr (is_id_query) {
-							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>();
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>(*this->m_typeAliases);
 							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*id_begin, *ptrs...)) {
@@ -633,7 +678,7 @@ namespace rynx {
 							std::apply(iteration_func, parameters_tuple);
 						}
 						else {
-							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>();
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>(*this->m_typeAliases);
 							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*ptrs...)) {
@@ -662,10 +707,10 @@ namespace rynx {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 						else {
-							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 					}
 				}
@@ -708,10 +753,10 @@ namespace rynx {
 						current_index += ids_size;
 
 						if constexpr (is_id_query) {
-							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 						else {
-							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 					}
 				}
@@ -729,10 +774,10 @@ namespace rynx {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 						else {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(), entity_category.second->template table_data<accessType, Args>()...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
 						}
 					}
 				}
@@ -795,7 +840,7 @@ namespace rynx {
 				auto size = ids.size();
 				if constexpr (isIdQuery) {
 					task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
-						std::apply([&, index](auto... ptrs) {
+						std::apply([&, index](auto*... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
@@ -920,6 +965,7 @@ namespace rynx {
 			dynamic_bitset inTypes;
 			dynamic_bitset notInTypes;
 			category_source& m_ecs;
+			rynx::unordered_map<type_id_t, type_id_t> m_typeAliases;
 			bool m_consumed = false;
 
 		public:
@@ -929,6 +975,10 @@ namespace rynx {
 			
 			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
 			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
+			template<typename T> query_t& type_alias(type_index::virtual_type mapped_type) {
+				m_typeAliases.emplace(m_ecs.m_types.id<T>(), mapped_type.type_value);
+				return *this;
+			}
 
 			template<typename F>
 			query_t& for_each(F&& op) {
@@ -937,6 +987,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.for_each(std::forward<F>(op));
 				return *this;
 			}
@@ -948,6 +999,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.for_each_partial(r, std::forward<F>(op));
 				index_t num = it.count();
 				
@@ -966,6 +1018,7 @@ namespace rynx {
 				buffer_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.for_each_buffer(std::forward<F>(op));
 				return *this;
 			}
@@ -977,6 +1030,7 @@ namespace rynx {
 				gatherer<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.ids(result);
 				return result;
 			}
@@ -988,6 +1042,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				return it.ids_if(std::forward<F>(f));
 			}
 
@@ -997,6 +1052,7 @@ namespace rynx {
 				gatherer<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				return it.count();
 			}
 
@@ -1007,6 +1063,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.template sort_categories_by<T>();
 			}
 
@@ -1017,6 +1074,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.template sort_buckets_one_step<T>();
 			}
 
@@ -1027,6 +1085,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
 				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 				return *this;
 			}
@@ -1111,114 +1170,161 @@ namespace rynx {
 			return m_types.id<T>();
 		}
 
+		class edit_t {
+		private:
+			ecs& m_ecs;
+			rynx::unordered_map<type_id_t, type_id_t> m_typeAliases;
+
+			type_id_t mapped_type_id(type_id_t v) const {
+				auto it = m_typeAliases.find(v);
+				if (it != m_typeAliases.end())
+					return it->second;
+				return v;
+			}
+
+		public:
+			edit_t(ecs& host) : m_ecs(host) {}
+
+			template<typename T> edit_t& type_alias(type_index::virtual_type mapped_type) {
+				m_typeAliases.emplace(m_ecs.m_types.id<T>(), mapped_type.type_value);
+				return *this;
+			}
+
+			template<typename... Components>
+			entity_id_t create(Components&& ... components) {
+				entity_id_t id = m_ecs.m_entities.generateOne();
+				dynamic_bitset targetCategory;
+				(targetCategory.set(mapped_type_id(m_ecs.type_id_for(components))), ...);
+				auto category_it = m_ecs.m_categories.find(targetCategory);
+				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_ecs.m_types)).first; }
+				category_it->second->insertNew(m_typeAliases, id, std::forward<Components>(components)...);
+				m_ecs.m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(category_it->second->size() - 1)));
+				return id;
+			}
+
+			// TODO: The api for tags is super unclear for user. Should have some kind of ..
+			//       create_n(ids, vector<Ts>).with_tags<Tag1, Tag2...>(); // style format.
+			template<typename... Tags, typename... Components>
+			std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
+				rynx_assert((components.size() & ...) == (components.size() | ...), "components vector sizes do not match!");
+				std::vector<entity_id_t> ids(rynx::first_of(components...).size());
+
+				// TODO: generate_n might be more efficient. benchmark if this shows up in profiler.
+				for (entity_id_t& id : ids) {
+					id = m_ecs.m_entities.generateOne();
+				}
+
+				// target category is the same for all entities created in this call.
+				dynamic_bitset targetCategory;
+				(targetCategory.set(mapped_type_id(m_ecs.type_id_for(components))), ...);
+				(targetCategory.set(mapped_type_id(m_ecs.m_types.id<Tags>())), ...);
+				auto category_it = m_ecs.m_categories.find(targetCategory);
+				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_ecs.m_types)).first; }
+
+				auto first_index = category_it->second->size();
+				category_it->second->insertNew<Tags...>(m_typeAliases, ids, components...);
+				for (size_t i = 0; i < ids.size(); ++i) {
+					m_ecs.m_idCategoryMap.emplace(ids[i], std::make_pair(category_it->second.get(), index_t(first_index + i)));
+				}
+				return ids;
+			}
+
+			template<typename... Components>
+			edit_t& attachToEntity(entity_id_t id, Components&& ... components) {
+				auto it = m_ecs.m_idCategoryMap.find(id);
+				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
+				const dynamic_bitset& initialTypes = it->second.first->types();
+				dynamic_bitset resultTypes = initialTypes;
+				(resultTypes.set(mapped_type_id(m_ecs.type_id_for(components))), ...);
+
+				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
+				if (destinationCategoryIt == m_ecs.m_categories.end()) {
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
+				}
+
+				// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
+				destinationCategoryIt->second->migrateEntity(
+					initialTypes, // types moved
+					it->second.first, // source category
+					it->second.second, // source index
+					m_ecs.m_idCategoryMap
+				);
+
+				destinationCategoryIt->second->insertComponents(m_typeAliases, std::forward<Components>(components)...);
+				return *this;
+			}
+
+			template<typename... Components>
+			edit_t& removeFromEntity(entity_id_t id) {
+				auto it = m_ecs.m_idCategoryMap.find(id);
+				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
+				const dynamic_bitset& initialTypes = it->second.first->types();
+				dynamic_bitset resultTypes = initialTypes;
+				(resultTypes.reset(mapped_type_id(m_ecs.m_types.id<Components>())), ...);
+
+				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
+				if (destinationCategoryIt == m_ecs.m_categories.end()) {
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
+				}
+
+				it->second.first->eraseComponentsFromIndex<Components...>(m_typeAliases, it->second.second);
+				destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second, m_ecs.m_idCategoryMap);
+				return *this;
+			}
+
+			edit_t& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
+				auto it = m_ecs.m_idCategoryMap.find(id);
+				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
+				const dynamic_bitset& initialTypes = it->second.first->types();
+				dynamic_bitset resultTypes = initialTypes;
+				resultTypes.reset(t.type_value);
+
+				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
+				if (destinationCategoryIt == m_ecs.m_categories.end()) {
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
+				}
+
+				// normally we would need to erase the components from source category entity first.
+				// but no need to erase any actual data from actual vectors here, since virtual types do not describe actual data types.
+				destinationCategoryIt->second->migrateEntity(
+					resultTypes,
+					it->second.first,
+					it->second.second,
+					m_ecs.m_idCategoryMap
+				);
+				return *this;
+			}
+		};
+
+		edit_t editor() {
+			return edit_t(*this);
+		}
 
 		template<typename... Components>
 		entity_id_t create(Components&& ... components) {
-			entity_id_t id = m_entities.generateOne();
-			dynamic_bitset targetCategory;
-			(targetCategory.set(type_id_for(components)), ...);
-			auto category_it = m_categories.find(targetCategory);
-			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
-			category_it->second->insertNew(id, std::forward<Components>(components)...);
-			m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(category_it->second->size() - 1)));
-			return id;
+			return edit_t(*this).create(std::forward<Components>(components)...);
 		}
 
-		// TODO: The api for tags is super unclear for user. Should have some kind of ..
-		//       create_n(ids, vector<Ts>).with_tags<Tag1, Tag2...>(); // style format.
 		template<typename... Tags, typename... Components>
 		std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
-			rynx_assert((components.size() & ...) == (components.size() | ...), "components vector sizes do not match!");
-			std::vector<entity_id_t> ids(rynx::first_of(components...).size());
-
-			// TODO: generate_n might be more efficient. benchmark if this shows up in profiler.
-			for (entity_id_t& id : ids) {
-				id = m_entities.generateOne();
-			}
-
-			// target category is the same for all entities created in this call.
-			dynamic_bitset targetCategory;
-			(targetCategory.set(type_id_for(components)), ...);
-			(targetCategory.set(m_types.id<Tags>()), ...);
-			auto category_it = m_categories.find(targetCategory);
-			if (category_it == m_categories.end()) { category_it = m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_types)).first; }
-
-			auto first_index = category_it->second->size();
-			category_it->second->insertNew<Tags...>(ids, components...);
-			for (size_t i = 0; i < ids.size(); ++i) {
-				m_idCategoryMap.emplace(ids[i], std::make_pair(category_it->second.get(), index_t(first_index + i)));
-			}
-			return ids;
+			return edit_t(*this).create_n<Tags..., Components...>(components...);
 		}
 
 		template<typename... Components>
-		ecs& attachToEntity(entity_id_t id, Components&& ... components) {
-			auto it = m_idCategoryMap.find(id);
-			rynx_assert(it != m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
-			const dynamic_bitset& initialTypes = it->second.first->types();
-			dynamic_bitset resultTypes = initialTypes;
-			(resultTypes.set(type_id_for(components)), ...);
-
-			auto destinationCategoryIt = m_categories.find(resultTypes);
-			if (destinationCategoryIt == m_categories.end()) {
-				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
-				destinationCategoryIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
-			}
-
-			// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
-			destinationCategoryIt->second->migrateEntity(
-				initialTypes, // types moved
-				it->second.first, // source category
-				it->second.second, // source index
-				m_idCategoryMap
-			);
-
-			destinationCategoryIt->second->insertComponents(std::forward<Components>(components)...);
-
-			return *this;
+		edit_t attachToEntity(entity_id_t id, Components&& ... components) {
+			return edit_t(*this).attachToEntity(id, std::forward<Components>(components)...);
 		}
 
 		template<typename... Components>
-		ecs& removeFromEntity(entity_id_t id) {
-			auto it = m_idCategoryMap.find(id);
-			rynx_assert(it != m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
-			const dynamic_bitset& initialTypes = it->second.first->types();
-			dynamic_bitset resultTypes = initialTypes;
-			(resultTypes.reset(m_types.id<Components>()), ...);
-
-			auto destinationCategoryIt = m_categories.find(resultTypes);
-			if (destinationCategoryIt == m_categories.end()) {
-				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
-				destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
-			}
-
-			it->second.first->eraseComponentsFromIndex<Components...>(it->second.second);
-			destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second, m_idCategoryMap);
-			return *this;
+		edit_t removeFromEntity(entity_id_t id) {
+			return edit_t(*this).removeFromEntity<Components...>(id);
 		}
 
-		ecs& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
-			auto it = m_idCategoryMap.find(id);
-			rynx_assert(it != m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
-			const dynamic_bitset& initialTypes = it->second.first->types();
-			dynamic_bitset resultTypes = initialTypes;
-			resultTypes.reset(t.type_value);
-
-			auto destinationCategoryIt = m_categories.find(resultTypes);
-			if (destinationCategoryIt == m_categories.end()) {
-				destinationCategoryIt = m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_types)).first;
-				destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
-			}
-
-			// normally we would need to erase the components from source category entity first.
-			// but no need to erase any actual data from actual vectors here, since virtual types do not describe actual data types.
-			destinationCategoryIt->second->migrateEntity(
-				resultTypes,
-				it->second.first,
-				it->second.second,
-				m_idCategoryMap
-			);
-			return *this;
+		edit_t removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
+			return edit_t(*this).removeFromEntity(id, t);
 		}
 
 		template<typename... Components> ecs& attachToEntity(id id, Components&& ... components) { attachToEntity(id.value, std::forward<Components>(components)...); return *this; }

@@ -90,7 +90,42 @@ TEST_CASE("ecs range for_each")
 
 		REQUIRE(counter == 200 * 199 / 2);
 	}
+}
 
+TEST_CASE("ecs multiple tables of ints")
+{
+	rynx::ecs ecs;
+
+	for (int i = 0; i < 100; ++i)
+		ecs.create(int(i));
+
+
+	auto my_virtual_type = ecs.create_virtual_type();
+	
+	{
+		auto m_editor = ecs.editor();
+		m_editor.type_alias<int>(my_virtual_type);
+		for (int i = 0; i < 200; ++i)
+			m_editor.create(int(i + 100));
+	}
+
+	{
+		int count_of_my_ints = 0;
+		ecs.query().type_alias<int>(my_virtual_type).for_each([&](int a) {
+			REQUIRE(a >= 100);
+			++count_of_my_ints;
+			});
+		REQUIRE(count_of_my_ints == 200);
+	}
+
+	{
+		int count_of_ints = 0;
+		ecs.query().for_each([&](int a) {
+			REQUIRE(a < 100);
+			++count_of_ints;
+			});
+		REQUIRE(count_of_ints == 100);
+	}
 }
 
 TEST_CASE("ecs for_each iterates correct amount of entities")

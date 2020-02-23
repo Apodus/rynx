@@ -212,6 +212,10 @@ namespace rynx {
 			return *this;
 		}
 
+		size_t size() const noexcept {
+			return m_index_data.size() << 6;
+		}
+
 	private:
 		dynamic_buffer<uint64_t> m_index_data;
 	};

@@ -8,6 +8,7 @@
 #include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/barrier.hpp>
 
+#include <rynx/tech/sphere_tree.hpp>
 #include <rynx/tech/parallel_accumulator.hpp>
 
 namespace {
