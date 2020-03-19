@@ -134,8 +134,6 @@ namespace rynx {
 				return m_resources.get<T>();
 			}
 
-			template<typename F> [[nodiscard]] task make_task(std::string taskName, F&& op);
-			[[nodiscard]] task make_task(std::string taskName);
 			task_token add_task(task task);
 
 			template<typename F> task_token add_task(std::string taskName, F&& taskOp);
@@ -147,10 +145,6 @@ namespace rynx {
 }
 
 #include <rynx/scheduler/task.hpp>
-
-template<typename F> rynx::scheduler::task rynx::scheduler::context::make_task(std::string taskName, F&& op) {
-	return task(*this, std::move(taskName), std::forward<F>(op));
-}
 
 template<typename F> rynx::scheduler::task_token rynx::scheduler::context::add_task(std::string taskName, F&& taskOp) {
 	return add_task(task(*this, std::move(taskName), std::forward<F>(taskOp)));

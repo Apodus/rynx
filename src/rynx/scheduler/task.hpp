@@ -20,6 +20,7 @@ namespace rynx {
 		class task_token {
 		public:
 			task_token(task&& task);
+			task_token(task_token&&) = default;
 			~task_token();
 
 			task* operator -> ();
@@ -123,7 +124,7 @@ namespace rynx {
 			const operation_resources& resources() const { return *m_resources; }
 
 			task& depends_on(task& other) {
-				barrier bar("anon");
+				barrier bar(other.m_name);
 				barriers().depends_on(bar);
 				other.barriers().required_for(bar);
 				return *this;
@@ -186,32 +187,32 @@ namespace rynx {
 
 			// TODO: Rename all task creation functions.
 			template<typename F> task_token make_task(std::string name, F&& op) {
-				return task_token(m_context->make_task(name, std::forward<F>(op)));
+				return m_context->add_task(name, std::forward<F>(op));
 			}
 			template<typename F> task_token make_task(F&& op) {
 				return make_task("task", std::forward<F>(op));
 			}
 
-			template<typename F> task_token extend_task(std::string name, F&& op) {
-				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
-				completion_blocked_by(followUpTask);
-				return task_token(std::move(followUpTask));
+			template<typename F> task_token extend_task_independent(std::string name, F&& op) {
+				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
+				completion_blocked_by(*followUpTask);
+				return followUpTask;
 			}
 
-			template<typename F> task_token extend_task(F&& op) { return extend_task(m_name + "_e", std::forward<F>(op)); }
+			template<typename F> task_token extend_task_independent(F&& op) { return extend_task_independent(m_name + "_e", std::forward<F>(op)); }
 			
 			template<typename F> task_token make_extension_task_execute_sequential(std::string name, F&& op) {
-				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
-				completion_blocked_by(followUpTask);
-				copy_resources(followUpTask);
-				return std::move(followUpTask);
+				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
+				completion_blocked_by(*followUpTask);
+				copy_resources(*followUpTask);
+				return followUpTask;
 			}
 			
 			template<typename F> task_token make_extension_task_execute_parallel(std::string name, F&& op) {
-				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(op));
-				completion_blocked_by(followUpTask);
-				share_resources(followUpTask);
-				return std::move(followUpTask);
+				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
+				completion_blocked_by(*followUpTask);
+				share_resources(*followUpTask);
+				return followUpTask;
 			}
 
 			template<typename F> task_token extend_task_execute_parallel(std::string name, F&& op) { return make_extension_task_execute_parallel(std::move(name), std::forward<F>(op)); }
@@ -221,9 +222,9 @@ namespace rynx {
 
 			template<typename F>
 			task_token then(std::string name, F&& f) {
-				auto followUpTask = m_context->make_task(std::move(name), std::forward<F>(f));
-				followUpTask.depends_on(*this);
-				return m_context->add_task(std::move(followUpTask));
+				auto followUpTask = m_context->add_task(std::move(name), std::forward<F>(f));
+				followUpTask->depends_on(*this);
+				return followUpTask;
 			}
 
 			template<typename F> task_token then(F&& f) { return then(m_name + "->", std::forward<F>(f)); }
@@ -386,6 +387,14 @@ namespace rynx {
 
 			parallel_operations parallel() {
 				return parallel_operations(*this);
+			}
+
+			explicit operator rynx::scheduler::context* () {
+				return m_context;
+			}
+
+			explicit operator const rynx::scheduler::context* () const {
+				return m_context;
 			}
 
 		private:

@@ -6,7 +6,8 @@
 
 rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return m_pTask.get(); }
 rynx::scheduler::task_token::~task_token() {
-	m_pTask->m_context->schedule_task(std::move(*m_pTask));
+	if(m_pTask)
+		m_pTask->m_context->schedule_task(std::move(*m_pTask));
 }
 
 rynx::scheduler::task_token::task_token(task&& task) {
@@ -48,11 +49,9 @@ void rynx::scheduler::task::run() {
 	}
 }
 
-
 rynx::scheduler::task::task_resources::~task_resources() {
 	m_context->release_resources(*this);
 }
-
 
 rynx::scheduler::task& rynx::scheduler::task::depends_on(task_token& other) {
 	return depends_on(*other);

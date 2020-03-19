@@ -63,12 +63,13 @@ namespace game {
 						rynx::components::position(shooterPos.value + direction + shooterMotion.velocity * 1.1f + normalizedDirection * (shooter.get<rynx::components::radius>().r + bulletRadius) * 1.1f),
 						rynx::components::radius(bulletRadius),
 						rynx::components::projectile(),
-						rynx::components::collision_category(collisionCategory),
 						rynx::components::color({ 1, 0, 0, 1 }),
 						rynx::components::motion({ {direction + shooterMotion.velocity }, {} }),
 						rynx::components::frame_collisions(),
 						game::components::bullet({ 11 })
 					);
+
+
 				}
 			}
 		};

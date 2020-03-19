@@ -14,6 +14,7 @@
 
 
 void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
+	auto& ecs = context.get_resource<rynx::ecs>();
 	for (auto id : ids) {
 		m_in_frustum.eraseEntity(id.value);
 		m_out_frustum.eraseEntity(id.value);
@@ -21,30 +22,28 @@ void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context
 }
 
 void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& context, float /* dt */) {
+	
 	auto update_new_entities = context.add_task("add new entities to frustum culling structures", [this](
-		rynx::ecs::view<
-		const entity_tracked_by_frustum_culling,
+		rynx::ecs::edit_view<
+		entity_tracked_by_frustum_culling,
 		const components::frustum_culled,
 		const components::radius,
 		const components::position> ecs,
 		rynx::scheduler::task& task_context)
 		{
 			auto ids = ecs.query().notIn<entity_tracked_by_frustum_culling>().in<components::position, components::radius>().ids();
-			ecs.query()
+			auto entity_data_vector = ecs.query()
 				.notIn<entity_tracked_by_frustum_culling>()
-				.for_each([this](rynx::ecs::id id, components::position pos, components::radius r)
-					{
-						m_in_frustum.insert_entity(id.value, pos.value, r.r);
-					});
-
+				.gather<rynx::ecs::id, components::position, components::radius>();
+			
+			for (auto&& data : entity_data_vector) {
+				m_in_frustum.insert_entity(std::get<0>(data).value, std::get<1>(data).value, std::get<2>(data).r);
+			}
+			
 			if (!ids.empty()) {
-				task_context.extend_task_execute_sequential(
-					[ids = std::move(ids), this](rynx::ecs::edit_view<entity_tracked_by_frustum_culling> ecs) {
-						for (auto id : ids) {
-							ecs.attachToEntity(id, entity_tracked_by_frustum_culling());
-						}
-					}
-				);
+				for (auto id : ids) {
+					ecs.attachToEntity(id, entity_tracked_by_frustum_culling());
+				}
 			}
 		}
 	);
@@ -55,32 +54,29 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 			const components::position> ecs,
 			rynx::scheduler::task& task_context)
 		{
-			auto update_positions_to_sphere_trees = task_context.make_task("positions to sphere trees",
-				[this](rynx::ecs::view<
-					const components::radius,
-					const components::position> ecs,
-					rynx::scheduler::task& task_context) {
-						{
-							rynx_profile("culling", "update culled sphere tree items");
-							ecs.query()
-								.in<components::frustum_culled, entity_tracked_by_frustum_culling>()
-								.for_each_parallel(task_context, [this](rynx::ecs::id id, components::position pos, components::radius r) {
-								m_out_frustum.update_entity(id.value, pos.value, r.r);
-							});
-						}
+			auto update_positions_to_sphere_tree = task_context.extend_task_independent([this](
+				rynx::scheduler::task& task_context,
+				rynx::ecs::view<
+				const entity_tracked_by_frustum_culling,
+				const components::frustum_culled,
+				const rynx::components::position,
+				const rynx::components::radius> ecs)
+				{
+					task_context & ecs.query()
+						.in<entity_tracked_by_frustum_culling>()
+						.notIn<components::frustum_culled>()
+						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
+						m_in_frustum.update_entity(id.value, pos.value, r.r);
+					});
 
-						{
-							rynx_profile("culling", "update visible sphere tree items");
-							ecs.query()
-								.notIn<components::frustum_culled>()
-								.in<entity_tracked_by_frustum_culling>()
-								.for_each_parallel(task_context, [this](rynx::ecs::id id, components::position pos, components::radius r) {
-								m_in_frustum.update_entity(id.value, pos.value, r.r);
-							});
-						}
+					task_context & ecs.query()
+						.in<entity_tracked_by_frustum_culling, components::frustum_culled>()
+						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
+						m_out_frustum.update_entity(id.value, pos.value, r.r);
+					});
 				});
-
-			update_positions_to_sphere_trees->then(
+		
+			auto culling_task = task_context.make_task("frustum culling",
 				[this](rynx::ecs::view<
 					const components::radius,
 					const components::position> ecs,
@@ -90,7 +86,7 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 					auto bar1 = m_in_frustum.update_parallel(task_context);
 					auto bar2 = m_out_frustum.update_parallel(task_context);
 
-					task_context.make_task("find frustum migrates", [this](rynx::scheduler::task& task_context) {
+					auto frustum_migrates = task_context.make_task("find frustum migrates", [this](rynx::scheduler::task& task_context) {
 						const rynx::matrix4& view_matrix = m_pCamera->getView();
 						const rynx::matrix4& projection_matrix = m_pCamera->getProjection();
 						rynx::matrix4 view_projection_matrix = projection_matrix * view_matrix;
@@ -125,26 +121,28 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 						);
 
 						if (!move_to_inside.empty() || !move_to_outside.empty()) {
-							task_context.extend_task([this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](rynx::ecs::edit_view<components::frustum_culled, const components::position, const components::radius> ecs) {
+							task_context.extend_task_independent("apply frustum migrates", [this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](
+								rynx::ecs::edit_view<components::frustum_culled> ecs) {
 								for (auto id : move_to_inside) {
-									if (ecs.exists(id)) {
-										ecs[id].remove<components::frustum_culled>();
-										auto id_data = m_out_frustum.eraseEntity(id);
-										m_in_frustum.insert_entity(id, id_data.first, id_data.second);
-									}
+									ecs[id].remove<components::frustum_culled>();
+									auto id_data = m_out_frustum.eraseEntity(id);
+									m_in_frustum.insert_entity(id, id_data.first, id_data.second);
 								}
 								for (auto id : move_to_outside) {
-									if (ecs.exists(id)) {
-										ecs[id].add(components::frustum_culled());
-										auto id_data = m_in_frustum.eraseEntity(id);
-										m_out_frustum.insert_entity(id, id_data.first, id_data.second);
-									}
+									ecs[id].add(components::frustum_culled());
+									auto id_data = m_in_frustum.eraseEntity(id);
+									m_out_frustum.insert_entity(id, id_data.first, id_data.second);
 								}
 							});
 						}
-					})->depends_on(bar1).depends_on(bar2);
+					});
+					
+					frustum_migrates->depends_on(bar1);
+					frustum_migrates->depends_on(bar2);
 				}
 			);
+
+			culling_task->depends_on(update_positions_to_sphere_tree);
 		}
 	);
 

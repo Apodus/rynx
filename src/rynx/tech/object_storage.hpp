@@ -30,7 +30,7 @@ namespace rynx {
 		void set_and_discard(T* t) {
 			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
 			if (id >= m_stateObjects.size()) {
-				m_stateObjects.resize(3 * m_stateObjects.size() / 2 + 1, nullptr);
+				m_stateObjects.resize(3 * id / 2 + 1, nullptr);
 			}
 			m_stateObjects[id] = t;
 		}
@@ -39,7 +39,7 @@ namespace rynx {
 		T* try_get() {
 			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
 			if (id >= m_stateObjects.size()) {
-				m_stateObjects.resize(2 * m_stateObjects.size() / 3 + 1, nullptr);
+				m_stateObjects.resize(3 * id / 2 + 1, nullptr);
 			}
 			return static_cast<T*>(m_stateObjects[id]);
 		}

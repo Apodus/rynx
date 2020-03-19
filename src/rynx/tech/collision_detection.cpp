@@ -1,5 +1,6 @@
 #include <rynx/tech/collision_detection.hpp>
 #include <rynx/tech/sphere_tree.hpp>
+#include <rynx/tech/components.hpp>
 
 rynx::collision_detection::category_id rynx::collision_detection::add_category() {
 	m_sphere_trees.emplace_back(std::make_unique<sphere_tree>());
@@ -35,6 +36,37 @@ void rynx::collision_detection::update_parallel(rynx::scheduler::task& task_cont
 	for (auto& tree : m_sphere_trees) {
 		tree->update_parallel(task_context);
 	}
+}
+
+void rynx::collision_detection::track_entities(rynx::scheduler::task& task_context) {
+	struct tracked_by_collisions {};
+	task_context.extend_task_independent([](rynx::scheduler::task& task_context, rynx::ecs::edit_view<rynx::components::collisions, tracked_by_collisions, rynx::components::position, rynx::components::radius> ecs) {
+		auto collisions = ecs.query().notIn<tracked_by_collisions>().gather<rynx::ecs::id, rynx::components::collisions, rynx::components::position, rynx::components::radius>();
+		for (auto&& col : collisions) {
+			ecs.attachToEntity(std::get<0>(col), tracked_by_collisions{});
+		}
+		
+		task_context.extend_task_independent([collisions = std::move(collisions)](rynx::collision_detection& detection) {
+			for (auto&& col : collisions) {
+				detection.m_sphere_trees[std::get<1>(col).category]->insert_entity(std::get<0>(col).value, std::get<2>(col).value, std::get<3>(col).r);
+			}
+		});
+	});
+}
+
+void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context) {
+	task_context.extend_task_independent([](
+		rynx::scheduler::task& task_context,
+		rynx::collision_detection& detection,
+		rynx::ecs::view<
+			const rynx::components::collisions,
+			const rynx::components::position,
+			const rynx::components::radius> ecs)
+	{
+		ecs.query().for_each_parallel(task_context, [&detection](rynx::ecs::id id, rynx::components::collisions col, rynx::components::position pos, rynx::components::radius r) {
+			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value, r.r);
+		});
+	});
 }
 
 void rynx::collision_detection::erase(uint64_t entityId, category_id from) {

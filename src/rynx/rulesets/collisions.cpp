@@ -31,7 +31,6 @@ namespace {
 		const rynx::components::radius,
 		const rynx::components::boundary,
 		const rynx::components::projectile,
-		const rynx::components::collision_category,
 		const rynx::components::motion,
 		const rynx::components::physical_body>;
 
@@ -304,67 +303,33 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		});
 	}
 
-	struct added_to_sphere_tree {};
+	auto add_entities_sphere_tree = context.add_task("track collisions for new entities", [](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
+		detection.track_entities(task_context);
+	});
+
+	auto update_entities_sphere_tree = context.add_task("update positions for spheretrees", [](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
+		detection.update_entities(task_context);
+	});
+	
+	add_entities_sphere_tree->required_for(update_entities_sphere_tree);
 
 	auto positionDataToSphereTree_task = context.add_task("Update position info to collision detection.", [](
-		rynx::ecs::view<const components::position,
-		const components::radius,
-		const components::collision_category,
-		const components::projectile,
-		const components::motion,
-		const added_to_sphere_tree> ecs,
 		collision_detection& detection,
 		rynx::scheduler::task& task) {
-			// This will never insert. Always update existing. Can run parallel.
-			ecs.query()
-				.notIn<const rynx::components::projectile>()
-				.in<const added_to_sphere_tree>()
-				.for_each_parallel(task,
-					[&](
-						rynx::ecs::id id,
-						const components::position& pos,
-						const components::radius& r,
-						const components::collision_category& category)
-					{
-						detection.get(category.value)->update_entity(id.value, pos.value, r.r);
-					}
-			);
+			detection.update_parallel(task);
 
+			// TODO: bullet collision sphere trees have different radius logic
+			/*
 			ecs.query()
 				.in<const rynx::components::projectile, const added_to_sphere_tree>()
 				.for_each_parallel(task, [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
 				detection.get(category.value)->update_entity(id.value, p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f);
 			});
+			*/
 		});
 
-	positionDataToSphereTree_task->then("sphere tree: add new entities", [](
-		rynx::ecs::edit_view<const components::position,
-		const components::radius,
-		const components::collision_category,
-		const components::projectile,
-		const components::motion,
-		added_to_sphere_tree>
-		ecs,
-		collision_detection& detection) {
-			// This will always insert to detection datastructures. Can not parallel.
-			std::vector<rynx::ecs::id> ids;
-			ecs.query().notIn<const rynx::components::projectile, const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const components::position& pos, const components::radius& r, const components::collision_category& category) {
-				detection.get(category.value)->insert_entity(id.value, pos.value, r.r);
-				ids.emplace_back(id);
-			});
-
-			ecs.query().in<const rynx::components::projectile>().notIn<const added_to_sphere_tree>().for_each([&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-				detection.get(category.value)->insert_entity(id.value, p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f);
-				ids.emplace_back(id);
-			});
-
-			for (auto&& id : ids) {
-				ecs[id].add(added_to_sphere_tree());
-			}
-
-	})->then("Update sphere tree", [](collision_detection& detection, rynx::scheduler::task& task_context) {
-		detection.update_parallel(task_context);
-	})->required_for(collisions_find_barrier);
+	update_entities_sphere_tree->required_for(positionDataToSphereTree_task);
+	positionDataToSphereTree_task->required_for(collisions_find_barrier);
 
 	auto updateBoundaryWorld = context.add_task(
 		"Update boundary local -> boundary world",
@@ -388,7 +353,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		const components::radius,
 		const components::boundary,
 		const components::projectile,
-		const components::collision_category,
 		const components::motion,
 		const components::physical_body> ecs,
 		collision_detection& detection,

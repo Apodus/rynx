@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
+	rynx::ecs& ecs = base_simulation.m_ecs;
 
 	std::shared_ptr<Camera> camera = std::make_shared<Camera>();
 	camera->setProjection(0.02f, 20000.0f, application.aspectRatio());
@@ -144,13 +145,7 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	// gameRenderer.add_graphics_step(std::make_unique<game::hitpoint_bar_renderer>(&application.meshRenderer()));
-	// gameRenderer.add_graphics_step(std::make_unique<game::visual::bullet_renderer>(&application.meshRenderer()));
-	// gameRenderer.add_graphics_step(std::make_unique<game::visual::hero_renderer>(&application.meshRenderer()));
-
 	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
-
-	rynx::ecs& ecs = base_simulation.m_ecs;
 	
 	// setup simulation initial state
 	{
@@ -177,7 +172,7 @@ int main(int argc, char** argv) {
 			for (int i = 0; i < 16; ++i)
 				ecs.create(
 					rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
-					rynx::components::collision_category(collisionCategoryDynamic),
+					rynx::components::collisions{ collisionCategoryDynamic.value },
 					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * (random() & 127) / 127.0f).generateBoundary_Outside() }),
 					rynx::components::radius(math::sqrt_approx(16 + 16)),
 					rynx::components::color({ 1,1,0,1 }),
@@ -191,7 +186,7 @@ int main(int argc, char** argv) {
 		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
-				rynx::components::collision_category(collisionCategoryStatic),
+				rynx::components::collisions{ collisionCategoryStatic.value },
 				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
@@ -204,7 +199,7 @@ int main(int argc, char** argv) {
 		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
-				rynx::components::collision_category(collisionCategoryStatic),
+				rynx::components::collisions{ collisionCategoryStatic.value },
 				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
 				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
@@ -573,15 +568,17 @@ int main(int argc, char** argv) {
 					ecs.attachToEntity(id, rynx::components::dead());
 			}
 
-			ecs.query().in<rynx::components::dead>().for_each(
-				[&collisionDetection](rynx::ecs::id id, rynx::components::collision_category& cat) {
-					collisionDetection.erase(id.value, cat.value);
-				}
-			);
+			auto ids_dead = ecs.query().in<rynx::components::dead>().ids();
 			
-			auto erasedIds = ecs.query().in<rynx::components::dead>().ids();
-			ecs.erase(erasedIds);
-			base_simulation.m_logic.entities_erased(*base_simulation.m_context, erasedIds);
+			for (auto id : ids_dead) {
+				if (ecs[id].has<rynx::components::collisions>()) {
+					auto collisions = ecs[id].get<rynx::components::collisions>();
+					collisionDetection.erase(id.value, collisions.category);
+				}
+			}
+			
+			base_simulation.m_logic.entities_erased(*base_simulation.m_context, ids_dead);
+			ecs.erase(ids_dead);
 		}
 
 		{

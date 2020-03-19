@@ -53,6 +53,8 @@ namespace rynx {
 				return *this;
 			}
 
+			void dump() const;
+
 			bool can_start() {
 				while (!m_requires.empty()) {
 					if (m_requires.front()) {

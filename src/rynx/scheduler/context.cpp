@@ -56,10 +56,6 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	return task();
 }
 
-rynx::scheduler::task rynx::scheduler::context::make_task(std::string taskName) {
-	return task(*this, std::move(taskName));
-}
-
 rynx::scheduler::task_token rynx::scheduler::context::add_task(task task) {
 	return task_token(std::move(task));
 }
@@ -107,6 +103,7 @@ void rynx::scheduler::context::dump() {
 	for (auto&& task : m_tasks) {
 		(void)task;
 		std::cout << task.name() << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << std::endl;
+		task.barriers().dump();
 		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 	}
 }

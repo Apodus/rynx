@@ -515,7 +515,7 @@ namespace rynx {
 			update_next_index &= capacity - 1;
 
 			rynx::scheduler::barrier update_complete_barrier;
-			task_context.extend_task_execute_parallel([this](rynx::scheduler::task& task_context) {
+			auto generic_tasks = task_context.extend_task_execute_parallel([this](rynx::scheduler::task& task_context) {
 				{
 					rynx_profile("SphereTree", "Find optimized parents for nodes");
 					root.find_optimized_parents_for_nodes();
@@ -572,7 +572,11 @@ namespace rynx {
 						}
 					}
 				}
-			})->depends_on(entities_migrated_bar).required_for(update_complete_barrier);
+			});
+			
+			generic_tasks->depends_on(entities_migrated_bar);
+			generic_tasks->required_for(update_complete_barrier);
+
 			return update_complete_barrier;
 		}
 

@@ -140,7 +140,7 @@ namespace game {
 					});
 
 					if (!hits.empty()) {
-						currentTask.extend_task([hits = std::move(hits)](rynx::ecs::edit_view<game::health, rynx::components::dead> ecs) {
+						currentTask.extend_task_independent([hits = std::move(hits)](rynx::ecs::edit_view<game::health, rynx::components::dead> ecs) {
 							for (auto&& hit : hits) {
 								if (ecs[hit.targetId].has<game::health>()) {
 									game::health& hp = ecs[hit.targetId].get<game::health>();

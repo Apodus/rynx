@@ -8,7 +8,7 @@
 
 namespace game {
 	struct ballCreatingRuleSet : public rynx::application::logic::iruleset {
-		ballCreatingRuleSet(rynx::collision_detection::category_id category) : m_category(category) {}
+		ballCreatingRuleSet(rynx::collision_detection::category_id cat_id) : m_category(cat_id) {}
 		virtual ~ballCreatingRuleSet() {}
 
 		rynx::collision_detection::category_id m_category;
@@ -29,8 +29,8 @@ namespace game {
 				rynx::components::motion(),
 				rynx::components::physical_body({ 1.0f / 5.0f, 1.0f / 15.0f, 0.3f, 1.0f }),
 				rynx::components::radius(0.2f),
-				rynx::components::collision_category(m_category),
-				rynx::components::color()
+				rynx::components::color(),
+				rynx::components::collisions{ m_category.value }
 			);
 		}
 

@@ -2,6 +2,14 @@
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/scheduler/context.hpp>
 
+#include <iostream>
+
+void rynx::scheduler::operation_barriers::dump() const {
+	for (auto&& bar : m_requires) {
+		std::cout << "\tbarrier name: '" << bar.name << "', counter: " << bar.counter->load() << std::endl;
+	}
+}
+
 rynx::scheduler::scoped_barrier_after::scoped_barrier_after(scheduler::context& context, barrier bar) : m_context(&context) {
 	m_context->m_activeTaskBarriers.emplace_back(std::move(bar));
 }

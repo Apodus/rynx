@@ -762,25 +762,31 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
+			template<typename F, typename TaskContext> auto for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
 				}
 				this->template unpack_types<Args...>();
 
+				auto blocker_task = task_context.extend_task_independent([]() {});
+
 				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							blocker_task->depends_on(barrier);
 						}
 						else {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							blocker_task->depends_on(barrier);
 						}
 					}
 				}
+
+				return blocker_task;
 			}
 
 		private:
@@ -836,23 +842,21 @@ namespace rynx {
 			}
 
 			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
-			static void call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
-				auto size = ids.size();
+			static auto call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto*... ptrs) {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					task_context.parallel().for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&, index](auto... ptrs) {
 							op(ptrs[index]...);
 						}, args);
 					});
 				}
-				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
 			}
 		};
 
@@ -876,14 +880,30 @@ namespace rynx {
 			}
 
 			template<typename T> T& get() {
-				categorySource->template componentTypesAllowed<T>();
+				categorySource->template componentTypesAllowed<T&>();
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
 				return m_entity_category->template table<T>()[m_category_index];
 			}
 
+			template<typename T> T& get(rynx::type_index::virtual_type type) {
+				categorySource->template componentTypesAllowed<T&>();
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->template table<T>(type.type_value)[m_category_index];
+			}
+
 			template<typename T> T* try_get() {
-				categorySource->template componentTypesAllowed<T>();
+				categorySource->template componentTypesAllowed<T&>();
 				type_id_t typeIndex = categorySource->template typeId<T>();
+				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				if (m_entity_category->types().test(typeIndex)) {
+					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
+				}
+				return nullptr;
+			}
+
+			template<typename T> T* try_get(rynx::type_index::virtual_type type) {
+				categorySource->template componentTypesAllowed<T&>();
+				type_id_t typeIndex = type.type_value;
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
 				if (m_entity_category->types().test(typeIndex)) {
 					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
@@ -902,13 +922,29 @@ namespace rynx {
 				return m_entity_category->types().test(t.type_value);
 			}
 
+			template<typename T>
+			bool has(rynx::type_index::virtual_type t) const noexcept {
+				return has(t);
+			}
+
 			template<typename... Ts> void remove() {
 				static_assert(allowEditing && sizeof...(Ts) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
-				categorySource->template removeFromEntity<Ts...>(m_id);
+				categorySource->editor().template removeFromEntity<Ts...>(m_id);
 			}
+
+			template<typename T> void remove(rynx::type_index::virtual_type type) {
+				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
+				categorySource->editor().template type_alias<T>(type).template removeFromEntity<T>(m_id);
+			}
+
 			template<typename T> void add(T&& t) {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
-				categorySource->template attachToEntity<T>(m_id, std::forward<T>(t));
+				categorySource->editor().template attachToEntity<T>(m_id, std::forward<T>(t));
+			}
+
+			template<typename T> void add(T&& t, rynx::type_index::virtual_type type) {
+				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
+				categorySource->editor().template type_alias<T>(type).template attachToEntity<T>(m_id, std::forward<T>(t));
 			}
 
 			entity_id_t id() const { return m_id; }
@@ -932,6 +968,13 @@ namespace rynx {
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
 				return m_entity_category->template table<T>()[m_category_index];
 			}
+			
+			template<typename T> const T& get(rynx::type_index::virtual_type type) const {
+				categorySource->template componentTypesAllowed<T>();
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->template table<T>(type.type_value)[m_category_index];
+			}
+
 			template<typename T> const T* try_get() const {
 				categorySource->template componentTypesAllowed<T>();
 				type_id_t typeIndex = categorySource->template typeId<T>();
@@ -975,8 +1018,12 @@ namespace rynx {
 			
 			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
 			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
+			
+			query_t& in(rynx::type_index::virtual_type t) { inTypes.set(t.type_value); return *this; }
+			query_t& notIn(rynx::type_index::virtual_type t) { notInTypes.set(t.type_value); return *this; }
+
 			template<typename T> query_t& type_alias(type_index::virtual_type mapped_type) {
-				m_typeAliases.emplace(m_ecs.m_types.id<T>(), mapped_type.type_value);
+				m_typeAliases.emplace(m_ecs.template typeId<T>(), mapped_type.type_value);
 				return *this;
 			}
 
@@ -1009,6 +1056,17 @@ namespace rynx {
 				}
 
 				return r;
+			}
+
+			template<typename F, typename TaskContext>
+			auto for_each_parallel(TaskContext&& task_context, F&& op) {
+				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
+				m_consumed = true;
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
+				it.include(std::move(inTypes));
+				it.exclude(std::move(notInTypes));
+				it.type_aliases(m_typeAliases);
+				return it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
 			}
 
 			template<typename F>
@@ -1045,6 +1103,13 @@ namespace rynx {
 				it.type_aliases(m_typeAliases);
 				return it.ids_if(std::forward<F>(f));
 			}
+			
+			template<typename...Args>
+			std::vector<std::tuple<Args...>> gather() {
+				std::vector<std::tuple<Args...>> result;
+				for_each([&result](Args... args) { result.emplace_back(args...); });
+				return result;
+			}
 
 			index_t count() {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
@@ -1076,18 +1141,6 @@ namespace rynx {
 				it.exclude(std::move(notInTypes));
 				it.type_aliases(m_typeAliases);
 				it.template sort_buckets_one_step<T>();
-			}
-
-			template<typename F, typename TaskContext>
-			query_t& for_each_parallel(TaskContext&& task_context, F&& op) {
-				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
-				m_consumed = true;
-				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
-				it.include(std::move(inTypes));
-				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
-				it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
-				return *this;
 			}
 		};
 
@@ -1436,6 +1489,10 @@ namespace rynx {
 
 			auto operator[](entity_id_t id) const { return const_entity<view<TypeConstraints...>>(*this, id); }
 			auto operator[](id id) const { return const_entity<view<TypeConstraints...>>(*this, id.value); }
+
+			edit_t editor() {
+				return edit_t(*m_ecs);
+			}
 
 			template<typename... Components>
 			entity_id_t create(Components&& ... components) {
