@@ -33,7 +33,7 @@ void rynx::application::visualisation::omnilights_effect::prepare(rynx::schedule
 	m_light_positions.clear();
 	m_light_ambients.clear();
 
-	ctx->add_task("lights prepare", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) {
+	ctx->add_task("lights prepare", [this](rynx::ecs& ecs) {
 		ecs.query().notIn<rynx::components::frustum_culled>().for_each([this](
 			const rynx::components::position& pos,
 			const rynx::components::light_omni& light)

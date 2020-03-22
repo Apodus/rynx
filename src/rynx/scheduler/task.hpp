@@ -29,6 +29,22 @@ namespace rynx {
 			// chaining tasks with nice api
 			task_token& operator | (task_token& other);
 
+			task_token& depends_on(barrier bar);
+			task_token& required_for(barrier bar);
+			task_token& depends_on(task& other);
+			task_token& required_for(task& other);
+			task_token& depends_on(task_token& other) { return depends_on(*other); }
+			task_token& required_for(task_token& other) { return required_for(*other); }
+
+			template<typename F>
+			task_token then(std::string name, F&& f) {
+				auto followUpTask = m_pTask->m_context->add_task(std::move(name), std::forward<F>(f));
+				followUpTask.depends_on(*this);
+				return followUpTask;
+			}
+
+			template<typename F> task_token then(F&& f) { return then(m_name + "->", std::forward<F>(f)); }
+
 		private:
 			std::unique_ptr<task> m_pTask;
 		};
@@ -100,12 +116,14 @@ namespace rynx {
 			task(context& context, std::string name)
 				: m_name(std::move(name))
 				, m_context(&context)
+				, m_barriers(std::make_shared<rynx::scheduler::operation_barriers>())
 				, m_resources(std::make_shared<task_resources>(&context))
 			{}
 			
 			template<typename F> task(context& context, std::string taskName, F&& op)
 				: m_name(std::move(taskName))
 				, m_context(&context)
+				, m_barriers(std::make_shared<rynx::scheduler::operation_barriers>())
 				, m_resources(std::make_shared<task_resources>(&context)) {
 				set(std::forward<F>(op));
 			}
@@ -114,43 +132,18 @@ namespace rynx {
 			
 			// TODO: PRIVATE!!
 		public:
-			task(const task& other) = default; // copy is required in parallel_for case.
+			task(const task& other); // copy is required in parallel_for case.
 		
 		public:
-			operation_barriers& barriers() { return m_barriers; }
-			const operation_barriers& barriers() const { return m_barriers; }
+			operation_barriers& barriers() { return *m_barriers; }
+			const operation_barriers& barriers() const { return *m_barriers; }
 
 			operation_resources& resources() { return *m_resources; }
 			const operation_resources& resources() const { return *m_resources; }
 
-			task& depends_on(task& other) {
-				barrier bar(other.m_name);
-				barriers().depends_on(bar);
-				other.barriers().required_for(bar);
-				return *this;
-			}
-
-			task& required_for(task& other) {
-				other.depends_on(*this);
-				return *this;
-			}
-
-			task& depends_on(barrier bar) {
-				barriers().depends_on(bar);
-				return *this;
-			}
-
-			task& required_for(barrier bar) {
-				barriers().required_for(bar);
-				return *this;
-			}
-
-			task& depends_on(task_token& other);
-			task& required_for(task_token& other);
-
 			// TODO: Rename this function.
 			task& completion_blocked_by(task& other) {
-				m_barriers.completion_blocked_by(other.barriers());
+				m_barriers->completion_blocked_by(other.m_barriers);
 				return *this;
 			}
 
@@ -220,16 +213,15 @@ namespace rynx {
 			template<typename F> task_token extend_task_execute_sequential(std::string name, F&& op) { return make_extension_task_execute_sequential(std::move(name), std::forward<F>(op)); }
 			template<typename F> task_token extend_task_execute_sequential(F&& op) { return extend_task_execute_sequential(m_name + "_es", std::forward<F>(op)); }
 
-			template<typename F>
-			task_token then(std::string name, F&& f) {
-				auto followUpTask = m_context->add_task(std::move(name), std::forward<F>(f));
-				followUpTask->depends_on(*this);
-				return followUpTask;
-			}
-
-			template<typename F> task_token then(F&& f) { return then(m_name + "->", std::forward<F>(f)); }
-
 			task(task&& other) = default;
+
+			void run();
+
+			operator bool() const { return static_cast<bool>(m_op); }
+			const std::string& name() const { return m_name; }
+			void clear() { m_op = nullptr; }
+
+		private:
 
 			template<typename F>
 			void set(F&& f) {
@@ -245,20 +237,12 @@ namespace rynx {
 
 				// apply current barrier states.
 				for (auto&& bar : m_context->m_activeTaskBarriers_Dependencies)
-					this->depends_on(bar);
+					barriers().depends_on(bar);
 
 				for (auto&& bar : m_context->m_activeTaskBarriers)
-					this->required_for(bar);
+					barriers().required_for(bar);
 			}
 
-			void run();
-
-			operator bool() const { return static_cast<bool>(m_op); }
-			void clear() { m_op = nullptr; }
-
-			const std::string& name() const { return m_name; }
-
-		private:
 			struct parallel_for_each_data {
 				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end), work_remaining(end - begin), task_is_cleaned_up(0) {}
 				
@@ -342,7 +326,7 @@ namespace rynx {
 								}
 							});
 							work->m_for_each = for_each_data;
-							work->required_for(bar);
+							work.required_for(bar);
 						}
 
 						m_parent.notify_work_available();
@@ -414,7 +398,7 @@ namespace rynx {
 
 			std::string m_name;
 			std::function<void(rynx::scheduler::task*)> m_op;
-			operation_barriers m_barriers;
+			std::shared_ptr<operation_barriers> m_barriers;
 			
 			struct task_resources : public operation_resources {
 				task_resources(context* ctx) : m_context(ctx) {}

@@ -18,5 +18,5 @@ public:
 
 private:
 	vec3<float> normal;
-	float d;
+	float d = 0;
 };

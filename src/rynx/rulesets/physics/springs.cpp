@@ -123,6 +123,6 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			});
 		});
 
-		check_broken_ropes_task->depends_on(bar);
+		check_broken_ropes_task.depends_on(bar);
 	});
 }

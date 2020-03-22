@@ -311,7 +311,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		detection.update_entities(task_context);
 	});
 	
-	add_entities_sphere_tree->required_for(update_entities_sphere_tree);
+	add_entities_sphere_tree.required_for(update_entities_sphere_tree);
 
 	auto positionDataToSphereTree_task = context.add_task("Update position info to collision detection.", [](
 		collision_detection& detection,
@@ -328,8 +328,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			*/
 		});
 
-	update_entities_sphere_tree->required_for(positionDataToSphereTree_task);
-	positionDataToSphereTree_task->required_for(collisions_find_barrier);
+	update_entities_sphere_tree.required_for(positionDataToSphereTree_task);
+	positionDataToSphereTree_task.required_for(collisions_find_barrier);
 
 	auto updateBoundaryWorld = context.add_task(
 		"Update boundary local -> boundary world",
@@ -375,8 +375,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		}
 	);
 
-	findCollisionsTask->depends_on(collisions_find_barrier);
-	findCollisionsTask->depends_on(updateBoundaryWorld);
+	findCollisionsTask.depends_on(collisions_find_barrier);
+	findCollisionsTask.depends_on(updateBoundaryWorld);
 
 	auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](
 		rynx::ecs::view<components::motion> ecs,
@@ -509,6 +509,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			}
 	};
 
-	context.add_task("collisions resolve", collision_resolution_first_stage)->depends_on(findCollisionsTask);
+	context.add_task("collisions resolve", collision_resolution_first_stage).depends_on(findCollisionsTask);
 }
 

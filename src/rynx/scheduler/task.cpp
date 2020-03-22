@@ -14,12 +14,36 @@ rynx::scheduler::task_token::task_token(task&& task) {
 	m_pTask = std::make_unique<rynx::scheduler::task>(std::move(task));
 }
 
+rynx::scheduler::task_token& rynx::scheduler::task_token::depends_on(task& other) {
+	barrier bar(other.m_name);
+	m_pTask->barriers().depends_on(bar);
+	other.barriers().required_for(bar);
+	return *this;
+}
+
+rynx::scheduler::task_token& rynx::scheduler::task_token::required_for(task& other) {
+	barrier bar(m_pTask->m_name);
+	other.barriers().depends_on(bar);
+	m_pTask->barriers().required_for(bar);
+	return *this;
+}
+
+rynx::scheduler::task_token& rynx::scheduler::task_token::depends_on(barrier bar) {
+	m_pTask->barriers().depends_on(bar);
+	return *this;
+}
+
+rynx::scheduler::task_token& rynx::scheduler::task_token::required_for(barrier bar) {
+	m_pTask->barriers().required_for(bar);
+	return *this;
+}
+
 rynx::scheduler::task& rynx::scheduler::task_token::operator * () {
 	return *m_pTask;
 }
 
 rynx::scheduler::task_token& rynx::scheduler::task_token::operator | (task_token& other) {
-	other->depends_on(*m_pTask);
+	other.depends_on(*this);
 	return other;
 }
 
@@ -28,7 +52,7 @@ void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resou
 void rynx::scheduler::task::run() {
 	rynx_profile("Scheduler", m_name);
 	rynx_assert(static_cast<bool>(m_op), "no op in task that is being run!");
-	rynx_assert(m_barriers.can_start(), "task is being run while still blocked by barriers!");
+	rynx_assert(m_barriers->can_start(), "task is being run while still blocked by barriers!");
 
 	{
 		// logmsg("start %s", m_name.c_str());
@@ -39,7 +63,7 @@ void rynx::scheduler::task::run() {
 
 	{
 		rynx_profile("Scheduler", "barriers update");
-		m_barriers.on_complete();
+		m_barriers->on_complete();
 	}
 
 	{
@@ -53,13 +77,15 @@ rynx::scheduler::task::task_resources::~task_resources() {
 	m_context->release_resources(*this);
 }
 
+/*
 rynx::scheduler::task& rynx::scheduler::task::depends_on(task_token& other) {
-	return depends_on(*other);
+	return other.required_for(*this);
 }
 
 rynx::scheduler::task& rynx::scheduler::task::required_for(task_token& other) {
-	return required_for(*other);
+	return other.depends_on(*this);
 }
+*/
 
 rynx::scheduler::task& rynx::scheduler::task::operator & (task_token& other) {
 	completion_blocked_by(*other);
@@ -67,8 +93,20 @@ rynx::scheduler::task& rynx::scheduler::task::operator & (task_token& other) {
 }
 
 rynx::scheduler::task& rynx::scheduler::task::operator | (task_token& other) {
-	other->depends_on(*this);
+	other.depends_on(*this);
 	return *other;
+}
+
+rynx::scheduler::task::task(const task& other) {
+	m_name = other.m_name;
+	m_op = other.m_op;
+	m_barriers = std::make_shared<operation_barriers>(*other.m_barriers);
+
+	m_resources = other.m_resources;
+	m_resources_shared = other.m_resources_shared;
+	m_for_each = other.m_for_each;
+
+	m_context = other.m_context;
 }
 
 void rynx::scheduler::task::notify_work_available() const {

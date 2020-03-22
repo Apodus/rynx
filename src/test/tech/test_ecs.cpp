@@ -77,7 +77,7 @@ TEST_CASE("ecs range for_each")
 	REQUIRE(counter == 100 * 99 / 2 - 50 * 49 / 2);
 
 	for (int i = 1; i < 101; ++i) {
-		rynx::ecs::range iter{0, i};
+		rynx::ecs::range iter{0, rynx::ecs::index_t(i)};
 		counter = 0;
 		while (1) {
 			iter = ecs.query().for_each_partial(iter, [&](int a) {

@@ -8,14 +8,14 @@
 namespace rynx {
 	template<typename T>
 	class dynamic_buffer {
-		static_assert(std::is_pod<T>::value, "dynamic buffer can only be used with pods");
+		static_assert(std::is_trivially_copyable<T>::value && std::is_standard_layout<T>::value, "dynamic buffer can only be used with pods");
 
 	public:
 		dynamic_buffer() {}
 		dynamic_buffer(size_t s) {
 			resize_discard(s);
 		}
-		dynamic_buffer(dynamic_buffer&& other) {
+		dynamic_buffer(dynamic_buffer&& other) noexcept {
 			*this = std::move(other);
 		}
 		dynamic_buffer(const dynamic_buffer& other) {
@@ -33,7 +33,7 @@ namespace rynx {
 			return *this;
 		}
 
-		dynamic_buffer& operator=(dynamic_buffer&& other) {
+		dynamic_buffer& operator=(dynamic_buffer&& other) noexcept {
 			m_data = std::move(other.m_data);
 			m_size = other.m_size;
 			other.m_size = 0;

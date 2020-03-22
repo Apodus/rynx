@@ -13,8 +13,7 @@
 #include <rynx/graphics/camera/camera.hpp>
 
 
-void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
-	auto& ecs = context.get_resource<rynx::ecs>();
+void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::ecs::id>& ids) {
 	for (auto id : ids) {
 		m_in_frustum.eraseEntity(id.value);
 		m_out_frustum.eraseEntity(id.value);
@@ -28,8 +27,7 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 		entity_tracked_by_frustum_culling,
 		const components::frustum_culled,
 		const components::radius,
-		const components::position> ecs,
-		rynx::scheduler::task& task_context)
+		const components::position> ecs)
 		{
 			auto ids = ecs.query().notIn<entity_tracked_by_frustum_culling>().in<components::position, components::radius>().ids();
 			auto entity_data_vector = ecs.query()
@@ -49,10 +47,7 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 	);
 
 	auto update_existing_entities = context.add_task("frustum culling",
-		[this](rynx::ecs::view<
-			const components::radius,
-			const components::position> ecs,
-			rynx::scheduler::task& task_context)
+		[this](rynx::scheduler::task& task_context)
 		{
 			auto update_positions_to_sphere_tree = task_context.extend_task_independent([this](
 				rynx::scheduler::task& task_context,
@@ -77,10 +72,7 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 				});
 		
 			auto culling_task = task_context.make_task("frustum culling",
-				[this](rynx::ecs::view<
-					const components::radius,
-					const components::position> ecs,
-					rynx::scheduler::task& task_context)
+				[this](rynx::scheduler::task& task_context)
 				{
 					rynx_profile("culling", "update sphere trees");
 					auto bar1 = m_in_frustum.update_parallel(task_context);
@@ -137,14 +129,14 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 						}
 					});
 					
-					frustum_migrates->depends_on(bar1);
-					frustum_migrates->depends_on(bar2);
+					frustum_migrates.depends_on(bar1);
+					frustum_migrates.depends_on(bar2);
 				}
 			);
 
-			culling_task->depends_on(update_positions_to_sphere_tree);
+			culling_task.depends_on(update_positions_to_sphere_tree);
 		}
 	);
 
-	update_existing_entities->depends_on(update_new_entities);
+	update_existing_entities.depends_on(update_new_entities);
 }

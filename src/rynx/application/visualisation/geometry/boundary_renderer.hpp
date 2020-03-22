@@ -29,8 +29,6 @@ namespace rynx {
 						ecs.query().notIn<rynx::components::mesh, rynx::components::translucent>()
 							.for_each_parallel(task_context, [this](
 								const rynx::components::boundary& m,
-								const rynx::components::radius& r,
-								const rynx::components::position& pos,
 								const rynx::components::color& color)
 								{
 									// todo: frustum cull

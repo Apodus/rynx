@@ -29,15 +29,15 @@ namespace rynx {
 		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[(slot << 2) + 3] = value; }
 #else	
 		// Structs of arrays layout. Better for find.
-		inline uint32_t next_of_slot(size_t slot) const { return m_info[slot + 0 * m_capacity]; }
-		inline uint32_t next_of_item(size_t slot) const { return m_info[slot + 1 * m_capacity]; }
-		inline uint32_t prev_of_item(size_t slot) const { return m_info[slot + 2 * m_capacity]; }
-		inline uint32_t hash_of_item(size_t slot) const { return m_info[slot + 3 * m_capacity]; }
+		inline uint32_t next_of_slot(size_t slot) const { return m_info[slot + 0 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t next_of_item(size_t slot) const { return m_info[slot + 1 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t prev_of_item(size_t slot) const { return m_info[slot + 2 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t hash_of_item(size_t slot) const { return m_info[slot + 3 * static_cast<uint64_t>(m_capacity)]; }
 
-		inline void update_next_of_slot(size_t slot, uint32_t value) { m_info[slot + 0 * m_capacity] = value; }
-		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[slot + 1 * m_capacity] = value; }
-		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[slot + 2 * m_capacity] = value; }
-		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[slot + 3 * m_capacity] = value; }
+		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[slot + 1 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[slot + 2 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[slot + 3 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_next_of_slot(size_t slot, uint32_t value) { m_info[slot + 0 * static_cast<uint64_t>(m_capacity)] = value; }
 #endif
 
 	public:
@@ -546,7 +546,7 @@ namespace rynx {
 			}
 		}
 
-		void grow_to(size_t s) {
+		void grow_to(uint32_t s) {
 			unordered_map other;
 			other.reserve_memory_internal(s);
 

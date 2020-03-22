@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include <rynx/system/assert.hpp>
+
 namespace rynx {
 	namespace scheduler {
 		class context;
@@ -48,6 +50,12 @@ namespace rynx {
 			}
 
 			operation_barriers& required_for(barrier bar) {
+				for (auto&& extension : m_extensions)
+				{
+					auto shared_extension = extension.lock();
+					if (shared_extension)
+						shared_extension->required_for(bar);
+				}
 				++*bar.counter;
 				m_blocks.emplace_back(std::move(bar));
 				return *this;
@@ -76,15 +84,17 @@ namespace rynx {
 
 			// in cases where we are running a task, and notice that there is some additional work with different resources
 			// that must be done before we can say the first task is complete, we can say completion_blocked_by(other)
-			void completion_blocked_by(operation_barriers& other) {
+			void completion_blocked_by(std::shared_ptr<operation_barriers>& other) {
+				m_extensions.emplace_back(other);
 				for (auto& bar : m_blocks) {
-					other.required_for(bar);
+					other->required_for(bar);
 				}
 			}
 
 		private:
 			std::vector<barrier> m_requires; // barriers that must be completed before starting this task.
 			std::vector<barrier> m_blocks; // barriers that are not complete without this task.
+			std::vector<std::weak_ptr<operation_barriers>> m_extensions; // operations that extend this operation instance.
 		};
 
 		class operation_resources {

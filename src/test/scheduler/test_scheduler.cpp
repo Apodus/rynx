@@ -10,18 +10,17 @@
 
 TEST_CASE("tasks and barriers", "scheduler")
 {
+	rynx::this_thread::rynx_thread_raii obj;
 	rynx::scheduler::task_scheduler scheduler;
 	auto* context = scheduler.make_context();
 
 	std::atomic<int> count_a = 0;
-	auto task1 = context->make_task("First", [&]() { REQUIRE(count_a.fetch_add(1) == 0); });
-	auto task2 = context->make_task("Second", [&]() { REQUIRE(count_a.fetch_add(1) == 1); });
+	auto task1 = context->add_task("First", [&]() { REQUIRE(count_a.fetch_add(1) == 0); });
+	auto task2 = context->add_task("Second", [&]() { REQUIRE(count_a.fetch_add(1) == 1); });
 	task1.required_for(task2);
-	context->add_task(std::move(task2));
-	context->add_task(std::move(task1));
-
+	
 	std::atomic<int> count_b = 0;
-	context->add_task("First", [&]() { REQUIRE(count_b.fetch_add(1) == 0); })->then("Second", [&]() { REQUIRE(count_b.fetch_add(1) == 1); });
+	context->add_task("First", [&]() { REQUIRE(count_b.fetch_add(1) == 0); }).then("Second", [&]() { REQUIRE(count_b.fetch_add(1) == 1); });
 		
 	scheduler.start_frame();
 	scheduler.wait_until_complete();
@@ -30,10 +29,12 @@ TEST_CASE("tasks and barriers", "scheduler")
 
 TEST_CASE("ecs component resource accesses respected", "scheduler")
 {
+	rynx::this_thread::rynx_thread_raii obj;
+	
 	struct component {
 		int a;
 	};
-
+	
 	rynx::ecs ecs;
 	rynx::scheduler::task_scheduler scheduler;
 	auto* context = scheduler.make_context();
@@ -95,4 +96,36 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 
 	REQUIRE(tasks_started == 3);
 	REQUIRE(result ==  2 + 2 + 2*2);
+}
+
+
+TEST_CASE("task extensions respected", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+	struct component {
+		int a;
+	};
+
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+	
+	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
+
+	context->add_task("TestRead", [=](rynx::scheduler::task& context) mutable {
+		context.extend_task_independent("extension", [=]() mutable {
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			*extension_task_completed = 1;
+		});
+
+		auto dependent_task = context.make_task("dependent task", [=]() {
+			REQUIRE(extension_task_completed->load() == 1);
+			*extension_task_completed = 2;
+		});
+		dependent_task.depends_on(context);
+	});
+
+	scheduler.start_frame();
+	scheduler.wait_until_complete();
+
+	REQUIRE(extension_task_completed->load() == 2);
 }

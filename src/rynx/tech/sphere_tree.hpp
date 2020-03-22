@@ -509,7 +509,7 @@ namespace rynx {
 						migratee.new_parent->insert(std::move(item), this);
 					}
 				});
-			})->depends_on(bar).required_for(entities_migrated_bar);
+			}).depends_on(bar).required_for(entities_migrated_bar);
 
 			update_next_index += limit;
 			update_next_index &= capacity - 1;
@@ -574,8 +574,9 @@ namespace rynx {
 				}
 			});
 			
-			generic_tasks->depends_on(entities_migrated_bar);
-			generic_tasks->required_for(update_complete_barrier);
+			generic_tasks
+				.depends_on(entities_migrated_bar)
+				.required_for(update_complete_barrier);
 
 			return update_complete_barrier;
 		}

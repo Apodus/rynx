@@ -143,7 +143,7 @@ namespace rynx {
 
 			virtual void moveFromIndexTo(index_t index, itable* dst) override {
 				static_cast<component_table*>(dst)->emplace_back(std::move(m_data[index]));
-				if(index + 1 != m_data.size())
+				if(index + 1 != static_cast<index_t>(m_data.size()))
 					m_data[index] = std::move(m_data.back());
 				m_data.pop_back();
 			}
@@ -528,7 +528,7 @@ namespace rynx {
 
 			dynamic_bitset includeTypes;
 			dynamic_bitset excludeTypes;
-			rynx::unordered_map<type_id_t, type_id_t>* m_typeAliases;
+			rynx::unordered_map<type_id_t, type_id_t>* m_typeAliases = nullptr;
 			category_source& m_ecs;
 		};
 
@@ -777,11 +777,11 @@ namespace rynx {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
-							blocker_task->depends_on(barrier);
+							blocker_task.depends_on(barrier);
 						}
 						else {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
-							blocker_task->depends_on(barrier);
+							blocker_task.depends_on(barrier);
 						}
 					}
 				}
