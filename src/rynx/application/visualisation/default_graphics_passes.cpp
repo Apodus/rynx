@@ -25,5 +25,4 @@ std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisati
 	lighting_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::directed_lights_effect>(shaders));
 	lighting_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ambient_light_effect>(shaders));
 	return lighting_pass;
-	// omnilights_visualizer->prepare(base_simulation.m_context);
 }

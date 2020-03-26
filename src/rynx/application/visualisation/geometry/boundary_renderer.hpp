@@ -26,7 +26,7 @@ namespace rynx {
 					ctx->add_task("fetch polygon boundaries", [this](const rynx::ecs& ecs, rynx::scheduler::task& task_context) {
 						m_edges->clear();
 						
-						ecs.query().notIn<rynx::components::mesh, rynx::components::translucent>()
+						ecs.query().notIn<rynx::components::mesh, rynx::components::translucent, components::frustum_culled>()
 							.for_each_parallel(task_context, [this](
 								const rynx::components::boundary& m,
 								const rynx::components::color& color)

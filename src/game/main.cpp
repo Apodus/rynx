@@ -12,6 +12,8 @@
 #include <rynx/graphics/mesh/polygonTesselator.hpp>
 
 #include <rynx/application/application.hpp>
+#include <rynx/application/visualisation/debug_visualisation.hpp>
+
 #include <rynx/graphics/text/fontdata/lenka.hpp>
 #include <rynx/graphics/text/fontdata/consolamono.hpp>
 
@@ -506,20 +508,18 @@ int main(int argc, char** argv) {
 
 				render.execute();
 
-				// application.meshRenderer().setDepthTest(true);
-
 				// TODO: debug visualisations should be drawn on their own fbo.
-				/*
+				application.debugVis()->prepare(base_simulation.m_context);
 				{
 					// visualize collision detection structure.
 					if (conf.visualize_dynamic_collisions) {
 						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
 						collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-							matrix4 m;
+							rynx::matrix4 m;
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugVisual(meshes->get("circle_empty"), m, node_colors[depth % node_colors.size()]);
 						});
 					}
 
@@ -527,15 +527,18 @@ int main(int argc, char** argv) {
 					if (conf.visualize_static_collisions) {
 						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
 						collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
-							matrix4 m;
+							rynx::matrix4 m;
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty", node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugVisual(meshes->get("circle_empty"), m, node_colors[depth % node_colors.size()]);
 						});
 					}
 				}
-				*/
+				
+				{
+					application.debugVis()->execute();
+				}
 
 				{
 					application.shaders()->activate_shader("fbo_color_to_bb");

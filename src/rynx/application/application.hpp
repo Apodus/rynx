@@ -1,11 +1,16 @@
 #pragma once
 
+#include <rynx/tech/math/matrix.hpp>
+#include <rynx/tech/unordered_map.hpp>
+
 #include <memory>
 #include <string>
+#include <vector>
 
 class GPUTextures;
 class Window;
 class UserIO;
+class Mesh;
 
 namespace rynx {
 	class MeshRenderer;
@@ -16,7 +21,7 @@ namespace rynx {
 	}
 
 	namespace application {
-
+		class DebugVisualization;
 		class Application {
 		public:
 			Application() {}
@@ -37,9 +42,12 @@ namespace rynx {
 			MeshRenderer& meshRenderer() { return *m_meshRenderer; }
 			TextRenderer& textRenderer() { return *m_textRenderer; }
 
+			std::shared_ptr<DebugVisualization> debugVis() { return m_debugVisualization; }
 			std::shared_ptr<GPUTextures> textures() { return m_textures; }
-			
+
 		private:
+			std::shared_ptr<DebugVisualization> m_debugVisualization;
+
 			std::shared_ptr<Window> m_window;
 			std::shared_ptr<UserIO> m_input;
 			std::shared_ptr<GPUTextures> m_textures;
