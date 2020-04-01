@@ -16,7 +16,6 @@
 
 #include <rynx/tech/profiling.hpp>
 
-
 void rynx::application::Application::openWindow(int width, int height, std::string name) {
 	m_window = std::make_shared<Window>();
 	m_window->createWindow(width, height, name);

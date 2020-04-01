@@ -1,13 +1,5 @@
-#include <game/view.hpp>
-#include <game/gametypes.hpp>
-#include <game/logic.hpp>
 
 #include <rynx/tech/ecs.hpp>
-
-#include <iostream>
-#include <thread>
-
-#include <cmath>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/mesh/polygonTesselator.hpp>
 
@@ -28,16 +20,7 @@
 #include <rynx/tech/smooth_value.hpp>
 #include <rynx/tech/timer.hpp>
 
-#include <game/logic/shooting.hpp>
-#include <game/logic/keyboard_movement.hpp>
-
-#include <game/logic/enemies/minilisk.hpp>
-#include <game/logic/enemies/minilisk_spawner.hpp>
-
-#include <game/visual/bullet_rendering.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
-
-#include <memory>
 
 #include <rynx/menu/Button.hpp>
 #include <rynx/menu/Slider.hpp>
@@ -52,8 +35,28 @@
 #include <rynx/rulesets/motion.hpp>
 #include <rynx/rulesets/physics/springs.hpp>
 
+#include <game/view.hpp>
+#include <game/gametypes.hpp>
+#include <game/logic.hpp>
+
+#include <game/logic/shooting.hpp>
+#include <game/logic/keyboard_movement.hpp>
+
+#include <game/logic/enemies/minilisk.hpp>
+#include <game/logic/enemies/minilisk_spawner.hpp>
+
+#include <game/visual/bullet_rendering.hpp>
+
+#include <iostream>
+#include <thread>
+
+#include <cmath>
+#include <memory>
+
+#include <rynx/audio/audio.hpp>
+
 int main(int argc, char** argv) {
-	
+
 	// uses this thread services of rynx, for example in cpu performance profiling.
 	rynx::this_thread::rynx_thread_raii rynx_thread_services_required_token;
 	
@@ -258,6 +261,14 @@ int main(int argc, char** argv) {
 
 	debug_conf conf;
 
+
+	// setup sound system
+	rynx::sound::audio_system audio;
+	uint32_t soundIndex = audio.load("test.ogg");
+	rynx::sound::configuration config;
+	audio.open_output_device(64, 256);
+
+
 	// construct menus
 	{
 		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.14f);
@@ -302,7 +313,10 @@ int main(int argc, char** argv) {
 		});
 
 		sampleSlider->alignToInnerEdge(&root, rynx::menu::Align::TOP_RIGHT);
-		sampleSlider->onValueChanged([spawner](float f) {
+		sampleSlider->onValueChanged([spawner, &config](float f) {
+			float pitch_shift_octaves = f * 2 - 1;
+			config.set_pitch_shift(pitch_shift_octaves);
+			
 			spawner->how_often_to_spawn = uint64_t(1 + int(f * 300.0f));
 		});
 
@@ -385,6 +399,10 @@ int main(int argc, char** argv) {
 			camera->setDirection(direction);
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 			camera->rebuild_view_matrix();
+		}
+
+		if (gameInput.isKeyPressed(cameraUp)) {
+			config = audio.play_sound(soundIndex, vec3f(), vec3f());
 		}
 
 		{

@@ -20,9 +20,16 @@ public class RynxProject : Project
 		// compiler settings
 		{
 			conf.Defines.Add("_ENABLE_EXTENDED_ALIGNED_STORAGE");
-		
-			conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Precise);
-			conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Enable);
+			
+			if(true) {
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Fast);
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Disable);
+			}
+			else {
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Strict);
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Enable);
+			}
+			
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.RTTI.Enable);
 			conf.Options.Add(Sharpmake.Options.Vc.General.CharacterSet.Unicode);
 			
@@ -81,7 +88,7 @@ public class RynxProject : Project
 				conf.Options.Add(Sharpmake.Options.Vc.Linker.Reference.KeepUnreferencedData);
 				conf.Options.Add(Sharpmake.Options.Vc.General.WholeProgramOptimization.Disable);
 				conf.Options.Add(Sharpmake.Options.Vc.Linker.Incremental.Enable);
-				conf.Options.Add(Sharpmake.Options.Vc.Compiler.Inline.OnlyInline);	
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.Inline.OnlyInline);
 				conf.Defines.Add("RYNX_ASSERTS_ENABLED_");
 			}
 		}

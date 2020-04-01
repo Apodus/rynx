@@ -36,6 +36,25 @@ class Input : RynxProject
 }
 
 [Generate]
+class Audio : RynxProject
+{
+	public Audio()
+	{
+		SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\audio";
+	}
+	
+	[Configure]
+	public void ConfigureAll(Project.Configuration conf, Target target)
+	{
+		conf.AddPrivateDependency<libvorbis>(target);
+		conf.AddPrivateDependency<portaudio>(target);
+		conf.AddPublicDependency<Tech>(target);
+		conf.AddPublicDependency<RynxSystem>(target);
+		conf.AddPublicDependency<Thread>(target);
+	}
+}
+
+[Generate]
 class Menu : RynxProject
 {
     public Menu()
@@ -62,6 +81,7 @@ class Application : RynxProject
     [Configure]
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
+		conf.AddPublicDependency<Audio>(target);
 		conf.AddPublicDependency<Tech>(target);
     }
 }
