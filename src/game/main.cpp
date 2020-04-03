@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
 				ecs.create(
 					rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
 					rynx::components::collisions{ collisionCategoryDynamic.value },
-					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * (random() & 127) / 127.0f).generateBoundary_Outside() }),
+					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * random()).generateBoundary_Outside() }),
 					rynx::components::radius(math::sqrt_approx(16 + 16)),
 					rynx::components::color({ 1,1,0,1 }),
 					rynx::components::motion({ 0, 0, 0 }, 0),

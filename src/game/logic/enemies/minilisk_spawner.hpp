@@ -56,7 +56,7 @@ namespace game {
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
 							float y = +100.0f + m_random(0.0f, 4.0f);
-							if (true || m_random() & 1) {
+							if (true || m_random() > 0.5f) {
 								auto id1 = ecs.create(
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
@@ -71,14 +71,14 @@ namespace game {
 									rynx::matrix4()
 								);
 
-								if ((m_random() & 63) > 60) {
+								if (m_random() > 0.95f) {
 									rynx::components::light_omni light;
 									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
 									ecs.attachToEntity(id1, light);
 								}
 								
-								if ((m_random() & 63) > 30) {
+								if (m_random() > 0.95f) {
 									rynx::components::light_directed light;
 									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
@@ -116,7 +116,7 @@ namespace game {
 								}
 							}
 							else {
-								float edge_length = 10.5f + 15.0f * (m_random() & 127) / 127.0f;
+								float edge_length = 10.5f + 15.0f * m_random();
 								float mass = 5000.0f;
 								auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass / 12.0f * (height * height + width * width); };
 								ecs.create(

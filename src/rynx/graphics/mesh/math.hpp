@@ -51,9 +51,8 @@ namespace math {
 		rand64(uint64_t seed = 0x75892735A374E381) : m_state(seed) {}
 		uint64_t m_state;
 
-		uint64_t operator()() {
-			m_state = math::rand(m_state);
-			return m_state;
+		float operator()() {
+			return operator()(0.0f, 1.0f);
 		}
 
 		float operator()(float from, float to) {
