@@ -43,8 +43,8 @@ namespace {
 		vec3<float> pos_b,
 		float penetration
 	) {
-		rynx_assert(normal.length_squared() > 0.9f, "normal must be unit length");
-		rynx_assert(normal.length_squared() < 1.1f, "normal must be unit length");
+		// rynx_assert(normal.length_squared() > 0.9f, "normal must be unit length");
+		// rynx_assert(normal.length_squared() < 1.1f, "normal must be unit length");
 
 		collision_event event;
 		event.a_id = a.id();

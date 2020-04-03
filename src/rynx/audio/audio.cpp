@@ -20,15 +20,17 @@
 #pragma optimize("s", on)
 #pragma optimize("g", on)
 
-static int audio_callback(const void* inputBuffer, void* outputBuffer,
+static int audio_callback(const void* /* inputBuffer */, void* outputBuffer,
     unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
+    const PaStreamCallbackTimeInfo* /* timeInfo */,
+    PaStreamCallbackFlags /* statusFlags */,
     void* userData)
 {
     static_cast<rynx::sound::audio_system*>(userData)->render_audio(static_cast<float*>(outputBuffer), framesPerBuffer);
     return 0;
 }
+
+static constexpr int fft_window_size = 2048;
 
 namespace {
     struct ogg_file
@@ -86,7 +88,7 @@ namespace {
     long AR_tellOgg(void* fh)
     {
         ogg_file* of = reinterpret_cast<ogg_file*>(fh);
-        return (of->curPtr - of->filePtr);
+        return static_cast<long>(of->curPtr - of->filePtr);
     }
 }
 
@@ -111,15 +113,19 @@ rynx::sound::buffer loadOggVorbis(std::string path) {
     callbacks.close_func = AR_closeOgg;
     callbacks.tell_func = AR_tellOgg;
 
-    int ret = ov_open_callbacks((void*)&t, &ov, NULL, -1, callbacks);
+    int open_return = ov_open_callbacks((void*)&t, &ov, NULL, -1, callbacks);
 
     vorbis_info* vi = ov_info(&ov, -1);
-    rynx_assert(vi);
+    rynx_assert(vi, "loading ogg failed");
 
     int num_channels = vi->channels;
     int sample_rate = vi->rate;
     int64_t total_samples = ov_pcm_total(&ov, -1);
     
+    rynx_assert(num_channels == 2, "only support stereo sound for now");
+    // TODO: Support mono audio
+    // TODO: Support sample rate rescaling
+
     rynx::sound::buffer buffer;
     buffer.left.resize(total_samples);
     buffer.right.resize(total_samples);
@@ -128,7 +134,7 @@ rynx::sound::buffer loadOggVorbis(std::string path) {
     int current_section = 0;
     while (true) {
         float** pcm;
-        long ret = ov_read_float(&ov, &pcm, total_samples, &current_section);
+        long ret = ov_read_float(&ov, &pcm, static_cast<int>(total_samples), &current_section);
         if (ret == 0) {
             logmsg("loaded ogg with %d samples: '%s'", samples_read, path.c_str());
             break;
@@ -150,7 +156,10 @@ rynx::sound::buffer loadOggVorbis(std::string path) {
     return buffer;
 }
 
-
+rynx::sound::source_instance::source_instance() {
+    prev_left.resize(fft_window_size);
+    prev_right.resize(fft_window_size);
+}
 
 rynx::sound::configuration::configuration(audio_system& audio, source_instance& sound) {
     m_rynxAudio = &audio;
@@ -197,12 +206,10 @@ float rynx::sound::configuration::completion_rate() const {
 }
 
 bool rynx::sound::configuration::is_active() const {
-    rynx_assert(m_soundData != nullptr);
-    rynx_assert(m_rynxAudio != nullptr);
+    rynx_assert(m_soundData != nullptr, "sound configuration object invalid");
+    rynx_assert(m_rynxAudio != nullptr, "sound configuration object invalid");
     return m_soundCounter == m_soundData->m_soundCounter;
 }
-
-
 
 
 
@@ -211,7 +218,6 @@ rynx::sound::audio_system::audio_system() {
     if (err != paNoError) {
         // oh no.
     }
-
     m_soundBank.emplace_back(); // guarantee that sound index zero points to a silent (and empty) sample.
 }
 
@@ -236,7 +242,7 @@ void rynx::sound::audio_system::setNumChannels(int channels) {
 }
 
 uint32_t rynx::sound::audio_system::load(std::string path) {
-    uint32_t soundIndex = m_soundBank.size();
+    uint32_t soundIndex = static_cast<uint32_t>(m_soundBank.size());
     m_soundBank.emplace_back(loadOggVorbis(path));
     return soundIndex;
 }
@@ -290,6 +296,38 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
     }
 }
 
+void fill(std::vector<float>& dst, const float* src, size_t amount) {
+    float* dst_p = dst.data();
+    const float* end = dst_p + amount;
+    while(dst_p != end)
+        *dst_p++ = *src++;
+}
+
+std::vector<float> stretch(const float* src, size_t dataRemaining, size_t window, size_t targetLength) {
+    std::vector<float> result(targetLength + window, 0.0f);
+
+    if (targetLength > window) {
+        std::vector<float> w(window, 0.0f);
+        fill(w, src, std::min(dataRemaining, window));
+        
+        for (int i = 0; i < 2 * targetLength / window; ++i) {
+            for (int k = 0; k < window; ++k) {
+                float volume = float(2 * k) / float(window);
+                if (volume > 1.0f) {
+                    volume = 2.0f - volume;
+                }
+
+                result.data()[int32_t(i * window * 0.5f) + k] += src[k] * volume;
+            }
+        }
+    }
+    else {
+        // ??
+    }
+
+    return result;
+}
+
 void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
     std::memset(outBuf, 0, sizeof(float) * numSamples * 2);
     for (size_t i = 0; i < m_channels.size(); ++i) {
@@ -300,54 +338,51 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
             volume *= data.m_loudness;
 
             auto& sound = m_soundBank[data.m_bufferIndex];
-            
-            if (data.m_effects.pitch_shift != 0.0f) {
-                Chunk chunk_left;
-                Chunk chunk_right;
 
-                chunk_left().resize(numSamples);
-                chunk_right().resize(numSamples);
-
-                if (data.m_sampleIndex + numSamples < sound.left.size()) {
-                    for (size_t k = 0; k < numSamples; ++k) {
-                        chunk_left()[k] = std::complex<float>(sound.left[k + data.m_sampleIndex], 0);
-                        chunk_right()[k] = std::complex<float>(sound.right[k + data.m_sampleIndex], 0);
-                    }
-                }
-                else {
-                    for (size_t k = 0, end_index = sound.left.size(); k + data.m_sampleIndex < end_index; ++k) {
-                        chunk_left()[k] = std::complex<float>(sound.left[k + data.m_sampleIndex], 0);
-                        chunk_right()[k] = std::complex<float>(sound.right[k + data.m_sampleIndex], 0);
-                    }
-                    for (size_t k = sound.left.size(); k < numSamples; ++k) {
-                        chunk_left()[k] = std::complex<float>(0, 0);
-                        chunk_right()[k] = std::complex<float>(0, 0);
-                    }
-                }
-
-                fft(chunk_left());
-                fft(chunk_right());
-
+            if (data.m_effects.pitch_shift != 0.0f || data.m_effects.tempo_shift != 0.0f) {                
+                size_t fft_window = 2 * numSamples;
                 float multiplier = std::pow(2.0f, data.m_effects.pitch_shift);
-                
-                chunk_left.shiftGeometric(multiplier);
-                chunk_right.shiftGeometric(multiplier);
+                float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift);
 
-                ifft(chunk_left());
-                ifft(chunk_right());
+                multiplier *= tempo_mul;
 
-                for (size_t k = 0; k < numSamples; ++k) {
-                    outBuf[2 * k + 0] += volume * chunk_left()[k].real();
-                    outBuf[2 * k + 1] += volume * chunk_right()[k].real();
+                std::vector<float> chunk_left(fft_window, 0.0f);
+                std::vector<float> chunk_right(fft_window, 0.0f);
+
+                size_t num_samples_to_take = size_t((sound.left.size() - data.m_sampleIndex - 1) / multiplier);
+                if (num_samples_to_take > fft_window)
+                    num_samples_to_take = fft_window;
+                    
+                for (size_t k = 0; k < num_samples_to_take; ++k) {
+                    float src_index_f = multiplier * k;
+                    size_t src_index_prev = size_t(src_index_f);
+                    size_t src_index_next = size_t(src_index_f) + 1;
+                    float p_prev = 1.0f - (src_index_f - src_index_prev);
+                    float p_next = 1.0f - p_prev;
+
+                    chunk_left[k] = sound.left[src_index_prev + data.m_sampleIndex] * p_prev + sound.left[src_index_next + data.m_sampleIndex] * p_next;
+                    chunk_right[k] = sound.right[src_index_prev + data.m_sampleIndex] * p_prev + sound.right[src_index_next + data.m_sampleIndex] * p_next;
                 }
-            }
-            
-            for (size_t k = 0; (k + data.m_sampleIndex < sound.left.size()) & (k < numSamples); ++k) {
-                outBuf[2 * k + 0] += volume * sound.left[k + data.m_sampleIndex];
-                outBuf[2 * k + 1] += volume * sound.right[k + data.m_sampleIndex];
-            }
 
-            data.m_sampleIndex += numSamples;
+                float numSamples_f = float(numSamples);
+                for (size_t k = 0; k < numSamples; ++k) {
+                    float p = float(k) / numSamples_f;
+                    outBuf[2 * k + 0] += volume * chunk_left[k] * p + data.prev_left[k + numSamples] * volume * (1.0f - p);
+                    outBuf[2 * k + 1] += volume * chunk_right[k] * p + data.prev_right[k + numSamples] * volume * (1.0f - p);
+                }
+
+                data.prev_left = std::move(chunk_left);
+                data.prev_right = std::move(chunk_right);
+
+                data.m_sampleIndex += static_cast<uint32_t>(numSamples * tempo_mul);
+            }
+            else {
+                for (size_t k = 0; (k + data.m_sampleIndex < sound.left.size()) & (k < numSamples); ++k) {
+                    outBuf[2 * k + 0] += volume * sound.left[k + data.m_sampleIndex];
+                    outBuf[2 * k + 1] += volume * sound.right[k + data.m_sampleIndex];
+                }
+                data.m_sampleIndex += static_cast<uint32_t>(numSamples);
+            }
 
             // sound playback complete.
             if (data.m_sampleIndex >= sound.left.size()) {
@@ -355,12 +390,31 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
                 data.m_bufferIndex = 0;
                 data.m_loudness = 0;
                 ++data.m_soundCounter;
+                
+                for (uint32_t k = 0; k < numSamples; ++k) {
+                    data.prev_left[k + numSamples] = 0.0f;
+                    data.prev_right[k + numSamples] = 0.0f;
+                }
+
                 m_channels[i]->store(0);
             }
         }
     }
 
+    float max = 0;
     for (size_t i = 0; i < numSamples * 2; ++i) {
-        outBuf[i] = std::tan(outBuf[i]); // lol mix hehe. quality.
+        float v = outBuf[i] * m_volumeScaleCurrent;
+        v *= v;
+        max = (v > max) ? v : max;
+    }
+
+    float scaleMultiplier = 1.04f - 0.08f * (max > 0.1f);
+    m_volumeScaleCurrent *= scaleMultiplier;
+    m_volumeScaleCurrent = std::min(m_volumeScaleCurrent, 1.0f);
+
+    for (size_t i = 0; i < numSamples * 2; ++i) {
+        float volume_i = outBuf[i] * m_volumeScaleCurrent;
+        outBuf[i] = std::tan(volume_i * m_globalVolume); // lol mix hehe. quality.
     }
 }
+

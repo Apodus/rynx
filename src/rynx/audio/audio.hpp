@@ -1,8 +1,10 @@
 #pragma once
 
+#include <rynx/tech/math/vector.hpp>
+#include <rynx/audio/dsp/signal.hpp>
+
 #include <vector>
 #include <cstdint>
-#include <rynx/tech/math/vector.hpp>
 
 #include <memory>
 #include <atomic>
@@ -24,6 +26,8 @@ namespace rynx {
         };
 
         struct source_instance {
+            source_instance();
+
             vec3f m_position;
             vec3f m_direction;
             uint32_t m_bufferIndex = 0;
@@ -32,6 +36,9 @@ namespace rynx {
             float m_loudness = 1.0f;
 
             effect_config m_effects;
+
+            std::vector<float> prev_left;
+            std::vector<float> prev_right;
         };
 
         struct configuration {
@@ -67,6 +74,9 @@ namespace rynx {
             vec3f m_listenerForward;
             void* stream = nullptr; // portaudio stream
             void setNumChannels(int channels);
+
+            float m_globalVolume = 1.0f;
+            float m_volumeScaleCurrent = 1.0f;
 
         public:
             // Not allowed to move or copy or jack shit. This has to stay in place in memory, because of the audiorender thread.

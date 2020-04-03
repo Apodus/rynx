@@ -7,7 +7,7 @@
 #include <valarray>
 #include <cassert>
 
-void loadingPrint(size_t step, size_t max, size_t howMany = 10) {
+static void loadingPrint(size_t step, size_t max, size_t howMany = 10) {
 	if (howMany * (step) / max != howMany * (step - 1) / max)
 		std::cerr << "." << std::flush;
 }
@@ -74,67 +74,42 @@ public:
 		auto mid = signal.size() / 2;
 		auto invert = [this](size_t i) { return signal.size() - 1 - i; };
 
-		float volumeCorrection = multiplier > 1.0f ? 1.0f : 1.0f / (multiplier * multiplier);
-
-		std::valarray<Complex> copy(Complex(0, 0), signal.size());
+		std::valarray<std::complex<float>> copy(std::complex<float>(0, 0), signal.size());
 
 		{
+			if (multiplier > 1.0f)
 			{
-				// backwards seek. this index is influenced by X.
+				float inv_mul = 1.0f / multiplier;
+				// this index is influenced by X.
 				for (size_t i = 0; i < mid; ++i) {
-					float source = float(i) / multiplier;
-					size_t source_min = size_t(std::floor(source));
-					size_t source_max = size_t(std::ceil(source));
-					float p_min = source - int(source);
+					float source = float(i) * inv_mul;
+					size_t source_min = size_t(source);
+					size_t source_max = size_t(source) + 1;
+					float p_min = 1.0f - (source - int(source));
 					float p_max = 1.0f - p_min;
 
-					if (p_min > p_max) {
-						p_min = 1;
-						p_max = 0;
-					}
-					else {
-						p_min = 0;
-						p_max = 1;
-					}
-
-					p_min *= volumeCorrection;
-					p_max *= volumeCorrection;
-
-					if (source_max < mid) {
-						copy[i] += (signal[source_min] * p_min + signal[source_max] * p_max) * volumeCorrection;
-						copy[invert(i)] += (signal[invert(source_min)] * p_min + signal[invert(source_max)] * p_max) * volumeCorrection;
-					}
+					copy[i] += signal[source_max] * p_max * 2.0f;
+					// copy[invert(i)] += signal[invert(source_max)] * p_max;
+				
+					copy[i] += signal[source_min] * p_min * 2.0f;
+					// copy[invert(i)] += signal[invert(source_min)] * p_min;
 				}
 			}
-			
+			else
 			{
-				// forward propagation. this index influences index X.
+				// this index influences index X.
 				for (size_t i = 0; i < mid; ++i) {
 					float dst = float(i) * multiplier;
-					size_t dst_min = size_t(std::floor(dst));
-					size_t dst_max = size_t(std::ceil(dst));
-					float p_min = dst - int(dst);
+					size_t dst_min = size_t(dst);
+					size_t dst_max = size_t(dst) + 1;
+					float p_min = 1.0f - (dst - int(dst));
 					float p_max = 1.0f - p_min;
 
-					if (p_min > p_max) {
-						p_min = 1;
-						p_max = 0;
-					}
-					else {
-						p_min = 0;
-						p_max = 1;
-					}
-
-					p_min *= volumeCorrection;
-					p_max *= volumeCorrection;
-
-					if (dst_max < mid) {
-						copy[dst_min] += signal[i] * p_min;
-						copy[dst_max] += signal[i] * p_max;
-
-						copy[invert(dst_min)] += signal[invert(i)] * p_min;
-						copy[invert(dst_max)] += signal[invert(i)] * p_max;
-					}
+					copy[dst_max] += signal[i] * p_max * 2.0f;
+					// copy[invert(dst_max)] += signal[invert(i)] * p_max;
+				
+					copy[dst_min] += signal[i] * p_min * 2.0f;
+					// copy[invert(dst_min)] += signal[invert(i)] * p_min;
 				}
 			}
 		}
@@ -151,7 +126,7 @@ public:
 	}
 
 	Chunk& filterLows(int preserveCount = 1) {
-		std::vector<std::pair<size_t, Complex>> stash;
+		std::vector<std::pair<size_t, std::complex<float>>> stash;
 		for (int i = 0; i < preserveCount; ++i) {
 			size_t index = maxBin();
 			stash.emplace_back(index, signal[index]);
@@ -171,11 +146,11 @@ public:
 		return *this;
 	}
 
-	std::valarray<Complex>& operator ()() {
+	std::valarray<std::complex<float>>& operator ()() {
 		return signal;
 	}
 
-	const std::valarray<Complex>& operator ()() const {
+	const std::valarray<std::complex<float>>& operator ()() const {
 		return signal;
 	}
 
@@ -203,7 +178,7 @@ public:
 	}
 
 private:
-	std::valarray<Complex> signal;
+	std::valarray<std::complex<float>> signal;
 };
 
 template<typename F>
@@ -232,7 +207,7 @@ inline void renderChunk(std::vector<int>& output, const Chunk& chunk, size_t jum
 	size_t currentSpot = i * jump;
 	
 	auto copy = chunk();
-	ifft(copy);
+	rynx::ifft(copy);
 
 	assert(output.size() >= currentSpot + copy.size());
 	for (size_t step = 0; step < copy.size(); ++step) {
@@ -250,10 +225,9 @@ inline void renderChunkIFFT(std::vector<int>& output, const Chunk& chunk, size_t
 		return v * chirp * 0.98f;
 	};
 
-	size_t window = chunk().size();
 	size_t currentSpot = i * jump;
 	auto copy = chunk();
-	ifft(copy);
+	rynx::ifft(copy);
 
 	assert(output.size() >= currentSpot + copy.size());
 	for (size_t step = 0; step < copy.size(); ++step) {
@@ -268,7 +242,7 @@ public:
 		windowSize = window;
 		size_t sourceSize = source.size();
 		chunkify1D(std::move(source), window, jump, [this](Chunk chunk) {
-			fft(chunk());
+			rynx::fft(chunk());
 			uint32_t index = static_cast<uint32_t>(chunk.maxBin());
 			float amplitude = chunk()[index].real();
 			chunks.emplace_back(index, amplitude);
@@ -285,11 +259,10 @@ public:
 		std::vector<int> output;
 		output.resize(windowSize + jump * (chunks.size() - 1));
 
-		size_t currentSpot = 0;
 		for (size_t i = 0; i < chunks.size(); ++i) {
 			loadingPrint(i, chunks.size());
 			Chunk chunk;
-			chunk().resize(windowSize, Complex(0, 0));
+			chunk().resize(windowSize, std::complex<float>(0, 0));
 			chunk()[chunks[i].first].real(chunks[i].second);
 			// std::cerr << chunks[i].first << " " << chunks[i].second << std::endl;
 			renderChunk(output, chunk, jump, i);
@@ -316,7 +289,7 @@ public:
 		size_t sourceSize = source.size();
 		std::cerr << __FUNCTION__ << std::flush;
 		chunkify1D(std::move(source), window, jump, [this](Chunk chunk) {
-			fft(chunk());
+			rynx::fft(chunk());
 			chunks.emplace_back(std::move(chunk));
 		});
 		std::cerr << "done (" << sourceSize << " samples, " << chunks.size() << " blocks)" << std::endl;
@@ -331,7 +304,6 @@ public:
 		std::vector<int> output;
 		output.resize(chunks[0]().size() + jump * (chunks.size() - 1));
 		
-		size_t currentSpot = 0;
 		for (size_t i = 0; i < chunks.size(); ++i) {
 			loadingPrint(i, chunks.size());
 			renderChunk(output, chunks[i], jump, i);
