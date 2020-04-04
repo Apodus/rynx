@@ -21,7 +21,12 @@ namespace rynx {
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
+			void set_geometry_resolution(float percentage_x, float percentage_y);
+			void set_lights_resolution(float percentage_x, float percentage_y);
+			void on_resolution_change(size_t new_size_x, size_t new_size_y);
+
 		private:
+			std::shared_ptr<GPUTextures> gpu_textures;
 			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
 			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
 
@@ -29,6 +34,10 @@ namespace rynx {
 			std::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
 			std::shared_ptr<rynx::graphics::framebuffer> fbo_lights;
 			
+			std::pair<size_t, size_t> current_resolution;
+			std::pair<float, float> current_internal_resolution_geometry;
+			std::pair<float, float> current_internal_resolution_lighting;
+
 			rynx::application::Application& m_application;
 			std::shared_ptr<Camera> camera;
 		};

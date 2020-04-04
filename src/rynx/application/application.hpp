@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <functional>
 
 class GPUTextures;
 class Window;
@@ -34,6 +35,8 @@ namespace rynx {
 			float aspectRatio() const;
 			bool isExitRequested() const;
 			void set_gl_viewport_to_window_dimensions() const;
+			void on_resize(std::function<void(size_t, size_t)> onWindowResize);
+			std::pair<size_t, size_t> current_window_size() const;
 
 			std::shared_ptr<Window> window() { return m_window; }
 			std::shared_ptr<UserIO> input() { return m_input; }
@@ -55,6 +58,9 @@ namespace rynx {
 
 			std::shared_ptr<MeshRenderer> m_meshRenderer;
 			std::shared_ptr<TextRenderer> m_textRenderer;
+
+			std::vector<std::function<void(size_t, size_t)>> m_resizeCallbacks;
+			bool m_window_resized = false;
 		};
 	}
 }

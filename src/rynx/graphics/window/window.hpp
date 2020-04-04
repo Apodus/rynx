@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 
 struct GLFWwindow;
 
@@ -28,6 +29,8 @@ public:
 	bool active() const;
 	void hide() const;
 
+	void on_resize(std::function<void(int, int)> onResize);
+
 	inline float getAspectRatio() const {
 		return m_aspectRatio;
 	}
@@ -41,7 +44,9 @@ private:
 	Window(const Window&); // Disabled.
 
 	GLFWwindow* createWindow(std::string name = "Game");
-	void onResize(int width, int height);
+	void platformResizeEvent(int width, int height);
+
+	std::function<void(size_t, size_t)> m_onResize;
 
 	size_t m_width;
 	size_t m_height;

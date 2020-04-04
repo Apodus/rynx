@@ -18,6 +18,10 @@
 
 void rynx::application::Application::openWindow(int width, int height, std::string name) {
 	m_window = std::make_shared<Window>();
+	m_window->on_resize([this](size_t width, size_t height) {
+		m_window_resized = true;
+	});
+	
 	m_window->createWindow(width, height, name);
 
 	m_input = std::make_shared<UserIO>(m_window);
@@ -35,7 +39,22 @@ void rynx::application::Application::loadTextures(std::string path) {
 	m_textures->createTextures(path);
 }
 
+std::pair<size_t, size_t> rynx::application::Application::current_window_size() const {
+	return { m_window->width(), m_window->height() };
+}
+
+void rynx::application::Application::on_resize(std::function<void(size_t, size_t)> onWindowResize) {
+	m_resizeCallbacks.emplace_back(std::move(onWindowResize));
+}
+
 void rynx::application::Application::startFrame() {
+	if (m_window_resized) {
+		m_window_resized = false;
+		auto [width, height] = current_window_size();
+		for (auto&& cb : m_resizeCallbacks)
+			cb(width, height);
+	}
+	
 	m_input->update();
 	m_window->pollEvents();
 }

@@ -43,14 +43,20 @@ Window::~Window() {
 	g_resizeEventMapper.reset();
 }
 
-void Window::onResize(int width, int height) {
+void Window::platformResizeEvent(int width, int height) {
 	if (width == 0 || height == 0)
 		return;
 
 	m_width = width;
 	m_height = height;
 	m_aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+	if (m_onResize)
+		m_onResize(m_width, m_height);
 	set_gl_viewport_to_window_dimensions();
+}
+
+void Window::on_resize(std::function<void(int, int)> onResize) {
+	m_onResize = std::move(onResize);
 }
 
 void Window::set_gl_viewport_to_window_dimensions() const {
@@ -67,13 +73,13 @@ GLFWwindow* Window::createWindow(std::string name) {
 	}
 
 	m_pWindow = window;
-	getResizeEventMapper()[m_pWindow] = [this](int x, int y) { onResize(x, y); };
+	getResizeEventMapper()[m_pWindow] = [this](int x, int y) { platformResizeEvent(x, y); };
 	glfwSetWindowSizeCallback(window, global_scope_windowResizeCallback);
 
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);
 
-	onResize(width, height);
+	platformResizeEvent(width, height);
 	return window;
 }
 

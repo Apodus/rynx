@@ -179,7 +179,6 @@ const std::string& rynx::graphics::framebuffer::operator [](const std::string& n
 }
 
 void rynx::graphics::framebuffer::destroy() {
-	glDeleteFramebuffers(1, &location);
 	for(size_t i = 0; i < targets.size(); ++i)
 	{
 		m_textures->deleteTexture(targets[i]);
@@ -190,6 +189,8 @@ void rynx::graphics::framebuffer::destroy() {
 	{
 		m_textures->deleteTexture(depthtexture);
 	}
+
+	glDeleteFramebuffers(1, &location);
 }
 
 void rynx::graphics::framebuffer::bind_as_output() const
