@@ -18,6 +18,8 @@ namespace rynx {
         struct buffer {
             std::vector<float> left;
             std::vector<float> right;
+
+            void resample(float multiplier);
         };
 
         struct effect_config {

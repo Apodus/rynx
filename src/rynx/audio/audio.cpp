@@ -92,7 +92,35 @@ namespace {
     }
 }
 
-rynx::sound::buffer loadOggVorbis(std::string path) {
+void rynx::sound::buffer::resample(float multiplier) {
+    buffer other;
+    other.left.resize(static_cast<size_t>(left.size() * multiplier), 0.0f);
+    other.right.resize(static_cast<size_t>(right.size() * multiplier), 0.0f);
+
+    float inv_mul = 1.0f / multiplier;
+    for (size_t i = 0; i < other.left.size(); ++i) {
+        float src_index = i * inv_mul;
+        size_t src_min = size_t(src_index);
+        size_t src_max = size_t(src_index) + 1;
+
+        float p_min = 1.0f - (src_index - src_min);
+        float p_max = 1.0f - p_min;
+
+        if (src_min < left.size()) {
+            other.left[i] += left[src_min] * p_min;
+            other.right[i] += right[src_min] * p_min;
+        }
+
+        if (src_max < left.size()) {
+            other.left[i] += left[src_max] * p_max;
+            other.right[i] += right[src_max] * p_max;
+        }
+    }
+
+    *this = std::move(other);
+}
+
+rynx::sound::buffer loadOggVorbis(std::string path, int target_sample_rate = 44100) {
     std::ifstream in(path, std::ios::binary);
     in.seekg(0, std::ios::ios_base::end);
     auto size = in.tellg();
@@ -122,16 +150,13 @@ rynx::sound::buffer loadOggVorbis(std::string path) {
     int sample_rate = vi->rate;
     int64_t total_samples = ov_pcm_total(&ov, -1);
     
-    rynx_assert(num_channels == 2, "only support stereo sound for now");
-    // TODO: Support mono audio
-    // TODO: Support sample rate rescaling
-
     rynx::sound::buffer buffer;
-    buffer.left.resize(total_samples);
-    buffer.right.resize(total_samples);
+    buffer.left.resize(total_samples, 0.0f);
+    buffer.right.resize(total_samples, 0.0f);
 
     long samples_read = 0;
     int current_section = 0;
+
     while (true) {
         float** pcm;
         long ret = ov_read_float(&ov, &pcm, static_cast<int>(total_samples), &current_section);
@@ -144,15 +169,27 @@ rynx::sound::buffer loadOggVorbis(std::string path) {
         }
         else {
             // successfully got some data. copy it to our buffer.
-            for (long i = 0; i < ret; ++i) {
-                buffer.left[samples_read + i] = pcm[0][i];
-                buffer.right[samples_read + i] = pcm[1][i];
+            if (num_channels >= 2) {
+                for (long i = 0; i < ret; ++i) {
+                    buffer.left[samples_read + i] = pcm[0][i];
+                    buffer.right[samples_read + i] = pcm[1][i];
+                }
+            }
+            else if (num_channels == 1) {
+                for (long i = 0; i < ret; ++i) {
+                    buffer.left[samples_read + i] = pcm[0][i];
+                    buffer.right[samples_read + i] = pcm[0][i];
+                }
             }
             samples_read += ret;
         }
     }
 
     ov_clear(&ov);
+
+    float resample_index_mul = float(target_sample_rate) / float(sample_rate);
+    buffer.resample(resample_index_mul);
+
     return buffer;
 }
 
