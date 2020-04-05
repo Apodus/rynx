@@ -29,7 +29,7 @@ public:
 	bool active() const;
 	void hide() const;
 
-	void on_resize(std::function<void(int, int)> onResize);
+	void on_resize(std::function<void(size_t, size_t)> onResize);
 
 	inline float getAspectRatio() const {
 		return m_aspectRatio;

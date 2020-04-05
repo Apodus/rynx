@@ -55,7 +55,7 @@ void Window::platformResizeEvent(int width, int height) {
 	set_gl_viewport_to_window_dimensions();
 }
 
-void Window::on_resize(std::function<void(int, int)> onResize) {
+void Window::on_resize(std::function<void(size_t, size_t)> onResize) {
 	m_onResize = std::move(onResize);
 }
 
