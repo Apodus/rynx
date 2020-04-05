@@ -5,6 +5,7 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/object_storage.hpp>
 #include <rynx/tech/ecs.hpp>
+#include <rynx/tech/math/math.hpp>
 
 #include <mutex>
 #include <atomic>
@@ -74,7 +75,9 @@ namespace rynx {
 				return resource_getter<T>()(this);
 			}
 
+			math::rand64 m_random;
 			std::vector<task> m_tasks;
+			std::vector<task> m_tasks_parallel_for;
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
 			// rynx::unordered_map<uint64_t, resource_state> m_resource_counters;
@@ -83,6 +86,13 @@ namespace rynx {
 			rynx::object_storage m_resources;
 			std::mutex m_taskMutex;
 			task_scheduler* m_scheduler = nullptr;
+
+			enum class ParallelForTaskAssignmentStrategy {
+				RandomTaskForEachWorkers,
+				SameTaskForEachWorkers
+			};
+
+			ParallelForTaskAssignmentStrategy m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers;
 
 			// TODO: hide these as private.
 		public:
@@ -109,6 +119,9 @@ namespace rynx {
 			[[nodiscard]] task findWork();
 
 		public:
+
+			void set_parallel_for_task_assignment_strategy_as_random();
+			void set_parallel_for_task_assignment_strategy_as_first_available();
 
 			[[nodiscard]] bool resourcesAvailableFor(const task& t) const;
 

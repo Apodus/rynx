@@ -23,66 +23,6 @@ namespace math {
 		enum { value = 1 };
 	};
 
-	// xorshift32 - feed the result as the next parameter to get next random number.
-	//              must start with nonzero value.
-	inline uint32_t rand(uint32_t x) {
-		x ^= x << 13;
-		x ^= x >> 17;
-		x ^= x << 5;
-		return x;
-	}
-
-	inline uint32_t rand(int32_t x) {
-		return math::rand(static_cast<uint32_t>(x));
-	}
-
-	// xorshift64 - feed the result as the next parameter to get next random number.
-	//              must start with nonzero value.
-	inline uint64_t rand(uint64_t& state) {
-		uint64_t x = state;
-		x ^= x >> 12; // a
-		x ^= x << 25; // b
-		x ^= x >> 27; // c
-		state = x;
-		return x * 0x2545F4914F6CDD1D;
-	}
-
-	struct rand64 {
-		rand64(uint64_t seed = 0x75892735A374E381) : m_state(seed) {}
-		uint64_t m_state;
-
-		float operator()() {
-			return operator()(0.0f, 1.0f);
-		}
-
-		float operator()(float from, float to) {
-			m_state = math::rand(m_state);
-			float range = to - from;
-			return from + range * float(m_state & (uint32_t(~0u) >> 4)) / float(uint32_t(~0u) >> 4);
-		}
-
-		float operator()(float to) {
-			return operator()(0.0f, to);
-		}
-
-		uint64_t operator()(int64_t from, int64_t to) {
-			m_state = math::rand(m_state);
-			int64_t range = to - from;
-			return from + (m_state % range);
-		}
-
-		uint64_t operator()(int64_t to) {
-			return operator()(0, to);
-		}
-	};
-
-	template<int iterations, typename T>
-	inline T rand(T x) {
-		for (int i = 0; i < iterations; ++i)
-			x = math::rand(x);
-		return x;
-	}
-
 	template<class T>
 	inline T& rotateXY(T& v, decltype(T().x) radians) {
 		decltype(T().x) cosVal = math::cos_approx(radians);

@@ -9,51 +9,48 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	
-	// keep track of available for each tasks, but prefer an independent task if they are available.
-	size_t for_each_task_index = ~size_t(0);
 	for (size_t i = 0; i < m_tasks.size(); ++i) {
 		auto& task = m_tasks[i];
 		if (task.barriers().can_start() && resourcesAvailableFor(task)) {
-			if (!task.is_for_each()) {
-				rynx::scheduler::task t(std::move(task));
-				m_tasks[i] = std::move(m_tasks.back());
-				m_tasks.pop_back();
-				t.reserve_resources();
-				return t;
-			}
-			else {
-				// is for each task
-				if (task.for_each_no_work_available()) {
-					if (task.for_each_all_work_completed())
-					{
-						task.barriers().on_complete();
-						m_tasks[i] = std::move(m_tasks.back());
-						m_tasks.pop_back();
-						
-						// need to check earlier tasks again,
-						// in case for each task unblocked some of them.
-						i = 0;
-						for_each_task_index = ~size_t(0);
-					}
-				}
-				else {
-					// always work on the first available parallel for op. this way we maximize the speed at which tasks get unblocked.
-					if (for_each_task_index == ~size_t(0)) {
-						for_each_task_index = i;
-					}
-				}
-			}
+			rynx::scheduler::task t(std::move(task));
+			m_tasks[i] = std::move(m_tasks.back());
+			m_tasks.pop_back();
+			t.reserve_resources();
+			return t;
 		}
 	}
 	
-	if (for_each_task_index != ~size_t(0)) {
-		task& task = m_tasks[for_each_task_index];
+	while (!m_tasks_parallel_for.empty()) {
+		// if random task mode is enabled, set task index = random.
+		// otherwise, set task_index = 0
+		uint64_t task_index = m_random(m_tasks_parallel_for.size()) * (m_currentParallelForTaskStrategy == ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers);
+		
+		task& task = m_tasks_parallel_for[task_index];
+
+		if (task.for_each_no_work_available()) {
+			if (task.for_each_all_work_completed())
+			{
+				task.barriers().on_complete();
+				m_tasks_parallel_for[task_index] = std::move(m_tasks_parallel_for.back());
+				m_tasks_parallel_for.pop_back();
+				continue;
+			}
+		}
+
 		rynx::scheduler::task copy = task;
 		task.completion_blocked_by(copy);
 		return copy;
 	}
 	
 	return task();
+}
+
+void rynx::scheduler::context::set_parallel_for_task_assignment_strategy_as_random() {
+	m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers;
+}
+
+void rynx::scheduler::context::set_parallel_for_task_assignment_strategy_as_first_available() {
+	m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::SameTaskForEachWorkers;
 }
 
 rynx::scheduler::task_token rynx::scheduler::context::add_task(task task) {
@@ -94,7 +91,10 @@ void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 
 void rynx::scheduler::context::schedule_task(task task) {
 	std::lock_guard<std::mutex> lock(m_taskMutex);
-	m_tasks.emplace_back(std::move(task));
+	if (task.is_for_each())
+		m_tasks_parallel_for.emplace_back(std::move(task));
+	else
+		m_tasks.emplace_back(std::move(task));
 }
 
 void rynx::scheduler::context::dump() {
