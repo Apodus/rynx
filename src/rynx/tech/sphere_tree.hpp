@@ -634,39 +634,54 @@ namespace rynx {
 		}
 
 		static void collisions_internal_gather_leaf_node_pairs(
-			const node* rynx_restrict a,
-			const node* rynx_restrict b,
+			const node* branch1,
+			const node* branch2,
 			rynx::unordered_map<const node*, std::vector<const node*>>& leaf_pairs)
 		{
-			if ((b->pos - a->pos).length_squared() > sqr(a->radius + b->radius)) {
+			std::vector<std::pair<const node*, const node*>> fringe{ {branch1, branch2} };
+			fringe.reserve(1024);
+
+			if ((branch1->pos - branch2->pos).length_squared() > sqr(branch1->radius + branch2->radius)) {
 				return;
 			}
 
-			if (a->m_children.empty()) {
-				if (b->m_children.empty()) {
-					if (a != b)
+			while (!fringe.empty()) {
+				const node* a = fringe.back().first;
+				const node* b = fringe.back().second;
+				fringe.pop_back();
+
+				if ((b->pos - a->pos).length_squared() > sqr(a->radius + b->radius)) {
+					return;
+				}
+
+				if (a->m_children.empty()) {
+					if (b->m_children.empty()) {
+						if (a == b)
+							continue;
 						leaf_pairs.emplace(a, std::vector<const node*>()).first->second.emplace_back(b);
-				}
-				else {
-					for (const auto& child : b->m_children) {
-						collisions_internal_gather_leaf_node_pairs(a, child.get(), leaf_pairs);
 					}
-				}
-			}
-			else {
-				if (b->m_children.empty()) {
-					for (const auto& child : a->m_children) {
-						collisions_internal_gather_leaf_node_pairs(child.get(), b, leaf_pairs);
-					}
-				}
-				else if (a->radius > b->radius) {
-					for (const auto& child : a->m_children) {
-						collisions_internal_gather_leaf_node_pairs(child.get(), b, leaf_pairs);
+					else {
+						for (const auto& child : b->m_children) {
+							if ((child->pos - a->pos).length_squared() < sqr(a->radius + child->radius)) {
+								fringe.emplace_back(child.get(), a);
+							}
+						}
 					}
 				}
 				else {
-					for (const auto& child : b->m_children) {
-						collisions_internal_gather_leaf_node_pairs(a, child.get(), leaf_pairs);
+					if (b->m_children.empty() | (a->radius > b->radius)) {
+						for (const auto& child : a->m_children) {
+							if ((child->pos - b->pos).length_squared() < sqr(b->radius + child->radius)) {
+								fringe.emplace_back(child.get(), b);
+							}
+						}
+					}
+					else {
+						for (const auto& child : b->m_children) {
+							if ((child->pos - a->pos).length_squared() < sqr(a->radius + child->radius)) {
+								fringe.emplace_back(child.get(), a);
+							}
+						}
 					}
 				}
 			}
