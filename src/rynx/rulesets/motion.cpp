@@ -38,7 +38,7 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 			m.angularVelocity *= ::powf(d.angularDampening, dt);
 			});
 		}
-	).depends_on(position_updates);
+	).required_for(position_updates);
 
 	context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::ignore_gravity> ecs, rynx::scheduler::task& task) {
 		if (m_gravity.length_squared() > 0) {

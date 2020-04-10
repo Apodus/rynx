@@ -39,6 +39,9 @@ namespace rynx {
 			index_t step = 0;
 		};
 
+		class entity_category;
+
+
 	private:
 		enum class DataAccess {
 			Mutable,
@@ -61,8 +64,29 @@ namespace rynx {
 			entity_id_t m_nextId = 0;
 		};
 
+		// TODO: Use some actual hash that works better.
+		struct bitset_hash {
+			size_t operator()(const dynamic_bitset& v) const {
+				const auto& buffer = v.data();
+				size_t hash_value = 0x783abb8ddead7175;
+				for (size_t i = 0; i < buffer.size(); ++i) {
+					hash_value ^= buffer[i] >> 13;
+					hash_value ^= buffer[i] << 15;
+				}
+				return hash_value;
+			}
+		};
+
 		type_index m_types;
 		entity_index m_entities;
+
+		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
+		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
+
+		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
+
+		auto& categories() { return m_categories; }
+		const auto& categories() const { return m_categories; }
 
 	public:
 		struct id {
@@ -551,7 +575,7 @@ namespace rynx {
 					if (entity_category.second->includesAll(this->includeTypes) &
 						entity_category.second->includesNone(this->excludeTypes))
 					{
-						entity_category.second->template sort<T>(this->m_ecs.m_idCategoryMap);
+						entity_category.second->template sort<T>(this->m_ecs.entity_category_map());
 					}
 				}
 			}
@@ -564,7 +588,7 @@ namespace rynx {
 						entity_category.second->includesNone(this->excludeTypes))
 					{
 						auto& ids = entity_category.second->ids();
-						entity_category.second->template sort_one_step<T>(this->m_ecs.m_idCategoryMap);
+						entity_category.second->template sort_one_step<T>(this->m_ecs.entity_category_map());
 					}
 				}
 			}
@@ -762,14 +786,12 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename TaskContext> auto for_each_parallel(TaskContext&& task_context, F&& op) {
+			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
 				}
 				this->template unpack_types<Args...>();
-
-				auto blocker_task = task_context.extend_task_independent([]() {});
 
 				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
@@ -777,16 +799,12 @@ namespace rynx {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
-							blocker_task.depends_on(barrier);
 						}
 						else {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
-							blocker_task.depends_on(barrier);
 						}
 					}
 				}
-
-				return blocker_task;
 			}
 
 		private:
@@ -1007,7 +1025,7 @@ namespace rynx {
 		class query_t {
 			dynamic_bitset inTypes;
 			dynamic_bitset notInTypes;
-			category_source& m_ecs;
+			category_source m_ecs;
 			rynx::unordered_map<type_id_t, type_id_t> m_typeAliases;
 			bool m_consumed = false;
 
@@ -1062,11 +1080,14 @@ namespace rynx {
 			auto for_each_parallel(TaskContext&& task_context, F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
-				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
-				it.include(std::move(inTypes));
-				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
-				return it.for_each_parallel(std::forward<TaskContext>(task_context), std::forward<F>(op));
+				
+				return task_context.extend_task_execute_parallel([op, query_config = *this](TaskContext& task_context) mutable {
+					entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
+					it.include(std::move(query_config.inTypes));
+					it.exclude(std::move(query_config.notInTypes));
+					it.type_aliases(query_config.m_typeAliases);
+					it.for_each_parallel(task_context, op);
+				});
 			}
 
 			template<typename F>
@@ -1176,8 +1197,23 @@ namespace rynx {
 		const_entity<ecs> operator[](entity_id_t id) const { return const_entity<ecs>(*this, id); }
 		const_entity<ecs> operator[](id id) const { return const_entity<ecs>(*this, id.value); }
 
-		query_t<DataAccess::Mutable, ecs> query() { return query_t<DataAccess::Mutable, ecs>(*this); }
-		query_t<DataAccess::Const, ecs> query() const { return query_t<DataAccess::Const, ecs>(*this); }
+		class ecs_reference {
+		public:
+			ecs_reference(const ecs* instance) : m_ecs(const_cast<ecs*>(instance)) {}
+			auto& categories() { return m_ecs->categories(); }
+			const auto& categories() const { return m_ecs->categories(); }
+
+			template<typename T> type_id_t typeId() { return m_ecs->typeId<T>(); }
+			template<typename...Ts> bool componentTypesAllowed() const { return true; };
+
+			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
+
+		private:
+			ecs* m_ecs;
+		};
+
+		query_t<DataAccess::Mutable, ecs_reference> query() { return query_t<DataAccess::Mutable, ecs_reference>(ecs_reference(this)); }
+		query_t<DataAccess::Const, ecs_reference> query() const { return query_t<DataAccess::Const, ecs_reference>(ecs_reference(this)); }
 
 		/*
 		// todo: offering these short-hands is probably detrimental to clarity.
@@ -1385,10 +1421,6 @@ namespace rynx {
 
 		rynx::type_index::virtual_type create_virtual_type() { return m_types.create_virtual_type(); }
 
-	private:
-		auto& categories() { return m_categories; }
-		const auto& categories() const { return m_categories; }
-
 	public:
 		// ecs view that operates on Args types only. generates compile errors if trying to access any other data.
 		// also does not allow creating new components, removing existing components or creating new entities.
@@ -1419,6 +1451,7 @@ namespace rynx {
 
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }
 			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<std::remove_reference_t<Args>>() && ...); }
+			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
 
 		protected:
 			template<typename...Args> void componentTypesAllowed() const {
@@ -1530,25 +1563,6 @@ namespace rynx {
 
 		template<typename...Args> operator view<Args...>() const { return view<Args...>(this); }
 		template<typename...Args> operator edit_view<Args...>() const { return edit_view<Args...>(this); }
-
-	private:
-		// TODO: Use some actual hash that works better.
-		struct bitset_hash {
-			size_t operator()(const dynamic_bitset& v) const {
-				const auto& buffer = v.data();
-				size_t hash_value = 0x783abb8ddead7175;
-				for (size_t i = 0; i < buffer.size(); ++i) {
-					hash_value ^= buffer[i] >> 13;
-					hash_value ^= buffer[i] << 15;
-				}
-				return hash_value;
-			}
-		};
-
-		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
-
-		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
-		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
 	};
 
 }

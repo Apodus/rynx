@@ -34,7 +34,8 @@ namespace {
 		const rynx::components::motion,
 		const rynx::components::physical_body>;
 
-	[[nodiscard]] collision_event store_collision(
+	void create_collision_event(
+		std::vector<collision_event>& storage,
 		rynx::ecs::entity<ecs_view>& a,
 		rynx::ecs::entity<ecs_view>& b,
 		vec3<float> normal,
@@ -47,6 +48,17 @@ namespace {
 		// rynx_assert(normal.length_squared() < 1.1f, "normal must be unit length");
 
 		collision_event event;
+
+		event.a_body = a.get<const rynx::components::physical_body>();
+		event.b_body = b.get<const rynx::components::physical_body>();
+
+		if (
+			(event.a_body.collision_id == event.b_body.collision_id) &
+			((event.a_body.collision_id | event.b_body.collision_id) != 0)
+		) {
+			return;
+		}
+
 		event.a_id = a.id();
 		event.b_id = b.id();
 		event.normal = normal;
@@ -54,14 +66,8 @@ namespace {
 		event.b_pos = pos_b;
 		event.c_pos = collisionPoint;
 		event.penetration = penetration;
-		
-		auto* a_body = a.try_get<const rynx::components::physical_body>();
-		auto* b_body = b.try_get<const rynx::components::physical_body>();
-		if(a_body)
-			event.a_body = *a_body;
-		if (b_body)
-			event.b_body = *b_body;
-		return event;
+
+		storage.emplace_back(event);
 	}
 
 	void check_polygon_ball(
@@ -80,7 +86,8 @@ namespace {
 				auto normal = (pointToLineSegment.second - ball_position).normalize();
 				normal *= 2.0f * (normal.dot(polygon_position - pointToLineSegment.second) > 0) - 1.0f;
 
-				collisions_accumulator.emplace_back(store_collision(
+				create_collision_event(
+					collisions_accumulator,
 					polygon,
 					ball,
 					normal,
@@ -88,7 +95,7 @@ namespace {
 					polygon_position,
 					ball_position,
 					ball_radius - math::sqrt_approx(distSqr)
-				));
+				);
 			}
 		}
 	}
@@ -137,7 +144,9 @@ namespace {
 						float penetration2 = b1 < b2 ? b1 : b2;
 						float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
 
-						collisions_accumulator.emplace_back(store_collision(
+						
+						create_collision_event(
+							collisions_accumulator,
 							poly1,
 							poly2,
 							normal,
@@ -145,7 +154,7 @@ namespace {
 							posA.value,
 							posB.value,
 							penetration
-						));
+						);
 					}
 				}
 			}
@@ -164,7 +173,8 @@ namespace {
 		auto pointDistanceResult = math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, ballPos);
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
-			collisions_accumulator.emplace_back(store_collision(
+			create_collision_event(
+				collisions_accumulator,
 				bulletEntity,
 				dynamicEntity,
 				((bulletPos.value - bulletMotion.velocity) - ballPos).normalize(),
@@ -172,7 +182,7 @@ namespace {
 				bulletPos.value,
 				ballPos,
 				0 // NOTE: penetration values don't really mean anything in projectile case.
-			));
+			);
 		}
 	}
 
@@ -200,7 +210,8 @@ namespace {
 				);
 
 				if (intersectionTest) {
-					collisions_accumulator.emplace_back(store_collision(
+					create_collision_event(
+						collisions_accumulator,
 						bulletEntity,
 						dynamicEntity,
 						math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
@@ -208,7 +219,7 @@ namespace {
 						bulletPos.value,
 						polyPos,
 						0 // NOTE: penetration values don't really mean anything in projectile case.
-					));
+					);
 				}
 			}
 		}
@@ -277,7 +288,8 @@ namespace {
 		}
 		else {
 			// is ball vs ball collision. no further check needed, sphere tree said the balls collided.
-			collisions_accumulator.emplace_back(store_collision(
+			create_collision_event(
+				collisions_accumulator,
 				entA,
 				entB,
 				normal,
@@ -285,7 +297,7 @@ namespace {
 				a_pos,
 				b_pos,
 				penetration
-			));
+			);
 		}
 	}
 
@@ -307,8 +319,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		detection.track_entities(task_context);
 	});
 
-	auto update_entities_sphere_tree = context.add_task("update positions for spheretrees", [](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
-		detection.update_entities(task_context);
+	auto update_entities_sphere_tree = context.add_task("update positions for spheretrees", [dt](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
+		detection.update_entities(task_context, dt);
 	});
 	
 	add_entities_sphere_tree.required_for(update_entities_sphere_tree);
@@ -490,19 +502,19 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 					tangent *= friction_power;
 
-					float inv_dt = 1.0f / dt;
+					const float inv_dt = 1.0f / dt;
 					motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
 					motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;
 
 					{
-						float rotation_force_friction = tangent.cross2d(rel_pos_a);
-						float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
+						const float rotation_force_friction = tangent.cross2d(rel_pos_a);
+						const float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
 						motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia * inv_dt;
 					}
 
 					{
-						float rotation_force_friction = tangent.cross2d(rel_pos_b);
-						float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
+						const float rotation_force_friction = tangent.cross2d(rel_pos_b);
+						const float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
 						motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia * inv_dt;
 					}
 				});

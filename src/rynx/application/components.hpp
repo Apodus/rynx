@@ -27,22 +27,6 @@ namespace rynx {
 			value_segment<vec4<float>> color;
 			value_segment<float> radius;
 		};
-
-		struct physical_body {
-			physical_body() = default;
-			physical_body(float mass, float moment_of_inertia, float elasticity, float friction)
-				: inv_mass(1.0f / mass)
-				, inv_moment_of_inertia(1.0f / moment_of_inertia)
-				, collision_elasticity(elasticity)
-				, friction_multiplier(friction)
-			{}
-			
-			float inv_mass = 1.0f;
-			float inv_moment_of_inertia = 1.0f;
-			float collision_elasticity = 0.5f; // [0, 1[
-			float friction_multiplier = 1.0f; // [0, 1]
-		};
-
 		
 		struct boundary {
 			using boundary_t = decltype(Polygon<vec3<float>>().generateBoundary_Outside());
@@ -52,9 +36,6 @@ namespace rynx {
 			boundary_t segments_local;
 			boundary_t segments_world;
 		};
-
-		struct projectile {}; // tag for fast moving items in collision detection.
-		struct ignore_gravity {};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
 		struct frustum_culled {}; // object is not visible due to frustum culling.
@@ -79,21 +60,8 @@ namespace rynx {
 
 		struct dead {}; // mark entity for cleanup.
 
-		/*
-		struct collision_category {
-			collision_category() : value(-1) {}
-			collision_category(rynx::collision_detection::category_id category) : value(category) {}
-			rynx::collision_detection::category_id value;
-		};
-		*/
-
 		struct mesh {
 			Mesh* m;
-		};
-
-		// TODO: Remove.
-		struct texture {
-			std::string tex;
 		};
 	}
 }

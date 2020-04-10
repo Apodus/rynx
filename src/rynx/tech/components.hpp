@@ -55,6 +55,26 @@ namespace rynx {
 			}
 		};
 
+		struct physical_body {
+			physical_body() = default;
+			physical_body(float mass, float moment_of_inertia, float elasticity, float friction)
+				: inv_mass(1.0f / mass)
+				, inv_moment_of_inertia(1.0f / moment_of_inertia)
+				, collision_elasticity(elasticity)
+				, friction_multiplier(friction)
+			{}
+
+			float inv_mass = 1.0f;
+			float inv_moment_of_inertia = 1.0f;
+			float collision_elasticity = 0.5f; // [0, 1[
+			float friction_multiplier = 1.0f; // [0, 1]
+			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
+		};
+
+		struct projectile {}; // tag for fast moving items in collision detection.
+		struct ignore_gravity {};
+
+
 		struct light_omni {
 			// fourth value in color encodes light intensity.
 			floats4 color;

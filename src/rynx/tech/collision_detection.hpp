@@ -63,7 +63,7 @@ namespace rynx {
 		void update_parallel(rynx::scheduler::task& task_context);
 		
 		void track_entities(rynx::scheduler::task& task_context);
-		void update_entities(rynx::scheduler::task& task_context);
+		void update_entities(rynx::scheduler::task& task_context, float dt);
 
 		void erase(uint64_t entityId, category_id from);
 		sphere_tree* get(category_id category);

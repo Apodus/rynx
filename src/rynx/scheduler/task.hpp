@@ -307,7 +307,7 @@ namespace rynx {
 						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
 
 						{
-							task_token work = m_parent.make_extension_task_execute_parallel("parfor", [task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
+							task_token work = m_parent.make_extension_task_execute_parallel(this->m_parent.name() + " (parallel for)", [task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
 								for (;;) {
 									int64_t my_index = for_each_data->index.fetch_add(work_size);
 									if (my_index >= end) {

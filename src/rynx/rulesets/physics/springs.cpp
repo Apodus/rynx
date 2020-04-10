@@ -9,7 +9,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 	context.add_task("physical springs", [dt](rynx::ecs::view<components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
 		auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
 		
-		auto bar = ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
+		auto generate_springs_work = ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
 			auto entity_a = ecs[rope.id_a];
 			auto entity_b = ecs[rope.id_b];
 
@@ -62,7 +62,6 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			broken_ropes->for_each([&ecs](std::vector<rynx::ecs::id>& id_vector) mutable {
 				for (auto&& id : id_vector) {
 					ecs.attachToEntity(id, components::dead());
-
 
 					components::rope& rope = ecs[id].get<components::rope>();
 					auto pos1 = ecs[rope.id_a].get<components::position>().value;
@@ -123,6 +122,6 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			});
 		});
 
-		check_broken_ropes_task.depends_on(bar);
+		check_broken_ropes_task.depends_on(generate_springs_work);
 	});
 }

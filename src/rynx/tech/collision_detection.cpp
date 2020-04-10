@@ -41,7 +41,11 @@ void rynx::collision_detection::update_parallel(rynx::scheduler::task& task_cont
 void rynx::collision_detection::track_entities(rynx::scheduler::task& task_context) {
 	struct tracked_by_collisions {};
 	task_context.extend_task_independent([](rynx::scheduler::task& task_context, rynx::ecs::edit_view<rynx::components::collisions, tracked_by_collisions, rynx::components::position, rynx::components::radius> ecs) {
-		auto collisions = ecs.query().notIn<tracked_by_collisions>().gather<rynx::ecs::id, rynx::components::collisions, rynx::components::position, rynx::components::radius>();
+		auto collisions = ecs.query()
+			.in<rynx::components::physical_body>()
+			.notIn<tracked_by_collisions>()
+			.gather<rynx::ecs::id, rynx::components::collisions, rynx::components::position, rynx::components::radius>();
+		
 		for (auto&& col : collisions) {
 			ecs.attachToEntity(std::get<0>(col), tracked_by_collisions{});
 		}
@@ -54,18 +58,43 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 	});
 }
 
-void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context) {
-	task_context.extend_task_independent([](
+void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context, float dt) {
+	task_context.extend_task_independent([dt](
 		rynx::scheduler::task& task_context,
 		rynx::collision_detection& detection,
 		rynx::ecs::view<
 			const rynx::components::collisions,
 			const rynx::components::position,
-			const rynx::components::radius> ecs)
+			const rynx::components::motion,
+			const rynx::components::radius,
+			const rynx::components::physical_body,
+			const rynx::components::projectile> ecs)
 	{
-		ecs.query().for_each_parallel(task_context, [&detection](rynx::ecs::id id, rynx::components::collisions col, rynx::components::position pos, rynx::components::radius r) {
+		auto non_projectiles = ecs.query()
+			.notIn<rynx::components::projectile>()
+			.in<rynx::components::physical_body>()
+			.for_each_parallel(task_context, [&detection](
+				rynx::ecs::id id,
+				rynx::components::collisions col,
+				rynx::components::position pos,
+				rynx::components::radius r)
+		{
 			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value, r.r);
 		});
+
+		auto projectiles = ecs.query()
+			.in<rynx::components::physical_body, rynx::components::projectile>()
+			.for_each_parallel(task_context, [&detection, dt](
+				rynx::ecs::id id,
+				rynx::components::collisions col,
+				rynx::components::position pos,
+				rynx::components::motion motion,
+				rynx::components::radius r)
+		{
+			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value - motion.velocity * dt, r.r);
+		});
+
+		non_projectiles.depends_on(projectiles);
 	});
 }
 
