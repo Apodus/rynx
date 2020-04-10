@@ -129,3 +129,40 @@ TEST_CASE("task extensions respected", "scheduler")
 
 	REQUIRE(extension_task_completed->load() == 2);
 }
+
+TEST_CASE("ecs parallel for dependencies", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+	
+	struct component {
+		int a;
+	};
+
+	rynx::ecs ecs;
+	ecs.create(component{ 1 });
+	ecs.create(component{ 2 });
+	ecs.create(component{ 3 });
+
+	auto test_state = std::make_shared<std::atomic<int>>(0);
+
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+	context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
+		auto task1 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
+			REQUIRE(test_state->load() >= 3);
+			*test_state += 1;
+		});
+
+		auto task2 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
+			REQUIRE(test_state->load() < 3);
+			*test_state += 1;
+		});
+
+		task1.depends_on(task2);
+	});
+
+	scheduler.start_frame();
+	scheduler.wait_until_complete();
+
+	REQUIRE(test_state->load() == 6);
+}
