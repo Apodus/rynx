@@ -18,7 +18,8 @@ namespace rynx {
         struct buffer {
             std::vector<float> left;
             std::vector<float> right;
-
+            
+            float sampleRate = 0;
             void resample(float multiplier);
         };
 
@@ -79,9 +80,9 @@ namespace rynx {
 
             float m_globalVolume = 1.0f;
             float m_volumeScaleCurrent = 1.0f;
+            float m_currentSampleRate = 48000.0f;
 
         public:
-            // Not allowed to move or copy or jack shit. This has to stay in place in memory, because of the audiorender thread.
             audio_system(audio_system&&) = delete;
             audio_system(const audio_system&) = delete;
             audio_system& operator=(audio_system&&) = delete;
@@ -94,7 +95,8 @@ namespace rynx {
             audio_system();
             ~audio_system();
             
-            uint32_t load(std::string path); // all loads should be complete before opening output device.
+            uint32_t load(std::string path);
+
             configuration play_sound(int soundIndex, vec3f position, vec3f direction, float loudness = 1.0f);
             void open_output_device(int numChannels = 64, int samplesPerRender = 256);
             

@@ -96,6 +96,7 @@ void rynx::sound::buffer::resample(float multiplier) {
     buffer other;
     other.left.resize(static_cast<size_t>(left.size() * multiplier), 0.0f);
     other.right.resize(static_cast<size_t>(right.size() * multiplier), 0.0f);
+    other.sampleRate = sampleRate * multiplier;
 
     float inv_mul = 1.0f / multiplier;
     for (size_t i = 0; i < other.left.size(); ++i) {
@@ -153,6 +154,7 @@ rynx::sound::buffer loadOggVorbis(std::string path, int target_sample_rate = 441
     rynx::sound::buffer buffer;
     buffer.left.resize(total_samples, 0.0f);
     buffer.right.resize(total_samples, 0.0f);
+    buffer.sampleRate = float(sample_rate);
 
     long samples_read = 0;
     int current_section = 0;
@@ -253,7 +255,7 @@ bool rynx::sound::configuration::is_active() const {
 rynx::sound::audio_system::audio_system() {
     PaError err = Pa_Initialize();
     if (err != paNoError) {
-        // oh no.
+        std::cerr << "failed to initialize audio system: " << std::string(Pa_GetErrorText(err)) << std::endl;
     }
     m_soundBank.emplace_back(); // guarantee that sound index zero points to a silent (and empty) sample.
 }
@@ -261,12 +263,12 @@ rynx::sound::audio_system::audio_system() {
 rynx::sound::audio_system::~audio_system() {
     PaError err = Pa_CloseStream(stream);
     if (err != paNoError) {
-        // oh no!
+        std::cerr << "failed to close audio stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
     }
 
     err = Pa_Terminate();
     if (err != paNoError) {
-        // oh no.
+        std::cerr << "failed to shutdown audio system: " << std::string(Pa_GetErrorText(err)) << std::endl;
     }
 }
 
@@ -280,7 +282,7 @@ void rynx::sound::audio_system::setNumChannels(int channels) {
 
 uint32_t rynx::sound::audio_system::load(std::string path) {
     uint32_t soundIndex = static_cast<uint32_t>(m_soundBank.size());
-    m_soundBank.emplace_back(loadOggVorbis(path));
+    m_soundBank.emplace_back(loadOggVorbis(path, 60000));
     return soundIndex;
 }
 
@@ -310,25 +312,28 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
     setNumChannels(numChannels);
 
     {
+        m_currentSampleRate = static_cast<float>(Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->defaultSampleRate);
+        std::cerr << "sample rate for default device: " << m_currentSampleRate << std::endl;
+
         /* Open an audio I/O stream. */
         PaError err = Pa_OpenDefaultStream(&stream,
             0, // no input channels
             2, // stereo output
             paFloat32,
-            44100,
+            m_currentSampleRate,
             samplesPerRender,
             audio_callback,
             this);
 
         if (err != paNoError) {
-            // oh no!
+            std::cerr << "failed to open default audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
         }
     }
 
     {
         PaError err = Pa_StartStream(stream);
         if (err != paNoError) {
-            // oh no!
+            std::cerr << "failed to start audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
         }
     }
 }
@@ -375,11 +380,12 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
             volume *= data.m_loudness;
 
             auto& sound = m_soundBank[data.m_bufferIndex];
+            float resample_multiplier = sound.sampleRate / m_currentSampleRate;
 
-            if (data.m_effects.pitch_shift != 0.0f || data.m_effects.tempo_shift != 0.0f) {                
+            if (data.m_effects.pitch_shift != 0.0f || data.m_effects.tempo_shift != 0.0f) {
                 size_t fft_window = 2 * numSamples;
                 float multiplier = std::pow(2.0f, data.m_effects.pitch_shift);
-                float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift);
+                float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift) * resample_multiplier;
 
                 multiplier *= tempo_mul;
 
@@ -414,11 +420,19 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
                 data.m_sampleIndex += static_cast<uint32_t>(numSamples * tempo_mul);
             }
             else {
-                for (size_t k = 0; (k + data.m_sampleIndex < sound.left.size()) & (k < numSamples); ++k) {
-                    outBuf[2 * k + 0] += volume * sound.left[k + data.m_sampleIndex];
-                    outBuf[2 * k + 1] += volume * sound.right[k + data.m_sampleIndex];
+                for (size_t k = 0; (static_cast<int>(k * resample_multiplier) + data.m_sampleIndex + 1 < sound.left.size()) & (k < numSamples); ++k) {
+                    float base = k * resample_multiplier;
+                    int base_i = static_cast<int>(base);
+                    size_t index1 = static_cast<int>(k * resample_multiplier);
+                    size_t index2 = index1 + 1;
+
+                    float mul1 = 1.0f - (base - base_i);
+                    float mul2 = 1.0f - mul1;
+
+                    outBuf[2 * k + 0] += volume * (sound.left[index1 + data.m_sampleIndex] * mul1 + sound.left[index2 + data.m_sampleIndex] * mul2);
+                    outBuf[2 * k + 1] += volume * (sound.right[index1 + data.m_sampleIndex] * mul1 + sound.right[index2 + data.m_sampleIndex] * mul2);
                 }
-                data.m_sampleIndex += static_cast<uint32_t>(numSamples);
+                data.m_sampleIndex += static_cast<uint32_t>(numSamples * resample_multiplier);
             }
 
             // sound playback complete.
