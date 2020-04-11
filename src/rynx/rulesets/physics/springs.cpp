@@ -6,21 +6,28 @@
 
 void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& context, float dt) {
 
-	context.add_task("physical springs", [dt](rynx::ecs::view<components::rope, const components::physical_body, const components::position, components::motion> ecs, rynx::scheduler::task& task) {
+	context.add_task("physical springs", [dt](
+		rynx::ecs::view<
+			components::rope,
+			const components::physical_body,
+			const components::position,
+			components::motion> ecs,
+		rynx::scheduler::task& task)
+	{
 		auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
 		
 		auto generate_springs_work = ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
 			auto entity_a = ecs[rope.id_a];
 			auto entity_b = ecs[rope.id_b];
 
-			auto pos_a = entity_a.get<components::position>();
-			auto pos_b = entity_b.get<components::position>();
+			auto pos_a = entity_a.get<const components::position>();
+			auto pos_b = entity_b.get<const components::position>();
 
 			auto& mot_a = entity_a.get<components::motion>();
 			auto& mot_b = entity_b.get<components::motion>();
 
-			const auto& phys_a = entity_a.get<components::physical_body>();
-			const auto& phys_b = entity_b.get<components::physical_body>();
+			const auto& phys_a = entity_a.get<const components::physical_body>();
+			const auto& phys_b = entity_b.get<const components::physical_body>();
 
 			auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
 			auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);

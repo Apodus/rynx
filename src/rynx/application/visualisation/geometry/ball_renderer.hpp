@@ -114,7 +114,9 @@ namespace rynx {
 								model.scale(length, width, 1.0f);
 								
 								m_ropes->emplace_back(model);
-								m_ropes->emplace_back(floats4(rope.cumulative_stress / (700.0f * rope.strength), 0, 0, 1));
+
+								float r = rope.cumulative_stress / (700.0f * rope.strength);
+								m_ropes->emplace_back(floats4(r, 0.2f, 1.0f - r, 1));
 							});
 						}
 

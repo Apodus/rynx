@@ -786,12 +786,14 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
+			template<typename F, typename TaskContext> auto for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
 				}
 				this->template unpack_types<Args...>();
+
+				auto blocker_task = task_context.extend_task_independent([]() {});
 
 				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
@@ -799,32 +801,18 @@ namespace rynx {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							blocker_task.depends_on(barrier);
 						}
 						else {
 							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							blocker_task.depends_on(barrier);
 						}
 					}
 				}
+				return blocker_task;
 			}
 
 		private:
-			/*
-			template<bool isIdQuery, typename F>
-			static void call_user_op(F&& op, std::vector<id>& ids) {
-				auto size = ids.size();
-				if constexpr (isIdQuery) {
-					std::for_each(ids.data(), ids.data() + size, [=](id entityId) mutable {
-						op(entityId);
-					});
-				}
-				else {
-					for (size_t i = 0, size = ids.size(); i < size; ++i)
-						op();
-				}
-				rynx_assert(ids.size() == size, "creating/deleting entities is not allowed during iteration.");
-			}
-			*/
-			
 			template<bool isIdQuery, typename F, typename... Ts>
 			static void call_user_op(F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				[[maybe_unused]] auto ids_size = ids.size();
@@ -863,14 +851,14 @@ namespace rynx {
 			static auto call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
 					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
-						std::apply([&, index](auto*... ptrs) {
+						std::apply([&ids, op, index](auto*... ptrs) mutable {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
-						std::apply([&, index](auto... ptrs) {
+					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+						std::apply([op, index](auto... ptrs) mutable {
 							op(ptrs[index]...);
 						}, args);
 					});
@@ -1081,13 +1069,22 @@ namespace rynx {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				
-				return task_context.extend_task_execute_parallel([op, query_config = *this](TaskContext& task_context) mutable {
-					entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
-					it.include(std::move(query_config.inTypes));
-					it.exclude(std::move(query_config.notInTypes));
-					it.type_aliases(query_config.m_typeAliases);
-					it.for_each_parallel(task_context, op);
-				});
+				if constexpr (false) {
+					return task_context.extend_task_execute_parallel([op, query_config = *this](TaskContext& task_context) mutable {
+						entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
+						it.include(std::move(query_config.inTypes));
+						it.exclude(std::move(query_config.notInTypes));
+						it.type_aliases(query_config.m_typeAliases);
+						it.for_each_parallel(task_context, op);
+					});
+				}
+				else {
+					entity_iterator<accessType, category_source, decltype(&F::operator())> it(this->m_ecs);
+					it.include(std::move(this->inTypes));
+					it.exclude(std::move(this->notInTypes));
+					it.type_aliases(this->m_typeAliases);
+					return it.for_each_parallel(task_context, op);
+				}
 			}
 
 			template<typename F>
@@ -1204,7 +1201,7 @@ namespace rynx {
 			const auto& categories() const { return m_ecs->categories(); }
 
 			template<typename T> type_id_t typeId() { return m_ecs->typeId<T>(); }
-			template<typename...Ts> bool componentTypesAllowed() const { return true; };
+			template<typename...Ts> void componentTypesAllowed() const {};
 
 			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
 
@@ -1438,10 +1435,10 @@ namespace rynx {
 			template<typename T> static constexpr bool typeAllowed() { return isAny<std::remove_const_t<T>, id, rynx::type_index::virtual_type, std::remove_const_t<TypeConstraints>...>(); }
 			template<typename T> static constexpr bool typeConstCorrect() {
 				if constexpr (std::is_reference_v<T>) {
-					if constexpr (std::is_const_v<T>)
-						return isAny<T, id, rynx::type_index::virtual_type, std::add_const_t<TypeConstraints>...>(); // user must have requested any access to type (read/write both acceptable).
+					if constexpr (std::is_const_v<std::remove_reference_t<T>>)
+						return isAny<std::remove_reference_t<T>, id, rynx::type_index::virtual_type, std::add_const_t<TypeConstraints>...>(); // user must have requested any access to type (read/write both acceptable).
 					else
-						return isAny<T, id, rynx::type_index::virtual_type, TypeConstraints...>(); // verify user has requested a write access.
+						return isAny<std::remove_reference_t<T>, id, rynx::type_index::virtual_type, TypeConstraints...>(); // verify user has requested a write access.
 				}
 				else {
 					// user is taking a copy, so it is always const with regards to what we have stored.
@@ -1450,7 +1447,7 @@ namespace rynx {
 			}
 
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }
-			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<std::remove_reference_t<Args>>() && ...); }
+			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<Args>() && ...); }
 			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
 
 		protected:
@@ -1461,14 +1458,6 @@ namespace rynx {
 
 		public:
 			view(const rynx::ecs* ecs) : m_ecs(const_cast<rynx::ecs*>(ecs)) {}
-
-			template<typename...Ts>
-			std::vector<rynx::ecs::id> ids() const {
-				std::vector<rynx::ecs::id> result;
-				gatherer<view> it(*this);
-				it.template ids<Ts...>(result);
-				return result;
-			}
 
 			bool exists(entity_id_t id) const { return m_ecs->exists(id); }
 			bool exists(id id) const { return exists(id.value); }

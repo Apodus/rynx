@@ -27,8 +27,41 @@ namespace rynx {
 			lifetime() : value(0), max_value(0) {}
 			lifetime(float seconds) : value(seconds), max_value(seconds) {}
 
-			float operator()() {
+			operator float() const {
+				return linear();
+			}
+
+			float operator()() const {
+				return linear();
+			}
+
+			float linear() const {
 				return value / max_value;
+			}
+
+			float linear_inv() const {
+				return 1.0f - linear();
+			}
+
+			float quadratic() const {
+				float f = linear();
+				return f * f;
+			}
+
+			float quadratic_inv() const {
+				return 1.0f - quadratic();
+			}
+
+			float inv_quadratic() const {
+				float f = linear_inv();
+				return f * f;
+			}
+
+			// square of the inverted linear, inverted. gives similar round shape as quadratic.
+			// just goes from 0 to 1 with a steep rise and slows down towards the end.
+			float inv_quadratic_inv() const {
+				float f = linear_inv();
+				return 1.0f - f * f;
 			}
 
 			float value;

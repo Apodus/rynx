@@ -31,18 +31,13 @@ namespace rynx {
 								const rynx::components::boundary& m,
 								const rynx::components::color& color)
 								{
-									// todo: frustum cull
-									/*
-									if (!inScreen(pos.value, r.r))
-										return;
-									*/
-
 									for (auto&& edge : m.segments_world) {
 										vec3<float> mid = (edge.p1 + edge.p2) * 0.5f;
 
 										matrix4 model_;
 										model_.discardSetTranslate(mid.x, mid.y, mid.z);
-										model_.rotate_2d(math::atan_approx((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
+										model_.rotate_2d(std::atan((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
+										// model_.rotate_2d(math::atan_approx((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
 										// model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
 										model_.scale((edge.p1 - edge.p2).length(), m_line_width * 0.5f, 1.0f);
 

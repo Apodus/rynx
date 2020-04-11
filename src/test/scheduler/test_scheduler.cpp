@@ -154,6 +154,7 @@ TEST_CASE("ecs parallel for dependencies", "scheduler")
 		});
 
 		auto task2 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			REQUIRE(test_state->load() < 3);
 			*test_state += 1;
 		});
