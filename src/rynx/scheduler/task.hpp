@@ -312,8 +312,10 @@ namespace rynx {
 									int64_t my_index = for_each_data->index.fetch_add(work_size);
 									if (my_index >= end) {
 										if (for_each_data->work_remaining.load() <= 0) {
-											if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-												task_context->erase_completed_parallel_for_tasks();
+											if (for_each_data->all_work_completed()) {
+												if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+													task_context->erase_completed_parallel_for_tasks();
+												}
 											}
 										}
 										return;
@@ -336,8 +338,10 @@ namespace rynx {
 								int64_t my_index = for_each_data->index.fetch_add(work_size);
 								if (my_index >= end) {
 									if (for_each_data->work_remaining <= 0) {
-										if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-											m_parent.m_context->erase_completed_parallel_for_tasks();
+										if (for_each_data->all_work_completed()) {
+											if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
+												m_parent.m_context->erase_completed_parallel_for_tasks();
+											}
 										}
 									}
 									return bar;

@@ -77,7 +77,6 @@ namespace rynx {
 			}
 
 			void on_complete() {
-				logmsg("release barriers");
 				for (auto&& bar : m_blocks) {
 					bar.counter->fetch_sub(1, std::memory_order_release);
 				}

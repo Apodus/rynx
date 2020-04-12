@@ -29,6 +29,7 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 		
 		task& task = m_tasks_parallel_for[task_index];
 
+		/*
 		if (task.for_each_no_work_available()) {
 			if (task.for_each_all_work_completed()) {
 				task.barriers().on_complete();
@@ -37,6 +38,7 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 				continue;
 			}
 		}
+		*/
 
 		rynx::scheduler::task copy = task;
 		task.completion_blocked_by(copy);
