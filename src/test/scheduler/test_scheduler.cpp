@@ -113,7 +113,7 @@ TEST_CASE("task extensions respected", "scheduler")
 
 	context->add_task("TestRead", [=](rynx::scheduler::task& context) mutable {
 		context.extend_task_independent("extension", [=]() mutable {
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			*extension_task_completed = 1;
 		});
 
@@ -128,6 +128,62 @@ TEST_CASE("task extensions respected", "scheduler")
 	scheduler.wait_until_complete();
 
 	REQUIRE(extension_task_completed->load() == 2);
+}
+
+TEST_CASE("task extensions respected nested", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+	struct component {
+		int a;
+	};
+
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+
+	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
+
+	context->add_task("TestRead", [=](rynx::scheduler::task& context) mutable {
+		auto task1 = context.extend_task_independent("extension", [=](rynx::scheduler::task& inner_context) mutable {
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+			REQUIRE(extension_task_completed->load() == 0);
+			*extension_task_completed = 1;
+
+			inner_context.extend_task_independent("inner extension", [=]() mutable {
+				std::this_thread::sleep_for(std::chrono::milliseconds(5));
+				REQUIRE(extension_task_completed->load() == 1);
+				*extension_task_completed = 2;
+			});
+		});
+
+		auto dependent_task = context.make_task("dependent task", [=]() {
+			REQUIRE(extension_task_completed->load() == 2);
+			*extension_task_completed = 3;
+		});
+		dependent_task.depends_on(context);
+	});
+
+	scheduler.start_frame();
+	scheduler.wait_until_complete();
+
+	REQUIRE(extension_task_completed->load() == 3);
+}
+
+TEST_CASE("task parallel for dependencies", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+
+	auto test_state = std::make_shared<std::atomic<int>>(0);
+
+	std::vector<int> data = {1, 2, 3, 4};
+	
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+	context->add_task("test", [&data, test_state](rynx::scheduler::task& task_context) {
+		auto parfor_barrier = task_context.parallel().for_each(0, data.size()).deferred_work().for_each([&data, test_state](int64_t index) mutable {
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+			*test_state += 1;
+		});
+	});
 }
 
 TEST_CASE("ecs parallel for dependencies", "scheduler")
@@ -154,7 +210,7 @@ TEST_CASE("ecs parallel for dependencies", "scheduler")
 		});
 
 		auto task2 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			REQUIRE(test_state->load() < 3);
 			*test_state += 1;
 		});
@@ -166,4 +222,46 @@ TEST_CASE("ecs parallel for dependencies", "scheduler")
 	scheduler.wait_until_complete();
 
 	REQUIRE(test_state->load() == 6);
+}
+
+TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+
+	struct component {
+		int a;
+	};
+
+	rynx::ecs ecs;
+	ecs.create(component{ 1 });
+	ecs.create(component{ 2 });
+	ecs.create(component{ 3 });
+
+	auto test_state = std::make_shared<std::atomic<int>>(0);
+
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+	
+	{
+		auto actual_work_task = context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
+			auto inner_task = task_context.extend_task_execute_parallel("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
+				ecs.query().for_each_parallel(task_context, [test_state](component& c) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(5));
+					REQUIRE(test_state->load() < 3);
+					*test_state += 1;
+					});
+				});
+		});
+
+		auto outer_task = context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
+			REQUIRE(test_state->load() == 3);
+		});
+
+		outer_task.depends_on(actual_work_task);
+	}
+
+	scheduler.start_frame();
+	scheduler.wait_until_complete();
+
+	REQUIRE(test_state->load() == 3);
 }

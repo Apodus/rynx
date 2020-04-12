@@ -104,9 +104,6 @@ namespace rynx {
 								float length = direction_vector.length() * 0.5f;
 								constexpr float width = 0.6f;
 
-								if (!inScreen(mid, length * 0.5f))
-									return;
-
 								matrix4 model;
 								model.discardSetTranslate(mid.x, mid.y, 0.0f);
 								model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));

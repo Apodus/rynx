@@ -11,6 +11,8 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	
 	for (size_t i = 0; i < m_tasks.size(); ++i) {
 		auto& task = m_tasks[i];
+		// logmsg("looking for work: %s, barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
+
 		if (task.barriers().can_start() && resourcesAvailableFor(task)) {
 			rynx::scheduler::task t(std::move(task));
 			m_tasks[i] = std::move(m_tasks.back());
@@ -28,8 +30,7 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 		task& task = m_tasks_parallel_for[task_index];
 
 		if (task.for_each_no_work_available()) {
-			if (task.for_each_all_work_completed())
-			{
+			if (task.for_each_all_work_completed()) {
 				task.barriers().on_complete();
 				m_tasks_parallel_for[task_index] = std::move(m_tasks_parallel_for.back());
 				m_tasks_parallel_for.pop_back();
@@ -72,18 +73,15 @@ bool rynx::scheduler::context::resourcesAvailableFor(const task& t) const {
 void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 	rynx_profile("Profiler", "Erase completed parallel for tasks");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
-	for (size_t i = 0; i< m_tasks.size(); ++i) {
-		rynx::scheduler::task& task = m_tasks[i];
-		if (task.is_for_each()) {
-			if (!task.m_for_each->work_available()) {
-				if (task.m_for_each->all_work_completed())
-				{
-					task.barriers().on_complete();
-
-					m_tasks[i] = std::move(m_tasks.back());
-					m_tasks.pop_back();
-					--i;
-				}
+	for (size_t i = 0; i < m_tasks_parallel_for.size(); ++i) {
+		rynx::scheduler::task& task = m_tasks_parallel_for[i];
+		if (!task.m_for_each->work_available()) {
+			if (task.m_for_each->all_work_completed())
+			{
+				task.barriers().on_complete();
+				m_tasks_parallel_for[i] = std::move(m_tasks_parallel_for.back());
+				m_tasks_parallel_for.pop_back();
+				--i;
 			}
 		}
 	}

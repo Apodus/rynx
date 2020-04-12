@@ -93,8 +93,6 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 		{
 			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value - motion.velocity * dt, r.r);
 		});
-
-		non_projectiles.depends_on(projectiles);
 	});
 }
 

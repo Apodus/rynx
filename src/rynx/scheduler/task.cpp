@@ -55,10 +55,10 @@ void rynx::scheduler::task::run() {
 	rynx_assert(m_barriers->can_start(), "task is being run while still blocked by barriers!");
 
 	{
-		// logmsg("start %s", m_name.c_str());
+		logmsg("start %s", m_name.c_str());
 		rynx_profile("Scheduler", "work");
 		m_op(this);
-		// logmsg("end %s", m_name.c_str());
+		logmsg("end %s", m_name.c_str());
 	}
 
 	{

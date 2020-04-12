@@ -130,7 +130,7 @@ namespace rynx {
 				set_resource<context>(this);
 			}
 
-			[[nodiscard]] bool isFinished() const { return m_tasks.empty(); }
+			[[nodiscard]] bool isFinished() const { return m_tasks.empty() & m_tasks_parallel_for.empty(); }
 
 			template<typename T> context& set_resource(T* t) {
 				m_resources.set_and_discard(t);

@@ -11,6 +11,7 @@
 #include <cinttypes>
 #include <cmath>
 #include <limits>
+#include <string>
 
 #pragma warning (disable : 4201) // language extension used, anonymous structs
 
@@ -53,6 +54,10 @@ struct alignas(16) vec3 {
 	
 	T length() const { return math::sqrt_approx(length_squared()); }
 	T length_squared() const { return dot(*this); }
+
+	operator std::string() const {
+		return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
+	}
 
 	T x;
 	T y;
@@ -110,6 +115,10 @@ struct alignas(16) vec3<float> {
 		__m128 t5 = _mm_mul_ps(t1, t3);
 		__m128 t6 = _mm_mul_ps(t2, t4);
 		return _mm_sub_ps(t5, t6);
+	}
+
+	operator std::string() const {
+		return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
 	}
 
 	vec3 normal() { float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }

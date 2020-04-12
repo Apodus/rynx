@@ -329,15 +329,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		collision_detection& detection,
 		rynx::scheduler::task& task) {
 			detection.update_parallel(task);
-
-			// TODO: bullet collision sphere trees have different radius logic
-			/*
-			ecs.query()
-				.in<const rynx::components::projectile, const added_to_sphere_tree>()
-				.for_each_parallel(task, [&](rynx::ecs::id id, const rynx::components::motion& m, const rynx::components::position& p, const components::collision_category& category) {
-				detection.get(category.value)->update_entity(id.value, p.value - m.velocity * 0.5f, m.velocity.length() * 0.5f);
-			});
-			*/
 		});
 
 	update_entities_sphere_tree.required_for(positionDataToSphereTree_task);

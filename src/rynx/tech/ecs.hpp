@@ -506,14 +506,14 @@ namespace rynx {
 				return result;
 			}
 
-			gatherer& type_aliases(rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
-				m_typeAliases = &typeAliases;
+			gatherer& type_aliases(rynx::unordered_map<type_id_t, type_id_t>&& typeAliases) {
+				m_typeAliases = std::move(typeAliases);
 				return *this;
 			}
 
 			type_id_t use_mapped_type_if_present(type_id_t v) {
-				auto it = m_typeAliases->find(v);
-				if (it != m_typeAliases->end()) {
+				auto it = m_typeAliases.find(v);
+				if (it != m_typeAliases.end()) {
 					return it->second;
 				}
 				return v;
@@ -552,7 +552,7 @@ namespace rynx {
 
 			dynamic_bitset includeTypes;
 			dynamic_bitset excludeTypes;
-			rynx::unordered_map<type_id_t, type_id_t>* m_typeAliases = nullptr;
+			rynx::unordered_map<type_id_t, type_id_t> m_typeAliases;
 			category_source& m_ecs;
 		};
 
@@ -637,13 +637,13 @@ namespace rynx {
 							auto call_user_op = [size = ids.size(), ids_data = ids.data(), &op](auto*... args) {
 								op(size, ids_data, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>(*m_typeAliases));
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>(m_typeAliases));
 						}
 						else {
 							auto call_user_op = [size = ids.size(), &op](auto... args) {
 								op(size, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>(*m_typeAliases));
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>(m_typeAliases));
 						}
 					}
 				}
@@ -731,10 +731,10 @@ namespace rynx {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 						else {
-							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							call_user_op<is_id_query>(std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 					}
 				}
@@ -777,10 +777,10 @@ namespace rynx {
 						current_index += ids_size;
 
 						if constexpr (is_id_query) {
-							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 						else {
-							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							call_user_op_range<is_id_query>(category_range, std::forward<F>(op), ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 					}
 				}
@@ -800,11 +800,11 @@ namespace rynx {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 							blocker_task.depends_on(barrier);
 						}
 						else {
-							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(*this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(*this->m_typeAliases)...);
+							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 							blocker_task.depends_on(barrier);
 						}
 					}
@@ -1040,7 +1040,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.for_each(std::forward<F>(op));
 				return *this;
 			}
@@ -1052,7 +1052,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.for_each_partial(r, std::forward<F>(op));
 				index_t num = it.count();
 				
@@ -1070,11 +1070,11 @@ namespace rynx {
 				m_consumed = true;
 				
 				if constexpr (false) {
-					return task_context.extend_task_execute_parallel([op, query_config = *this](TaskContext& task_context) mutable {
+					return task_context.extend_task_execute_parallel([op = std::move(op), query_config = std::move(*this)](TaskContext& task_context) mutable {
 						entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
 						it.include(std::move(query_config.inTypes));
 						it.exclude(std::move(query_config.notInTypes));
-						it.type_aliases(query_config.m_typeAliases);
+						it.type_aliases(std::move(query_config.m_typeAliases));
 						it.for_each_parallel(task_context, op);
 					});
 				}
@@ -1082,8 +1082,8 @@ namespace rynx {
 					entity_iterator<accessType, category_source, decltype(&F::operator())> it(this->m_ecs);
 					it.include(std::move(this->inTypes));
 					it.exclude(std::move(this->notInTypes));
-					it.type_aliases(this->m_typeAliases);
-					return it.for_each_parallel(task_context, op);
+					it.type_aliases(std::move(this->m_typeAliases));
+					return it.for_each_parallel(task_context, std::forward<F>(op));
 				}
 			}
 
@@ -1094,7 +1094,7 @@ namespace rynx {
 				buffer_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.for_each_buffer(std::forward<F>(op));
 				return *this;
 			}
@@ -1106,7 +1106,7 @@ namespace rynx {
 				gatherer<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.ids(result);
 				return result;
 			}
@@ -1118,7 +1118,7 @@ namespace rynx {
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				return it.ids_if(std::forward<F>(f));
 			}
 			
@@ -1135,7 +1135,7 @@ namespace rynx {
 				gatherer<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				return it.count();
 			}
 
@@ -1146,7 +1146,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.template sort_categories_by<T>();
 			}
 
@@ -1157,7 +1157,7 @@ namespace rynx {
 				sorter<category_source> it(m_ecs);
 				it.include(std::move(inTypes));
 				it.exclude(std::move(notInTypes));
-				it.type_aliases(m_typeAliases);
+				it.type_aliases(std::move(m_typeAliases));
 				it.template sort_buckets_one_step<T>();
 			}
 		};

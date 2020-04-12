@@ -197,14 +197,14 @@ namespace rynx {
 			template<typename F> task_token make_extension_task_execute_sequential(std::string name, F&& op) {
 				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(*followUpTask);
-				copy_resources(*followUpTask);
+				copy_resources(*followUpTask); // uses same resources but must reserve them individually.
 				return followUpTask;
 			}
 			
 			template<typename F> task_token make_extension_task_execute_parallel(std::string name, F&& op) {
 				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(*followUpTask);
-				share_resources(*followUpTask);
+				share_resources(*followUpTask); // use and extend parent reservation on resources.
 				return followUpTask;
 			}
 

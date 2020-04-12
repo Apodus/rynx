@@ -57,14 +57,14 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 				const rynx::components::position,
 				const rynx::components::radius> ecs)
 				{
-					task_context & ecs.query()
+					ecs.query()
 						.in<entity_tracked_by_frustum_culling>()
 						.notIn<components::frustum_culled>()
 						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
 						m_in_frustum.update_entity(id.value, pos.value, r.r);
 					});
 
-					task_context & ecs.query()
+					ecs.query()
 						.in<entity_tracked_by_frustum_culling, components::frustum_culled>()
 						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
 						m_out_frustum.update_entity(id.value, pos.value, r.r);

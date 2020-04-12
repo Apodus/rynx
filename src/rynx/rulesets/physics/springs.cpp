@@ -15,7 +15,6 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 		rynx::scheduler::task& task)
 	{
 		auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
-		
 		auto generate_springs_work = ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
 			auto entity_a = ecs[rope.id_a];
 			auto entity_b = ecs[rope.id_b];
@@ -40,18 +39,18 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			over_extension -= (over_extension < 0) * over_extension;
 
 			// way too much extension == snap instantly
-			if (over_extension > 3.0f * rope.length) {
+			if (false && over_extension > 3.0f * rope.length) {
 				broken_ropes->emplace_back(id);
 				return;
 			}
 
-			float force = 540.0f * rope.strength * over_extension;
+			float force = 0.5f * 540.0f * rope.strength * over_extension;
 
 			rope.cumulative_stress += force * dt;
 			rope.cumulative_stress *= std::pow(0.3f, dt);
 
 			// Remove rope if too much strain
-			if (rope.cumulative_stress > 700.0f * rope.strength)
+			if (false && rope.cumulative_stress > 700.0f * rope.strength)
 				broken_ropes->emplace_back(id);
 
 			auto direction_a_to_b = world_pos_b - world_pos_a;
