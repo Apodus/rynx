@@ -39,7 +39,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			over_extension -= (over_extension < 0) * over_extension;
 
 			// way too much extension == snap instantly
-			if (false && over_extension > 3.0f * rope.length) {
+			if (over_extension > 3.0f * rope.length) {
 				broken_ropes->emplace_back(id);
 				return;
 			}
@@ -50,7 +50,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			rope.cumulative_stress *= std::pow(0.3f, dt);
 
 			// Remove rope if too much strain
-			if (false && rope.cumulative_stress > 700.0f * rope.strength)
+			if (rope.cumulative_stress > 700.0f * rope.strength)
 				broken_ropes->emplace_back(id);
 
 			auto direction_a_to_b = world_pos_b - world_pos_a;

@@ -28,7 +28,7 @@ namespace rynx {
 			friend class scheduler::task;
 
 			// TODO: fix the number of threads here later if necessary.
-			static constexpr int numThreads = 4;
+			static constexpr int numThreads = 1;
 
 		private:
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
@@ -63,7 +63,7 @@ namespace rynx {
 						ecs_resource->sync_type_index();
 					}
 				}
-				// logmsg("frame complete");
+				// logmsg("frame complete\n");
 			}
 
 			// called once per frame.

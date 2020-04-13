@@ -125,12 +125,15 @@ int main(int argc, char** argv) {
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		
 		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, -60.8f, 0));
+		// auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, 0, 0));
 		auto ruleset_physical_springs = std::make_unique<rynx::ruleset::physics::springs>();
 
 		spawner = ruleset_minilisk_gen.get();
 
 		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
 		ruleset_physical_springs->depends_on(*ruleset_motion_updates);
+
+		ruleset_collisionDetection->depends_on(*ruleset_physical_springs); // ropes really only must be done before collision resolving. not before collision detection.
 		ruleset_collisionDetection->depends_on(*ruleset_motion_updates);
 		ruleset_frustum_culling->depends_on(*ruleset_motion_updates);
 
@@ -215,18 +218,12 @@ int main(int argc, char** argv) {
 			);
 		};
 
-		/*
-		for (int i = 0; i < 20; ++i)
-			makeBox_inside({ +20, +15 - i * 15.0f, 0 }, 0.0f + i * 0.1f, 2.0f, -0.05f);
-		*/
+		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.25f);
+		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.30f);
+		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.15f);
 
-		// makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.025f);
 		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
-
-		// makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.030f);
 		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
-
-		// makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.015f);
 		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
@@ -235,7 +232,7 @@ int main(int argc, char** argv) {
 	}
 
 	// setup some debug controls
-	float sleepTime = 0.9f;
+	float sleepTime = 0.9f + 16.f;
 	auto slowTime = gameInput.generateAndBindGameKey('X', "slow time");
 	auto fastTime = gameInput.generateAndBindGameKey('C', "fast time");
 
@@ -576,7 +573,8 @@ int main(int argc, char** argv) {
 		{
 			rynx_profile("Main", "Clean up dead entitites");
 			dt = std::min(0.016f, std::max(0.001f, frame_timer_dt.time_since_last_access_ms() * 0.001f));
-			
+			dt = 0.016f;
+
 			{
 				std::vector<rynx::ecs::id> ids;
 				ecs.query().for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {

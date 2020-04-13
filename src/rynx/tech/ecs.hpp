@@ -1069,22 +1069,13 @@ namespace rynx {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				
-				if constexpr (false) {
-					return task_context.extend_task_execute_parallel([op = std::move(op), query_config = std::move(*this)](TaskContext& task_context) mutable {
-						entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
-						it.include(std::move(query_config.inTypes));
-						it.exclude(std::move(query_config.notInTypes));
-						it.type_aliases(std::move(query_config.m_typeAliases));
-						it.for_each_parallel(task_context, op);
-					});
-				}
-				else {
-					entity_iterator<accessType, category_source, decltype(&F::operator())> it(this->m_ecs);
-					it.include(std::move(this->inTypes));
-					it.exclude(std::move(this->notInTypes));
-					it.type_aliases(std::move(this->m_typeAliases));
-					return it.for_each_parallel(task_context, std::forward<F>(op));
-				}
+				return task_context.extend_task_execute_parallel([op = std::move(op), query_config = std::move(*this)](TaskContext& task_context) mutable {
+					entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
+					it.include(std::move(query_config.inTypes));
+					it.exclude(std::move(query_config.notInTypes));
+					it.type_aliases(std::move(query_config.m_typeAliases));
+					it.for_each_parallel(task_context, op);
+				});
 			}
 
 			template<typename F>

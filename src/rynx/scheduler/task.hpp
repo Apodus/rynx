@@ -148,24 +148,20 @@ namespace rynx {
 			}
 
 			task& share_resources(task& other) {
-				rynx_assert(!other.m_resources_shared, "can't share more than one task's resources!");
-				if (m_resources_shared) {
-					other.m_resources_shared = m_resources_shared;
-				}
-				else {
-					other.m_resources_shared = m_resources;
-				}
+				rynx_assert(other.m_resources_shared.empty(), "can't share more than one task's resources!");
+				other.m_resources_shared = m_resources_shared;
+				other.m_resources_shared.emplace_back(m_resources);
 				return *this;
 			}
 
-			task& copy_barriers_of(task& other) {
+			task& copy_barriers_from(task& other) {
 				other.completion_blocked_by(*this);
 				return *this;
 			}
 
 			task& copy_resources(task& other) {
-				if (m_resources_shared) {
-					other.m_resources->insert(*m_resources_shared);
+				for(auto&& res : m_resources_shared) {
+					other.m_resources->insert(*res);
 				}
 				other.m_resources->insert(*m_resources);
 				return *this;
@@ -430,7 +426,7 @@ namespace rynx {
 			};
 
 			std::shared_ptr<task_resources> m_resources;
-			std::shared_ptr<task_resources> m_resources_shared;
+			std::vector<std::shared_ptr<task_resources>> m_resources_shared;
 			std::shared_ptr<parallel_for_each_data> m_for_each;
 
 			context* m_context = nullptr;

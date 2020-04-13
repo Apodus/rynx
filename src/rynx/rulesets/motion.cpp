@@ -12,23 +12,19 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 		rynx::ecs::view<components::motion, components::position> ecs,
 		rynx::scheduler::task& task_context)
 		{
-			{
-				rynx_profile("Motion", "update velocity");
-				ecs.query().for_each_parallel(task_context, [dt](components::motion& m) {
-					m.velocity += m.acceleration * dt;
-					m.acceleration.set(0, 0, 0);
-					m.angularVelocity += m.angularAcceleration * dt;
-					m.angularAcceleration = 0;
-				});
-			}
+			auto apply_acceleration_to_velocity = ecs.query().for_each_parallel(task_context, [dt](components::motion& m) {
+				m.velocity += m.acceleration * dt;
+				m.acceleration.set(0, 0, 0);
+				m.angularVelocity += m.angularAcceleration * dt;
+				m.angularAcceleration = 0;
+			});
+				
+			auto apply_velocity_to_position = ecs.query().for_each_parallel(task_context, [dt](components::position& p, const components::motion& m) {
+				p.value += m.velocity * dt;
+				p.angle += m.angularVelocity * dt;
+			});
 
-			{
-				rynx_profile("Motion", "update position");
-				ecs.query().for_each_parallel(task_context, [dt](components::position& p, const components::motion& m) {
-					p.value += m.velocity * dt;
-					p.angle += m.angularVelocity * dt;
-				});
-			}
+			apply_velocity_to_position.depends_on(apply_acceleration_to_velocity);
 		}
 	);
 
@@ -36,9 +32,8 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 		ecs.query().for_each_parallel(task, [dt](components::motion& m, components::dampening d) {
 			m.velocity *= ::powf(d.linearDampening, dt);
 			m.angularVelocity *= ::powf(d.angularDampening, dt);
-			});
-		}
-	).required_for(position_updates);
+		});
+	}).required_for(position_updates);
 
 	context.add_task("Gravity", [this](rynx::ecs::view<components::motion, const components::ignore_gravity> ecs, rynx::scheduler::task& task) {
 		if (m_gravity.length_squared() > 0) {

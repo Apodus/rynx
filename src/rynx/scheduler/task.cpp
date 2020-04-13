@@ -69,7 +69,7 @@ void rynx::scheduler::task::run() {
 	{
 		rynx_profile("Scheduler", "release resources");
 		m_resources.reset();
-		m_resources_shared.reset();
+		m_resources_shared.clear();
 	}
 }
 

@@ -245,12 +245,14 @@ TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")
 	{
 		auto actual_work_task = context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
 			auto inner_task = task_context.extend_task_execute_parallel("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
-				ecs.query().for_each_parallel(task_context, [test_state](component& c) {
-					std::this_thread::sleep_for(std::chrono::milliseconds(5));
-					REQUIRE(test_state->load() < 3);
-					*test_state += 1;
+				auto inner_task = task_context.extend_task_execute_parallel("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
+					ecs.query().for_each_parallel(task_context, [test_state](component& c) {
+						std::this_thread::sleep_for(std::chrono::milliseconds(5));
+						REQUIRE(test_state->load() < 3);
+						*test_state += 1;
 					});
 				});
+			});
 		});
 
 		auto outer_task = context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {

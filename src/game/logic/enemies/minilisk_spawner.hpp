@@ -88,7 +88,7 @@ namespace game {
 									ecs.attachToEntity(id1, light);
 								}
 
-								for (int k = 1; k < 40; ++k) {
+								for (int k = 1; k < 30; ++k) {
 									auto id2 = ecs.create(
 										rynx::components::position({ x + 3.5f * k, y + 3.5f * k, 0 }),
 										rynx::components::motion(),
