@@ -88,7 +88,7 @@ namespace rynx {
 						{
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
-							ecs.query().for_each_parallel(task_context, [this, &ecs](const rynx::components::rope& rope) {
+							ecs.query().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 

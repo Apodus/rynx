@@ -42,7 +42,7 @@ namespace game {
 							rynx::components::color,
 							rynx::components::dampening,
 							rynx::components::boundary,
-							rynx::components::rope,
+							rynx::components::phys::joint,
 							rynx::components::frame_collisions,
 							rynx::components::light_omni,
 							rynx::components::mesh,
@@ -103,12 +103,16 @@ namespace game {
 										rynx::matrix4()
 									);
 
-									rynx::components::rope joint;
+									rynx::components::phys::joint joint;
+									joint.connect_with_rod()
+										.rotation_free();
+									
 									joint.id_a = id1;
 									joint.id_b = id2;
+									
 									joint.point_a = vec3<float>(0, 0, 0);
 									joint.point_b = vec3<float>(0, 0, 0);
-									joint.length = 4.1f;
+									joint.length = 5.1f;
 									joint.strength = 25.0f;
 									ecs.create(joint);
 
@@ -127,7 +131,7 @@ namespace game {
 									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
-									rynx::components::dampening({ 0.97f, 0.997f }),
+									rynx::components::dampening({ 0.2f, 1.f }),
 									rynx::components::frame_collisions()
 								);
 							}

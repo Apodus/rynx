@@ -45,18 +45,63 @@ namespace rynx {
 			std::vector<uint32_t> collision_indices;
 		};
 
-		struct rope {
-			rynx::ecs::id id_a;
-			rynx::ecs::id id_b;
+		namespace phys {
+			struct joint {
+				
+				// what kind of elastic behaviour we want from the connection type.
+				// rod with length zero gives the "just a joint" behaviour.
+				enum class connector_type {
+					RubberBand,
+					Spring,
+					Rod,
+				};
 
-			vec3<float> point_a;
-			vec3<float> point_b;
+				// allow rotation relative to connector or not
+				enum class joint_type {
+					Fixed,
+					Free
+				};
 
-			float length;
-			float strength;
+				joint& connect_with_rod() {
+					connector = connector_type::Rod;
+					return *this;
+				}
 
-			float cumulative_stress = 0;
-		};
+				joint& connect_with_rubberband() {
+					connector = connector_type::RubberBand;
+					return *this;
+				}
+
+				joint& connect_with_spring() {
+					connector = connector_type::Spring;
+					return *this;
+				}
+
+				joint& rotation_free() {
+					m_joint = joint_type::Free;
+					return *this;
+				}
+
+				joint& rotation_fixed() {
+					m_joint = joint_type::Fixed;
+					return *this;
+				}
+
+				rynx::ecs::id id_a;
+				rynx::ecs::id id_b;
+
+				vec3<float> point_a;
+				vec3<float> point_b;
+
+				float length;
+				float strength;
+
+				float cumulative_stress = 0;
+
+				connector_type connector;
+				joint_type m_joint;
+			};
+		}
 
 		struct dead {}; // mark entity for cleanup.
 

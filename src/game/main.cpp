@@ -218,13 +218,13 @@ int main(int argc, char** argv) {
 			);
 		};
 
+		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
+		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
+		// makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
+
 		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.25f);
 		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.30f);
 		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.15f);
-
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
-		makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
-		makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);
@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
 	}
 
 	// setup some debug controls
-	float sleepTime = 0.9f + 16.f;
+	float sleepTime = 0.9f;
 	auto slowTime = gameInput.generateAndBindGameKey('X', "slow time");
 	auto fastTime = gameInput.generateAndBindGameKey('C', "fast time");
 
@@ -573,7 +573,7 @@ int main(int argc, char** argv) {
 		{
 			rynx_profile("Main", "Clean up dead entitites");
 			dt = std::min(0.016f, std::max(0.001f, frame_timer_dt.time_since_last_access_ms() * 0.001f));
-			dt = 0.016f;
+			// ddddt = 0.016f;
 
 			{
 				std::vector<rynx::ecs::id> ids;

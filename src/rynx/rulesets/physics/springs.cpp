@@ -8,60 +8,122 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 
 	context.add_task("physical springs", [dt](
 		rynx::ecs::view<
-			components::rope,
+			components::phys::joint,
 			const components::physical_body,
 			const components::position,
 			components::motion> ecs,
 		rynx::scheduler::task& task)
 	{
+		struct common_values {
+
+			rynx::components::position pos_a;
+			rynx::components::position pos_b;
+
+			components::motion* mot_a;
+			components::motion* mot_b;
+
+			const components::physical_body* phys_a;
+			const components::physical_body* phys_b;
+
+			vec3f relative_pos_a;
+			vec3f relative_pos_b;
+
+			vec3f world_pos_a;
+			vec3f world_pos_b;
+
+			void init(components::phys::joint& rope, rynx::ecs::view<const components::position, const components::physical_body, components::motion> ecs) {
+				auto entity_a = ecs[rope.id_a];
+				auto entity_b = ecs[rope.id_b];
+
+				pos_a = entity_a.get<const components::position>();
+				pos_b = entity_b.get<const components::position>();
+
+				relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+				relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+				world_pos_a = pos_a.value + relative_pos_a;
+				world_pos_b = pos_b.value + relative_pos_b;
+
+				mot_a = &entity_a.get<components::motion>();
+				mot_b = &entity_b.get<components::motion>();
+
+				phys_a = &entity_a.get<const components::physical_body>();
+				phys_b = &entity_b.get<const components::physical_body>();
+			}
+
+			void apply_force(vec3f force, components::phys::joint::joint_type joint_type) {
+				apply_linear_force(force);
+				if (joint_type == components::phys::joint::joint_type::Free) {
+					apply_rotational_force(force);
+				}
+			}
+
+			void apply_linear_force(vec3f force) {
+				mot_a->acceleration += force * phys_a->inv_mass;
+				mot_b->acceleration -= force * phys_b->inv_mass;
+			}
+
+			void apply_rotational_force(vec3f force) {
+				mot_a->angularAcceleration += force.dot(relative_pos_a.normal2d()) * phys_a->inv_moment_of_inertia;
+				mot_b->angularAcceleration += -force.dot(relative_pos_b.normal2d()) * phys_b->inv_moment_of_inertia;
+			}
+
+			vec3f get_force_direction() const {
+				auto direction_a_to_b = world_pos_b - world_pos_a;
+				return direction_a_to_b.normalize();
+			}
+
+			float get_distance() const {
+				return (world_pos_a - world_pos_b).length();
+			}
+
+			float get_distance_sqr() const {
+				return (world_pos_a - world_pos_b).length_squared();
+			}
+		};
+
+		float stress_decay = std::pow(0.3f, dt);
 		auto broken_ropes = rynx::make_accumulator_shared_ptr<rynx::ecs::id>();
-		auto generate_springs_work = ecs.query().for_each_parallel(task, [broken_ropes, dt, ecs](rynx::ecs::id id, components::rope& rope) mutable {
-			auto entity_a = ecs[rope.id_a];
-			auto entity_b = ecs[rope.id_b];
+		auto generate_springs_work = ecs.query().for_each_parallel(task, [broken_ropes, dt, stress_decay, ecs](rynx::ecs::id id, components::phys::joint& rope) mutable {
+			common_values joint_data;
+			joint_data.init(rope, ecs);
 
-			auto pos_a = entity_a.get<const components::position>();
-			auto pos_b = entity_b.get<const components::position>();
+			bool connector_spring = rope.connector == components::phys::joint::connector_type::Spring;
+			bool connector_rubber_band = rope.connector == components::phys::joint::connector_type::RubberBand;
+			bool connector_rod = rope.connector == components::phys::joint::connector_type::Rod;
+			float over_extension = joint_data.get_distance() - rope.length;
+			if (connector_rubber_band | connector_spring) {
+				
+				// rubber band doesn't push back. spring does.
+				over_extension -= (connector_rubber_band & (over_extension < 0)) * over_extension;
+			
+				float force = 0.5f * 540.0f * rope.strength * over_extension;
+				rope.cumulative_stress += force * dt;
 
-			auto& mot_a = entity_a.get<components::motion>();
-			auto& mot_b = entity_b.get<components::motion>();
+				vec3f force_vector = joint_data.get_force_direction() * force;
+				joint_data.apply_force(force_vector, rope.m_joint);
+			}
+			else if (connector_rod) {
+				auto vel_a = joint_data.mot_a->velocity; // joint_data.mot_a->velocity_at_point(joint_data.relative_pos_a);
+				auto vel_b = joint_data.mot_b->velocity; // joint_data.mot_b->velocity_at_point(joint_data.relative_pos_b);
+				auto force_dir = joint_data.get_force_direction();
+				auto rel_vel = vel_a - vel_b;
+				float current_agreement = rel_vel.dot(force_dir);
+				float multiplier = 10450.0f * (over_extension - 0.0055f * current_agreement);
+				rope.cumulative_stress += multiplier * dt;
+				joint_data.apply_force(force_dir * multiplier, rope.m_joint);
+			}
 
-			const auto& phys_a = entity_a.get<const components::physical_body>();
-			const auto& phys_b = entity_b.get<const components::physical_body>();
-
-			auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-			auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
-			auto world_pos_a = pos_a.value + relative_pos_a;
-			auto world_pos_b = pos_b.value + relative_pos_b;
-
-			auto length = (world_pos_a - world_pos_b).length();
-			float over_extension = (length - rope.length);
-
-			over_extension -= (over_extension < 0) * over_extension;
+			rope.cumulative_stress *= stress_decay;
 
 			// way too much extension == snap instantly
 			if (over_extension > 3.0f * rope.length) {
 				broken_ropes->emplace_back(id);
-				return;
+			}
+			// Remove rope if too much strain
+			else if (rope.cumulative_stress > 700.0f * rope.strength) {
+				broken_ropes->emplace_back(id);
 			}
 
-			float force = 0.5f * 540.0f * rope.strength * over_extension;
-
-			rope.cumulative_stress += force * dt;
-			rope.cumulative_stress *= std::pow(0.3f, dt);
-
-			// Remove rope if too much strain
-			if (rope.cumulative_stress > 700.0f * rope.strength)
-				broken_ropes->emplace_back(id);
-
-			auto direction_a_to_b = world_pos_b - world_pos_a;
-			direction_a_to_b.normalize();
-			direction_a_to_b *= force;
-
-			mot_a.acceleration += direction_a_to_b * phys_a.inv_mass;
-			mot_b.acceleration -= direction_a_to_b * phys_b.inv_mass;
-
-			mot_a.angularAcceleration += direction_a_to_b.dot(relative_pos_a.normal2d()) * phys_a.inv_moment_of_inertia;
-			mot_b.angularAcceleration += -direction_a_to_b.dot(relative_pos_b.normal2d()) * phys_b.inv_moment_of_inertia;
 		});
 
 		auto check_broken_ropes_task = task.extend_task_independent([broken_ropes](rynx::ecs& ecs) {
@@ -69,7 +131,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 				for (auto&& id : id_vector) {
 					ecs.attachToEntity(id, components::dead());
 
-					components::rope& rope = ecs[id].get<components::rope>();
+					components::phys::joint& rope = ecs[id].get<components::phys::joint>();
 					auto pos1 = ecs[rope.id_a].get<components::position>().value;
 					auto pos2 = ecs[rope.id_b].get<components::position>().value;
 
