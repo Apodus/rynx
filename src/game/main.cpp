@@ -75,6 +75,19 @@ int main(int argc, char** argv) {
 		meshes->create("square_empty", Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", Shape::makeBox(1.0f), "Smoke");
 		meshes->create("square_rope", Shape::makeBox(1.0f), "Rope");
+		auto* tube_mesh = meshes->create("square_tube_normals", Shape::makeBox(1.0f), "Empty");
+		std::cout << tube_mesh->normals.size() << std::endl;
+		for (size_t i = 0; i < tube_mesh->normals.size(); i+=3) {
+			std::cout << " {" << tube_mesh->normals[i] << ", " << tube_mesh->normals[i+1] << ", " << tube_mesh->normals[i+2] << "} --";
+		}
+
+		tube_mesh->normals.clear();
+		tube_mesh->putNormal(0, +1, 0);
+		tube_mesh->putNormal(0, -1, 0);
+		tube_mesh->putNormal(0, -1, 0);
+		tube_mesh->putNormal(0, +1, 0);
+		tube_mesh->bind();
+		tube_mesh->rebuildNormalBuffer();
 	}
 
 	rynx::scheduler::task_scheduler scheduler;

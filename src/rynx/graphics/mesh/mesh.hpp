@@ -28,6 +28,7 @@ public:
 	void build();
 	void rebuildTextureBuffer();
 	void rebuildVertexBuffer();
+	void rebuildNormalBuffer();
 	void bind() const;
 
 private:

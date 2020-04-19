@@ -14,7 +14,7 @@
 std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_geometry_pass(MeshRenderer* pRenderer, Camera* pCamera) {
 	auto geometry_pass = std::make_unique<graphics_step>();
 	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(pRenderer->meshes()->get("circle_empty"), pRenderer, pCamera));
-	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(pRenderer->meshes()->get("square_empty"), pRenderer));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(pRenderer->meshes()->get("square_tube_normals"), pRenderer));
 	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(pRenderer));
 	return geometry_pass;
 }

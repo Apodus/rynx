@@ -84,6 +84,11 @@ void Mesh::rebuildVertexBuffer() {
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * vertices.size(), &vertices[0]);
 }
 
+void Mesh::rebuildNormalBuffer() {
+	glBindBuffer(GL_ARRAY_BUFFER, nbo);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * normals.size(), &normals[0]);
+}
+
 void Mesh::bind() const {
 	glBindVertexArray(vao);
 }
