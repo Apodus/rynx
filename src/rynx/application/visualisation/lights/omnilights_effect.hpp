@@ -25,8 +25,8 @@ namespace rynx {
 			
 			private:
 				std::vector<floats4> m_light_colors;
+				std::vector<floats4> m_light_settings;
 				std::vector<vec3f> m_light_positions;
-				std::vector<float> m_light_ambients;
 
 				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};

@@ -1,12 +1,20 @@
+
 #pragma once
 
-#include <GL/glew.h>
+namespace rynx {
+	namespace graphics {
+		namespace gl {
+			void enable_blend();
+			void disable_blend();
 
-#include <GL/gl.h>
-#include <GL/glu.h>
+			void enable_blend_for(int render_target);
+			void disable_blend_for(int render_target);
 
-#ifdef APIENTRY // winapi definition collides with glfw3 definition. they both define it as __stdcall
-#undef APIENTRY
-#endif
+			void blend_func_cumulative();
+			void blend_func_cumulative_for(int render_target);
 
-#include <GLFW/glfw3.h> // must be after glew and glu
+			void blend_func_default();
+			void blend_func_default_for(int render_target);
+		}
+	}
+}

@@ -26,5 +26,5 @@ void main()
     
 	uv_pass = uv;
 	color_pass = color;
-	normal_pass = vec4(normalize(normal_rotation * normal), 0);
+	normal_pass = vec4(normalize(normal_rotation * normal), 0.0);
 }

@@ -1,6 +1,6 @@
 
 #include "mesh.hpp"
-#include <rynx/graphics/opengl.hpp>
+#include <rynx/graphics/internal/includes.hpp>
 #include <rynx/system/assert.hpp>
 
 Mesh::Mesh() {}

@@ -26,9 +26,8 @@ namespace rynx {
 			private:
 				std::vector<floats4> m_light_colors;
 				std::vector<floats4> m_light_directions;
+				std::vector<floats4> m_light_settings; // x=edge softness[0...inf], y=linear attenuation[0..inf], z=quadratic attenuation[0..inf], a=backside lighting (penetrating) [0..1]
 				std::vector<vec3f> m_light_positions;
-				std::vector<float> m_light_ambients;
-				std::vector<float> m_light_edge_softness;
 				
 				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};

@@ -3,6 +3,7 @@
 #include <rynx/graphics/shader/shader.hpp>
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/graphics/renderer/screenspace.hpp>
+#include <rynx/graphics/opengl.hpp>
 
 #include <rynx/graphics/mesh/math.hpp>
 #include <rynx/application/components.hpp>
@@ -30,16 +31,16 @@ rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
 }
 
 void rynx::application::visualisation::ambient_light_effect::prepare(rynx::scheduler::context*) {
-	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.3f);
-	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.5f);
+	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.01f);
+	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.01f);
 	math::rotateXY(m_light_direction, 0.01f);
 }
 
 void rynx::application::visualisation::ambient_light_effect::execute() {
 	m_lights_shader->activate();
-	rynx::graphics::screenspace_draws::blend_mode_cumulative();
+	rynx::graphics::gl::blend_func_cumulative();
 	m_lights_shader->uniform("lights_colors", m_light_colors, 2);
 	m_lights_shader->uniform("light_direction", m_light_direction);
 	rynx::graphics::screenspace_draws::draw_fullscreen();
-	rynx::graphics::screenspace_draws::blend_mode_default();
+	rynx::graphics::gl::blend_func_default();
 }

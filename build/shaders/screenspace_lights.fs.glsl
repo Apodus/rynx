@@ -8,6 +8,7 @@ uniform sampler2D tex_position;
 
 uniform vec4 lights_colors[128];
 uniform vec4 lights_positions[128];
+uniform vec4 lights_settings[128]; // x=???, y=linear attenuation, z=quadratic attenuation, a=backside lighting (penetrating)
 uniform int lights_num;
 
 out vec4 frag_color;
@@ -22,10 +23,14 @@ void main()
 	vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 	for(int i=0; i<lights_num; ++i) {
 		vec3 distance_vector = (lights_positions[i].xyz - fragment_position);
-		float distance_sqr = dot(distance_vector, distance_vector) + 1.0;
-		float agreement = max(0.0, dot(fragment_normal, normalize(distance_vector)));
-		result += vec4((agreement + 0.1) * (material_color.rgb * lights_colors[i].rgb) *
-			(lights_colors[i].a * lights_colors[i].a) / distance_sqr, 0.0);
+		float distance_sqr = dot(distance_vector, distance_vector);
+		float agreement = max(lights_settings[i].w, dot(fragment_normal, normalize(distance_vector)));
+		
+		vec4 fragment_light_intensity = vec4(agreement * (material_color.rgb * lights_colors[i].rgb) *
+			(lights_colors[i].a * lights_colors[i].a), 0.0);
+		
+		result += fragment_light_intensity / (distance_sqr * lights_settings[i].z + 1.0);
+			// + fragment_light_intensity / (sqrt(distance_sqr) * lights_settings[i].y + 1.0);
 	}
 	
 	frag_color = result;

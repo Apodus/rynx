@@ -9,6 +9,7 @@
 
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 #include <rynx/graphics/renderer/textrenderer.hpp>
+#include <rynx/graphics/opengl.hpp>
 
 rynx::application::renderer::renderer(rynx::application::Application& application, std::shared_ptr<Camera> camera) : m_application(application), camera(camera) {
 	shader_copy_color = application.shaders()->load_shader(
@@ -73,6 +74,11 @@ void rynx::application::renderer::execute() {
 
 		fbo_world_geometry->bind_as_output();
 		fbo_world_geometry->clear();
+
+		rynx::graphics::gl::enable_blend_for(0);
+		rynx::graphics::gl::disable_blend_for(1);
+		rynx::graphics::gl::disable_blend_for(2);
+
 		geometry_pass->execute();
 	}
 

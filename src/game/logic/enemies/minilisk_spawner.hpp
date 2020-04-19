@@ -71,14 +71,13 @@ namespace game {
 									rynx::matrix4()
 								);
 
-								if (m_random() > 0.95f) {
+								if (m_random() > 0.75f) {
 									rynx::components::light_omni light;
 									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
 									ecs.attachToEntity(id1, light);
 								}
-								
-								if (m_random() > 0.95f) {
+								else if (m_random() > 0.95f) {
 									rynx::components::light_directed light;
 									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
@@ -87,7 +86,7 @@ namespace game {
 									light.angle = m_random(1.5f, 4.14f);
 									ecs.attachToEntity(id1, light);
 								}
-
+								/*
 								for (int k = 1; k < 30; ++k) {
 									auto id2 = ecs.create(
 										rynx::components::position({ x + 3.5f * k, y + 3.5f * k, 0 }),
@@ -118,6 +117,7 @@ namespace game {
 
 									id1 = id2;
 								}
+								*/
 							}
 							else {
 								float edge_length = 10.5f + 15.0f * m_random();

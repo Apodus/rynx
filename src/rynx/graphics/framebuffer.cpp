@@ -1,6 +1,6 @@
 
-#include <rynx/graphics/opengl.hpp>
-#include "framebuffer.hpp"
+#include <rynx/graphics/internal/includes.hpp>
+#include <rynx/graphics/framebuffer.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/system/assert.hpp>
 

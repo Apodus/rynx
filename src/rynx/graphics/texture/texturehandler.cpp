@@ -1,6 +1,6 @@
 
 #include <rynx/graphics/texture/texturehandler.hpp>
-#include <rynx/graphics/opengl.hpp>
+#include <rynx/graphics/internal/includes.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <iostream>

@@ -388,7 +388,6 @@ namespace rynx {
 				while (typeId != dynamic_bitset::npos) {
 					// virtual types are present in bitset, but do not have a table.
 					// TODO: mark virtual types in a separate bitset or something and compare against that. this nullcheck can hide actual bugs.
-					rynx_assert(typeId < m_tables.size(), "wut?");
 					if (typeId < m_tables.size() && m_tables[typeId]) {
 						source->m_tables[typeId]->moveFromIndexTo(source_index, m_tables[typeId].get());
 					}

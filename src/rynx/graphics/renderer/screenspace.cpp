@@ -1,6 +1,6 @@
 
 #include <rynx/graphics/renderer/screenspace.hpp>
-#include <rynx/graphics/opengl.hpp>
+#include <rynx/graphics/internal/includes.hpp>
 
 namespace {
 	float vertices[] = {
@@ -55,14 +55,4 @@ void rynx::graphics::screenspace_draws::clear_screen() {
 
 	float color_clear[] = { 0, 0, 0, 0 };
 	glClearBufferfv(GL_COLOR, 0, color_clear);
-}
-
-void rynx::graphics::screenspace_draws::blend_mode_cumulative() {
-	glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
-}
-
-void rynx::graphics::screenspace_draws::blend_mode_default() {
-	glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 }

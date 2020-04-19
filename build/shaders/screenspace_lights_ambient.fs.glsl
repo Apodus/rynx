@@ -14,7 +14,7 @@ void main()
 {
 	vec2 uv = texCoord_pass;
 	vec4 material_color = texture(tex_color, uv);
-	vec3 fragment_normal = 2.0 * texture(tex_normal, uv).rgb - 0.5;
+	vec3 fragment_normal = normalize(2.0 * vec3(texture(tex_normal, uv).rgb) - 1.0);
 	
 	vec4 result = vec4(0.0, 0.0, 0.0, 1.0);
 	float agreement = max(0.0, dot(fragment_normal, light_direction));

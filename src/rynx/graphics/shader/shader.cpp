@@ -1,5 +1,5 @@
 
-#include <rynx/graphics/opengl.hpp>
+#include <rynx/graphics/internal/includes.hpp>
 #include <rynx/graphics/shader/shader.hpp>
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/system/assert.hpp>
