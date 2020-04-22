@@ -1,7 +1,7 @@
 
 #include <rynx/tech/ecs.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
-#include <rynx/graphics/mesh/polygonTesselator.hpp>
+#include <rynx/math/geometry/polygon_triangulation.hpp>
 
 #include <rynx/application/application.hpp>
 #include <rynx/application/visualisation/debug_visualisation.hpp>
@@ -70,12 +70,12 @@ int main(int argc, char** argv) {
 
 	auto meshes = application.meshRenderer().meshes();
 	{
-		meshes->create("ball", Shape::makeCircle(1.0f, 32), "Hero");
-		meshes->create("circle_empty", Shape::makeCircle(1.0f, 32), "Empty");
-		meshes->create("square_empty", Shape::makeBox(1.0f), "Empty");
-		meshes->create("particle_smoke", Shape::makeBox(1.0f), "Smoke");
-		meshes->create("square_rope", Shape::makeBox(1.0f), "Rope");
-		auto* tube_mesh = meshes->create("square_tube_normals", Shape::makeBox(1.0f), "Empty");
+		meshes->create("ball", rynx::Shape::makeCircle(1.0f, 32), "Hero");
+		meshes->create("circle_empty", rynx::Shape::makeCircle(1.0f, 32), "Empty");
+		meshes->create("square_empty", rynx::Shape::makeBox(1.0f), "Empty");
+		meshes->create("particle_smoke", rynx::Shape::makeBox(1.0f), "Smoke");
+		meshes->create("square_rope", rynx::Shape::makeBox(1.0f), "Rope");
+		auto* tube_mesh = meshes->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
 		std::cout << tube_mesh->normals.size() << std::endl;
 		for (size_t i = 0; i < tube_mesh->normals.size(); i+=3) {
 			std::cout << " {" << tube_mesh->normals[i] << ", " << tube_mesh->normals[i+1] << ", " << tube_mesh->normals[i+2] << "} --";
@@ -94,11 +94,10 @@ int main(int argc, char** argv) {
 	rynx::application::simulation base_simulation(scheduler);
 	rynx::ecs& ecs = base_simulation.m_ecs;
 
-	std::shared_ptr<Camera> camera = std::make_shared<Camera>();
+	std::shared_ptr<rynx::camera> camera = std::make_shared<rynx::camera>();
 	camera->setProjection(0.02f, 20000.0f, application.aspectRatio());
 
-	rynx::input::mapped_input gameInput(application.input());
-
+	rynx::mapped_input gameInput(application.input());
 
 	rynx::collision_detection* detection = new rynx::collision_detection();
 	auto& collisionDetection = *detection;
@@ -137,7 +136,7 @@ int main(int argc, char** argv) {
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		
-		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, -60.8f, 0));
+		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -60.8f, 0));
 		// auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, 0, 0));
 		auto ruleset_physical_springs = std::make_unique<rynx::ruleset::physics::springs>();
 
@@ -166,7 +165,7 @@ int main(int argc, char** argv) {
 		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
 	}
 
-	rynx::smooth<vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
+	rynx::smooth<rynx::vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
 	
 	// setup simulation initial state
 	{
@@ -186,16 +185,16 @@ int main(int argc, char** argv) {
 		);
 		*/
 
-		math::rand64 random;
+		rynx::math::rand64 random;
 
 		// create some boxes for testing.
 		if constexpr (false) {
 			for (int i = 0; i < 16; ++i)
 				ecs.create(
-					rynx::components::position(vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
+					rynx::components::position(rynx::vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
 					rynx::components::collisions{ collisionCategoryDynamic.value },
-					rynx::components::boundary({ Shape::makeBox(1.0f + 2.0f * random()).generateBoundary_Outside() }),
-					rynx::components::radius(math::sqrt_approx(16 + 16)),
+					rynx::components::boundary({ rynx::Shape::makeBox(1.0f + 2.0f * random()).generateBoundary_Outside() }),
+					rynx::components::radius(rynx::math::sqrt_approx(16 + 16)),
 					rynx::components::color({ 1,1,0,1 }),
 					rynx::components::motion({ 0, 0, 0 }, 0),
 					rynx::components::dampening({ 0.93f, 0.98f }),
@@ -204,12 +203,12 @@ int main(int argc, char** argv) {
 		}
 		
 		// TODO: radius calculation from boundary (bounding radius or something)
-		auto makeBox_inside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
-				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
+				rynx::components::boundary({ rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
+				rynx::components::radius(rynx::math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
@@ -217,12 +216,12 @@ int main(int argc, char** argv) {
 			);
 		};
 
-		auto makeBox_outside = [&](vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
-				rynx::components::radius(math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
+				rynx::components::boundary({ rynx::Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
+				rynx::components::radius(rynx::math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
@@ -252,7 +251,7 @@ int main(int argc, char** argv) {
 	auto zoomOut = gameInput.generateAndBindGameKey('1', "zoom out");
 	auto zoomIn = gameInput.generateAndBindGameKey('2', "zoom in");
 
-	auto menuCamera = std::make_shared<Camera>();
+	auto menuCamera = std::make_shared<rynx::camera>();
 
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
 	
@@ -281,11 +280,11 @@ int main(int argc, char** argv) {
 
 	// construct menus
 	{
-		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.14f);
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.16f);
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, vec3<float>(0.4f, 0.1f, 0), vec3<float>(), 0.18f);
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
-		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
+		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, rynx::vec3<float>(0.4f, 0.1f, 0));
+		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, rynx::vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
@@ -391,7 +390,7 @@ int main(int argc, char** argv) {
 		{
 			rynx_profile("Main", "update camera");
 
-			static vec3f camera_direction(0, 0, 0);
+			static rynx::vec3f camera_direction(0, 0, 0);
 			
 			if (gameInput.isKeyDown(camera_orientation_key)) {
 				auto mouseDelta = gameInput.mouseDelta();
@@ -403,7 +402,7 @@ int main(int argc, char** argv) {
 			rotator_x.discardSetRotation(camera_direction.x, 0, 1, 0);
 			rotator_y.discardSetRotation(camera_direction.y, -1, 0, 0);
 
-			vec3f direction = rotator_y * rotator_x * vec3f(0, 0, -1);
+			rynx::vec3f direction = rotator_y * rotator_x * rynx::vec3f(0, 0, -1);
 
 			camera->setPosition(cameraPosition);
 			camera->setDirection(direction);
@@ -412,7 +411,7 @@ int main(int argc, char** argv) {
 		}
 
 		if (gameInput.isKeyPressed(cameraUp)) {
-			config = audio.play_sound(soundIndex, vec3f(), vec3f());
+			config = audio.play_sound(soundIndex, rynx::vec3f(), rynx::vec3f());
 		}
 
 		{
@@ -429,8 +428,8 @@ int main(int argc, char** argv) {
 		{
 			float cameraHeight = cameraPosition->z;
 			gameInput.mouseWorldPosition(
-				(cameraPosition* vec3<float>{1,1,0}) +
-				mousePos * vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
+				(cameraPosition* rynx::vec3<float>{1,1,0}) +
+				mousePos * rynx::vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
 			);
 		}
 
@@ -541,8 +540,8 @@ int main(int argc, char** argv) {
 				{
 					// visualize collision detection structure.
 					if (conf.visualize_dynamic_collisions) {
-						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-						collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+						std::array<rynx::vec4<float>, 5> node_colors{ rynx::vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+						collisionDetection.get(collisionCategoryDynamic)->forEachNode([&](rynx::vec3<float> pos, float radius, int depth) {
 							rynx::matrix4 m;
 							m.discardSetTranslate(pos);
 							m.scale(radius);
@@ -553,8 +552,8 @@ int main(int argc, char** argv) {
 
 					// visualize collision detection structure.
 					if (conf.visualize_static_collisions) {
-						std::array<vec4<float>, 5> node_colors{ vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
-						collisionDetection.get(collisionCategoryStatic)->forEachNode([&](vec3<float> pos, float radius, int depth) {
+						std::array<rynx::vec4<float>, 5> node_colors{ rynx::vec4<float>{0, 1, 0, 0.2f}, {0, 0, 1, 0.2f}, {1, 0, 0, 0.2f}, {1, 1, 0, 0.2f}, {0, 1, 1, 0.2f} };
+						collisionDetection.get(collisionCategoryStatic)->forEachNode([&](rynx::vec3<float> pos, float radius, int depth) {
 							rynx::matrix4 m;
 							m.discardSetTranslate(pos);
 							m.scale(radius);

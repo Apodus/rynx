@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <string>
 

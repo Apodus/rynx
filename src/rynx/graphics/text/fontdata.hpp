@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/graphics/text/glyph.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <string>
 
 
@@ -15,7 +15,7 @@ public:
 	int baseLine;
 
 	Glyph glyphData[256];
-	vec4<float> textureCoordinates[256];
+	rynx::vec4<float> textureCoordinates[256];
 
 	FontData() {}
 
@@ -37,7 +37,7 @@ public:
 			float bottom = y * 1.0f / totalHeight;
 			float top = (y + height) * 1.0f / totalHeight;
 
-			textureCoordinates[c] = vec4<float>(left, right, top, bottom);
+			textureCoordinates[c] = rynx::vec4<float>(left, right, top, bottom);
 		}
 	}
 

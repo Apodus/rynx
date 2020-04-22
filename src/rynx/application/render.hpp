@@ -6,8 +6,8 @@
 #include <rynx/graphics/framebuffer.hpp>
 #include <memory>
 
-class Camera;
 namespace rynx {
+	class camera;
 	namespace graphics {
 		class shader;
 	}
@@ -17,7 +17,7 @@ namespace rynx {
 
 		class renderer : public rynx::application::igraphics_step {
 		public:
-			renderer(rynx::application::Application& application, std::shared_ptr<Camera> camera);
+			renderer(rynx::application::Application& application, std::shared_ptr<camera> camera);
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
@@ -39,7 +39,7 @@ namespace rynx {
 			std::pair<float, float> current_internal_resolution_lighting;
 
 			rynx::application::Application& m_application;
-			std::shared_ptr<Camera> camera;
+			std::shared_ptr<camera> camera;
 		};
 	}
 }

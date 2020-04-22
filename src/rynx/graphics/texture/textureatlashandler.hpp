@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/graphics/texture/textureatlas.hpp>
 
@@ -10,28 +10,28 @@
 class TextureAtlasHandler {
 
 	struct SubTexture {
-		floats4 subTextureCoordinates;
+		rynx::floats4 subTextureCoordinates;
 		std::string realTextureID;
 
 		SubTexture() {}
-		SubTexture(floats4 subTextureCoordinates, const std::string& realTextureID) {
+		SubTexture(rynx::floats4 subTextureCoordinates, const std::string& realTextureID) {
 			this->subTextureCoordinates = subTextureCoordinates;
 			this->realTextureID = realTextureID;
 		}
 	};
 
 	rynx::unordered_map<std::string, SubTexture> subTextures;
-	vec4<float> DEFAULT_TEXTURE_COORDINATES;
+	rynx::vec4<float> DEFAULT_TEXTURE_COORDINATES;
 
 public:
 	TextureAtlasHandler() {
-		DEFAULT_TEXTURE_COORDINATES = vec4<float>(0.5f, 0.5f, 1.0f, 1.0f);
+		DEFAULT_TEXTURE_COORDINATES = rynx::vec4<float>(0.5f, 0.5f, 1.0f, 1.0f);
 	}
 
 	void addTextureAtlas(const TextureAtlas& textureAtlas) {
 		const std::string& realTextureID = textureAtlas.getRealTextureID();
 		for(const std::string& subTextureID : textureAtlas.getSubTextureTextureIDs()) {
-			vec4<float> subTextureCoordinates = textureAtlas.getSubTextureCoordinates(subTextureID);
+			rynx::vec4<float> subTextureCoordinates = textureAtlas.getSubTextureCoordinates(subTextureID);
 			SubTexture subTexture(subTextureCoordinates, realTextureID);
 			subTextures.emplace(subTextureID, subTexture);
 			logmsg("Added subtexture: %s", subTextureID.c_str());
@@ -45,7 +45,7 @@ public:
 		return subTextureID;
 	}
 
-	floats4 getTextureCoordinateLimits(const std::string& subTextureID) const {
+	rynx::floats4 getTextureCoordinateLimits(const std::string& subTextureID) const {
 		auto it = subTextures.find(subTextureID);
 		if(it == subTextures.end()) {
 			logmsg("Could not find %s", subTextureID.c_str());
@@ -54,8 +54,8 @@ public:
 		return it->second.subTextureCoordinates;
 	}
 
-	floats4 getTextureCoordinateLimits(const std::string& textureID, floats4 uvLimits) const {
-		floats4 subtex_limits = getTextureCoordinateLimits(textureID);
+	rynx::floats4 getTextureCoordinateLimits(const std::string& textureID, rynx::floats4 uvLimits) const {
+		rynx::floats4 subtex_limits = getTextureCoordinateLimits(textureID);
 		float width = subtex_limits[2] - subtex_limits[0];
 		float height = subtex_limits[3] - subtex_limits[1];
 		

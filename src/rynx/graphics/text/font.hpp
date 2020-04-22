@@ -33,7 +33,7 @@ public:
 		return totalWidth * lineHeight;
 	}
 
-	vec4<float> getTextureCoordinates(char c) const {
+	rynx::vec4<float> getTextureCoordinates(char c) const {
 		return fontData.textureCoordinates[c];
 	}
 

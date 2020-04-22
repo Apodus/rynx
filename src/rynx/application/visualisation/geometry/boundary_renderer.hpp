@@ -13,7 +13,7 @@ namespace rynx {
 		namespace visualisation {
 			struct boundary_renderer : public rynx::application::graphics_step::igraphics_step {
 
-				boundary_renderer(Mesh* boxMesh, MeshRenderer* meshRenderer) {
+				boundary_renderer(mesh* boxMesh, MeshRenderer* meshRenderer) {
 					m_boxMesh = boxMesh;
 					m_meshRenderer = meshRenderer;
 					m_edges = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
@@ -58,7 +58,7 @@ namespace rynx {
 				float m_line_width = 5.5f;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_edges;
 				MeshRenderer* m_meshRenderer;
-				Mesh* m_boxMesh;
+				mesh* m_boxMesh;
 			};
 		}
 	}

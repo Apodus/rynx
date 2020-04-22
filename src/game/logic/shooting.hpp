@@ -30,11 +30,11 @@ namespace game {
 
 	namespace actions {
 		struct fire_weapon : public rynx::application::logic::iaction {
-			fire_weapon(rynx::ecs::id id, vec3<float> target, rynx::collision_detection::category_id collisionCategory) : collisionCategory(collisionCategory), entity(id), targetPos(target) {}
+			fire_weapon(rynx::ecs::id id, rynx::vec3<float> target, rynx::collision_detection::category_id collisionCategory) : collisionCategory(collisionCategory), entity(id), targetPos(target) {}
 
 			rynx::collision_detection::category_id collisionCategory;
 			rynx::ecs::id entity;
-			vec3<float> targetPos;
+			rynx::vec3<float> targetPos;
 
 			virtual void apply(rynx::ecs& ecs) const {
 				auto shooter = ecs[entity];
@@ -47,14 +47,14 @@ namespace game {
 
 					auto shooterPos = shooter.get<rynx::components::position>();
 					auto shooterMotion = shooter.get<rynx::components::motion>();
-					vec3<float> direction = targetPos - shooterPos.value;
+					rynx::vec3<float> direction = targetPos - shooterPos.value;
 					direction.normalize();
 					auto normalizedDirection = direction;
 					direction *= w.projectileSpeed * 0.1f;
 					
 					// todo: need usable pseudo random source.
 					float spreadForOne = 2.0f * ((float(rand()) / RAND_MAX) - 0.5f) * w.bulletSpread;
-					math::rotateXY(direction, spreadForOne);
+					rynx::math::rotateXY(direction, spreadForOne);
 
 					float bulletRadius = 0.3f;
 
@@ -79,11 +79,11 @@ namespace game {
 		struct shooting_logic : public rynx::application::logic::iruleset {
 			int32_t shootKey;
 			rynx::collision_detection::category_id projectiles;
-			shooting_logic(rynx::input::mapped_input& input, rynx::collision_detection::category_id projectiles) : projectiles(projectiles) {
+			shooting_logic(rynx::mapped_input& input, rynx::collision_detection::category_id projectiles) : projectiles(projectiles) {
 				shootKey = input.generateAndBindGameKey(input.getMouseKeyPhysical(0), "shoot");
 			}
 
-			virtual std::vector<std::unique_ptr<rynx::application::logic::iaction>> onInput(rynx::input::mapped_input& input, const rynx::ecs& ecs) override {
+			virtual std::vector<std::unique_ptr<rynx::application::logic::iaction>> onInput(rynx::mapped_input& input, const rynx::ecs& ecs) override {
 				int localPlayerId = 1; // TODO: Fix hard coded local player id
 				if (ecs.exists(localPlayerId)) {
 					auto localPlayerEntity = ecs[localPlayerId];

@@ -3,7 +3,7 @@
 #include <rynx/graphics/shader/shader.hpp>
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/math/matrix.hpp>
+#include <rynx/math/matrix.hpp>
 
 #include <iostream>
 #include <fstream>

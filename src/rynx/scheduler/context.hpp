@@ -5,7 +5,7 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/object_storage.hpp>
 #include <rynx/tech/ecs.hpp>
-#include <rynx/tech/math/math.hpp>
+#include <rynx/math/random.hpp>
 
 #include <mutex>
 #include <atomic>

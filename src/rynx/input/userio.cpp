@@ -18,7 +18,7 @@ namespace {
 	std::function<void(int)> g_mouseEnteredHandler;
 }
 
-UserIO::UserIO(std::shared_ptr<Window> window)
+rynx::input::input(std::shared_ptr<Window> window)
 {
 	rynx_assert(!g_keyboardKeyEventHandler, "Multiple UserIO initialisations not allowed :( Never fix");
 	
@@ -28,11 +28,11 @@ UserIO::UserIO(std::shared_ptr<Window> window)
 	m_window = window;
 	m_mouseInScreen = true;
 
-	g_keyboardKeyEventHandler = std::bind(&UserIO::onKeyEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	g_mouseScrollEventHandler = std::bind(&UserIO::onMouseScrollEvent, this, std::placeholders::_1, std::placeholders::_2);
-	g_mouseMoveEventHandler = std::bind(&UserIO::onMouseMoveEvent, this, std::placeholders::_1, std::placeholders::_2);
-	g_mouseKeyEventHandler = std::bind(&UserIO::onMouseButtonEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	g_mouseEnteredHandler = std::bind(&UserIO::onMouseEnterEvent, this, std::placeholders::_1);
+	g_keyboardKeyEventHandler = std::bind(&input::onKeyEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+	g_mouseScrollEventHandler = std::bind(&input::onMouseScrollEvent, this, std::placeholders::_1, std::placeholders::_2);
+	g_mouseMoveEventHandler = std::bind(&input::onMouseMoveEvent, this, std::placeholders::_1, std::placeholders::_2);
+	g_mouseKeyEventHandler = std::bind(&input::onMouseButtonEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	g_mouseEnteredHandler = std::bind(&input::onMouseEnterEvent, this, std::placeholders::_1);
 
 	glfwSetKeyCallback(window->getGLFWwindow(), keyCallbackDummy);
 	glfwSetScrollCallback(window->getGLFWwindow(), scrollCallbackDummy);
@@ -41,7 +41,7 @@ UserIO::UserIO(std::shared_ptr<Window> window)
 	glfwSetCursorEnterCallback(window->getGLFWwindow(), cursorEnterCallbackDummy);
 }
 
-UserIO::~UserIO() {
+rynx::input::~input() {
 	g_keyboardKeyEventHandler = nullptr;
 	g_mouseScrollEventHandler = nullptr;
 	g_mouseMoveEventHandler = nullptr;
@@ -53,36 +53,36 @@ UserIO::~UserIO() {
 #pragma warning (disable : 4800) // forcing int value to boolean
 #endif
 
-bool UserIO::isKeyClicked(int key) const {
+bool rynx::input::isKeyClicked(int key) const {
 	return m_buttonStates[key] & KEY_CLICK;
 }
 
-bool UserIO::isKeyPressed(int key) const {
+bool rynx::input::isKeyPressed(int key) const {
 	return m_buttonStates[key] & KEY_PRESSED;
 }
 
-bool UserIO::isKeyDown(int key) const {
+bool rynx::input::isKeyDown(int key) const {
 	return m_buttonStates[key] & KEY_DOWN;
 }
 
-bool UserIO::isKeyRepeat(int key) const {
+bool rynx::input::isKeyRepeat(int key) const {
 	return m_buttonStates[key] & KEY_REPEAT;
 }
 
-bool UserIO::isKeyReleased(int key) const {
+bool rynx::input::isKeyReleased(int key) const {
 	return m_buttonStates[key] & KEY_RELEASED;
 }
 
-bool UserIO::isKeyConsumed(int key) const {
+bool rynx::input::isKeyConsumed(int key) const {
 	return m_buttonStates[key] & KEY_CONSUMED;
 }
 
-void UserIO::consume(int key) {
+void rynx::input::consume(int key) {
 	m_buttonStates[key] |= KEY_CONSUMED;
 }
 
 
-int UserIO::getAnyClicked() {
+int rynx::input::getAnyClicked() {
 	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
 		if(m_buttonStates[index] & KEY_PRESSED) {
 			return index;
@@ -91,7 +91,7 @@ int UserIO::getAnyClicked() {
 	return 0;
 }
 
-int UserIO::getAnyReleased() {
+int rynx::input::getAnyReleased() {
 	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
 		if(m_buttonStates[index] & KEY_RELEASED) {
 			return index;
@@ -100,7 +100,7 @@ int UserIO::getAnyReleased() {
 	return 0;
 }
 
-float UserIO::getMouseScroll() const {
+float rynx::input::getMouseScroll() const {
 	return m_mouseScroll;
 }
 
@@ -108,7 +108,7 @@ float UserIO::getMouseScroll() const {
 #pragma warning (default : 4800) // forcing int value to boolean
 #endif
 
-void UserIO::update() {
+void rynx::input::update() {
 	for(uint8_t& keyState : m_buttonStates) {
 		keyState &= ~(KEY_PRESSED | KEY_RELEASED | KEY_REPEAT | KEY_CLICK | KEY_CONSUMED);
 	}
@@ -116,7 +116,7 @@ void UserIO::update() {
 	m_mouseDelta = vec3f(0, 0, 0);
 }
 
-void UserIO::onKeyEvent(int key, int /* scancode */, int action, int /* mods */) {
+void rynx::input::onKeyEvent(int key, int /* scancode */, int action, int /* mods */) {
 	if (key < 0)
 		return;
 	if (action == GLFW_PRESS) {
@@ -130,7 +130,7 @@ void UserIO::onKeyEvent(int key, int /* scancode */, int action, int /* mods */)
 	}
 }
 
-void UserIO::onMouseButtonEvent(int key, int action, int /* mods */) {
+void rynx::input::onMouseButtonEvent(int key, int action, int /* mods */) {
 	if (action == GLFW_PRESS) {
 		m_buttonStates[key + 256] |= KEY_PRESSED | KEY_DOWN;
 		m_mousePosition_clickBegin = m_mousePosition;
@@ -147,11 +147,11 @@ void UserIO::onMouseButtonEvent(int key, int action, int /* mods */) {
 	}
 }
 
-void UserIO::onMouseScrollEvent(double /* xoffset */, double yoffset) {
+void rynx::input::onMouseScrollEvent(double /* xoffset */, double yoffset) {
 	m_mouseScroll = static_cast<float>(yoffset);
 }
 
-void UserIO::onMouseMoveEvent(double xpos, double ypos) {
+void rynx::input::onMouseMoveEvent(double xpos, double ypos) {
 	vec3f newPos(
 		2.0f * static_cast<float>(xpos) / m_window->width() - 1.0f,
 		1.0f - 2.0f * static_cast<float>(ypos) / m_window->height(),
@@ -162,7 +162,7 @@ void UserIO::onMouseMoveEvent(double xpos, double ypos) {
 	m_mousePosition = newPos;
 }
 
-void UserIO::onMouseEnterEvent(int entered) {
+void rynx::input::onMouseEnterEvent(int entered) {
 	if (entered == GL_TRUE) {
 		m_mouseInScreen = true;
 	}
@@ -175,31 +175,31 @@ void UserIO::onMouseEnterEvent(int entered) {
 
 
 
-void UserIO::keyCallbackDummy(GLFWwindow* /* window */, int key, int scancode, int action, int mods)
+void rynx::input::keyCallbackDummy(GLFWwindow* /* window */, int key, int scancode, int action, int mods)
 {
 	if(g_keyboardKeyEventHandler)
 		g_keyboardKeyEventHandler(key, scancode, action, mods);
 }
 
-void UserIO::mouseButtonCallbackDummy(GLFWwindow* /* window */, int button, int action, int mods) 
+void rynx::input::mouseButtonCallbackDummy(GLFWwindow* /* window */, int button, int action, int mods)
 {
 	if(g_mouseKeyEventHandler)
 		g_mouseKeyEventHandler(button, action, mods);
 }
 
-void UserIO::scrollCallbackDummy(GLFWwindow* /* window */, double xoffset, double yoffset)
+void rynx::input::scrollCallbackDummy(GLFWwindow* /* window */, double xoffset, double yoffset)
 {
 	if(g_mouseScrollEventHandler)
 		g_mouseScrollEventHandler(xoffset, yoffset);
 }
 
-void UserIO::cursorPosCallbackDummy(GLFWwindow* /* window */, double xpos, double ypos)
+void rynx::input::cursorPosCallbackDummy(GLFWwindow* /* window */, double xpos, double ypos)
 {
 	if(g_mouseMoveEventHandler)
 		g_mouseMoveEventHandler(xpos, ypos);
 }
 
-void UserIO::cursorEnterCallbackDummy(GLFWwindow* /* window */, int entered) 
+void rynx::input::cursorEnterCallbackDummy(GLFWwindow* /* window */, int entered)
 {
 	if(g_mouseEnteredHandler)
 		g_mouseEnteredHandler(entered);

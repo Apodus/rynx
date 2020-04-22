@@ -10,8 +10,8 @@
 
 // required for implementation
 #include <rynx/tech/ecs.hpp>
-#include <rynx/tech/math/matrix.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/matrix.hpp>
+#include <rynx/math/vector.hpp>
 
 namespace rynx {
 	namespace application {
@@ -20,7 +20,7 @@ namespace rynx {
 			private:
 				struct buffer {
 					size_t num;
-					const Mesh* mesh;
+					const mesh* mesh;
 					const rynx::components::position* positions;
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;

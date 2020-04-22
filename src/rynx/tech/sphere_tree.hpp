@@ -1,8 +1,8 @@
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/math/geometry.hpp>
+#include <rynx/math/geometry/bounding_sphere.hpp>
 #include <rynx/tech/parallel_accumulator.hpp>
 #include <rynx/tech/profiling.hpp>
 
@@ -125,7 +125,7 @@ namespace rynx {
 						}
 
 						// now there should be space in parent node's children list, add new siblings to self there.
-						auto f1 = farPoint(m_members.back().pos, m_members);
+						auto f1 = rynx::math::farPoint(m_members.back().pos, m_members);
 						{
 							m_parent->m_children.emplace_back(std::make_unique<node>(m_members[f1.first].pos, m_parent, depth));
 							auto id = m_members[f1.first].entityId;
@@ -189,10 +189,10 @@ namespace rynx {
 					if (m_members.empty()) {
 						return;
 					}
-					posInfo = bounding_sphere(m_members);
+					posInfo = rynx::math::bounding_sphere(m_members);
 				}
 				else {
-					posInfo = bounding_sphere(m_children);
+					posInfo = rynx::math::bounding_sphere(m_children);
 				}
 
 				pos = posInfo.first;

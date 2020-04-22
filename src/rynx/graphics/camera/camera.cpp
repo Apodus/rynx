@@ -1,6 +1,6 @@
 #include "camera.hpp"
 
-Camera::Camera() {
+rynx::camera::camera() {
 	view.identity();
 	projection.identity();
 
@@ -9,11 +9,11 @@ Camera::Camera() {
 	m_up = vec3f(0, 1, 0);
 }
 
-Camera::~Camera() {
+rynx::camera::~camera() {
 
 }
 
-void Camera::setProjection(float zNear, float zFar, float aspect) {
+void rynx::camera::setProjection(float zNear, float zFar, float aspect) {
 	float w = zNear;
 	float h = zNear / aspect;
 	projection.discardSetFrustum(
@@ -23,7 +23,7 @@ void Camera::setProjection(float zNear, float zFar, float aspect) {
 	);
 }
 
-void Camera::setOrtho(float width, float height, float zNear, float zFar)
+void rynx::camera::setOrtho(float width, float height, float zNear, float zFar)
 {
 	projection.discardSetOrtho(
 		-width * 0.5f, +width * 0.5f,
@@ -32,19 +32,19 @@ void Camera::setOrtho(float width, float height, float zNear, float zFar)
 	);
 }
 
-void Camera::setPosition(vec3<float> cameraPosition) {
+void rynx::camera::setPosition(vec3<float> cameraPosition) {
 	m_position = cameraPosition;
 }
 
-void Camera::setDirection(vec3<float> cameraDirection) {
+void rynx::camera::setDirection(vec3<float> cameraDirection) {
 	m_direction = cameraDirection;
 }
 
-void Camera::setUpVector(vec3<float> upVector) {
+void rynx::camera::setUpVector(vec3<float> upVector) {
 	m_up = upVector;
 }
 
-void Camera::rebuild_view_matrix() {
+void rynx::camera::rebuild_view_matrix() {
 	m_local_left = m_direction.normalize().cross(m_up).normalize();
 	m_local_up = m_local_left.cross(m_direction).normalize();
 	m_local_forward = m_direction;
@@ -56,10 +56,10 @@ void Camera::rebuild_view_matrix() {
 	);
 }
 
-const rynx::matrix4& Camera::getView() const {
+const rynx::matrix4& rynx::camera::getView() const {
 	return view;
 }
 
-const rynx::matrix4& Camera::getProjection() const {
+const rynx::matrix4& rynx::camera::getProjection() const {
 	return projection;
 }

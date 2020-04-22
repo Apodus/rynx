@@ -5,16 +5,16 @@
 #include <rynx/tech/sphere_tree.hpp>
 #include <memory>
 
-class Camera;
-
 namespace rynx {
 	class ecs;
+	class camera;
+
 	namespace ruleset {
 		class frustum_culling : public application::logic::iruleset {
 			struct entity_tracked_by_frustum_culling {};
 		
 		public:
-			frustum_culling(std::shared_ptr<Camera> camera) 
+			frustum_culling(std::shared_ptr<camera> camera) 
 				: m_pCamera(std::move(camera))
 			{}
 			
@@ -26,7 +26,7 @@ namespace rynx {
 		private:
 			rynx::sphere_tree m_in_frustum;
 			rynx::sphere_tree m_out_frustum;
-			std::shared_ptr<Camera> m_pCamera;
+			std::shared_ptr<camera> m_pCamera;
 		};
 	}
 }

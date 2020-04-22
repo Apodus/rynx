@@ -8,15 +8,12 @@
 namespace rynx {
 	class ecs;
 	class object_storage;
+	class mapped_input;
 
 	namespace scheduler {
 		struct barrier;
 		class context;
 		class task_scheduler;
-	}
-
-	namespace input {
-		class mapped_input;
 	}
 
 	namespace application {
@@ -31,7 +28,7 @@ namespace rynx {
 			public:
 				iruleset();
 				virtual ~iruleset() {}
-				virtual std::vector<std::unique_ptr<iaction>> onInput(rynx::input::mapped_input&, const ecs&) { return {}; }
+				virtual std::vector<std::unique_ptr<iaction>> onInput(rynx::mapped_input&, const ecs&) { return {}; }
 				
 				void process(rynx::scheduler::context& scheduler, float dt);
 				rynx::scheduler::barrier barrier() const;
@@ -48,7 +45,7 @@ namespace rynx {
 				std::vector<std::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
 			};
 
-			std::vector<std::unique_ptr<iaction>> onInput(rynx::input::mapped_input& input, const ecs& ecs) const {
+			std::vector<std::unique_ptr<iaction>> onInput(rynx::mapped_input& input, const ecs& ecs) const {
 				std::vector<std::unique_ptr<iaction>> result;
 				for (const auto& ruleset : m_rules) {
 					auto actions = ruleset->onInput(input, ecs);

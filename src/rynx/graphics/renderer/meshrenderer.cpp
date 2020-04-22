@@ -1,7 +1,6 @@
 
 #include "meshrenderer.hpp"
 #include <rynx/graphics/internal/includes.hpp>
-#include <rynx/graphics/mesh/polygonTesselator.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
@@ -74,7 +73,7 @@ void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
 		glDisable(GL_DEPTH_TEST);
 }
 
-void rynx::MeshRenderer::setCamera(std::shared_ptr<Camera> camera) {
+void rynx::MeshRenderer::setCamera(std::shared_ptr<camera> camera) {
 	m_pCamera = camera;
 }
 
@@ -144,7 +143,7 @@ void rynx::MeshRenderer::cameraToGPU() {
 	set_camera_to_shader(*shader_instanced_deferred);
 }
 
-void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
+void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
 	shader_single->activate();
 	mesh.bind();
 
@@ -157,7 +156,7 @@ void rynx::MeshRenderer::drawMesh(const Mesh& mesh, const matrix4& model, const 
 }
 
 void rynx::MeshRenderer::instanced_draw_impl(
-	const Mesh& mesh,
+	const mesh& mesh,
 	const std::string& texture,
 	size_t num_instances,
 	const matrix4* models,

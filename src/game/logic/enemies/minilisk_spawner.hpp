@@ -5,8 +5,8 @@
 #include <rynx/tech/ecs.hpp>
 #include <vector>
 
-#include <rynx/tech/math/vector.hpp>
-#include <rynx/graphics/mesh/math.hpp>
+#include <rynx/math/vector.hpp>
+#include <rynx/math/geometry/math.hpp>
 
 #include <game/gametypes.hpp>
 
@@ -19,7 +19,7 @@ namespace game {
 			uint64_t how_often_to_spawn = 300;
 			float x_spawn = -20.9f;
 			
-			math::rand64 m_random;
+			rynx::math::rand64 m_random;
 			rynx::type_index::virtual_type m_virtual_type_id;
 			rynx::type_index::virtual_type m_virtual_type_id2;
 
@@ -73,15 +73,15 @@ namespace game {
 
 								if (m_random() > 0.75f) {
 									rynx::components::light_omni light;
-									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
+									light.color = rynx::floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
 									ecs.attachToEntity(id1, light);
 								}
 								else if (m_random() > 0.95f) {
 									rynx::components::light_directed light;
-									light.color = floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
+									light.color = rynx::floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
 									light.ambient = m_random(0.0f, 0.1f);
-									light.direction = vec3f(1, 1, 0).normalize();
+									light.direction = rynx::vec3f(1, 1, 0).normalize();
 									light.edge_softness = m_random(0.5f, 5.0f);
 									light.angle = m_random(1.5f, 4.14f);
 									ecs.attachToEntity(id1, light);
@@ -124,10 +124,10 @@ namespace game {
 								float mass = 5000.0f;
 								auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass / 12.0f * (height * height + width * width); };
 								ecs.create(
-									rynx::components::position(vec3<float>(x, y, 0.0f), i * 2.0f),
+									rynx::components::position(rynx::vec3<float>(x, y, 0.0f), i * 2.0f),
 									rynx::components::collisions{ dynamic.value },
-									rynx::components::boundary({ Shape::makeBox(edge_length).generateBoundary_Outside() }),
-									rynx::components::radius(math::sqrt_approx(2 * edge_length * edge_length)),
+									rynx::components::boundary({ rynx::Shape::makeBox(edge_length).generateBoundary_Outside() }),
+									rynx::components::radius(rynx::math::sqrt_approx(2 * edge_length * edge_length)),
 									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),

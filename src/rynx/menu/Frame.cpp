@@ -12,7 +12,7 @@ rynx::menu::Frame::Frame(
 	GPUTextures& textures,
 	const std::string& textureID,
 	float edgeSize) : Component(parent, vec3<float>(), vec3<float>()) {
-	m_backgroundMesh = std::make_unique<Mesh>();
+	m_backgroundMesh = std::make_unique<rynx::mesh>();
 	m_color = Color::WHITE;
 	m_textureID = textureID;
 	m_edgeSize = edgeSize;

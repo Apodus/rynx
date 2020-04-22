@@ -5,8 +5,8 @@
 #include <rynx/tech/ecs.hpp>
 #include <vector>
 
-#include <rynx/tech/math/vector.hpp>
-#include <rynx/graphics/mesh/math.hpp>
+#include <rynx/math/vector.hpp>
+#include <rynx/math/geometry/math.hpp>
 
 #include <game/gametypes.hpp>
 
@@ -66,7 +66,7 @@ namespace game {
 
 							direction.normalize();
 							float spreadMultiplier = 2.0f * (float(rand()) / RAND_MAX) - 1;
-							math::rotateXY(direction, spreadMultiplier * enemy.jumpAngleSpread);
+							rynx::math::rotateXY(direction, spreadMultiplier * enemy.jumpAngleSpread);
 
 							m.acceleration += direction * 0.35f;
 						}

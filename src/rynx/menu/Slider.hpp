@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/menu/Component.hpp>
-#include <rynx/tech/math/matrix.hpp>
+#include <rynx/math/matrix.hpp>
 
 #include <string>
 #include <functional>
@@ -31,7 +31,7 @@ namespace rynx {
 			SlideBarVertical& onValueChanged(std::function<void(float)> t);
 
 			virtual void draw(MeshRenderer&, TextRenderer&) const override {}
-			virtual void onInput(rynx::input::mapped_input& input) override;
+			virtual void onInput(rynx::mapped_input& input) override;
 			virtual void update(float dt) override;
 			void onActivate(float x, float /* y */);
 			void setValue(float value);

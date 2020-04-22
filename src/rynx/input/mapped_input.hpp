@@ -5,10 +5,9 @@
 #include <rynx/tech/object_storage.hpp>
 
 namespace rynx {
-	namespace input {
 		class mapped_input {
 		public:
-			mapped_input(std::shared_ptr<UserIO> physicalIO) {
+			mapped_input(std::shared_ptr<rynx::input> physicalIO) {
 				userIO = physicalIO;
 				rebindAction(InvalidAction, InvalidAction);
 			}
@@ -122,12 +121,11 @@ namespace rynx {
 			static constexpr int32_t InvalidAction = 0;
 			int32_t gameKeyCounter = 0;
 			int32_t bindNextClicked = InvalidAction;
-			std::shared_ptr<UserIO> userIO;
+			std::shared_ptr<rynx::input> userIO;
 			unordered_map<int32_t, int32_t> keyBindings;
 			unordered_map<int32_t, int32_t> reverseBindings;
 			unordered_map<std::string, int32_t> applicationKeyByName_map;
 
 			vec3<float> m_mouseWorldPos; // TODO: is this an ok place to have this?
 		};
-	}
 }

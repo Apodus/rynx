@@ -2,14 +2,14 @@
 #include <rynx/rulesets/frustum_culling.hpp>
 
 #include <rynx/application/components.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/barrier.hpp>
 
-#include <rynx/tech/math/matrix.hpp>
-#include <rynx/graphics/camera/frustumr.hpp>
+#include <rynx/math/matrix.hpp>
+#include <rynx/math/geometry/frustum.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
 

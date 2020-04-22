@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/application/visualisation/renderer.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 
 namespace rynx {
 	namespace graphics {

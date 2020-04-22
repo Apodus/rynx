@@ -3,40 +3,40 @@
 #include <rynx/graphics/internal/includes.hpp>
 #include <rynx/system/assert.hpp>
 
-Mesh::Mesh() {}
+rynx::mesh::mesh() {}
 
-void Mesh::putVertex(float x, float y, float z) {
+void rynx::mesh::putVertex(float x, float y, float z) {
 	vertices.push_back(x);
 	vertices.push_back(y);
 	vertices.push_back(z);
 }
 
-void Mesh::putUVCoord(float u, float v) {
+void rynx::mesh::putUVCoord(float u, float v) {
 	texCoords.push_back(u);
 	texCoords.push_back(v);
 }
 
-void Mesh::putTriangleIndices(int i1, int i2, int i3) {
+void rynx::mesh::putTriangleIndices(int i1, int i2, int i3) {
 	indices.push_back(static_cast<short>(i1));
 	indices.push_back(static_cast<short>(i2));
 	indices.push_back(static_cast<short>(i3));
 }
 
-void Mesh::putNormal(float x, float y, float z) {
+void rynx::mesh::putNormal(float x, float y, float z) {
 	normals.push_back(x);
 	normals.push_back(y);
 	normals.push_back(z);
 }
 
-int Mesh::getVertexCount() const {
+int rynx::mesh::getVertexCount() const {
 	return int(vertices.size() / 3);
 }
 
-int Mesh::getIndexCount() const {
+int rynx::mesh::getIndexCount() const {
 	return int(indices.size());
 }
 
-void Mesh::build() {
+void rynx::mesh::build() {
 
 	auto verifyNoGlErrors = []() {
 		auto error = glGetError();
@@ -74,21 +74,21 @@ void Mesh::build() {
 	verifyNoGlErrors();
 }
 
-void Mesh::rebuildTextureBuffer() {
+void rynx::mesh::rebuildTextureBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, tbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * texCoords.size(), &texCoords[0]);
 }
 
-void Mesh::rebuildVertexBuffer() {
+void rynx::mesh::rebuildVertexBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * vertices.size(), &vertices[0]);
 }
 
-void Mesh::rebuildNormalBuffer() {
+void rynx::mesh::rebuildNormalBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, nbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * normals.size(), &normals[0]);
 }
 
-void Mesh::bind() const {
+void rynx::mesh::bind() const {
 	glBindVertexArray(vao);
 }

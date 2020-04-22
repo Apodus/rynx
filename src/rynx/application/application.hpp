@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/math/matrix.hpp>
+#include <rynx/math/matrix.hpp>
 #include <rynx/tech/unordered_map.hpp>
 
 #include <memory>
@@ -10,10 +10,10 @@
 
 class GPUTextures;
 class Window;
-class UserIO;
-class Mesh;
 
 namespace rynx {
+	class mesh;
+	class input;
 	class MeshRenderer;
 	class TextRenderer;
 
@@ -39,7 +39,7 @@ namespace rynx {
 			std::pair<size_t, size_t> current_window_size() const;
 
 			std::shared_ptr<Window> window() { return m_window; }
-			std::shared_ptr<UserIO> input() { return m_input; }
+			std::shared_ptr<rynx::input> input() { return m_input; }
 			std::shared_ptr<rynx::graphics::shaders> shaders() { return m_shaders; }
 
 			MeshRenderer& meshRenderer() { return *m_meshRenderer; }
@@ -52,7 +52,7 @@ namespace rynx {
 			std::shared_ptr<DebugVisualization> m_debugVisualization;
 
 			std::shared_ptr<Window> m_window;
-			std::shared_ptr<UserIO> m_input;
+			std::shared_ptr<rynx::input> m_input;
 			std::shared_ptr<GPUTextures> m_textures;
 			std::shared_ptr<rynx::graphics::shaders> m_shaders;
 

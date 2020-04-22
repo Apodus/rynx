@@ -92,7 +92,7 @@ void rynx::menu::Component::addChild(std::shared_ptr<Component> child) {
 	m_children.emplace_back(std::move(child));
 }
 
-void rynx::menu::Component::input(rynx::input::mapped_input& input) {
+void rynx::menu::Component::input(rynx::mapped_input& input) {
 	if (m_active) {
 		onInput(input);
 		for (auto&& child : m_children) {
@@ -144,19 +144,19 @@ bool rynx::menu::Component::inScreen() const {
 	return !out;
 }
 
-vec3<float> rynx::menu::Component::position_local() const {
+rynx::vec3<float> rynx::menu::Component::position_local() const {
 	return m_position;
 }
 
-vec3<float> rynx::menu::Component::scale_local() const {
+rynx::vec3<float> rynx::menu::Component::scale_local() const {
 	return m_scale;
 }
 
-const vec3<float>& rynx::menu::Component::position_world() const {
+const rynx::vec3<float>& rynx::menu::Component::position_world() const {
 	return m_worldPosition;
 }
 
-const vec3<float>& rynx::menu::Component::scale_world() const {
+const rynx::vec3<float>& rynx::menu::Component::scale_world() const {
 	return m_worldScale;
 }
 
@@ -170,7 +170,7 @@ rynx::menu::Component& rynx::menu::Component::scale_local(vec3<float> scale) {
 	return *this;
 }
 
-vec3<float> rynx::menu::Component::position_exterior(Align positionAlign_) const {
+rynx::vec3<float> rynx::menu::Component::position_exterior(Align positionAlign_) const {
 	vec3<float> result = m_worldPosition;
 	if (positionAlign_ & LEFT)
 		result.x -= m_worldScale.x * 0.5f;
@@ -183,14 +183,14 @@ vec3<float> rynx::menu::Component::position_exterior(Align positionAlign_) const
 	return result;
 }
 
-vec3<float> rynx::menu::Component::position_relative(vec3<float> direction) const {
+rynx::vec3<float> rynx::menu::Component::position_relative(vec3<float> direction) const {
 	return m_worldPosition + m_worldScale * direction;
 }
 
-vec3<float>& rynx::menu::Component::target_scale() {
+rynx::vec3<float>& rynx::menu::Component::target_scale() {
 	return m_scale.target_value();
 }
 
-vec3<float>& rynx::menu::Component::target_position() {
+rynx::vec3<float>& rynx::menu::Component::target_position() {
 	return m_position.target_value();
 }

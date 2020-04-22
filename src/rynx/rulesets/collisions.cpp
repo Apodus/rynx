@@ -19,10 +19,10 @@ namespace {
 		rynx::components::physical_body b_body;
 		rynx::components::motion* a_motion;
 		rynx::components::motion* b_motion;
-		vec3<float> a_pos;
-		vec3<float> b_pos;
-		vec3<float> c_pos; // collision point in world space
-		vec3<float> normal;
+		rynx::vec3<float> a_pos;
+		rynx::vec3<float> b_pos;
+		rynx::vec3<float> c_pos; // collision point in world space
+		rynx::vec3<float> normal;
 		float penetration;
 	};
 
@@ -38,10 +38,10 @@ namespace {
 		std::vector<collision_event>& storage,
 		rynx::ecs::entity<ecs_view>& a,
 		rynx::ecs::entity<ecs_view>& b,
-		vec3<float> normal,
-		vec3<float> collisionPoint,
-		vec3<float> pos_a,
-		vec3<float> pos_b,
+		rynx::vec3<float> normal,
+		rynx::vec3<float> collisionPoint,
+		rynx::vec3<float> pos_a,
+		rynx::vec3<float> pos_b,
 		float penetration
 	) {
 		// rynx_assert(normal.length_squared() > 0.9f, "normal must be unit length");
@@ -74,13 +74,13 @@ namespace {
 		std::vector<collision_event>& collisions_accumulator, 
 		rynx::ecs::entity<ecs_view> polygon,
 		rynx::ecs::entity<ecs_view> ball,
-		const vec3<float> polygon_position,
-		const vec3<float> ball_position,
+		const rynx::vec3<float> polygon_position,
+		const rynx::vec3<float> ball_position,
 		const float ball_radius
 	) {
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
 		for (auto&& segment : boundaryA.segments_world) {
-			const auto pointToLineSegment = math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
+			const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
 			const float distSqr = pointToLineSegment.first;
 			if (distSqr < ball_radius * ball_radius) {
 				auto normal = (pointToLineSegment.second - ball_position).normalize();
@@ -94,7 +94,7 @@ namespace {
 					pointToLineSegment.second,
 					polygon_position,
 					ball_position,
-					ball_radius - math::sqrt_approx(distSqr)
+					ball_radius - rynx::math::sqrt_approx(distSqr)
 				);
 			}
 		}
@@ -115,23 +115,23 @@ namespace {
 		for (auto&& segmentA : boundaryA.segments_world) {
 			const auto p1 = segmentA.p1;
 			const auto p2 = segmentA.p2;
-			const float dist = math::pointDistanceLineSegment(p1, p2, posB.value).first;
+			const float dist = rynx::math::pointDistanceLineSegment(p1, p2, posB.value).first;
 			if (dist < radiusB) {
 				for (auto&& segmentB : boundaryB.segments_world) {
 					const auto q1 = segmentB.p1;
 					const auto q2 = segmentB.p2;
 
-					const auto collisionPoint = math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
+					const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
 					if (collisionPoint) {
 
 						// how to choose normal?
-						const float b1 = math::pointDistanceLineSegment(p1, p2, q1).first;
-						const float b2 = math::pointDistanceLineSegment(p1, p2, q2).first;
+						const float b1 = rynx::math::pointDistanceLineSegment(p1, p2, q1).first;
+						const float b2 = rynx::math::pointDistanceLineSegment(p1, p2, q2).first;
 
-						const float a1 = math::pointDistanceLineSegment(q1, q2, p1).first;
-						const float a2 = math::pointDistanceLineSegment(q1, q2, p2).first;
+						const float a1 = rynx::math::pointDistanceLineSegment(q1, q2, p1).first;
+						const float a2 = rynx::math::pointDistanceLineSegment(q1, q2, p2).first;
 
-						vec3<float> normal;
+						rynx::vec3<float> normal;
 						if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
 							normal = segmentB.getNormalXY();
 						}
@@ -170,7 +170,7 @@ namespace {
 		const auto& bulletMotion = bulletEntity.get<const rynx::components::motion>();
 
 		auto ballPos = dynamicEntity.get<const rynx::components::position>().value;
-		auto pointDistanceResult = math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, ballPos);
+		auto pointDistanceResult = rynx::math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, ballPos);
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			create_collision_event(
@@ -197,16 +197,16 @@ namespace {
 
 		const auto& polygonPositionComponent = dynamicEntity.get<const rynx::components::position>();
 		auto polyPos = polygonPositionComponent.value;
-		auto pointDistanceResult = math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, polyPos);
+		auto pointDistanceResult = rynx::math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, polyPos);
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
 			for (auto&& segment : boundary.segments_local) {
-				auto intersectionTest = math::lineSegmentIntersectionPoint(
+				auto intersectionTest = rynx::math::lineSegmentIntersectionPoint(
 					bulletPos.value,
 					bulletPos.value - bulletMotion.velocity,
-					math::rotatedXY(segment.p1, polygonPositionComponent.angle) + polygonPositionComponent.value,
-					math::rotatedXY(segment.p2, polygonPositionComponent.angle) + polygonPositionComponent.value
+					rynx::math::rotatedXY(segment.p1, polygonPositionComponent.angle) + polygonPositionComponent.value,
+					rynx::math::rotatedXY(segment.p2, polygonPositionComponent.angle) + polygonPositionComponent.value
 				);
 
 				if (intersectionTest) {
@@ -214,7 +214,7 @@ namespace {
 						collisions_accumulator,
 						bulletEntity,
 						dynamicEntity,
-						math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
+						rynx::math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
 						intersectionTest.point(),
 						bulletPos.value,
 						polyPos,
@@ -231,11 +231,11 @@ namespace {
 		ecs_view ecs,
 		uint64_t entityA,
 		uint64_t entityB,
-		vec3<float> a_pos,
+		rynx::vec3<float> a_pos,
 		float a_radius,
-		vec3<float> b_pos,
+		rynx::vec3<float> b_pos,
 		float b_radius,
-		vec3<float> normal,
+		rynx::vec3<float> normal,
 		float penetration)
 	{
 		auto entA = ecs[entityA];
@@ -338,8 +338,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		"Update boundary local -> boundary world",
 		[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
 			ecs.query().for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
-				float sin_v = math::sin_approx(pos.angle);
-				float cos_v = math::cos_approx(pos.angle);
+				float sin_v = math::sin(pos.angle);
+				float cos_v = math::cos(pos.angle);
 				for (size_t i = 0; i < boundary.segments_local.size(); ++i) {
 					boundary.segments_world[i].p1 = math::rotatedXY(boundary.segments_local[i].p1, sin_v, cos_v) + pos.value;
 					boundary.segments_world[i].p2 = math::rotatedXY(boundary.segments_local[i].p2, sin_v, cos_v) + pos.value;

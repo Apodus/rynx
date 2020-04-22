@@ -13,7 +13,7 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
-				ball_renderer(Mesh* circleMesh, MeshRenderer* meshRenderer, Camera* camera) {
+				ball_renderer(mesh* circleMesh, MeshRenderer* meshRenderer, camera* camera) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
 					m_camera = camera;
@@ -23,37 +23,21 @@ namespace rynx {
 					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 				}
 
-				bool inScreen(vec3<float> p, float r) {
-					bool out = p.x + r < cameraLeft;
-					out |= p.x - r > cameraRight;
-					out |= p.y + r > cameraTop;
-					out |= p.y - r < cameraBot;
-					return !out;
-				}
-
 				virtual ~ball_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
 					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
 						rynx_profile("visualisation", "model matrices");
 						
-						cameraLeft = m_camera->position().x - m_camera->position().z;
-						cameraRight = m_camera->position().x + m_camera->position().z;
-						cameraTop = m_camera->position().y + m_camera->position().z;
-						cameraBot = m_camera->position().y - m_camera->position().z;
-						
 						m_balls->clear();
 						m_balls_translucent->clear();
 						
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent>()
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent, rynx::components::frustum_culled>()
 							.for_each_parallel(task_context, [this] (
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
 								{
-									if (!inScreen(pos.value, r.r))
-										return;
-
 									matrix4 model;
 									model.discardSetTranslate(pos.value);
 									model.scale(r.r);
@@ -64,15 +48,12 @@ namespace rynx {
 									m_balls->emplace_back(color.value);
 								});
 
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().in<rynx::components::translucent>()
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().in<rynx::components::translucent, rynx::components::frustum_culled>()
 							.for_each_parallel(task_context, [this](
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,
 								const rynx::components::color& color)
 								{
-									if (!inScreen(pos.value, r.r))
-										return;
-
 									matrix4 model;
 									model.discardSetTranslate(pos.value);
 									model.scale(r.r);
@@ -143,19 +124,13 @@ namespace rynx {
 					}
 				}
 
-				// Assumes axis aligned top-down camera :(
-				float cameraLeft;
-				float cameraRight;
-				float cameraTop;
-				float cameraBot;
-
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls_translucent;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
 				
 				MeshRenderer* m_meshRenderer;
-				Mesh* m_circleMesh;
-				Camera* m_camera;
+				mesh* m_circleMesh;
+				camera* m_camera;
 			};
 		}
 	}

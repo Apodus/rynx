@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <string>
@@ -11,7 +11,7 @@
 class TextureAtlas {
 
 	std::string textureID;
-	rynx::unordered_map<std::string, vec4<float>> textureCoordinates;
+	rynx::unordered_map<std::string, rynx::vec4<float>> textureCoordinates;
 	std::vector<std::string> textureIDs;
 
 	float halfPixelWidth;
@@ -26,7 +26,7 @@ public:
 	}
 
 	void insertTexture(const std::string& subTextureID, int slotX, int slotY, int slotCountX, int slotCountY) {
-		vec4<float> texCoord(
+		rynx::vec4<float> texCoord(
 			(slotX + 0.0f) / slotCountX + halfPixelWidth,
 			((slotY + 1.0f) / slotCountY - halfPixelHeight),
 			(slotX + 1.0f) / slotCountX - halfPixelWidth,
@@ -43,7 +43,7 @@ public:
 		return textureID;
 	}
 
-	const vec4<float>& getSubTextureCoordinates(const std::string& subTexture) const {
+	const rynx::vec4<float>& getSubTextureCoordinates(const std::string& subTexture) const {
 		auto it = textureCoordinates.find(subTexture);
 		rynx_assert(it != textureCoordinates.end(), "subtexture not found: %s", subTexture.c_str());
 		return it->second;

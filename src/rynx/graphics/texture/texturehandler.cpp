@@ -179,7 +179,7 @@ unsigned GPUTextures::createTexture(const std::string& name, int width, int heig
 	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
-	textureSizes[name] = vec4<short>(short(width), short(height), 0, 0);
+	textureSizes[name] = rynx::vec4<short>(short(width), short(height), 0, 0);
 	return textures[name];
 }
 
@@ -241,7 +241,7 @@ unsigned GPUTextures::createTexture(const std::string& name, Image& img)
 	
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	textureSizes[name] = vec4<short>(static_cast<short>(img.sizeX), static_cast<short>(img.sizeY), 0, 0);
+	textureSizes[name] = rynx::vec4<short>(static_cast<short>(img.sizeX), static_cast<short>(img.sizeY), 0, 0);
 	img.unload();
 	
 	return textures[name];
@@ -317,11 +317,11 @@ bool GPUTextures::textureExists(const std::string& name) const
 	return textures.find(name) != textures.end();
 }
 
-floats4 GPUTextures::textureLimits(const std::string& name) const {
+rynx::floats4 GPUTextures::textureLimits(const std::string& name) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name);
 }
 
-floats4 GPUTextures::textureLimits(const std::string& name, vec4<float> uvLimits) const {
+rynx::floats4 GPUTextures::textureLimits(const std::string& name, rynx::vec4<float> uvLimits) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name, uvLimits);
 }
 

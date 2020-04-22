@@ -5,7 +5,7 @@
 #include <rynx/graphics/renderer/screenspace.hpp>
 #include <rynx/graphics/opengl.hpp>
 
-#include <rynx/graphics/mesh/math.hpp>
+#include <rynx/math/geometry/math.hpp>
 #include <rynx/application/components.hpp>
 #include <rynx/scheduler/context.hpp>
 #include <rynx/tech/profiling.hpp>

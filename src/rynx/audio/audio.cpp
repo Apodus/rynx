@@ -3,7 +3,7 @@
 #include <vorbis/vorbisenc.h>
 #include <vorbis/vorbisfile.h>
 #include <vorbis/codec.h>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/audio/audio.hpp>
 
 #include <rynx/audio/dsp/signal.hpp>

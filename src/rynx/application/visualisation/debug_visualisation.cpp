@@ -2,7 +2,7 @@
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 
-void rynx::application::DebugVisualization::addDebugVisual(Mesh* mesh, rynx::matrix4 model, floats4 color, float lifetime) {
+void rynx::application::DebugVisualization::addDebugVisual(mesh* mesh, rynx::matrix4 model, floats4 color, float lifetime) {
 	auto& obj = m_data[mesh];
 	obj.colors.emplace_back(color);
 	obj.matrices.emplace_back(model);

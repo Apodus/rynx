@@ -3,16 +3,15 @@
 
 #include <rynx/tech/ecs.hpp>
 #include <rynx/tech/object_storage.hpp>
-#include <rynx/graphics/mesh/polygon.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/geometry/polygon.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/collision_detection.hpp>
 #include <rynx/tech/components.hpp>
 
 #include <string>
 
-class Mesh;
-
 namespace rynx {
+	class mesh;
 	template<typename T> struct value_segment {
 		T begin;
 		T end;
@@ -29,7 +28,7 @@ namespace rynx {
 		};
 		
 		struct boundary {
-			using boundary_t = decltype(Polygon<vec3<float>>().generateBoundary_Outside());
+			using boundary_t = decltype(polygon().generateBoundary_Outside());
 			boundary(boundary_t&& b) : segments_local(std::move(b)) {
 				segments_world.resize(segments_local.size());
 			}
@@ -106,7 +105,7 @@ namespace rynx {
 		struct dead {}; // mark entity for cleanup.
 
 		struct mesh {
-			Mesh* m;
+			rynx::mesh* m;
 		};
 	}
 }

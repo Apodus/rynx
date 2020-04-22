@@ -1,11 +1,12 @@
 
-#include <rynx/graphics/camera/frustumr.hpp>
-#include <rynx/tech/math/matrix.hpp>
+#include <rynx/math/geometry/frustum.hpp>
+#include <rynx/math/matrix.hpp>
+#include <rynx/math/vector.hpp>
 #include <cmath>
 #include <cstdio>
 
 
-void frustum::set_viewprojection(const rynx::matrix4& viewProjection)
+void rynx::frustum::set_viewprojection(const rynx::matrix4& viewProjection)
 {
 	auto m = [&viewProjection](int x, int y) {
 		return viewProjection.m[x + 4 * y];
@@ -66,7 +67,7 @@ void frustum::set_viewprojection(const rynx::matrix4& viewProjection)
 	}
 }
 
-bool frustum::is_point_inside(vec3<float> p) const
+bool rynx::frustum::is_point_inside(vec3<float> p) const
 {
 	bool in = true;
 	for (auto&& plane : m_planes)
@@ -74,7 +75,7 @@ bool frustum::is_point_inside(vec3<float> p) const
 	return in;
 }
 
-bool frustum::is_sphere_inside(vec3<float> p, float radius) const
+bool rynx::frustum::is_sphere_inside(vec3<float> p, float radius) const
 {
 	bool in = true;
 	for (const auto& plane : m_planes)
@@ -82,14 +83,14 @@ bool frustum::is_sphere_inside(vec3<float> p, float radius) const
 	return in;
 }
 
-bool frustum::is_sphere_outside(vec3f p, float radius) const {
+bool rynx::frustum::is_sphere_outside(vec3f p, float radius) const {
 	bool out = false;
 	for (const auto& plane : m_planes)
 		out |= plane.sphere_left_of_plane(p, radius);
 	return out;
 }
 
-bool frustum::is_sphere_not_outside(vec3f p, float radius) const {
+bool rynx::frustum::is_sphere_not_outside(vec3f p, float radius) const {
 	bool in = true;
 	for (const auto& plane : m_planes)
 		in &= plane.sphere_not_left_of_plane(p, radius);

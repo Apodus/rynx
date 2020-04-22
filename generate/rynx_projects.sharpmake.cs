@@ -20,6 +20,21 @@ class Graphics : RynxProject
 }
 
 [Generate]
+class Math : RynxProject
+{
+    public Math()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\math\";
+    }
+	
+	[Configure]
+	public void ConfigureAll(Project.Configuration conf, Target target)
+	{
+		conf.AddPublicDependency<RynxSystem>(target);
+	}
+}
+
+[Generate]
 class Input : RynxProject
 {
     public Input()
@@ -147,6 +162,7 @@ class Tech : RynxProject
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
 		conf.AddPublicDependency<RynxSystem>(target);
+		conf.AddPublicDependency<Math>(target);
     }
 }
 

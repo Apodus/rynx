@@ -1,6 +1,7 @@
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
+#include <rynx/math/math.hpp>
 
 namespace rynx {
 	namespace components {
@@ -124,7 +125,7 @@ namespace rynx {
 
 		struct light_directed : public light_omni {
 			vec3f direction;
-			float angle = math::PI_float;
+			float angle = math::pi;
 			float edge_softness = 0.1f;
 		};
 

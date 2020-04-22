@@ -4,21 +4,19 @@
 #include <rynx/menu/Frame.hpp>
 #include <rynx/menu/Component.hpp>
 
-#include <rynx/tech/math/matrix.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/matrix.hpp>
+#include <rynx/math/vector.hpp>
 
 #include <rynx/graphics/renderer/textrenderer.hpp> // annoying but have to include to get vision to TextRenderer::Align
 
 #include <functional>
 
-class Mesh;
 class Font;
 
 namespace rynx {
-	namespace input {
-		class mapped_input;
-	}
-
+	class mesh;
+	class mapped_input;
+	
 	namespace menu {
 
 		class Button : public Component {
@@ -59,7 +57,7 @@ namespace rynx {
 
 		private:
 			void initialize();
-			virtual void onInput(rynx::input::mapped_input& input) override;
+			virtual void onInput(rynx::mapped_input& input) override;
 			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const override;
 			virtual void update(float dt) override;
 		};

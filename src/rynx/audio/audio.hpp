@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/audio/dsp/signal.hpp>
 
 #include <vector>

@@ -7,8 +7,6 @@
 
 #include <rynx/graphics/mesh/mesh.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
-#include <rynx/graphics/mesh/polygon.hpp>
-#include <rynx/graphics/mesh/polygonTesselator.hpp>
 
 #include <rynx/graphics/text/font.hpp>
 
@@ -21,7 +19,7 @@ void rynx::menu::Button::initialize() {
 	m_align = TextRenderer::Align::Center;
 }
 
-void rynx::menu::Button::onInput(rynx::input::mapped_input& input) {
+void rynx::menu::Button::onInput(rynx::mapped_input& input) {
 	vec3<float> mouseMenuPos = input.mouseMenuPosition(aspectRatio());
 	if (inRectComponent(mouseMenuPos)) {
 		// m_scale = m_defaultScale * 1.2f;

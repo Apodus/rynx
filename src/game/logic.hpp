@@ -16,7 +16,7 @@ namespace game {
 		float currentTime = 1.0f;
 
 		void createBall(rynx::ecs& ecs) {
-			vec3<float> dir(
+			rynx::vec3<float> dir(
 				(float(rand()) / RAND_MAX - 0.5f),
 				(float(rand()) / RAND_MAX - 0.5f),
 				0.0f

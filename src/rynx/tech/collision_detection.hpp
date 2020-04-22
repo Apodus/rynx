@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rynx/tech/dynamic_bitset.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <vector>
 #include <memory>
 

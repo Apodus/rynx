@@ -3,7 +3,7 @@
 #include <rynx/application/logic.hpp>
 #include <rynx/tech/ecs.hpp>
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/application/components.hpp>
 #include <rynx/input/mapped_input.hpp>
 
@@ -18,11 +18,11 @@ namespace game {
 
 	namespace actions {
 		struct movement : public rynx::application::logic::iaction {
-			movement(rynx::ecs::id id, vec3<float> acceleration, float angular_acceleration)
+			movement(rynx::ecs::id id, rynx::vec3<float> acceleration, float angular_acceleration)
 				: entity(id), acceleration(acceleration), angular_acceleration(angular_acceleration) {}
 
 			rynx::ecs::id entity;
-			vec3<float> acceleration;
+			rynx::vec3<float> acceleration;
 			float angular_acceleration = 0;
 
 			virtual void apply(rynx::ecs& ecs) const {
@@ -49,7 +49,7 @@ namespace game {
 			int32_t turnLeft;
 			int32_t turnRight;
 
-			keyboard_movement_logic(rynx::input::mapped_input& input) {
+			keyboard_movement_logic(rynx::mapped_input& input) {
 				moveLeft = input.generateAndBindGameKey('A', "move_left");
 				moveRight = input.generateAndBindGameKey('D', "move_right");
 				moveUp = input.generateAndBindGameKey('W', "move_up");
@@ -59,14 +59,14 @@ namespace game {
 				turnRight = input.generateAndBindGameKey('E', "turn_right");
 			}
 
-			virtual std::vector<std::unique_ptr<rynx::application::logic::iaction>> onInput(rynx::input::mapped_input& input, const rynx::ecs& ecs) override {
+			virtual std::vector<std::unique_ptr<rynx::application::logic::iaction>> onInput(rynx::mapped_input& input, const rynx::ecs& ecs) override {
 				int localPlayer = 1;
 				std::vector<std::unique_ptr<rynx::application::logic::iaction>> result;
 				
 				if (ecs.exists(localPlayer)) {
 					auto localPlayerEntity = ecs[localPlayer];
 
-					vec3<float> total;
+					rynx::vec3<float> total;
 					float angularAcceleration = 0;
 
 					if (input.isKeyDown(moveLeft)) {

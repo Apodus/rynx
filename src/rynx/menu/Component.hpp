@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/smooth_value.hpp>
 
 #include <memory>
@@ -15,11 +15,8 @@ namespace rynx {
 	
 	class TextRenderer;
 	class MeshRenderer;
+	class mapped_input;
 	
-	namespace input {
-		class mapped_input;
-	}
-
 	namespace menu {
 		enum Align {
 			NONE = 0,
@@ -68,7 +65,7 @@ namespace rynx {
 			float m_aspectRatio = 1;
 			bool m_active = true;
 
-			virtual void onInput(rynx::input::mapped_input& input) = 0;
+			virtual void onInput(rynx::mapped_input& input) = 0;
 			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const = 0;
 			virtual void update(float dt) = 0;
 
@@ -89,7 +86,7 @@ namespace rynx {
 
 			virtual ~Component() {}
 
-			void input(rynx::input::mapped_input& input);
+			void input(rynx::mapped_input& input);
 			void tick(float dt, float aspectRatio);
 			void position_approach(float percentage) { m_position.tick(percentage); }
 			void visualise(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const;

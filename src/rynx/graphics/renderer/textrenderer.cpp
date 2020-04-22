@@ -9,7 +9,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-floats4 getColorByCode(char c) {
+rynx::floats4 getColorByCode(char c) {
 	switch (c) {
 	case 'w': return Color::WHITE;
 	case 's': return Color::BLACK;
@@ -26,7 +26,7 @@ floats4 getColorByCode(char c) {
 	}
 }
 
-void getColorByCode(char c, floats4& color) {
+void getColorByCode(char c, rynx::floats4& color) {
 	color = getColorByCode(c);
 }
 

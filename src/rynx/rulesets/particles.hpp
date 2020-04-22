@@ -3,7 +3,7 @@
 
 #include <rynx/application/components.hpp>
 #include <rynx/application/logic.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/vector.hpp>
 
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/scheduler/context.hpp>

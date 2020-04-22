@@ -2,7 +2,7 @@
 #include <rynx/menu/Slider.hpp>
 
 #include <rynx/graphics/mesh/mesh.hpp>
-#include <rynx/graphics/mesh/polygonTesselator.hpp>
+#include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
@@ -44,7 +44,7 @@ rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::onValueChanged(std::
 	return *this;
 }
 
-void rynx::menu::SlideBarVertical::onInput(rynx::input::mapped_input& input) {
+void rynx::menu::SlideBarVertical::onInput(rynx::mapped_input& input) {
 	auto mousePos = input.mouseMenuPosition(aspectRatio());
 	if (inRectComponent(mousePos)) {
 		int mouseKey1 = input.applicationKeyByName("menuCursorActivation");

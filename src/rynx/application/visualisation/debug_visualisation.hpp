@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rynx/tech/math/matrix.hpp>
-#include <rynx/tech/math/vector.hpp>
+#include <rynx/math/matrix.hpp>
+#include <rynx/math/vector.hpp>
 #include <rynx/tech/unordered_map.hpp>
 
 #include <rynx/application/render.hpp>
@@ -9,9 +9,9 @@
 #include <memory>
 #include <vector>
 
-class Mesh;
 
 namespace rynx {
+	class mesh;
 	class MeshRenderer;
 	namespace scheduler {
 		class context;
@@ -22,7 +22,7 @@ namespace rynx {
 		public:
 			DebugVisualization(std::shared_ptr<MeshRenderer> meshRenderer) : m_meshRenderer(meshRenderer) {}
 
-			void addDebugVisual(Mesh* mesh, matrix4 m, floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(mesh* mesh, matrix4 m, floats4 color, float lifetime = 0.0f);
 			
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 			virtual void execute() override;
@@ -34,7 +34,7 @@ namespace rynx {
 				std::vector<float> lifetimes;
 			};
 
-			rynx::unordered_map<Mesh*, buffer_obj> m_data;
+			rynx::unordered_map<mesh*, buffer_obj> m_data;
 			std::shared_ptr<MeshRenderer> m_meshRenderer;
 		};
 	}

@@ -30,8 +30,8 @@ class GPUTextures
 		const std::string& getCurrentTexture(size_t texture_unit) const;
 		unsigned getTextureID(const std::string&) const;
 
-		floats4 textureLimits(const std::string&) const;
-		floats4 textureLimits(const std::string& name, vec4<float> uvLimits) const;
+		rynx::floats4 textureLimits(const std::string&) const;
+		rynx::floats4 textureLimits(const std::string& name, rynx::vec4<float> uvLimits) const;
 
 		void insertAtlas(const TextureAtlas& atlas);
 		
@@ -44,7 +44,7 @@ class GPUTextures
 		GPUTextures(const GPUTextures&) = delete;
 		GPUTextures& operator=(const GPUTextures&) = delete;
 		
-		rynx::unordered_map<std::string, vec4<short>> textureSizes;
+		rynx::unordered_map<std::string, rynx::vec4<short>> textureSizes;
 		rynx::unordered_map<std::string, unsigned> textures;
 		std::vector<std::string> current_textures;
 
