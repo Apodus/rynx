@@ -1,4 +1,5 @@
-#include "camera.hpp"
+#include <rynx/graphics/camera/camera.hpp>
+#include <rynx/math/geometry/ray.hpp>
 
 rynx::camera::camera() {
 	view.identity();
@@ -62,4 +63,14 @@ const rynx::matrix4& rynx::camera::getView() const {
 
 const rynx::matrix4& rynx::camera::getProjection() const {
 	return projection;
+}
+
+rynx::ray rynx::camera::ray_cast(float x, float y) const {
+	vec4f ray_eye = matrix4(projection).invert() * vec4f(x, y, -1, +1);
+	ray_eye.z = -1;
+	ray_eye.w = +0;
+
+	vec3f ray_world = (view * ray_eye).xyz();
+	ray_world.normalize();
+	return rynx::ray(m_position, ray_world);
 }

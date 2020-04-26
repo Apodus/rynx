@@ -46,6 +46,8 @@
 #include <game/logic/enemies/minilisk_spawner.hpp>
 
 #include <game/visual/bullet_rendering.hpp>
+#include <rynx/math/geometry/ray.hpp>
+#include <rynx/math/geometry/plane.hpp>
 
 #include <iostream>
 #include <thread>
@@ -571,6 +573,23 @@ int main(int argc, char** argv) {
 					application.shaders()->activate_shader("fbo_color_to_bb");
 					fbo_menu->bind_as_input();
 					rynx::graphics::screenspace_draws::draw_fullscreen();
+				}
+
+				{
+					auto ray = camera->ray_cast(mousePos.x, mousePos.y);
+					std::cerr << "(" << ray.origin().x << ", " << ray.origin().y << ", " << ray.origin().z << ")  -  ("
+						<< ray.direction().x << ", " << ray.direction().y << ", " << ray.direction().z << std::endl;
+
+					rynx::plane myplane;
+					myplane.set_coefficients(0, 0, 1, 0);
+
+					auto collision = ray.intersect(myplane);
+					if (collision.second) {
+						rynx::matrix4 m;
+						m.discardSetTranslate(collision.first);
+						m.scale(15.5f);
+						application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
+					}
 				}
 
 				timer.reset();

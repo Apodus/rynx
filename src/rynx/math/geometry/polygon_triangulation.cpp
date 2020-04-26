@@ -5,6 +5,10 @@
 
 #include <stdexcept>
 
+namespace {
+	struct TriangulationException {};
+}
+
 std::vector<typename rynx::polygon::triangle>& rynx::polygon_triangulation::getTriangles() {
 	return polygon->triangles;
 }
@@ -145,14 +149,14 @@ void rynx::polygon_triangulation::makeTriangles(rynx::polygon& polygon_) {
 	try {
 		triangulate();
 	}
-	catch (TriangulationException) {
+	catch (const TriangulationException&) {
 		polygon_editor editor(polygon_);
 		editor.reverse();
 		try {
 			triangulate();
 		}
-		catch (TriangulationException) {
-			throw new std::runtime_error("Broken polygon");
+		catch (const TriangulationException&) {
+			throw std::runtime_error("Broken polygon");
 		}
 	}
 }

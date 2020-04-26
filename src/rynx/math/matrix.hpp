@@ -16,6 +16,9 @@ namespace rynx {
 		matrix4(const matrix4& other);
 
 		matrix4& identity();
+		matrix4& invert();
+		matrix4 compute_inverse() const;
+		
 		matrix4& discardSetLookAt(
 			vec3f eye_position,
 			vec3f eye_direction,
@@ -34,14 +37,13 @@ namespace rynx {
 		matrix4& storeMultiply(const matrix4& a, const matrix4& b);
 		matrix4& operator *=(const matrix4& other);
 		matrix4 operator * (const matrix4& other) const;
+		rynx::vec4f operator * (vec4f other) const;
 
 		matrix4& translate(vec3<float> out);
 		matrix4& translate(float dx, float dy, float dz);
 
 		matrix4& scale(float scale);
 		matrix4& scale(float dx, float dy, float dz);
-
-		// TODO:
 		matrix4& scale(vec3<float> v);
 
 		matrix4& discardSetScale(float v);

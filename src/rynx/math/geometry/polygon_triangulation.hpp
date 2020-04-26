@@ -11,8 +11,6 @@
 namespace rynx {
 	class mesh;
 	class polygon_triangulation {
-		struct TriangulationException {};
-
 		rynx::polygon* polygon;
 		std::vector<int> unhandled;
 

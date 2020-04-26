@@ -6,12 +6,14 @@
 #endif
 
 #include <rynx/system/assert.hpp>
+#include <rynx/math/math.hpp>
 #include <cinttypes>
 #include <cmath>
 #include <limits>
 #include <string>
 
 #pragma warning (disable : 4201) // language extension used, anonymous structs
+#define RYNX_VECTOR_SIMD 0
 
 namespace rynx {
 
@@ -64,7 +66,7 @@ namespace rynx {
 		T z;
 	};
 
-#ifdef _WIN32
+#if defined(_WIN32) && RYNX_VECTOR_SIMD
 
 	template<>
 	struct alignas(16) vec3<float> {
@@ -121,8 +123,8 @@ namespace rynx {
 			return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
 		}
 
-		vec3 normal() { float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }
-		vec3& normalize() { float l = length() + std::numeric_limits<float>::epsilon(); *this *= 1.0f / l; return *this; }
+		vec3 normal() { w = 0; float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }
+		vec3& normalize() { w = 0; float l = length() + std::numeric_limits<float>::epsilon(); *this *= 1.0f / l; return *this; }
 
 		// vec3 normal() const { return _mm_div_ps(xmm, _mm_sqrt_ps(_mm_dp_ps(xmm, xmm, 0xff))); }
 		// vec3& normalize() { xmm = normal().xmm; return *this; }
@@ -217,6 +219,7 @@ namespace rynx {
 		template<typename U> explicit operator vec4<U>() const { return vec4<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w)); }
 
 		operator floats4() const { return floats4(x, y, z, w); }
+		vec3<T> xyz() const { return vec3<T>(x, y, z); }
 
 		vec4 normal() { T l = 1.0f / length(); return *this * l; }
 		vec4& normalize() { T l = 1.0f / length(); *this *= l; return *this; }
@@ -266,11 +269,19 @@ namespace rynx {
 		};
 	};
 
-#ifdef _WIN32
+#if defined(_WIN32) && RYNX_VECTOR_SIMD
 
 	template<>
 	struct vec4<float> {
-		__m128 xmm;
+		union {
+			struct {
+				float x, y, z, w;
+			};
+			struct {
+				float r, g, b, a;
+			};
+			__m128 xmm;
+		};
 
 		vec4() : vec4(0.0f) {}
 		vec4(__m128 v) : xmm(v) {}

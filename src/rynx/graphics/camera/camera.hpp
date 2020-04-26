@@ -4,6 +4,7 @@
 #include <rynx/math/vector.hpp>
 
 namespace rynx {
+	class ray;
 	class camera {
 	public:
 		camera();
@@ -26,6 +27,9 @@ namespace rynx {
 
 		const rynx::matrix4& getView() const;
 		const rynx::matrix4& getProjection() const;
+
+		rynx::ray ray_cast(float x, float y) const;
+
 	private:
 		rynx::matrix4 view;
 		rynx::matrix4 projection;

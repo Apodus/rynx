@@ -19,7 +19,67 @@ rynx::matrix4& rynx::matrix4::identity() {
 	return *this;
 }
 
-#ifdef _WIN32
+rynx::matrix4 rynx::matrix4::compute_inverse() const {
+	auto index2d = [this](int y, int x) {
+		return m[y * 4 + x];
+	};
+
+	float A2323 = index2d(2, 2) * index2d(3, 3) - index2d(2, 3) * index2d(3, 2);
+	float A1323 = index2d(2, 1) * index2d(3, 3) - index2d(2, 3) * index2d(3, 1);
+	float A1223 = index2d(2, 1) * index2d(3, 2) - index2d(2, 2) * index2d(3, 1);
+	float A0323 = index2d(2, 0) * index2d(3, 3) - index2d(2, 3) * index2d(3, 0);
+	float A0223 = index2d(2, 0) * index2d(3, 2) - index2d(2, 2) * index2d(3, 0);
+	float A0123 = index2d(2, 0) * index2d(3, 1) - index2d(2, 1) * index2d(3, 0);
+	float A2313 = index2d(1, 2) * index2d(3, 3) - index2d(1, 3) * index2d(3, 2);
+	float A1313 = index2d(1, 1) * index2d(3, 3) - index2d(1, 3) * index2d(3, 1);
+	float A1213 = index2d(1, 1) * index2d(3, 2) - index2d(1, 2) * index2d(3, 1);
+	float A2312 = index2d(1, 2) * index2d(2, 3) - index2d(1, 3) * index2d(2, 2);
+	float A1312 = index2d(1, 1) * index2d(2, 3) - index2d(1, 3) * index2d(2, 1);
+	float A1212 = index2d(1, 1) * index2d(2, 2) - index2d(1, 2) * index2d(2, 1);
+	float A0313 = index2d(1, 0) * index2d(3, 3) - index2d(1, 3) * index2d(3, 0);
+	float A0213 = index2d(1, 0) * index2d(3, 2) - index2d(1, 2) * index2d(3, 0);
+	float A0312 = index2d(1, 0) * index2d(2, 3) - index2d(1, 3) * index2d(2, 0);
+	float A0212 = index2d(1, 0) * index2d(2, 2) - index2d(1, 2) * index2d(2, 0);
+	float A0113 = index2d(1, 0) * index2d(3, 1) - index2d(1, 1) * index2d(3, 0);
+	float A0112 = index2d(1, 0) * index2d(2, 1) - index2d(1, 1) * index2d(2, 0);
+
+	float det = index2d(0, 0) * (index2d(1, 1) * A2323 - index2d(1, 2) * A1323 + index2d(1, 3) * A1223)
+		- index2d(0, 1) * (index2d(1, 0) * A2323 - index2d(1, 2) * A0323 + index2d(1, 3) * A0223)
+		+ index2d(0, 2) * (index2d(1, 0) * A1323 - index2d(1, 1) * A0323 + index2d(1, 3) * A0123)
+		- index2d(0, 3) * (index2d(1, 0) * A1223 - index2d(1, 1) * A0223 + index2d(1, 2) * A0123);
+	det = 1 / det;
+
+	matrix4 inv;
+	auto set_v = [&inv](int y, int x) -> float& {
+		return inv.m[y * 4 + x];
+	};
+
+	set_v(0, 0) = det * +(index2d(1, 1) * A2323 - index2d(1, 2) * A1323 + index2d(1, 3) * A1223);
+	set_v(0, 1) = det * -(index2d(0, 1) * A2323 - index2d(0, 2) * A1323 + index2d(0, 3) * A1223);
+	set_v(0, 2) = det * +(index2d(0, 1) * A2313 - index2d(0, 2) * A1313 + index2d(0, 3) * A1213);
+	set_v(0, 3) = det * -(index2d(0, 1) * A2312 - index2d(0, 2) * A1312 + index2d(0, 3) * A1212);
+	set_v(1, 0) = det * -(index2d(1, 0) * A2323 - index2d(1, 2) * A0323 + index2d(1, 3) * A0223);
+	set_v(1, 1) = det * +(index2d(0, 0) * A2323 - index2d(0, 2) * A0323 + index2d(0, 3) * A0223);
+	set_v(1, 2) = det * -(index2d(0, 0) * A2313 - index2d(0, 2) * A0313 + index2d(0, 3) * A0213);
+	set_v(1, 3) = det * +(index2d(0, 0) * A2312 - index2d(0, 2) * A0312 + index2d(0, 3) * A0212);
+	set_v(2, 0) = det * +(index2d(1, 0) * A1323 - index2d(1, 1) * A0323 + index2d(1, 3) * A0123);
+	set_v(2, 1) = det * -(index2d(0, 0) * A1323 - index2d(0, 1) * A0323 + index2d(0, 3) * A0123);
+	set_v(2, 2) = det * +(index2d(0, 0) * A1313 - index2d(0, 1) * A0313 + index2d(0, 3) * A0113);
+	set_v(2, 3) = det * -(index2d(0, 0) * A1312 - index2d(0, 1) * A0312 + index2d(0, 3) * A0112);
+	set_v(3, 0) = det * -(index2d(1, 0) * A1223 - index2d(1, 1) * A0223 + index2d(1, 2) * A0123);
+	set_v(3, 1) = det * +(index2d(0, 0) * A1223 - index2d(0, 1) * A0223 + index2d(0, 2) * A0123);
+	set_v(3, 2) = det * -(index2d(0, 0) * A1213 - index2d(0, 1) * A0213 + index2d(0, 2) * A0113);
+	set_v(3, 3) = det * +(index2d(0, 0) * A1212 - index2d(0, 1) * A0212 + index2d(0, 2) * A0112);
+	return inv;
+}
+
+
+rynx::matrix4& rynx::matrix4::invert() {
+	*this = compute_inverse();
+	return *this;
+}
+
+#if defined(_WIN32) && RYNX_VECTOR_SIMD
 __m256 twolincomb_AVX_8(__m256 A01, const rynx::matrix4& B)
 {
 	__m256 result;
@@ -142,7 +202,7 @@ rynx::matrix4& rynx::matrix4::operator = (const matrix4& other) {
 rynx::matrix4& rynx::matrix4::storeMultiply(const matrix4& a, const matrix4& b) {
 	matrix4 result;
 
-#ifdef _WIN32
+#if defined(_WIN32) && RYNX_VECTOR_SIMD
 	matmult_AVX_8(result, b, a);
 #else
 	for (int x = 0; x < 4; ++x) {
@@ -168,6 +228,15 @@ rynx::matrix4 rynx::matrix4::operator * (const matrix4& other) const {
 	return copy.storeMultiply(copy, other);
 }
 
+rynx::vec4f rynx::matrix4::operator * (vec4f other) const {
+	float x = other.dot(row[0]);
+	float y = other.dot(row[1]);
+	float z = other.dot(row[2]);
+	float w = other.dot(row[3]);
+	return { x, y, z , w };
+}
+
+
 rynx::matrix4& rynx::matrix4::translate(vec3<float> out) {
 	matrix4 translation_matrix;
 	translation_matrix.identity();
@@ -191,7 +260,6 @@ rynx::matrix4& rynx::matrix4::scale(float dx, float dy, float dz) {
 	return *this *= scaleMatrix;
 }
 
-// TODO:
 rynx::matrix4& rynx::matrix4::scale(vec3<float> v) {
 	return scale(v.x, v.y, v.z);
 }
