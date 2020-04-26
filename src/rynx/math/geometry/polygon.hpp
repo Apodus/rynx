@@ -8,7 +8,6 @@
 namespace rynx {
 
 	class polygon {
-
 	public:
 		class segment : public line_segment {
 		public:
@@ -32,8 +31,10 @@ namespace rynx {
 		const rynx::vec3<float>& operator [](int index) const;
 
 		bool isConvex(int vertex) const;
-
-		std::vector<segment> generateBoundary_Outside() const;
-		std::vector<segment> generateBoundary_Inside() const;
+		float normalize();
+		float radius() const;
+		
+		std::vector<segment> generateBoundary_Outside(float scale) const;
+		std::vector<segment> generateBoundary_Inside(float scale) const;
 	};
 }

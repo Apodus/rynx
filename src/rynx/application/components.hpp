@@ -28,7 +28,7 @@ namespace rynx {
 		};
 		
 		struct boundary {
-			using boundary_t = decltype(polygon().generateBoundary_Outside());
+			using boundary_t = decltype(polygon().generateBoundary_Outside(1.0f));
 			boundary(boundary_t&& b) : segments_local(std::move(b)) {
 				segments_world.resize(segments_local.size());
 			}
@@ -105,6 +105,7 @@ namespace rynx {
 		struct dead {}; // mark entity for cleanup.
 
 		struct mesh {
+			mesh(rynx::mesh* p) : m(p) {}
 			rynx::mesh* m;
 		};
 	}

@@ -12,6 +12,15 @@ namespace rynx {
 			float angle;
 		};
 
+		struct scale {
+			operator float() const {
+				return value;
+			}
+
+			scale(float v) : value(v) {}
+			float value;
+		};
+
 		struct radius {
 			radius() = default;
 			radius(float r) : r(r) {}

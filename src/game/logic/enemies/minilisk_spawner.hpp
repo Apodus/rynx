@@ -123,11 +123,12 @@ namespace game {
 								float edge_length = 10.5f + 15.0f * m_random();
 								float mass = 5000.0f;
 								auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass / 12.0f * (height * height + width * width); };
+								float radius = rynx::math::sqrt_approx(2 * edge_length * edge_length);
 								ecs.create(
 									rynx::components::position(rynx::vec3<float>(x, y, 0.0f), i * 2.0f),
 									rynx::components::collisions{ dynamic.value },
-									rynx::components::boundary({ rynx::Shape::makeBox(edge_length).generateBoundary_Outside() }),
-									rynx::components::radius(rynx::math::sqrt_approx(2 * edge_length * edge_length)),
+									rynx::components::boundary({ rynx::Shape::makeBox(edge_length).generateBoundary_Outside(1.0f) }),
+									rynx::components::radius(radius),
 									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),

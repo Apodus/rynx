@@ -28,6 +28,14 @@ void rynx::mesh::putNormal(float x, float y, float z) {
 	normals.push_back(z);
 }
 
+void rynx::mesh::putVertex(rynx::vec3f v) {
+	putVertex(v.x, v.y, v.z);
+}
+
+void rynx::mesh::putNormal(rynx::vec3f v) {
+	putNormal(v.x, v.y, v.z);
+}
+
 int rynx::mesh::getVertexCount() const {
 	return int(vertices.size() / 3);
 }

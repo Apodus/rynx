@@ -25,6 +25,12 @@ namespace rynx {
 			return it->second.get();
 		}
 
+		mesh* create(const std::string& s, std::unique_ptr<mesh> mesh) {
+			auto it = m_storage.emplace(s, std::move(mesh));
+			it.first->second->build();
+			return it.first->second.get();
+		}
+
 		mesh* create(const std::string& s, polygon shape, const std::string& texture) {
 			auto it = m_storage.emplace(s, rynx::polygon_triangulation().triangulate(shape, m_pGpuTextures->textureLimits(texture)));
 			it.first->second->build();

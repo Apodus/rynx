@@ -4,6 +4,7 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
+#include <rynx/math/vector.hpp>
 #include <vector>
 
 namespace rynx {
@@ -12,8 +13,13 @@ namespace rynx {
 		mesh();
 
 		void putVertex(float x, float y, float z);
+		void putVertex(rynx::vec3f v);
+		
 		void putUVCoord(float u, float v);
+		
 		void putNormal(float x, float y, float z);
+		void putNormal(rynx::vec3f v);
+
 		void putTriangleIndices(int i1, int i2, int i3);
 
 		static_assert(sizeof(short) == 2, "oh crap");

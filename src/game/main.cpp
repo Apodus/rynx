@@ -191,26 +191,33 @@ int main(int argc, char** argv) {
 
 		// create some boxes for testing.
 		if constexpr (false) {
-			for (int i = 0; i < 16; ++i)
+			for (int i = 0; i < 16; ++i) {
+				rynx::polygon shape = rynx::Shape::makeBox(1.0f + 2.0f * random());
 				ecs.create(
 					rynx::components::position(rynx::vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
 					rynx::components::collisions{ collisionCategoryDynamic.value },
-					rynx::components::boundary({ rynx::Shape::makeBox(1.0f + 2.0f * random()).generateBoundary_Outside() }),
+					rynx::components::boundary({ shape.generateBoundary_Outside(1.0f) }),
 					rynx::components::radius(rynx::math::sqrt_approx(16 + 16)),
 					rynx::components::color({ 1,1,0,1 }),
 					rynx::components::motion({ 0, 0, 0 }, 0),
 					rynx::components::dampening({ 0.93f, 0.98f }),
 					rynx::components::ignore_gravity()
 				);
+			}
 		}
 		
 		// TODO: radius calculation from boundary (bounding radius or something)
 		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
+			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon));
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f).generateBoundary_Inside() }),
-				rynx::components::radius(rynx::math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
+				rynx::components::boundary({ polygon.generateBoundary_Inside(1.0f) }),
+				rynx::components::mesh(mesh_p),
+				rynx::matrix4(),
+				rynx::components::radius(polygon.radius()),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
@@ -219,11 +226,17 @@ int main(int argc, char** argv) {
 		};
 
 		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
+			auto mesh_name = std::to_string(pos.y * pos.x);
+			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon));
+			float radius = polygon.radius();
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ rynx::Shape::makeRectangle(edgeLength, 5.0f).generateBoundary_Outside() }),
-				rynx::components::radius(rynx::math::sqrt_approx(2 * (edgeLength * edgeLength * 0.25f))),
+				rynx::components::boundary({ polygon.generateBoundary_Outside(1.0f) }),
+				rynx::components::mesh(mesh_p),
+				rynx::matrix4(),
+				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
@@ -272,13 +285,11 @@ int main(int argc, char** argv) {
 
 	debug_conf conf;
 
-
 	// setup sound system
 	rynx::sound::audio_system audio;
 	uint32_t soundIndex = audio.load("test.ogg");
 	rynx::sound::configuration config;
 	audio.open_output_device(64, 256);
-
 
 	// construct menus
 	{

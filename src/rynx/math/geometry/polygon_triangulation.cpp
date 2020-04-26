@@ -127,7 +127,7 @@ bool rynx::polygon_triangulation::triangulateOneStep() {
 		}
 	}
 
-	throw new TriangulationException();
+	throw TriangulationException();
 }
 
 void rynx::polygon_triangulation::triangulate() {
@@ -137,9 +137,78 @@ void rynx::polygon_triangulation::triangulate() {
 rynx::polygon_triangulation::polygon_triangulation() {
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(rynx::polygon polygon_, floats4 uvLimits) {
-	makeTriangles(polygon_);
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx::polygon& polygon_, floats4 uvLimits) {
+	rynx::polygon copy = polygon_;
+	copy.normalize();
+	makeTriangles(copy);
 	return buildMeshData(uvLimits);
+}
+
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_) {
+	
+	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
+	rynx::polygon copy = polygon_;
+	float radius = copy.normalize();
+
+	auto boundary = copy.vertices;
+	const float width = 1.0f / radius;
+
+	auto get_vertex = [&boundary](int index) {
+		index += static_cast<int>(boundary.size());
+		index = index % boundary.size();
+		return boundary[index];
+	};
+
+	auto a = get_vertex(-1);
+	auto b = get_vertex(0);
+	auto c = get_vertex(+1);
+
+	auto aa = a - b;
+	auto bb = b - c;
+	
+	vec3f b_normal = (aa.normal2d().normalize() + bb.normal2d().normalize()).normalize();
+	vec3f p1 = b + b_normal * width;
+	vec3f p2 = b - b_normal * width;
+
+	polyMesh->putVertex(p1);
+	polyMesh->putVertex(p2);
+
+	polyMesh->putNormal(b_normal);
+	polyMesh->putNormal(-b_normal);
+
+	polyMesh->putUVCoord(0.47f, 0.03f);
+	polyMesh->putUVCoord(0.47f, 0.04f);
+
+	for (int i = 1; i < boundary.size(); ++i) {
+		a = get_vertex(i - 1);
+		b = get_vertex(i + 0);
+		c = get_vertex(i + 1);
+
+		aa = a - b;
+		bb = b - c;
+
+		b_normal = (aa.normal2d().normalize() + bb.normal2d().normalize()).normalize();
+		p1 = b + b_normal * width;
+		p2 = b - b_normal * width;
+
+		polyMesh->putVertex(p1);
+		polyMesh->putVertex(p2);
+
+		polyMesh->putNormal(b_normal);
+		polyMesh->putNormal(-b_normal);
+
+		polyMesh->putUVCoord(0.47f, 0.03f);
+		polyMesh->putUVCoord(0.46f, 0.04f);
+
+		polyMesh->putTriangleIndices(2 * i, 2 * i - 1, 2 * i - 2);
+		polyMesh->putTriangleIndices(2 * i - 1, 2 * i, 2 * i + 1);
+	}
+
+	int numVerts = polyMesh->getVertexCount();
+	polyMesh->putTriangleIndices(1, 0, numVerts - 1);
+	polyMesh->putTriangleIndices(0, numVerts - 1, numVerts - 2);
+	
+	return polyMesh;
 }
 
 void rynx::polygon_triangulation::makeTriangles(rynx::polygon& polygon_) {
