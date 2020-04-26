@@ -30,7 +30,7 @@ namespace rynx {
 	public:
 		polygon_triangulation();
 
-		std::unique_ptr<mesh> tesselate(rynx::polygon polygon_, floats4 uvLimits = floats4(0.0f, 0.0f, 1.0f, 1.0f));
+		std::unique_ptr<mesh> triangulate(rynx::polygon polygon_, floats4 uvLimits = floats4(0.0f, 0.0f, 1.0f, 1.0f));
 		void makeTriangles(rynx::polygon& polygon_);
 	};
 }

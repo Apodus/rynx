@@ -137,7 +137,7 @@ void rynx::polygon_triangulation::triangulate() {
 rynx::polygon_triangulation::polygon_triangulation() {
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::tesselate(rynx::polygon polygon_, floats4 uvLimits) {
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(rynx::polygon polygon_, floats4 uvLimits) {
 	makeTriangles(polygon_);
 	return buildMeshData(uvLimits);
 }
