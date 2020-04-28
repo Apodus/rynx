@@ -588,9 +588,7 @@ int main(int argc, char** argv) {
 
 				{
 					auto ray = camera->ray_cast(mousePos.x, mousePos.y);
-					std::cerr << "(" << ray.origin().x << ", " << ray.origin().y << ", " << ray.origin().z << ")  -  ("
-						<< ray.direction().x << ", " << ray.direction().y << ", " << ray.direction().z << std::endl;
-
+					
 					rynx::plane myplane;
 					myplane.set_coefficients(0, 0, 1, 0);
 

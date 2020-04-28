@@ -104,8 +104,11 @@ namespace rynx {
 
 		struct dead {}; // mark entity for cleanup.
 
-		struct mesh {
+		struct mesh : public rynx::ecs::value_segregated_component {
+			mesh() = default;
 			mesh(rynx::mesh* p) : m(p) {}
+			size_t hash() const { return size_t(uintptr_t(m)); }
+			bool operator == (const mesh& other) const { return m == other.m; }
 			rynx::mesh* m;
 		};
 	}

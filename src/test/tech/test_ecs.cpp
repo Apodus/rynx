@@ -181,6 +181,43 @@ TEST_CASE("ecs for_each iterates correct amount of entities")
 	}
 }
 
+struct mydata : public rynx::ecs::value_segregated_component {
+	mydata() {}
+	mydata(int v) : data(v) {}
+	bool operator == (const mydata& other) const {
+		return data == other.data;
+	}
+
+	size_t hash() const {
+		return data;
+	}
+	
+	int data = 0;
+};
+
+TEST_CASE("kek")
+{
+
+	rynx::ecs db;
+	db.create(mydata(1));
+	db.create(mydata(2));
+	db.create(mydata(3));
+	db.create(mydata(3));
+
+	int ones = 0;
+	int twos = 0;
+	db.query().for_each_buffer([&](size_t numEntities, mydata* buf) {
+		if (numEntities == 1)
+			++ones;
+		if (numEntities == 2)
+			++twos;
+		REQUIRE((numEntities == 1 || numEntities == 2));
+	});
+
+	REQUIRE(ones == 2);
+	REQUIRE(twos == 1);
+}
+
 // you can run the same benchmarks against entt if you want. find out how to setup entt from their github pages.
 namespace entt {
 	class registry;
