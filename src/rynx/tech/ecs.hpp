@@ -3,8 +3,8 @@
 #include <rynx/tech/dynamic_bitset.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
-
 #include <rynx/tech/profiling.hpp>
+#include <rynx/tech/memory.hpp>
 
 #include <vector>
 #include <type_traits>
@@ -79,16 +79,40 @@ namespace rynx {
 			}
 		};
 
+		// used for value hashes in value segregated component types.
+		template<typename T>
+		struct local_hash_function {
+			size_t operator()(const T& t) {
+				return t.hash();
+			}
+		};
+
 		type_index m_types;
 		entity_index m_entities;
 
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
+		rynx::unordered_map<type_id_t, opaque_unique_ptr<void>> m_value_segregated_types_maps;
 
 		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
 		auto& categories() { return m_categories; }
 		const auto& categories() const { return m_categories; }
+
+		template<typename T>
+		auto& value_segregated_types_map() {
+			using map_type = rynx::unordered_map<T, rynx::type_index::virtual_type, local_hash_function<T>>;
+			
+			auto type_id = m_types.id<T>();
+			auto it = m_value_segregated_types_maps.find(type_id);
+			if (it == m_value_segregated_types_maps.end()) {
+				opaque_unique_ptr<void> map_ptr(new map_type(), [](void* v) {
+					delete static_cast<map_type*>(v);
+				});
+				it = m_value_segregated_types_maps.emplace(type_id, std::move(map_ptr)).first;
+			}
+			return *static_cast<map_type*>(it->second.get());
+		}
 
 	public:
 		struct id {
@@ -1223,28 +1247,6 @@ namespace rynx {
 
 		template<typename...Args> void componentTypesAllowed() const {
 			static_assert(true && ((!std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<Args>> || std::is_const_v<std::remove_reference_t<Args>> || !std::is_reference_v<Args>) && ...), "");
-		}
-		
-		// TODO: This doesn't call destructors for maps properly. Fix.
-		rynx::unordered_map<type_id_t, void*> m_value_segregated_types_maps;
-
-		template<typename T>
-		struct local_hash_function {
-			size_t operator()(const T& t) {
-				return t.hash();
-			}
-		};
-
-		template<typename T>
-		rynx::unordered_map<T, rynx::type_index::virtual_type, local_hash_function<T>>& value_segregated_types_map() {
-			auto type_id = m_types.id<T>();
-			auto it = m_value_segregated_types_maps.find(type_id);
-			if (it == m_value_segregated_types_maps.end()) {
-				auto* map = new rynx::unordered_map<T, rynx::type_index::virtual_type, local_hash_function<T>>();
-				m_value_segregated_types_maps.emplace(type_id, map);
-				return *map;
-			}
-			return *static_cast<rynx::unordered_map<T, rynx::type_index::virtual_type, local_hash_function<T>>*>(it->second);
 		}
 
 		template<typename T> type_id_t type_id_for([[maybe_unused]] const T& t) {
