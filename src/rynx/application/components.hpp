@@ -23,7 +23,7 @@ namespace rynx {
 		
 
 		struct particle_info {
-			value_segment<vec4<float>> color;
+			value_segment<floats4> color;
 			value_segment<float> radius;
 		};
 		

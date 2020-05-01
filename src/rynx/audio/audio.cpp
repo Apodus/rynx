@@ -236,6 +236,8 @@ rynx::sound::configuration& rynx::sound::configuration::set_pitch_shift(float oc
 
 
 float rynx::sound::configuration::completion_rate() const {
+    if (!is_active())
+        return 1.0f;
     uint32_t sample = m_soundData->m_sampleIndex;
     uint32_t buffer = m_soundData->m_bufferIndex;
     if (is_active()) {
@@ -245,11 +247,12 @@ float rynx::sound::configuration::completion_rate() const {
 }
 
 bool rynx::sound::configuration::is_active() const {
+    if (!m_soundData || !m_rynxAudio)
+        return false;
     rynx_assert(m_soundData != nullptr, "sound configuration object invalid");
     rynx_assert(m_rynxAudio != nullptr, "sound configuration object invalid");
     return m_soundCounter == m_soundData->m_soundCounter;
 }
-
 
 
 rynx::sound::audio_system::audio_system() {
@@ -440,8 +443,12 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
                 data.m_sampleIndex = 0;
                 data.m_bufferIndex = 0;
                 data.m_loudness = 0;
+
+                data.m_effects.pitch_shift = 0;
+                data.m_effects.tempo_shift = 0;
+
                 ++data.m_soundCounter;
-                
+
                 for (uint32_t k = 0; k < numSamples; ++k) {
                     data.prev_left[k + numSamples] = 0.0f;
                     data.prev_right[k + numSamples] = 0.0f;
