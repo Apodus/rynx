@@ -9,7 +9,7 @@ namespace rynx {
 			position() = default;
 			position(vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
 			vec3<float> value;
-			float angle;
+			float angle = 0;
 		};
 
 		struct scale {
@@ -101,11 +101,12 @@ namespace rynx {
 
 		struct physical_body {
 			physical_body() = default;
-			physical_body(float mass, float moment_of_inertia, float elasticity, float friction)
+			physical_body(float mass, float moment_of_inertia, float elasticity, float friction, uint64_t collision_id = 0)
 				: inv_mass(1.0f / mass)
 				, inv_moment_of_inertia(1.0f / moment_of_inertia)
 				, collision_elasticity(elasticity)
 				, friction_multiplier(friction)
+				, collision_id(collision_id)
 			{}
 
 			float inv_mass = 1.0f;
