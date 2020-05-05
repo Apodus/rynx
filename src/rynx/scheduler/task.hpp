@@ -274,6 +274,10 @@ namespace rynx {
 					int64_t end = 0;
 					int64_t work_size = 1;
 					bool self_participate = true;
+					
+					// if you are creating multiple parallel for tasks with deferred_work, then might be better to
+					// skip notify workers during task creation and just notify once after all tasks are created.
+					bool notify_workers = true;
 
 					parallel_for_operation& range_begin(int64_t begin_) {
 						begin = begin_;
@@ -295,6 +299,13 @@ namespace rynx {
 						self_participate = false;
 						return *this;
 					}
+
+					parallel_for_operation& skip_worker_wakeup() {
+						notify_workers = false;
+						return *this;
+					}
+
+
 
 					template<typename F>
 					barrier for_each(F&& op) {
@@ -327,7 +338,8 @@ namespace rynx {
 							work.required_for(bar);
 						}
 
-						m_parent.notify_work_available();
+						if(notify_workers)
+							m_parent.notify_work_available();
 						
 						if (self_participate) {
 							for (;;) {

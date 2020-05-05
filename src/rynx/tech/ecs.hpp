@@ -842,30 +842,25 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename TaskContext> auto for_each_parallel(TaskContext&& task_context, F&& op) {
+			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
 				}
 				this->template unpack_types<Args...>();
 
-				auto blocker_task = task_context.extend_task_independent([]() {});
-
 				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
-							blocker_task.depends_on(barrier);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 						else {
-							auto barrier = call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
-							blocker_task.depends_on(barrier);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 					}
 				}
-				return blocker_task;
 			}
 
 		private:
@@ -906,14 +901,14 @@ namespace rynx {
 			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
 			static auto call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					return task_context.parallel().for_each(0, ids.size()).deferred_work().skip_worker_wakeup().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&ids, op, index](auto*... ptrs) mutable {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					return task_context.parallel().for_each(0, ids.size()).deferred_work().for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					return task_context.parallel().for_each(0, ids.size()).deferred_work().skip_worker_wakeup().for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([op, index](auto... ptrs) mutable {
 							op(ptrs[index]...);
 						}, args);
@@ -1301,10 +1296,6 @@ namespace rynx {
 			}
 		}
 
-		template<typename T> type_id_t type_id_for([[maybe_unused]] const std::vector<T>& t) {
-			return m_types.id<T>();
-		}
-
 		class edit_t {
 		private:
 			ecs& m_ecs;
@@ -1320,12 +1311,29 @@ namespace rynx {
 			template<typename T>
 			void compute_type_category(rynx::dynamic_bitset& dst, T& component) {
 				dst.set(mapped_type_id(m_ecs.type_id_for(component)));
-				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<decltype(component)>>) {
-					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<decltype(component)>>();
+				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<T>>) {
+					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 					auto it = map.find(component);
 					if (it == map.end()) {
 						auto v_type = m_ecs.create_virtual_type();
 						map.emplace(component, v_type);
+						dst.set(v_type.type_value);
+					}
+					else {
+						dst.set(it->second.type_value);
+					}
+				}
+			}
+
+			template<typename T>
+			void compute_type_category_n(rynx::dynamic_bitset& dst, std::vector<T>& component) {
+				dst.set(mapped_type_id(m_ecs.type_id_for(component.front())));
+				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<T>>) {
+					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
+					auto it = map.find(component.front());
+					if (it == map.end()) {
+						auto v_type = m_ecs.create_virtual_type();
+						map.emplace(component.front(), v_type);
 						dst.set(v_type.type_value);
 					}
 					else {
@@ -1383,7 +1391,7 @@ namespace rynx {
 
 					// target category is the same for all entities created in this call.
 					dynamic_bitset targetCategory;
-					(compute_type_category(targetCategory, components), ...);
+					(compute_type_category_n(targetCategory, components), ...);
 					(targetCategory.set(mapped_type_id(m_ecs.m_types.id<Tags>())), ...);
 					auto category_it = m_ecs.m_categories.find(targetCategory);
 					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_ecs.m_types)).first; }

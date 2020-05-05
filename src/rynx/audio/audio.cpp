@@ -234,6 +234,20 @@ rynx::sound::configuration& rynx::sound::configuration::set_pitch_shift(float oc
     return *this;
 }
 
+rynx::sound::configuration& rynx::sound::configuration::set_attenuation_quadratic(float v) {
+    if (is_active()) {
+        m_soundData->m_attenuation.quadratic = v;
+    }
+    return *this;
+}
+
+rynx::sound::configuration& rynx::sound::configuration::set_attenuation_linear(float v) {
+    if (is_active()) {
+        m_soundData->m_attenuation.linear = v;
+    }
+    return *this;
+}
+
 
 float rynx::sound::configuration::completion_rate() const {
     if (!is_active())
@@ -300,6 +314,8 @@ rynx::sound::configuration rynx::sound::audio_system::play_sound(int soundIndex,
             m_channelDatas[i].m_position = position;
             m_channelDatas[i].m_direction = direction;
             m_channelDatas[i].m_loudness = loudness;
+            m_channelDatas[i].m_attenuation.linear = m_default_linear_attenuation;
+            m_channelDatas[i].m_attenuation.quadratic = m_default_quadratic_attenuation;
             m_channels[i]->store(2);
             return rynx::sound::configuration(*this, m_channelDatas[i]);
         }
@@ -378,8 +394,10 @@ void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
     for (size_t i = 0; i < m_channels.size(); ++i) {
         if (m_channels[i]->load() == 2) {
             source_instance& data = m_channelDatas[i];
-            float distance = (data.m_position - m_listenerPosition).length_squared() + 10;
-            float volume = 10.0f / distance;
+
+            float sqr_dist = (data.m_position - m_listenerPosition).length_squared();
+            float distance = data.m_attenuation.linear * rynx::math::sqrt_approx(sqr_dist) + data.m_attenuation.quadratic * sqr_dist;
+            float volume = 1.0f / (distance + 1.0f);
             volume *= data.m_loudness;
 
             auto& sound = m_soundBank[data.m_bufferIndex];
