@@ -34,8 +34,7 @@ void main()
 		float agreement = max(lights_settings[i].a, dot(fragment_normal, distance_unit));
 		vec4 fragment_color_intensity = vec4(soft_agr * agreement * (material_color.rgb * lights_colors[i].rgb) *
 			(lights_colors[i].a * lights_colors[i].a), 0.0);
-		result +=  fragment_color_intensity / (distance_sqr * lights_settings[i].z + 1.0);
-		result +=  fragment_color_intensity / (sqrt(distance_sqr) * lights_settings[i].y + 1.0);
+		result +=  fragment_color_intensity / (distance_sqr * lights_settings[i].z + sqrt(distance_sqr) * lights_settings[i].y + 1.0);
 	}
 	
 	frag_color = result;

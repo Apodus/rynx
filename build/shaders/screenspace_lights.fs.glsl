@@ -29,8 +29,7 @@ void main()
 		vec4 fragment_light_intensity = vec4(agreement * (material_color.rgb * lights_colors[i].rgb) *
 			(lights_colors[i].a * lights_colors[i].a), 0.0);
 		
-		result += fragment_light_intensity / (distance_sqr * lights_settings[i].z + 1.0);
-			// + fragment_light_intensity / (sqrt(distance_sqr) * lights_settings[i].y + 1.0);
+		result += fragment_light_intensity / (distance_sqr * lights_settings[i].z + sqrt(distance_sqr) * lights_settings[i].y + 1.0);
 	}
 	
 	frag_color = result;

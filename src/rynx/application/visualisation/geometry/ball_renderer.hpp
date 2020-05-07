@@ -48,7 +48,7 @@ namespace rynx {
 									m_balls->emplace_back(color.value);
 								});
 
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh>().in<rynx::components::translucent, rynx::components::frustum_culled>()
+						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::frustum_culled>().in<rynx::components::translucent>()
 							.for_each_parallel(task_context, [this](
 								const rynx::components::position& pos,
 								const rynx::components::radius& r,

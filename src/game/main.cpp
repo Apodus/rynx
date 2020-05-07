@@ -77,12 +77,8 @@ int main(int argc, char** argv) {
 		meshes->create("square_empty", rynx::Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", rynx::Shape::makeBox(1.0f), "Smoke");
 		meshes->create("square_rope", rynx::Shape::makeBox(1.0f), "Rope");
+		
 		auto* tube_mesh = meshes->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
-		std::cout << tube_mesh->normals.size() << std::endl;
-		for (size_t i = 0; i < tube_mesh->normals.size(); i+=3) {
-			std::cout << " {" << tube_mesh->normals[i] << ", " << tube_mesh->normals[i+1] << ", " << tube_mesh->normals[i+2] << "} --";
-		}
-
 		tube_mesh->normals.clear();
 		tube_mesh->putNormal(0, +1, 0);
 		tube_mesh->putNormal(0, -1, 0);
@@ -206,7 +202,6 @@ int main(int argc, char** argv) {
 			}
 		}
 		
-		// TODO: radius calculation from boundary (bounding radius or something)
 		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
 			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
