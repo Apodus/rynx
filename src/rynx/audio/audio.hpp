@@ -31,6 +31,11 @@ namespace rynx {
         struct source_instance {
             source_instance();
 
+            struct {
+                float linear = 0.0f;
+                float quadratic = 1.0f;
+            } m_attenuation;
+
             vec3f m_position;
             vec3f m_direction;
             uint32_t m_bufferIndex = 0;
@@ -58,7 +63,9 @@ namespace rynx {
             configuration& set_loudness(float loudness);
             
             configuration& set_pitch_shift(float octaves);
-            
+            configuration& set_attenuation_quadratic(float v);
+            configuration& set_attenuation_linear(float v);
+
             float completion_rate() const;
             bool is_active() const;
         };
@@ -82,6 +89,9 @@ namespace rynx {
             float m_volumeScaleCurrent = 1.0f;
             float m_currentSampleRate = 48000.0f;
 
+            float m_default_quadratic_attenuation = 1.0f;
+            float m_default_linear_attenuation = 0.0f;
+
         public:
             audio_system(audio_system&&) = delete;
             audio_system(const audio_system&) = delete;
@@ -92,12 +102,15 @@ namespace rynx {
                 return m_soundBank[bufferIndex].left.size();
             }
 
+            audio_system& set_default_attentuation_quadratic(float v) { m_default_quadratic_attenuation = v; return *this; }
+            audio_system& set_default_attentuation_linear(float v) { m_default_linear_attenuation = v; return *this; }
+
             audio_system();
             ~audio_system();
             
             uint32_t load(std::string path);
 
-            configuration play_sound(int soundIndex, vec3f position, vec3f direction, float loudness = 1.0f);
+            configuration play_sound(int soundIndex, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
             void open_output_device(int numChannels = 64, int samplesPerRender = 256);
             
             void render_audio(float* outBuf, size_t numSamples); // Do not call this. This is called automatically.
