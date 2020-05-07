@@ -400,7 +400,7 @@ namespace rynx {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					// TODO: Get rid of null check :( it is guarding against virtual types and tag types.
-					if (other->m_tables[typeId]) {
+					if (typeId <= other->m_tables.size() && other->m_tables[typeId]) {
 						other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
 					}
 					typeId = types.nextOne(typeId + 1);
@@ -741,11 +741,11 @@ namespace rynx {
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
-						auto* id_begin = ids.begin();
+						auto* id_begin = ids.data();
 						auto* id_end = id_begin + ids.size();
 						
 						if constexpr (is_id_query) {
-							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>(*this->m_typeAliases);
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_without_first_t>(this->m_typeAliases);
 							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*id_begin, *ptrs...)) {
@@ -758,7 +758,7 @@ namespace rynx {
 							std::apply(iteration_func, parameters_tuple);
 						}
 						else {
-							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>(*this->m_typeAliases);
+							auto parameters_tuple = entity_category.second->template table_datas<accessType, components_t>(this->m_typeAliases);
 							auto iteration_func = [&op, id_begin, id_end, &gathered_ids](auto*... ptrs) mutable {
 								while (id_begin != id_end) {
 									if (op(*ptrs...)) {

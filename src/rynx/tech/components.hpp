@@ -129,8 +129,8 @@ namespace rynx {
 			// when ambient value = 1, objects are evenly illuminated.
 			float ambient = 0;
 
-			float attenuation_linear = 10000.0f; // linear attenuation component fades out immediately
-			float attenuation_quadratic = 1.0f; // linear attenuation component fades out immediately
+			float attenuation_linear = 0.0f; // no linear attenuation.
+			float attenuation_quadratic = 1.0f; // 100% quadratic attenuation.
 		};
 
 		struct light_directed : public light_omni {

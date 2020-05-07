@@ -23,7 +23,7 @@ namespace rynx {
 						rynx::scheduler::task& task_context) {
 					ecs.query().for_each_parallel(task_context, [](components::radius& r, components::color& c, components::lifetime lt, const components::particle_info& pi) {
 						r.r = pi.radius.linear(lt);
-						c.value = pi.color.linear(lt.inv_quadratic_inv());
+						c.value = pi.color.linear(lt);
 					});
 				});
 			}
