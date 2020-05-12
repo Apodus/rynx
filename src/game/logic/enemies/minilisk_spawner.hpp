@@ -43,7 +43,6 @@ namespace game {
 							rynx::components::dampening,
 							rynx::components::boundary,
 							rynx::components::phys::joint,
-							rynx::components::frame_collisions,
 							rynx::components::light_omni,
 							rynx::components::mesh,
 							rynx::components::light_directed,
@@ -67,7 +66,6 @@ namespace game {
 									rynx::components::dampening({ 0.97f, 0.997f }),
 									rynx::components::mesh{ m_meshes->get("ball") },
 									rynx::type_index::virtual_type{ m_virtual_type_id },
-									rynx::components::frame_collisions(),
 									rynx::matrix4()
 								);
 
@@ -132,8 +130,7 @@ namespace game {
 									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
-									rynx::components::dampening({ 0.2f, 1.f }),
-									rynx::components::frame_collisions()
+									rynx::components::dampening({ 0.2f, 1.f })
 								);
 							}
 						}

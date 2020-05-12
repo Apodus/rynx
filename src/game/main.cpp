@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
 		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
 			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon));
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")));
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
 		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x);
 			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon));
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")));
 			float radius = polygon.radius();
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),

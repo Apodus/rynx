@@ -65,7 +65,6 @@ namespace game {
 						rynx::components::projectile(),
 						rynx::components::color({ 1, 0, 0, 1 }),
 						rynx::components::motion({ {direction + shooterMotion.velocity }, {} }),
-						rynx::components::frame_collisions(),
 						game::components::bullet({ 11 })
 					);
 

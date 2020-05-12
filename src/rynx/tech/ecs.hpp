@@ -252,7 +252,6 @@ namespace rynx {
 			std::vector<std::remove_reference_t<T>> m_data;
 		};
 
-		class entity_category;
 		struct migrate_move {
 			migrate_move(entity_id_t id_, index_t newIndex_, entity_category* new_category_) : id(id_), newIndex(newIndex_), new_category(new_category_) {}
 			entity_id_t id;
@@ -697,13 +696,13 @@ namespace rynx {
 							auto call_user_op = [size = ids.size(), ids_data = ids.data(), &op](auto*... args) {
 								op(size, ids_data, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>(m_typeAliases));
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, id_types_t>(this->m_typeAliases));
 						}
 						else {
 							auto call_user_op = [size = ids.size(), &op](auto... args) {
 								op(size, args...);
 							};
-							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>(m_typeAliases));
+							std::apply(call_user_op, entity_category.second->template table_datas<accessType, types_t>(this->m_typeAliases));
 						}
 					}
 				}
@@ -1624,7 +1623,7 @@ namespace rynx {
 			auto operator[](id id) const { return const_entity<view<TypeConstraints...>>(*this, id.value); }
 
 			edit_t editor() {
-				return edit_t(*m_ecs);
+				return edit_t(*this->m_ecs);
 			}
 
 			template<typename... Components>
@@ -1656,7 +1655,7 @@ namespace rynx {
 			template<typename... Components> edit_view& removeFromEntity(id id) { return removeFromEntity<Components...>(id.value); }
 
 			template<typename...Args> operator edit_view<Args...>() {
-				static_assert((view::type_verify<Args>() && ...), "all requested types must be present in parent view");
+				static_assert((typename view<TypeConstraints...>::template type_verify<Args>() && ...), "all requested types must be present in parent view");
 				return edit_view<Args...>(this->m_ecs);
 			}
 		};

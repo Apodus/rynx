@@ -24,7 +24,7 @@ namespace rynx {
 				return;
 			}
 
-			operator bool() const { return counter->load(std::memory_order::memory_order_acquire) == 0; }
+			operator bool() const { return counter->load(std::memory_order_acquire) == 0; }
 
 			std::string name;
 			std::shared_ptr<std::atomic<int32_t>> counter; // counter object is shared by all copies of the same barrier.
