@@ -59,6 +59,10 @@ namespace rynx {
 				return ++m_nextId;
 			} // zero is never generated. we can use that as InvalidId.
 
+			void clear() {
+				m_nextId = 0; // reset id space.
+			}
+
 			static constexpr entity_id_t InvalidId = 0;
 		private:
 			
@@ -1282,6 +1286,13 @@ namespace rynx {
 		}
 
 		void erase(id entityId) { erase(entityId.value); }
+
+		void clear() {
+			this->m_categories.clear();
+			this->m_idCategoryMap.clear();
+			this->m_value_segregated_types_maps.clear();
+			this->m_entities.clear();
+		}
 
 		template<typename...Args> void componentTypesAllowed() const {
 			static_assert(true && ((!std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<Args>> || std::is_const_v<std::remove_reference_t<Args>> || !std::is_reference_v<Args>) && ...), "");

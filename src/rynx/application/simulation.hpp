@@ -27,6 +27,10 @@ namespace rynx {
 				m_context->set_resource(t);
 			}
 
+			void clear() {
+				m_logic.clear();
+			}
+
 			rynx::ecs m_ecs;
 			rynx::application::logic m_logic;
 			rynx::scheduler::context* m_context;

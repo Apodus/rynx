@@ -32,7 +32,7 @@ namespace rynx {
 		polygon_triangulation();
 
 		std::unique_ptr<mesh> triangulate(const rynx::polygon& polygon_, floats4 uvLimits = floats4(0.0f, 0.0f, 1.0f, 1.0f));
-		std::unique_ptr<mesh> generate_polygon_boundary(const rynx::polygon& polygon_);
+		std::unique_ptr<mesh> generate_polygon_boundary(const rynx::polygon& polygon_, floats4 texCoords);
 		void makeTriangles(rynx::polygon& polygon_);
 	};
 }

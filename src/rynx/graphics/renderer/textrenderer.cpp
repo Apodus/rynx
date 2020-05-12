@@ -86,6 +86,9 @@ void rynx::TextRenderer::drawText(const std::string& text, float x, float y, flo
 }
 
 void rynx::TextRenderer::drawTextBuffers(int textLength) {
+	if (textLength == 0)
+		return;
+
 	std::shared_ptr<rynx::graphics::shader> textShader = m_shaders->activate_shader("font");
 	const matrix4& projectionMatrix = m_pCamera->getProjection();
 	const matrix4& viewMatrix = m_pCamera->getView();
@@ -94,13 +97,13 @@ void rynx::TextRenderer::drawTextBuffers(int textLength) {
 	textShader->uniform("MVPMatrix", projectionViewMatrix);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_vertexBuffer.size(), &m_vertexBuffer[0]);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_vertexBuffer.size(), m_vertexBuffer.data());
 
 	glBindBuffer(GL_ARRAY_BUFFER, cbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_colorBuffer.size(), &m_colorBuffer[0]);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_colorBuffer.size(), m_colorBuffer.data());
 
 	glBindBuffer(GL_ARRAY_BUFFER, tbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_texCoordBuffer.size(), &m_texCoordBuffer[0]);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_texCoordBuffer.size(), m_texCoordBuffer.data());
 
 	glBindVertexArray(vao);
 	glDrawArrays(GL_TRIANGLES, 0, 2 * 3 * textLength);

@@ -22,7 +22,7 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 	shader_copy_color->uniform("tex_color", 0);
 
 	lighting_pass = rynx::application::visualisation::default_lighting_pass(application.shaders());
-	geometry_pass = rynx::application::visualisation::default_geometry_pass(&application.meshRenderer(), camera.get());
+	geometry_pass = rynx::application::visualisation::default_geometry_pass(&application.meshRenderer());
 	gpu_textures = application.textures();
 
 	current_internal_resolution_geometry = { 1.0f, 1.0f };
@@ -59,8 +59,8 @@ void rynx::application::renderer::set_lights_resolution(float percent_x, float p
 
 void rynx::application::renderer::on_resolution_change(size_t new_size_x, size_t new_size_y) {
 	current_resolution = {new_size_x, new_size_y};
-	set_lights_resolution(current_internal_resolution_lighting.first, current_internal_resolution_lighting.second);
 	set_geometry_resolution(current_internal_resolution_geometry.first, current_internal_resolution_geometry.second);
+	set_lights_resolution(current_internal_resolution_lighting.first, current_internal_resolution_lighting.second);
 }
 
 void rynx::application::renderer::execute() {

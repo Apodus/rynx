@@ -59,6 +59,7 @@ namespace rynx {
 			m_sphere_trees[category.value]->in_radius(point, radius, std::forward<F>(f));
 		}
 
+		void clear();
 		void update();
 		void update_parallel(rynx::scheduler::task& task_context);
 		

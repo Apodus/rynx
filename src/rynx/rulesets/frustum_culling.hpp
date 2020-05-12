@@ -20,6 +20,7 @@ namespace rynx {
 			
 			virtual ~frustum_culling() {}
 			
+			virtual void clear() override;
 			virtual void on_entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) override;
 			virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override;
 

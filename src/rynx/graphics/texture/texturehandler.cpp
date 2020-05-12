@@ -252,18 +252,23 @@ void GPUTextures::deleteTexture(const std::string& name)
 {
 	rynx_assert(!name.empty(), "deleting texture with an empty name?");
 	std::string realName = m_atlasHandler.getRealTextureID(name);
-
-	if(textureExists(realName))
+	auto it = textures.find(realName);
+	if(it != textures.end())
 	{
-		glDeleteTextures(1, &textures[realName]);
-		textures.erase(realName);
+		for (auto& tex : current_textures) {
+			if (tex == name) {
+				tex = ""; // unbind.
+			}
+		}
+
+		glDeleteTextures(1, &it->second);
+		textures.erase(it);
 	}
 	else
 	{
 		logmsg("WARNING: tried to delete a texture that doesnt exist: \"%s\"", name.c_str());
 	}
 }
-
 
 void GPUTextures::unbindTexture(size_t texture_unit)
 {
@@ -314,7 +319,7 @@ void GPUTextures::deleteAllTextures()
 bool GPUTextures::textureExists(const std::string& name) const
 {
 	std::string realName = m_atlasHandler.getRealTextureID(name);
-	return textures.find(name) != textures.end();
+	return textures.find(realName) != textures.end();
 }
 
 rynx::floats4 GPUTextures::textureLimits(const std::string& name) const {

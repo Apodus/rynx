@@ -13,23 +13,28 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 		rynx::scheduler::task& task_context)
 		{
 			auto apply_acceleration_to_velocity = ecs.query().for_each_parallel(task_context, [dt](components::position& p, components::motion& m) {
+
+				auto linear_acceleration_effect = m.acceleration * dt * dt + m.velocity * dt;
+				auto angular_acceleration_effect = m.angularAcceleration * dt * dt + m.angularVelocity * dt;
+
 				// update velocity
 				m.velocity += m.acceleration * dt;
-				m.acceleration.set(0, 0, 0);
 				m.angularVelocity += m.angularAcceleration * dt;
+
+				m.acceleration.set(0, 0, 0);
 				m.angularAcceleration = 0;
 
 				// update position
-				p.value += m.velocity * dt;
-				p.angle += m.angularVelocity * dt;
+				p.value += linear_acceleration_effect;
+				p.angle += angular_acceleration_effect;
 			});
 		}
 	);
 
 	context.add_task("Apply dampening", [dt](rynx::scheduler::task& task, rynx::ecs::view<components::motion, const components::dampening> ecs) {
 		ecs.query().for_each_parallel(task, [dt](components::motion& m, components::dampening d) {
-			m.velocity *= ::powf(d.linearDampening, dt);
-			m.angularVelocity *= ::powf(d.angularDampening, dt);
+			m.velocity *= ::powf(1.0f - d.linearDampening, dt);
+			m.angularVelocity *= ::powf(1.0f - d.angularDampening, dt);
 		});
 	}).required_for(position_updates);
 

@@ -28,9 +28,9 @@ namespace rynx {
 
 		inline vec3<float> rotatedXY(vec3<float> v, float sin_value, float cos_value) {
 			return vec3<float>{
-				v.x* cos_value - v.y * sin_value,
-					v.x* sin_value + v.y * cos_value,
-					0
+				v.x * cos_value - v.y * sin_value,
+				v.x * sin_value + v.y * cos_value,
+				0
 			};
 		}
 

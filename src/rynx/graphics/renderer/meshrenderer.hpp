@@ -31,6 +31,10 @@ namespace rynx {
 			return it.first->second.get();
 		}
 
+		void erase(const std::string& s) {
+			m_storage.erase(s);
+		}
+
 		mesh* create(const std::string& s, polygon shape, const std::string& texture) {
 			auto it = m_storage.emplace(s, rynx::polygon_triangulation().triangulate(shape, m_pGpuTextures->textureLimits(texture)));
 			it.first->second->build();

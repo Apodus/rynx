@@ -26,6 +26,12 @@ rynx::collision_detection& rynx::collision_detection::enable_collisions_between(
 	return *this;
 }
 
+void rynx::collision_detection::clear() {
+	for (auto& tree : m_sphere_trees) {
+		tree->clear();
+	}
+}
+
 void rynx::collision_detection::update() {
 	for (auto& tree : m_sphere_trees) {
 		tree->update();
@@ -72,7 +78,7 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 	{
 		auto non_projectiles = ecs.query()
 			.notIn<rynx::components::projectile>()
-			.in<rynx::components::physical_body>()
+			.in<rynx::components::physical_body, rynx::components::motion>()
 			.for_each_parallel(task_context, [&detection](
 				rynx::ecs::id id,
 				rynx::components::collisions col,

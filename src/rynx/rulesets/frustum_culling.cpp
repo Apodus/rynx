@@ -12,6 +12,10 @@
 #include <rynx/math/geometry/frustum.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
+void rynx::ruleset::frustum_culling::clear() {
+	m_in_frustum.clear();
+	m_out_frustum.clear();
+}
 
 void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::ecs::id>& ids) {
 	for (auto id : ids) {
@@ -58,14 +62,14 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 				const rynx::components::radius> ecs)
 				{
 					ecs.query()
-						.in<entity_tracked_by_frustum_culling>()
+						.in<entity_tracked_by_frustum_culling, components::motion>()
 						.notIn<components::frustum_culled>()
 						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
 						m_in_frustum.update_entity(id.value, pos.value, r.r);
 					});
 
 					ecs.query()
-						.in<entity_tracked_by_frustum_culling, components::frustum_culled>()
+						.in<entity_tracked_by_frustum_culling, components::motion, components::frustum_culled>()
 						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
 						m_out_frustum.update_entity(id.value, pos.value, r.r);
 					});

@@ -395,6 +395,12 @@ namespace rynx {
 			return { vec3f(), 0.0f };
 		}
 
+		void clear() {
+			this->entryMap.clear();
+			this->root.m_children.clear();
+			this->root.m_members.clear();
+		}
+
 		void update() {
 			{
 				rynx_profile("SphereTree", "FindBuckets");

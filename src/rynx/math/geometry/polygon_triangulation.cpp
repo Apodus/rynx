@@ -144,7 +144,7 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx:
 	return buildMeshData(uvLimits);
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_) {
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_, rynx::floats4 tex_coords) {
 	
 	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
 	rynx::polygon copy = polygon_;
@@ -176,8 +176,8 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_bounda
 	polyMesh->putNormal(b_normal);
 	polyMesh->putNormal(-b_normal);
 
-	polyMesh->putUVCoord(0.47f, 0.03f);
-	polyMesh->putUVCoord(0.47f, 0.04f);
+	polyMesh->putUVCoord(tex_coords.x, tex_coords.y);
+	polyMesh->putUVCoord(tex_coords.z, tex_coords.w);
 
 	for (int i = 1; i < boundary.size(); ++i) {
 		a = get_vertex(i - 1);
@@ -197,8 +197,8 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_bounda
 		polyMesh->putNormal(b_normal);
 		polyMesh->putNormal(-b_normal);
 
-		polyMesh->putUVCoord(0.47f, 0.03f);
-		polyMesh->putUVCoord(0.46f, 0.04f);
+		polyMesh->putUVCoord(tex_coords.x, tex_coords.y);
+		polyMesh->putUVCoord(tex_coords.z, tex_coords.w);
 
 		polyMesh->putTriangleIndices(2 * i, 2 * i - 1, 2 * i - 2);
 		polyMesh->putTriangleIndices(2 * i - 1, 2 * i, 2 * i + 1);

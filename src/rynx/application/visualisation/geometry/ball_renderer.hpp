@@ -13,11 +13,10 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
-				ball_renderer(mesh* circleMesh, MeshRenderer* meshRenderer, camera* camera) {
+				ball_renderer(mesh* circleMesh, MeshRenderer* meshRenderer) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
-					m_camera = camera;
-
+					
 					m_balls = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 					m_balls_translucent = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
@@ -130,7 +129,6 @@ namespace rynx {
 				
 				MeshRenderer* m_meshRenderer;
 				mesh* m_circleMesh;
-				camera* m_camera;
 			};
 		}
 	}

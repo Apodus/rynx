@@ -37,6 +37,7 @@ namespace rynx {
 				void required_for(iruleset& other);
 
 				virtual void on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::ecs::id>&) {}
+				virtual void clear() {}
 
 			private:
 				virtual void onFrameProcess(rynx::scheduler::context&, float dt) = 0;
@@ -70,6 +71,12 @@ namespace rynx {
 			void entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
 				for (auto& ruleset : m_rules) {
 					ruleset->on_entities_erased(context, ids);
+				}
+			}
+
+			void clear() {
+				for (auto& ruleset : m_rules) {
+					ruleset->clear();
 				}
 			}
 

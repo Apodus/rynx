@@ -79,8 +79,8 @@ namespace rynx {
 		};
 
 		struct dampening {
-			float linearDampening = 1.0f;
-			float angularDampening = 1.0f;
+			float linearDampening = 0.0f;
+			float angularDampening = 0.0f;
 		};
 
 		struct motion {
@@ -96,6 +96,11 @@ namespace rynx {
 			vec3<float> velocity_at_point(vec3<float> relative_point) const {
 				// return velocity + angularVelocity * relative_point.length() * vec3<float>(-relative_point.y, +relative_point.x, 0).normalize();
 				return velocity + angularVelocity * vec3<float>(-relative_point.y, +relative_point.x, 0);
+			}
+
+			vec3<float> velocity_at_point_predict(vec3<float> relative_point, float dt) const {
+				// return velocity + angularVelocity * relative_point.length() * vec3<float>(-relative_point.y, +relative_point.x, 0).normalize();
+				return velocity + acceleration * dt + (angularVelocity + dt * angularAcceleration) * vec3<float>(-relative_point.y, +relative_point.x, 0);
 			}
 		};
 
@@ -141,6 +146,16 @@ namespace rynx {
 
 		struct collisions {
 			int category = 0;
+		};
+
+		struct collision_custom_reaction {
+			struct event {
+				rynx::ecs::id id; // collided with what
+				rynx::components::physical_body body;
+				vec3f relative_velocity;
+				vec3f normal;
+			};
+			std::vector<event> events;
 		};
 	}
 }

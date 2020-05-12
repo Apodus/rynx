@@ -105,6 +105,11 @@ namespace rynx {
             audio_system& set_default_attentuation_quadratic(float v) { m_default_quadratic_attenuation = v; return *this; }
             audio_system& set_default_attentuation_linear(float v) { m_default_linear_attenuation = v; return *this; }
 
+            audio_system& set_volume(float v) { m_globalVolume = v; return *this; }
+            audio_system& adjust_volume(float v) { m_globalVolume *= v; return *this; }
+
+            audio_system& set_listener_position(rynx::vec3f pos) { m_listenerPosition = pos; return *this; }
+
             audio_system();
             ~audio_system();
             

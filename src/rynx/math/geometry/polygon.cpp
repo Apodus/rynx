@@ -80,7 +80,10 @@ std::vector<rynx::polygon::segment> rynx::polygon::generateBoundary_Outside(floa
 std::vector<rynx::polygon::segment> rynx::polygon::generateBoundary_Inside(float scale) const {
 	std::vector<segment> boundary = generateBoundary_Outside(scale);
 	for (auto&& plop : boundary) {
-		plop.invert_normal();
+		auto tmp = plop.p1;
+		plop.p1 = plop.p2;
+		plop.p2 = tmp;
+		plop.computeNormalXY();
 	}
 	return boundary;
 }

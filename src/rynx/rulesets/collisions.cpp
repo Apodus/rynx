@@ -12,6 +12,9 @@
 #include <rynx/tech/parallel_accumulator.hpp>
 
 namespace {
+
+	rynx::components::motion g_dummy_motion;
+
 	struct collision_event {
 		uint64_t a_id;
 		uint64_t b_id;
@@ -84,7 +87,7 @@ namespace {
 			const float distSqr = pointToLineSegment.first;
 			if (distSqr < ball_radius * ball_radius) {
 				auto normal = (pointToLineSegment.second - ball_position).normalize();
-				normal *= 2.0f * (normal.dot(polygon_position - pointToLineSegment.second) > 0) - 1.0f;
+				normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
 
 				create_collision_event(
 					collisions_accumulator,
@@ -308,9 +311,9 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");
 
 	{
-		context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::frame_collisions> ecs) {
-			ecs.query().for_each([&](rynx::components::frame_collisions& collisions) {
-				collisions.collision_indices.clear();
+		context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::collision_custom_reaction> ecs) {
+			ecs.query().for_each([](rynx::components::collision_custom_reaction& collisions) {
+				collisions.events.clear();
 			});
 		});
 	}
@@ -337,10 +340,11 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	auto updateBoundaryWorld = context.add_task(
 		"Update boundary local -> boundary world",
 		[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
-			ecs.query().for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
+			ecs.query().in<components::motion>().for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
 				float sin_v = math::sin(pos.angle);
 				float cos_v = math::cos(pos.angle);
-				for (size_t i = 0; i < boundary.segments_local.size(); ++i) {
+				const size_t num_segments = boundary.segments_local.size();
+				for (size_t i = 0; i < num_segments; ++i) {
 					boundary.segments_world[i].p1 = math::rotatedXY(boundary.segments_local[i].p1, sin_v, cos_v) + pos.value;
 					boundary.segments_world[i].p2 = math::rotatedXY(boundary.segments_local[i].p2, sin_v, cos_v) + pos.value;
 					boundary.segments_world[i].normal = math::rotatedXY(boundary.segments_local[i].normal, sin_v, cos_v);
@@ -382,7 +386,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	findCollisionsTask.depends_on(updateBoundaryWorld);
 
 	auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](
-		rynx::ecs::view<components::motion> ecs,
+		rynx::ecs::view<components::motion, rynx::components::collision_custom_reaction> ecs,
 		rynx::scheduler::task& task)
 	{
 
@@ -417,6 +421,14 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 					collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 					collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
 
+					if (collision.a_motion == nullptr) {
+						collision.a_motion = &g_dummy_motion;
+					}
+
+					if (collision.b_motion == nullptr) {
+						collision.b_motion = &g_dummy_motion;
+					}
+
 					auto& extra = extras->operator[](index);
 					const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
 					const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
@@ -427,6 +439,42 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 					extra.relative_position_length_b = rel_pos_len_b;
 					extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
 					extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
+
+					if (auto* storage = ecs[collision.a_id].try_get<rynx::components::collision_custom_reaction>()) {
+						rynx::components::collision_custom_reaction::event e;
+						e.body = collision.b_body;
+						e.id = collision.b_id;
+						e.normal = collision.normal;
+						
+						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+							return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+						};
+
+						const auto& extra = extras->operator[](index);
+						const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
+						const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
+						const vec3<float> total_rel_v = rel_v_a - rel_v_b;
+						e.relative_velocity = total_rel_v;
+						storage->events.emplace_back(e);
+					}
+
+					if (auto* storage = ecs[collision.b_id].try_get<rynx::components::collision_custom_reaction>()) {
+						rynx::components::collision_custom_reaction::event e;
+						e.body = collision.a_body;
+						e.id = collision.a_id;
+						e.normal = -collision.normal;
+
+						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+							return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+						};
+
+						const auto& extra = extras->operator[](index);
+						const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
+						const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
+						const vec3<float> total_rel_v = rel_v_a - rel_v_b;
+						e.relative_velocity = -total_rel_v;
+						storage->events.emplace_back(e);
+					}
 				}));
 			}
 
