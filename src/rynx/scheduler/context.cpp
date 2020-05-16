@@ -8,7 +8,7 @@
 rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
-	
+
 	for (size_t i = 0; i < m_tasks.size(); ++i) {
 		auto& task = m_tasks[i];
 		// logmsg("looking for work: %s, barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
@@ -21,25 +21,12 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 			return t;
 		}
 	}
-	
+
 	while (!m_tasks_parallel_for.empty()) {
 		// if random task mode is enabled, set task index = random.
 		// otherwise, set task_index = 0
 		uint64_t task_index = m_random(m_tasks_parallel_for.size()) * (m_currentParallelForTaskStrategy == ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers);
-		
 		task& task = m_tasks_parallel_for[task_index];
-
-		/*
-		if (task.for_each_no_work_available()) {
-			if (task.for_each_all_work_completed()) {
-				task.barriers().on_complete();
-				m_tasks_parallel_for[task_index] = std::move(m_tasks_parallel_for.back());
-				m_tasks_parallel_for.pop_back();
-				continue;
-			}
-		}
-		*/
-
 		rynx::scheduler::task copy = task;
 		task.completion_blocked_by(copy);
 		return copy;

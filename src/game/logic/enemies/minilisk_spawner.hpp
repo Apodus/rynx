@@ -63,12 +63,13 @@ namespace game {
 									rynx::components::radius(2.0f),
 									rynx::components::collisions{ dynamic.value },
 									rynx::components::color(),
-									rynx::components::dampening({ 0.97f, 0.997f }),
+									rynx::components::dampening({ 0.10f, 0.10f }),
 									rynx::components::mesh{ m_meshes->get("ball") },
 									rynx::type_index::virtual_type{ m_virtual_type_id },
 									rynx::matrix4()
 								);
 
+								/*
 								if (m_random() > 0.75f) {
 									rynx::components::light_omni light;
 									light.color = rynx::floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(1.0f, 20.0f));
@@ -84,6 +85,8 @@ namespace game {
 									light.angle = m_random(1.5f, 4.14f);
 									ecs.attachToEntity(id1, light);
 								}
+								*/
+
 								/*
 								for (int k = 1; k < 30; ++k) {
 									auto id2 = ecs.create(

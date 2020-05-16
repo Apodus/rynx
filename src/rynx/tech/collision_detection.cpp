@@ -65,7 +65,7 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 }
 
 void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context, float dt) {
-	task_context.extend_task_independent([dt](
+	auto update_task = task_context.extend_task_independent([dt](
 		rynx::scheduler::task& task_context,
 		rynx::collision_detection& detection,
 		rynx::ecs::view<
@@ -100,6 +100,8 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value - motion.velocity * dt, r.r);
 		});
 	});
+
+	task_context.completion_blocked_by(*update_task);
 }
 
 void rynx::collision_detection::erase(uint64_t entityId, category_id from) {
