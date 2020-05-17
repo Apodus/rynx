@@ -47,8 +47,6 @@ rynx::scheduler::task_token& rynx::scheduler::task_token::operator | (task_token
 	return other;
 }
 
-void rynx::scheduler::task::reserve_resources() const { m_context->reserve_resources(*m_resources); }
-
 void rynx::scheduler::task::run() {
 	rynx_profile("Scheduler", m_name);
 	rynx_assert(static_cast<bool>(m_op), "no op in task that is being run!");

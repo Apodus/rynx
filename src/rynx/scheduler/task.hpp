@@ -118,8 +118,7 @@ namespace rynx {
 			};
 			
 			template<typename RetVal, typename Class, typename...Args> struct resource_deducer<RetVal(Class::*)(Args...)> : public resource_deducer<RetVal(Class::*)(Args...) const> {};
-			void reserve_resources() const;
-
+			
 		public:
 			// TODO: use some memory pool thing for task_resources.
 			task() : m_name("EmptyTask"), m_context(nullptr) {}

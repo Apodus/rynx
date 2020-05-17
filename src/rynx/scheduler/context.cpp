@@ -17,7 +17,7 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 			rynx::scheduler::task t(std::move(task));
 			m_tasks[i] = std::move(m_tasks.back());
 			m_tasks.pop_back();
-			t.reserve_resources();
+			reserve_resources(t.resources());
 			return t;
 		}
 	}
