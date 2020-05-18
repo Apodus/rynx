@@ -43,8 +43,8 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 					world_pos_a = pos_a.value + relative_pos_a;
 					world_pos_b = pos_b.value + relative_pos_b;
 
-					mot_a = &entity_a.get<components::motion>();
-					mot_b = &entity_b.get<components::motion>();
+					mot_a = entity_a.try_get<components::motion>();
+					mot_b = entity_b.try_get<components::motion>();
 
 					phys_a = &entity_a.get<const components::physical_body>();
 					phys_b = &entity_b.get<const components::physical_body>();
@@ -97,7 +97,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 						// rubber band doesn't push back. spring does.
 						over_extension -= (connector_rubber_band & (over_extension < 0)) * over_extension;
 
-						float force = 0.5f * 540.0f * rope.strength * over_extension;
+						float force = 0.5f * 1200.0f * rope.strength * over_extension;
 						rope.cumulative_stress += force * dt;
 
 						vec3f force_vector = joint_data.get_force_direction() * force;
@@ -109,7 +109,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 						auto force_dir = joint_data.get_force_direction();
 						auto rel_vel = vel_a - vel_b;
 						float current_agreement = rel_vel.dot(force_dir);
-						float multiplier = 40450.0f * (over_extension - 0.010805f * current_agreement);
+						float multiplier = rope.strength * 20450.0f * (over_extension - 0.010805f * current_agreement);
 						rope.cumulative_stress += multiplier * dt;
 						joint_data.apply_force(force_dir * multiplier, rope.m_joint);
 					}

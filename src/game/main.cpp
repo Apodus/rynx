@@ -240,6 +240,63 @@ int main(int argc, char** argv) {
 			);
 		};
 
+		auto makeChain = [&](rynx::vec3f pos, rynx::vec3f dir, float length, int numJoints, int connectWith) {
+			for (int i = 0; i < 1; ++i) {
+				float x = pos.x;
+				float y = pos.y;
+				auto id1 = ecs.create(
+					rynx::components::position({ x, y, 0 }),
+					rynx::components::motion(),
+					rynx::components::ignore_gravity(),
+					rynx::components::physical_body(std::numeric_limits<float>::max(), 15.0f, 0.0f, 1.0f),
+					rynx::components::radius(2.0f),
+					rynx::components::collisions{ collisionCategoryDynamic.value },
+					rynx::components::color(),
+					rynx::components::mesh{ meshes->get("ball") },
+					rynx::matrix4()
+				);
+
+				float increment = length / numJoints;
+				for (int k = 1; k <= numJoints; ++k) {
+					auto id2 = ecs.create(
+						rynx::components::position(pos +  dir * (k * increment)),
+						rynx::components::motion(),
+						rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
+						rynx::components::radius(2.0f),
+						rynx::components::collisions{ collisionCategoryDynamic.value },
+						rynx::components::color(),
+						rynx::components::dampening({ 0.10f, 0.10f }),
+						rynx::components::mesh{ meshes->get("square_empty") },
+						rynx::matrix4()
+					);
+
+					rynx::components::phys::joint joint;
+					
+					if(connectWith == 0)
+						joint.connect_with_rod();
+					if (connectWith == 1)
+						joint.connect_with_rubberband();
+					if (connectWith == 2)
+						joint.connect_with_spring();
+					
+					joint.id_a = id1;
+					joint.id_b = id2;
+
+					joint.point_a = rynx::vec3<float>(0, 0, 0);
+					joint.point_b = rynx::vec3<float>(0, 0, 0);
+					joint.length = increment;
+					joint.strength = 1.0f;
+					ecs.create(joint);
+
+					id1 = id2;
+				}
+			}
+		};
+
+		makeChain({ -200, +300, 0 }, {-1.0f, 0.0f, 0.0f}, 100.0f, 15, 0);
+		makeChain({ -350, +300, 0 }, { -1.0f, 0.0f, 0.0f }, 100.0f, 15, 1);
+		makeChain({ -500, +300, 0 }, { -1.0f, 0.0f, 0.0f }, 100.0f, 15, 2);
+
 		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
 		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
 		// makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);

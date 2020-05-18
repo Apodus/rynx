@@ -89,7 +89,7 @@ void rynx::scheduler::context::dump() {
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
 	for (auto&& task : m_tasks) {
 		(void)task;
-		std::cout << task.name() << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << std::endl;
+		std::cout << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << " -- " << task.name() << std::endl;
 		task.barriers().dump();
 		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 	}

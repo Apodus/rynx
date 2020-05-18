@@ -20,8 +20,6 @@ namespace game {
 			float x_spawn = -20.9f;
 			
 			rynx::math::rand64 m_random;
-			rynx::type_index::virtual_type m_virtual_type_id;
-			rynx::type_index::virtual_type m_virtual_type_id2;
 
 			minilisk_test_spawner_logic(
 				std::shared_ptr<rynx::mesh_collection> meshes,
@@ -47,10 +45,6 @@ namespace game {
 							rynx::components::mesh,
 							rynx::components::light_directed,
 							rynx::matrix4> ecs) {
-						if (m_virtual_type_id == rynx::type_index::virtual_type::invalid) {
-							m_virtual_type_id = ecs.create_virtual_type();
-							m_virtual_type_id2 = ecs.create_virtual_type();
-						}
 
 						for (int i = 0; i < 1; ++i) {
 							float x = x_spawn + m_random(0.0f, 4.0f);
@@ -65,7 +59,6 @@ namespace game {
 									rynx::components::color(),
 									rynx::components::dampening({ 0.10f, 0.10f }),
 									rynx::components::mesh{ m_meshes->get("ball") },
-									rynx::type_index::virtual_type{ m_virtual_type_id },
 									rynx::matrix4()
 								);
 
@@ -87,7 +80,6 @@ namespace game {
 								}
 								*/
 
-								/*
 								for (int k = 1; k < 30; ++k) {
 									auto id2 = ecs.create(
 										rynx::components::position({ x + 3.5f * k, y + 3.5f * k, 0 }),
@@ -96,10 +88,8 @@ namespace game {
 										rynx::components::radius(2.0f),
 										rynx::components::collisions{ dynamic.value },
 										rynx::components::color(),
-										rynx::components::dampening({ 0.80f, 0.90f }),
+										rynx::components::dampening({ 0.10f, 0.10f }),
 										rynx::components::mesh{ m_meshes->get("square_empty") },
-										rynx::type_index::virtual_type{ m_virtual_type_id2 },
-										rynx::components::frame_collisions(),
 										rynx::matrix4()
 									);
 
@@ -110,15 +100,14 @@ namespace game {
 									joint.id_a = id1;
 									joint.id_b = id2;
 									
-									joint.point_a = vec3<float>(0, 0, 0);
-									joint.point_b = vec3<float>(0, 0, 0);
+									joint.point_a = rynx::vec3<float>(0, 0, 0);
+									joint.point_b = rynx::vec3<float>(0, 0, 0);
 									joint.length = 5.1f;
-									joint.strength = 25.0f;
+									joint.strength = 0.1f;
 									ecs.create(joint);
 
 									id1 = id2;
 								}
-								*/
 							}
 							else {
 								float edge_length = 10.5f + 15.0f * m_random();
