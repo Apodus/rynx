@@ -1,10 +1,10 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/unordered_map.hpp>
 #include <rynx/math/geometry/bounding_sphere.hpp>
-#include <rynx/tech/parallel_accumulator.hpp>
 #include <rynx/tech/profiling.hpp>
+#include <rynx/tech/unordered_map.hpp>
+#include <rynx/tech/parallel/accumulator.hpp>
 
 #include <vector>
 
@@ -85,9 +85,9 @@ namespace rynx {
 				m_members.emplace_back(std::move(item));
 				container->entryMap.insert_or_assign(m_members.back().entityId, std::pair<node*, index_t>(this, index_t(m_members.size() - 1)));
 
-				if (m_members.size() >= MaxElementsInNode) {
+				if (m_members.size() >= MaxElementsInNode) [[unlikely]] {
 					// if we have no parent (we are root node), add a couple of new child nodes under me.
-					if (!m_parent) {
+					if (!m_parent) [[unlikely]] {
 						for (size_t i = 0; i < MaxNodesInNode; ++i) {
 							m_children.emplace_back(std::make_unique<node>(m_members[i].pos, this, depth + 1));
 						}
@@ -99,7 +99,7 @@ namespace rynx {
 							child->update_single();
 						}
 					}
-					else {
+					else [[likely]] {
 						// if also our parent node is full, and can't have new children.
 						// add a new layer of nodes between my parent, and myself.
 						if (m_parent->m_children.size() >= MaxNodesInNode) {

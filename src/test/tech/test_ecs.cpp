@@ -206,7 +206,7 @@ TEST_CASE("kek")
 
 	int ones = 0;
 	int twos = 0;
-	db.query().for_each_buffer([&](size_t numEntities, mydata* buf) {
+	db.query().for_each_buffer([&](size_t numEntities, const mydata* buf) {
 		if (numEntities == 1)
 			++ones;
 		if (numEntities == 2)

@@ -8,6 +8,49 @@
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <thread>
 
+
+#include <rynx/tech/parallel/queue.hpp>
+#include <rynx/thread/this_thread.hpp>
+
+TEST_CASE("parallel que", "single thread")
+{
+	rynx::this_thread::rynx_thread_raii kek;
+	rynx::parallel::queue<int> q;
+	int abba;
+	REQUIRE(q.deque(abba) == false);
+	q.enque(1);
+	REQUIRE(q.deque(abba) == true);
+	REQUIRE(abba == 1);
+	REQUIRE(q.deque(abba) == false);
+
+	q.enque(2);
+	q.enque(3);
+	REQUIRE(q.deque(abba) == true);
+	REQUIRE(abba == 2);
+	REQUIRE(q.deque(abba) == true);
+	REQUIRE(abba == 3);
+	REQUIRE(q.deque(abba) == false);
+}
+
+
+/*
+TEST_CASE("empty tasks bench", "scheduler")
+{
+	rynx::this_thread::rynx_thread_raii obj;
+	rynx::scheduler::task_scheduler scheduler;
+	auto* context = scheduler.make_context();
+
+	BENCHMARK("lots of essentially empty tasks.") {
+		int c = 0;
+		for (int i = 0; i < 900; ++i)
+			context->add_task("", [&]() { ++c; });
+		scheduler.start_frame();
+		scheduler.wait_until_complete();
+		return c;
+	};
+}
+*/
+
 TEST_CASE("tasks and barriers", "scheduler")
 {
 	rynx::this_thread::rynx_thread_raii obj;
@@ -46,7 +89,10 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	// read access to component. can be scheduled at same time.
 	context->add_task("TestRead", [&](rynx::ecs::view<const component> kek) {
 		++tasks_started;
-		REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+
+		if (scheduler.worker_count() > 1) {
+			REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -61,7 +107,10 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	// read access to component. can be scheduled at same time.
 	context->add_task("TestRead", [&](rynx::ecs::view<const component> kek) {
 		++tasks_started;
-		REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+		
+		if (scheduler.worker_count() > 1) {
+			REQUIRE(tasks_started < 3); // read tasks are added first so they will be attempted to run first.
+		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -76,7 +125,9 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	// write access to component. can't be scheduled while reads are running.
 	context->add_task("TestWrite", [&](rynx::ecs::view<component> kek) {
 		++tasks_started;
-		REQUIRE(tasks_started == 3); // write task added last, will also run last in this case. because there's no reason to not run the tasks created before.
+		if (scheduler.worker_count() > 1) {
+			REQUIRE(tasks_started == 3); // write task added last, will also run last in this case. because there's no reason to not run the tasks created before.
+		}
 
 		int v = 0;
 		kek.query().for_each([&](component& a) {
@@ -95,6 +146,7 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	scheduler.wait_until_complete();
 
 	REQUIRE(tasks_started == 3);
+
 	REQUIRE(result ==  2 + 2 + 2*2);
 }
 

@@ -26,6 +26,7 @@ void rynx::scheduler::task_thread::threadEntry(int myThreadIndex) {
 			m_task.run();
 			m_task.clear();
 		}
+		
 		m_sleeping.store(true);
 		m_scheduler->checkComplete();
 	}

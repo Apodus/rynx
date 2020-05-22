@@ -1215,7 +1215,8 @@ namespace rynx {
 		}
 
 		// should call once per frame. this is not thread safe.
-		// if you don't call this, you will see performance go down the toilet.
+		// if the type index is using local type indexing AND you don't call this,
+		//   you will see performance go down the toilet.
 		void sync_type_index() {
 			m_types.sync();
 		}
@@ -1271,7 +1272,7 @@ namespace rynx {
 
 		void erase(entity_id_t entityId) {
 			auto it = m_idCategoryMap.find(entityId);
-			if (it != m_idCategoryMap.end()) {
+			if (it != m_idCategoryMap.end()) [[likely]] {
 				it->second.first->erase(it->second.second, m_idCategoryMap);
 			}
 		}

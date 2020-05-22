@@ -16,8 +16,8 @@ namespace rynx {
 		
 		static constexpr type_model type_index_model = type_model::Global;
 
-		mutable std::atomic<uint64_t> runningTypeIndex = 0;
-		static std::atomic<uint64_t> runningTypeIndex_global;
+		alignas(std::hardware_destructive_interference_size) mutable std::atomic<uint64_t> runningTypeIndex = 0;
+		alignas(std::hardware_destructive_interference_size) static std::atomic<uint64_t> runningTypeIndex_global;
 		static constexpr uint64_t no_type = ~uint64_t(0);
 
 		mutable unordered_map<uintptr_t, uint64_t> m_typeMap;

@@ -76,6 +76,10 @@ namespace rynx {
 				return true;
 			}
 
+			bool blocks_other_tasks() const {
+				return !m_blocks.empty();
+			}
+
 			void on_complete() {
 				for (auto&& bar : m_blocks) {
 					bar.counter->fetch_sub(1, std::memory_order_release);
@@ -114,6 +118,8 @@ namespace rynx {
 
 			const std::vector<uint64_t>& read_requirements() const { return m_readAccess; }
 			const std::vector<uint64_t>& write_requirements() const { return m_writeAccess; }
+
+			bool empty() const { return m_readAccess.empty() & m_writeAccess.empty(); }
 		};
 
 		// this barrier is attached to end of any new task added to scheduler while in scope.

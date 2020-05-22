@@ -7,9 +7,15 @@
 #include <rynx/tech/ecs.hpp>
 #include <rynx/math/random.hpp>
 
+#include <rynx/tech/parallel/queue.hpp>
+
 #include <mutex>
 #include <atomic>
 #include <shared_mutex>
+
+#include <iostream>
+
+#define PARALLEL_QUEUE_TASKS 1
 
 namespace rynx {
 	namespace scheduler {
@@ -33,8 +39,8 @@ namespace rynx {
 			rynx::type_index m_typeIndex;
 			
 			struct resource_state {
-				std::atomic<int> readers = 0;
-				std::atomic<int> writers = 0;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int> readers = 0;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int> writers = 0;
 
 				resource_state() = default;
 				resource_state(resource_state&& other) noexcept :
@@ -75,15 +81,29 @@ namespace rynx {
 				return resource_getter<T>()(this);
 			}
 
+			void task_finished() {
+				--m_task_counter;
+			}
+
 			math::rand64 m_random;
+			std::atomic<int32_t> m_task_counter = 0;
+			std::atomic<int32_t> m_tasks_per_frame = 0;
+
+#if PARALLEL_QUEUE_TASKS
+			std::vector<task> m_tasks;
+			rynx::parallel::queue<task> m_tasks_parallel_for;
+			// std::mutex m_resource_mutex;
+#else
 			std::vector<task> m_tasks;
 			std::vector<task> m_tasks_parallel_for;
+#endif
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
-			// rynx::unordered_map<uint64_t, resource_state> m_resource_counters;
+			
 			std::vector<resource_state> m_resource_counters;
 
 			rynx::object_storage m_resources;
+			
 			std::mutex m_taskMutex;
 			task_scheduler* m_scheduler = nullptr;
 
@@ -98,18 +118,22 @@ namespace rynx {
 		public:
 			void release_resources(const operation_resources& resources) {
 				for (uint64_t readResource : resources.read_requirements()) {
+					rynx_assert(readResource < m_resource_counters.size(), "out of bounds");
 					m_resource_counters[readResource].readers.fetch_sub(1);
 				}
 				for (uint64_t writeResource : resources.write_requirements()) {
+					rynx_assert(writeResource < m_resource_counters.size(), "out of bounds");
 					m_resource_counters[writeResource].writers.fetch_sub(1);
 				}
 			}
 
 			void reserve_resources(const operation_resources& resources) {
 				for (uint64_t readResource : resources.read_requirements()) {
+					rynx_assert(readResource < m_resource_counters.size(), "out of bounds");
 					m_resource_counters[readResource].readers.fetch_add(1);
 				}
 				for (uint64_t writeResource : resources.write_requirements()) {
+					rynx_assert(writeResource < m_resource_counters.size(), "out of bounds");
 					m_resource_counters[writeResource].writers.fetch_add(1);
 				}
 			}
@@ -130,7 +154,10 @@ namespace rynx {
 				set_resource<context>(this);
 			}
 
-			[[nodiscard]] bool isFinished() const { return m_tasks.empty() & m_tasks_parallel_for.empty(); }
+			[[nodiscard]] bool isFinished() const {
+				// return m_tasks.empty() & m_tasks_parallel_for.empty();
+				return m_task_counter.load() == 0;
+			}
 
 			template<typename T> context& set_resource(T* t) {
 				m_resources.set_and_discard(t);

@@ -51,6 +51,10 @@ namespace rynx {
 
 			void checkComplete();
 
+			int32_t worker_count() const {
+				return numThreads;
+			}
+
 			// called once per frame.
 			void wait_until_complete() {
 				m_waitForComplete.wait();

@@ -93,6 +93,7 @@ namespace game {
 										rynx::matrix4()
 									);
 
+									/*
 									rynx::components::phys::joint joint;
 									joint.connect_with_rod()
 										.rotation_free();
@@ -105,6 +106,7 @@ namespace game {
 									joint.length = 5.1f;
 									joint.strength = 0.1f;
 									ecs.create(joint);
+									*/
 
 									id1 = id2;
 								}

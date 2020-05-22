@@ -7,13 +7,95 @@
 
 rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");
+	
+#if PARALLEL_QUEUE_TASKS
+
+	auto try_get_free_task = [this]() -> rynx::scheduler::task
+	{
+		task t;
+		if (m_tasks_parallel_for.deque(t)) {
+			if (t.is_for_each()) {
+				if (!t.m_for_each->work_available() & t.m_for_each->all_work_completed()) {
+					if (t.barriers().blocks_other_tasks()) {
+						t.barriers().on_complete();
+					}
+					--m_task_counter;
+					t = task();
+					return findWork(); // TODO: get rid of recursive call
+				}
+				else {
+					rynx::scheduler::task copy = t;
+					t.completion_blocked_by(copy);
+					m_tasks_parallel_for.enque(std::move(t));
+					return copy;
+				}
+			}
+			else {
+				return t;
+			}
+		}
+		return {};
+	};
+
+	auto try_get_protected_task = [this]() -> rynx::scheduler::task
+	{
+		for (size_t i = 0; i < m_tasks.size(); ++i) {
+			auto& task = m_tasks[i];
+			if (task.barriers().can_start() & resourcesAvailableFor(task)) {
+				rynx::scheduler::task t(std::move(task));
+				m_tasks[i] = std::move(m_tasks.back());
+				m_tasks.pop_back();
+				reserve_resources(t.resources());
+				return t;
+			}
+		}
+		return {};
+	};
+
+	if(m_taskMutex.try_lock())
+	{
+		{
+			task t = try_get_protected_task();
+			m_taskMutex.unlock();
+			if (t) {
+				return t;
+			}
+		}
+
+		{
+			task t = try_get_free_task();
+			if (t) {
+				return t;
+			}
+		}
+	}
+	else
+	{
+		{
+			task t = try_get_free_task();
+			if (t) {
+				return t;
+			}
+		}
+
+		{
+			m_taskMutex.lock();
+			task t = try_get_protected_task();
+			m_taskMutex.unlock();
+			if (t) {
+				return t;
+			}
+		}
+	}
+
+#else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 
 	for (size_t i = 0; i < m_tasks.size(); ++i) {
 		auto& task = m_tasks[i];
 		// logmsg("looking for work: %s, barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 
-		if (task.barriers().can_start() && resourcesAvailableFor(task)) {
+		if (task.barriers().can_start() & resourcesAvailableFor(task)) {
 			rynx::scheduler::task t(std::move(task));
 			m_tasks[i] = std::move(m_tasks.back());
 			m_tasks.pop_back();
@@ -31,8 +113,9 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 		task.completion_blocked_by(copy);
 		return copy;
 	}
-	
-	return task();
+#endif
+
+	return {};
 }
 
 void rynx::scheduler::context::set_parallel_for_task_assignment_strategy_as_random() {
@@ -61,30 +144,50 @@ bool rynx::scheduler::context::resourcesAvailableFor(const task& t) const {
 
 void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
 	rynx_profile("Profiler", "Erase completed parallel for tasks");
+#if PARALLEL_QUEUE_TASKS
+#else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	for (size_t i = 0; i < m_tasks_parallel_for.size(); ++i) {
 		rynx::scheduler::task& task = m_tasks_parallel_for[i];
-		if (!task.m_for_each->work_available()) {
-			if (task.m_for_each->all_work_completed())
-			{
-				task.barriers().on_complete();
-				m_tasks_parallel_for[i] = std::move(m_tasks_parallel_for.back());
-				m_tasks_parallel_for.pop_back();
-				--i;
-			}
+		if (!task.m_for_each->work_available() & task.m_for_each->all_work_completed()) {
+			task.barriers().on_complete();
+			m_tasks_parallel_for[i] = std::move(m_tasks_parallel_for.back());
+			m_tasks_parallel_for.pop_back();
+			--i;
+			--m_task_counter;
 		}
 	}
+#endif
 }
 
 void rynx::scheduler::context::schedule_task(task task) {
+	++m_task_counter;
+	++m_tasks_per_frame;
+#if PARALLEL_QUEUE_TASKS
+	if (task.is_for_each() ||
+		(task.resources().empty() && task.barriers().can_start())
+		)
+	{
+		m_tasks_parallel_for.enque(std::move(task));
+	}
+	else
+	{
+		std::scoped_lock lock(m_taskMutex);
+		m_tasks.emplace_back(std::move(task));
+	}
+#else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	if (task.is_for_each())
 		m_tasks_parallel_for.emplace_back(std::move(task));
 	else
 		m_tasks.emplace_back(std::move(task));
+#endif
 }
 
 void rynx::scheduler::context::dump() {
+#if false && PARALLEL_QUEUE_TASKS
+	// TODO :(
+#else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
 	for (auto&& task : m_tasks) {
@@ -93,4 +196,5 @@ void rynx::scheduler::context::dump() {
 		task.barriers().dump();
 		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 	}
+#endif
 }

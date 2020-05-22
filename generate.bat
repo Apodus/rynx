@@ -1,7 +1,5 @@
 @echo off
-cd generate
-"./sharpmake/Sharpmake.Application.exe" /sources(@"main.sharpmake.cs")
-cd ..
+"./tools/sharpmake/bootstrap.bat" "../../generate/main.sharpmake.cs"
 @if %errorlevel% neq 0 goto :error
 
 @goto :exit

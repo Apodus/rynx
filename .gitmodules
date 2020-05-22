@@ -1,0 +1,3 @@
+[submodule "tools/sharpmake"]
+	path = tools/sharpmake
+	url = https://github.com/ubisoftinc/Sharpmake.git

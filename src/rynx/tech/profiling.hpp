@@ -40,6 +40,10 @@ namespace rynx {
 	}
 }
 
+#if 1
 #define RYNX_MACRO_HELPER_CONCAT(a, b) a##b
 #define RYNX_MACRO_HELPER_CONCAT_EXPAND(a, b) RYNX_MACRO_HELPER_CONCAT(a, b)
 #define rynx_profile(a, b) rynx::profiling::scope RYNX_MACRO_HELPER_CONCAT_EXPAND(RYNX_MACRO_HELPER_CONCAT_EXPAND(profile_scope, __COUNTER__), __LINE__)(b, a);
+#else
+#define rynx_profile(a, b)
+#endif

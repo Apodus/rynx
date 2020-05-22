@@ -56,9 +56,9 @@ class Rynx : Solution
 	}
 }
 
-internal static class main
+public class EntryPoint
 {
-    [Main]
+    [Sharpmake.Main]
     public static void SharpmakeMain(Sharpmake.Arguments sharpmakeArgs)
     {
         sharpmakeArgs.Generate<Rynx>();

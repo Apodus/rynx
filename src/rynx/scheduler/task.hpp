@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/parallel_accumulator.hpp>
+#include <rynx/tech/parallel/accumulator.hpp>
 #include <rynx/tech/ecs.hpp>
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/system/assert.hpp>
@@ -20,7 +20,7 @@ namespace rynx {
 		class task_token {
 		private:
 			// TODO get rid of this
-			template<typename RynxTask, typename F> static task_token silly_delayed_evalulate(std::string&& name, RynxTask& task, F&& f) {
+			template<typename RynxTask, typename F> static task_token silly_delayed_evaluate(std::string&& name, RynxTask& task, F&& f) {
 				auto followUpTask = task.m_context->add_task(std::move(name), std::forward<F>(f));
 				followUpTask.depends_on(task);
 				return followUpTask;
@@ -45,7 +45,7 @@ namespace rynx {
 
 			template<typename F>
 			task_token then(std::string name, F&& f) {
-				silly_delayed_evaluate(std::move(name), *m_pTask.get(), std::forward<F>(f));
+				return this->silly_delayed_evaluate(std::move(name), *m_pTask.get(), std::forward<F>(f));
 				/*
 				auto followUpTask = m_pTask->m_context->add_task(std::move(name), std::forward<F>(f));
 				followUpTask.depends_on(*this);
@@ -259,9 +259,9 @@ namespace rynx {
 					return work_remaining <= 0;
 				}
 
-				std::atomic<int64_t> index; // used when reserving new chunk of work. is updated when starting to work.
-				std::atomic<int64_t> work_remaining; // used when checking if task is done. is updated when work chunk is completed.
-				std::atomic<int> task_is_cleaned_up;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int64_t> index; // used when reserving new chunk of work. is updated when starting to work.
+				alignas(std::hardware_destructive_interference_size) std::atomic<int64_t> work_remaining; // used when checking if task is done. is updated when work chunk is completed.
+				alignas(std::hardware_destructive_interference_size) std::atomic<int> task_is_cleaned_up;
 				const int64_t end;
 			};
 

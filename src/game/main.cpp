@@ -265,7 +265,7 @@ int main(int argc, char** argv) {
 						rynx::components::radius(2.0f),
 						rynx::components::collisions{ collisionCategoryDynamic.value },
 						rynx::components::color(),
-						rynx::components::dampening({ 0.10f, 0.10f }),
+						rynx::components::dampening({ 0.00f, 0.10f }),
 						rynx::components::mesh{ meshes->get("square_empty") },
 						rynx::matrix4()
 					);

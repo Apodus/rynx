@@ -60,6 +60,12 @@ void rynx::scheduler::task::run() {
 	}
 
 	{
+		if (!is_for_each()) {
+			m_context->task_finished();
+		}
+	}
+
+	{
 		rynx_profile("Scheduler", "barriers update");
 		m_barriers->on_complete();
 	}
@@ -72,7 +78,9 @@ void rynx::scheduler::task::run() {
 }
 
 rynx::scheduler::task::task_resources::~task_resources() {
-	m_context->release_resources(*this);
+	if (!empty()) {
+		m_context->release_resources(*this);
+	}
 }
 
 /*
