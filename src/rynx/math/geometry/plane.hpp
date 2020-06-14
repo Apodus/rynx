@@ -9,6 +9,7 @@ namespace rynx {
 	class plane {
 	public:
 		plane() = default;
+		plane(float a, float b, float c, float d) { set_coefficients(a, b, c, d); }
 
 		vec3f normal() const;
 		float offset() const;

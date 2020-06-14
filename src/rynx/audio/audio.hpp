@@ -63,6 +63,8 @@ namespace rynx {
             configuration& set_loudness(float loudness);
             
             configuration& set_pitch_shift(float octaves);
+            configuration& set_tempo_shift(float tempo_multiplier);
+
             configuration& set_attenuation_quadratic(float v);
             configuration& set_attenuation_linear(float v);
 
@@ -72,6 +74,14 @@ namespace rynx {
 
         // TODO: Should enforce that all loads are done before output is opened.
         class audio_system {
+        public:
+            enum class format {
+                int16,
+                int32,
+                float32,
+                undefined
+            };
+
         private:
             std::vector<buffer> m_soundBank;
             std::vector<std::unique_ptr<std::atomic<uint32_t>>> m_channels; // Three states. 0 = free, 1 = reserved, 2 = ready for playback?
@@ -91,6 +101,10 @@ namespace rynx {
 
             float m_default_quadratic_attenuation = 1.0f;
             float m_default_linear_attenuation = 0.0f;
+
+            std::unique_ptr<float[]> m_outBuf;
+            size_t m_outBufLength = 0;
+            format m_outputFormat = format::undefined;
 
         public:
             audio_system(audio_system&&) = delete;
@@ -116,9 +130,9 @@ namespace rynx {
             uint32_t load(std::string path);
 
             configuration play_sound(int soundIndex, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
-            void open_output_device(int numChannels = 64, int samplesPerRender = 256);
+            void open_output_device(int numChannels = 64, int samplesPerRender = 256, audio_system::format format = format::int16);
             
-            void render_audio(float* outBuf, size_t numSamples); // Do not call this. This is called automatically.
+            void render_audio(void* outBuf, size_t numSamples); // Do not call this. This is called automatically.
         };
     }
 }

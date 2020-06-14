@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-
-
 namespace rynx {
 	
 	class TextRenderer;

@@ -35,6 +35,7 @@ namespace rynx {
 
 	public:
 		struct category_id {
+			category_id() = default;
 			category_id(const category_id&) = default;
 			category_id(int32_t value) : value(value) {}
 			category_id ignore_collisions() const {
@@ -43,7 +44,7 @@ namespace rynx {
 				return v;
 			}
 			
-			int32_t value;
+			int32_t value = -1;
 			bool m_ignore_collisions = false;
 		};
 

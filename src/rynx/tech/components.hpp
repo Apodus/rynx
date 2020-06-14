@@ -12,6 +12,11 @@ namespace rynx {
 			float angle = 0;
 		};
 
+		struct position_relative {
+			rynx::ecs::id host;
+			vec3f relative_pos;
+		};
+
 		struct scale {
 			operator float() const {
 				return value;
@@ -123,7 +128,7 @@ namespace rynx {
 
 		struct projectile {}; // tag for fast moving items in collision detection.
 		struct ignore_gravity {};
-
+		struct dead {}; // mark entity for cleanup.
 
 		struct light_omni {
 			// fourth value in color encodes light intensity.

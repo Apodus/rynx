@@ -7,9 +7,11 @@
 #include <string>
 #include <functional>
 
-class GPUTextures;
 
 namespace rynx {
+	namespace graphics {
+		class GPUTextures;
+	}
 	namespace menu {
 		class Div;
 		
@@ -26,7 +28,7 @@ namespace rynx {
 			Div* m_knobDiv = nullptr;
 
 		public:
-			SlideBarVertical(GPUTextures& textures, std::string knobTexture, std::string baseTexture, Component* parent, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
+			SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string knobTexture, std::string baseTexture, Component* parent, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
 
 			SlideBarVertical& onValueChanged(std::function<void(float)> t);
 

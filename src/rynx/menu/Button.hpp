@@ -35,7 +35,7 @@ namespace rynx {
 
 		public:
 			Button(
-				GPUTextures& textures,
+				rynx::graphics::GPUTextures& textures,
 				std::string texture,
 				Component* parent,
 				vec3<float> scale,

@@ -507,7 +507,7 @@ namespace rynx {
 		private:
 			template<DataAccess, typename Ts> struct getTables {};
 			template<DataAccess accessType, typename... Ts> struct getTables<accessType, std::tuple<Ts...>> {
-				auto operator()(entity_category& categorySource) {
+				[[nodiscard]] auto operator()(entity_category& categorySource) {
 					if constexpr (accessType == DataAccess::Const) {
 						return std::make_tuple(&const_cast<const entity_category&>(categorySource).table<Ts>()...);
 					}
@@ -530,7 +530,7 @@ namespace rynx {
 			};
 
 			template<DataAccess accessType, typename T> struct getTableData {
-				auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				[[nodiscard]] auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
 					if constexpr (accessType == DataAccess::Const) {
 						return const_cast<const entity_category&>(categorySource).table<T>(typeAliases).data();
 					}

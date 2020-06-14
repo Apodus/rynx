@@ -19,16 +19,11 @@ namespace rynx {
 	namespace application {
 		class logic {
 		public:
-			struct iaction {
-				virtual ~iaction() {}
-				virtual void apply(rynx::ecs& ecs) const = 0;
-			};
 
 			class iruleset {
 			public:
 				iruleset();
 				virtual ~iruleset() {}
-				virtual std::vector<std::unique_ptr<iaction>> onInput(rynx::mapped_input&, const ecs&) { return {}; }
 				
 				void process(rynx::scheduler::context& scheduler, float dt);
 				rynx::scheduler::barrier barrier() const;
@@ -45,17 +40,6 @@ namespace rynx {
 				std::unique_ptr<rynx::scheduler::barrier> m_barrier;
 				std::vector<std::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
 			};
-
-			std::vector<std::unique_ptr<iaction>> onInput(rynx::mapped_input& input, const ecs& ecs) const {
-				std::vector<std::unique_ptr<iaction>> result;
-				for (const auto& ruleset : m_rules) {
-					auto actions = ruleset->onInput(input, ecs);
-					for (auto&& action : actions) {
-						result.emplace_back(std::move(action));
-					}
-				}
-				return result;
-			}
 
 			logic& add_ruleset(std::unique_ptr<iruleset> ruleset) {
 				m_rules.emplace_back(std::move(ruleset));

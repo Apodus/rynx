@@ -9,20 +9,17 @@ typedef unsigned GLuint;
 #include <vector>
 #include <memory>
 
-class GPUTextures;
-
-namespace rynx
-{
+namespace rynx {
 	namespace graphics {
-		class framebuffer
-		{
+		class GPUTextures;
+		class framebuffer {
 		public:
-			framebuffer(std::shared_ptr<GPUTextures> textures, const std::string& name);
+			framebuffer(std::shared_ptr<rynx::graphics::GPUTextures> textures, const std::string& name);
 			~framebuffer();
 
 			class config {
 			public:
-				std::shared_ptr<framebuffer> construct(std::shared_ptr<GPUTextures> textures, std::string name);
+				std::shared_ptr<framebuffer> construct(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::string name);
 
 				config& set_default_resolution(int width, int height);
 				config& add_rgba8_target(std::string name, int res_x, int res_y);
@@ -86,7 +83,7 @@ namespace rynx
 			int32_t resolution_y = 0;
 
 			GLuint location;
-			std::shared_ptr<GPUTextures> m_textures;
+			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::string depthtexture;
 			std::vector<std::string> targets;
 		};

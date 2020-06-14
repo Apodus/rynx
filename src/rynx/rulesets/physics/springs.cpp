@@ -84,7 +84,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			float stress_decay = std::pow(0.3f, dt);
 
 			for (int i = 0; i < 10; ++i) {
-				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs](rynx::ecs::id id, components::phys::joint& rope) mutable {
+				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs](components::phys::joint& rope) mutable {
 					common_values joint_data;
 					joint_data.init(rope, ecs);
 

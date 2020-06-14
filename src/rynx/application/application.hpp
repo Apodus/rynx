@@ -8,7 +8,6 @@
 #include <vector>
 #include <functional>
 
-class GPUTextures;
 class Window;
 
 namespace rynx {
@@ -18,6 +17,7 @@ namespace rynx {
 	class TextRenderer;
 
 	namespace graphics {
+		class GPUTextures;
 		class shaders;
 	}
 
@@ -46,14 +46,14 @@ namespace rynx {
 			TextRenderer& textRenderer() { return *m_textRenderer; }
 
 			std::shared_ptr<DebugVisualization> debugVis() { return m_debugVisualization; }
-			std::shared_ptr<GPUTextures> textures() { return m_textures; }
+			std::shared_ptr<rynx::graphics::GPUTextures> textures() { return m_textures; }
 
 		private:
 			std::shared_ptr<DebugVisualization> m_debugVisualization;
 
 			std::shared_ptr<Window> m_window;
 			std::shared_ptr<rynx::input> m_input;
-			std::shared_ptr<GPUTextures> m_textures;
+			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::shared_ptr<rynx::graphics::shaders> m_shaders;
 
 			std::shared_ptr<MeshRenderer> m_meshRenderer;

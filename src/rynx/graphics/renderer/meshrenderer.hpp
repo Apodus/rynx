@@ -17,7 +17,7 @@ namespace rynx {
 	class camera;
 	class mesh_collection {
 	public:
-		mesh_collection(std::shared_ptr<GPUTextures> gpuTextures) : m_pGpuTextures(gpuTextures) {}
+		mesh_collection(std::shared_ptr<rynx::graphics::GPUTextures> gpuTextures) : m_pGpuTextures(gpuTextures) {}
 
 		mesh* get(const std::string& s) {
 			auto it = m_storage.find(s);
@@ -42,14 +42,14 @@ namespace rynx {
 		}
 
 	private:
-		std::shared_ptr<GPUTextures> m_pGpuTextures;
+		std::shared_ptr<rynx::graphics::GPUTextures> m_pGpuTextures;
 		rynx::unordered_map<std::string, std::unique_ptr<mesh>> m_storage;
 	};
 
 	class MeshRenderer {
 		mesh* m_rectangle;
 		
-		std::shared_ptr<GPUTextures> m_textures;
+		std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 		std::shared_ptr<rynx::graphics::shaders> m_shaders;
 		std::shared_ptr<camera> m_pCamera;
 
@@ -79,7 +79,7 @@ namespace rynx {
 			DrawType type);
 
 	public:
-		MeshRenderer(std::shared_ptr<GPUTextures> texture, std::shared_ptr<rynx::graphics::shaders> shaders);
+		MeshRenderer(std::shared_ptr<rynx::graphics::GPUTextures> texture, std::shared_ptr<rynx::graphics::shaders> shaders);
 
 		void setDepthTest(bool depthTestEnabled);
 		std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }

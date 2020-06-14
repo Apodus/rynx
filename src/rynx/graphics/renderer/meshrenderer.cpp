@@ -5,7 +5,7 @@
 #include <rynx/graphics/camera/camera.hpp>
 
 rynx::MeshRenderer::MeshRenderer(
-	std::shared_ptr<GPUTextures> textures,
+	std::shared_ptr<rynx::graphics::GPUTextures> textures,
 	std::shared_ptr<rynx::graphics::shaders> shaders
 )
 {

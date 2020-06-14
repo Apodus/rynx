@@ -26,10 +26,10 @@ namespace rynx {
 			void on_resolution_change(size_t new_size_x, size_t new_size_y);
 
 		private:
-			std::shared_ptr<GPUTextures> gpu_textures;
 			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
 			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
 
+			std::shared_ptr<rynx::graphics::GPUTextures> gpu_textures;
 			std::shared_ptr<rynx::graphics::shader> shader_copy_color;
 			std::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
 			std::shared_ptr<rynx::graphics::framebuffer> fbo_lights;

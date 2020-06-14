@@ -9,7 +9,7 @@
 
 rynx::menu::Frame::Frame(
 	Component* parent,
-	GPUTextures& textures,
+	rynx::graphics::GPUTextures& textures,
 	const std::string& textureID,
 	float edgeSize) : Component(parent, vec3<float>(), vec3<float>()) {
 	m_backgroundMesh = std::make_unique<rynx::mesh>();
@@ -25,7 +25,7 @@ rynx::menu::Frame::Frame(
 	m_backgroundMesh->build();
 }
 
-void rynx::menu::Frame::initMesh(GPUTextures& textures) {
+void rynx::menu::Frame::initMesh(rynx::graphics::GPUTextures& textures) {
 	floats4 limits = textures.textureLimits(m_textureID);
 
 	float edgeUV_x = m_edgeSize * (limits.data[2] - limits[0]);
