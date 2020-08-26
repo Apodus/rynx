@@ -4,6 +4,7 @@
 #include <rynx/application/visualisation/geometry/ball_renderer.hpp>
 #include <rynx/application/visualisation/geometry/boundary_renderer.hpp>
 #include <rynx/application/visualisation/geometry/mesh_renderer.hpp>
+#include <rynx/application/visualisation/geometry/model_matrix_updates.hpp>
 
 #include <rynx/application/visualisation/lights/omnilights_effect.hpp>
 #include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
@@ -22,9 +23,10 @@ std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisati
 	tube_mesh->rebuildNormalBuffer();
 	
 	auto geometry_pass = std::make_unique<graphics_step>();
-	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(pRenderer->meshes()->get("circle_empty"), pRenderer));
-	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(pRenderer->meshes()->get("square_tube_normals"), pRenderer));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
 	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(pRenderer));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(pRenderer->meshes()->get("square_tube_normals"), pRenderer));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(pRenderer->meshes()->get("circle_empty"), pRenderer));
 	return geometry_pass;
 }
 

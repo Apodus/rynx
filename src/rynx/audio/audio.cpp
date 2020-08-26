@@ -310,13 +310,19 @@ uint32_t rynx::sound::audio_system::load(std::string path) {
     return soundIndex;
 }
 
-rynx::sound::configuration rynx::sound::audio_system::play_sound(int soundIndex, vec3f position, vec3f direction, float loudness) {
-    rynx_assert(soundIndex <= m_soundBank.size() && soundIndex >= 0, "out of bounds sound index!");
+rynx::sound::audio_system& rynx::sound::audio_system::load(std::string path, std::string event_name) {
+    m_namedEvents.insert(event_name, load(path));
+    return *this;
+}
+
+
+rynx::sound::configuration rynx::sound::audio_system::play_sound(int bufferId, vec3f position, vec3f direction, float loudness) {
+    rynx_assert(bufferId <= m_soundBank.size() && bufferId >= 0, "out of bounds sound index!");
     rynx_assert(loudness >= 0.0f && loudness <= 10.0f, "really loud sound requested. is this intentional?");
     for (size_t i = 0; i < m_channels.size(); ++i) {
         uint32_t expected = 0;
         if (m_channels[i]->compare_exchange_weak(expected, 1u)) {
-            m_channelDatas[i].m_bufferIndex = soundIndex;
+            m_channelDatas[i].m_bufferIndex = bufferId;
             m_channelDatas[i].m_sampleIndex = 0;
             m_channelDatas[i].m_position = position;
             m_channelDatas[i].m_direction = direction;
@@ -331,6 +337,10 @@ rynx::sound::configuration rynx::sound::audio_system::play_sound(int soundIndex,
     rynx::sound::configuration result(*this, m_invalidChannel);
     ++m_invalidChannel.m_soundCounter; // invalidate config immediately.
     return result;
+}
+
+rynx::sound::configuration rynx::sound::audio_system::play_sound(const std::string& named_event, vec3f position, vec3f direction, float loudness) {
+    return play_sound(m_namedEvents.get(named_event), position, direction, loudness);
 }
 
 void rynx::sound::audio_system::open_output_device(int numChannels, int samplesPerRender, rynx::sound::audio_system::format outputFormat) {
@@ -510,7 +520,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
             max = (v > max) ? v : max;
         }
 
-        float scaleMultiplier = 1.04f - 0.08f * (max > 0.1f);
+        float scaleMultiplier = 1.04f - 0.08f * (max > 0.5f);
         m_volumeScaleCurrent *= scaleMultiplier;
         m_volumeScaleCurrent = std::min(m_volumeScaleCurrent, 1.0f);
 

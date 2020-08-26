@@ -94,41 +94,49 @@ void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, 
 	model_.scale((p1 - p2).length() * 0.5f, width * 0.5f, 1.0f);
 	model_ *= model;
 
-	floats4 limits = m_textures->textureLimits("Empty");
-	float botCoordX = limits.data[0];
-	float botCoordY = limits.data[1];
-	float topCoordX = limits.data[2];
-	float topCoordY = limits.data[3];
+	if (m_rectangle->texture_name != "Empty") {
+		floats4 limits = m_textures->textureLimits("Empty");
+		m_rectangle->texture_name = "Empty";
 
-	m_rectangle->texCoords.clear();
-	m_rectangle->putUVCoord(topCoordX, botCoordY);
-	m_rectangle->putUVCoord(topCoordX, topCoordY);
-	m_rectangle->putUVCoord(botCoordX, topCoordY);
-	m_rectangle->putUVCoord(botCoordX, botCoordY);
+		float botCoordX = limits.data[0];
+		float botCoordY = limits.data[1];
+		float topCoordX = limits.data[2];
+		float topCoordY = limits.data[3];
 
-	m_rectangle->bind();
-	m_rectangle->rebuildTextureBuffer();
+		m_rectangle->texCoords.clear();
+		m_rectangle->putUVCoord(topCoordX, botCoordY);
+		m_rectangle->putUVCoord(topCoordX, topCoordY);
+		m_rectangle->putUVCoord(botCoordX, topCoordY);
+		m_rectangle->putUVCoord(botCoordX, botCoordY);
 
-	drawMesh(*m_rectangle, model_, "Empty", color);
+		m_rectangle->bind();
+		m_rectangle->rebuildTextureBuffer();
+	}
+
+	drawMesh(*m_rectangle, model_, color);
 }
 
-void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture, const floats4& color) {
-	floats4 limits = m_textures->textureLimits(texture);
-	float botCoordX = limits.data[0];
-	float botCoordY = limits.data[1];
-	float topCoordX = limits.data[2];
-	float topCoordY = limits.data[3];
-
-	m_rectangle->texCoords.clear();
-	m_rectangle->putUVCoord(topCoordX, botCoordY);
-	m_rectangle->putUVCoord(topCoordX, topCoordY);
-	m_rectangle->putUVCoord(botCoordX, topCoordY);
-	m_rectangle->putUVCoord(botCoordX, botCoordY);
-
-	m_rectangle->bind();
-	m_rectangle->rebuildTextureBuffer();
+void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture_name, const floats4& color) {
 	
-	drawMesh(*m_rectangle, model, texture, color);
+	if (m_rectangle->texture_name != texture_name) {
+		floats4 limits = m_textures->textureLimits(texture_name);
+		float botCoordX = limits.data[0];
+		float botCoordY = limits.data[1];
+		float topCoordX = limits.data[2];
+		float topCoordY = limits.data[3];
+
+		m_rectangle->texCoords.clear();
+		m_rectangle->putUVCoord(topCoordX, botCoordY);
+		m_rectangle->putUVCoord(topCoordX, topCoordY);
+		m_rectangle->putUVCoord(botCoordX, topCoordY);
+		m_rectangle->putUVCoord(botCoordX, botCoordY);
+
+		m_rectangle->bind();
+		m_rectangle->rebuildTextureBuffer();
+		m_rectangle->texture_name = texture_name;
+	}
+
+	drawMesh(*m_rectangle, model, color);
 }
 
 void rynx::MeshRenderer::cameraToGPU() {
@@ -143,11 +151,11 @@ void rynx::MeshRenderer::cameraToGPU() {
 	set_camera_to_shader(*shader_instanced_deferred);
 }
 
-void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, const std::string& texture, const floats4& color) {
+void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, const floats4& color) {
 	shader_single->activate();
 	mesh.bind();
 
-	m_textures->bindTexture(0, texture);	
+	m_textures->bindTexture(0, mesh.texture_name);
 	shader_single->uniform("model", model);
 	shader_single->uniform("color", color);
 	
@@ -157,7 +165,6 @@ void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, 
 
 void rynx::MeshRenderer::instanced_draw_impl(
 	const mesh& mesh,
-	const std::string& texture,
 	size_t num_instances,
 	const matrix4* models,
 	const floats4* colors,
@@ -174,7 +181,7 @@ void rynx::MeshRenderer::instanced_draw_impl(
 	shader->activate();
 
 	mesh.bind();
-	m_textures->bindTexture(0, texture);
+	m_textures->bindTexture(0, mesh.texture_name);
 
 	{
 		const GLuint model_matrix_slot = shader->attribute("model");

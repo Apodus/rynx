@@ -35,24 +35,33 @@ namespace rynx {
 				virtual ~mesh_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
-					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
-						// rynx_profile("visualisation", "mesh matrices");
+					ctx->add_task("model matrices", [this](rynx::ecs& ecs) mutable {
 						m_bufs.clear();
-
-						// update model matrices
-						ecs.query().notIn<rynx::components::translucent, components::frustum_culled>()
-							.for_each_parallel(task_context, [this](
-								rynx::components::position pos,
-								rynx::components::radius r,
-								rynx::matrix4& model)
-								{
-									model.discardSetTranslate(pos.value);
-									model.scale(r.r);
-									model.rotate_2d(pos.angle);
-								});
 						
-						// collect buffers for drawing
-						ecs.query().notIn<rynx::components::translucent, components::frustum_culled>()
+						// collect buffers for drawing, first solids, then transluscents.
+						ecs.query()
+							.notIn<rynx::components::translucent, components::frustum_culled>()
+							.for_each_buffer([this](
+								size_t num_entities,
+								const rynx::components::mesh* meshes,
+								const rynx::components::position* positions,
+								const rynx::components::radius* radii,
+								const rynx::components::color* colors,
+								const rynx::matrix4* models)
+								{
+									m_bufs.emplace_back(buffer{
+										num_entities,
+										meshes[0].m,
+										positions,
+										radii,
+										colors,
+										models
+									});
+								});
+
+						ecs.query()
+							.notIn<components::frustum_culled>()
+							.in<rynx::components::translucent>()
 							.for_each_buffer([this](
 								size_t num_entities,
 								const rynx::components::mesh* meshes,
@@ -75,7 +84,7 @@ namespace rynx {
 				
 				virtual void execute() override {
 					for(auto&& buf : m_bufs)
-						m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, "Empty", buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors));
+						m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors));
 				}
 
 			private:

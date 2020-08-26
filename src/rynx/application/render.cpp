@@ -66,7 +66,7 @@ void rynx::application::renderer::on_resolution_change(size_t new_size_x, size_t
 void rynx::application::renderer::execute() {
 	{
 		rynx_profile("Main", "draw");
-		// application.meshRenderer().setDepthTest(true);
+		m_application.meshRenderer().setDepthTest(true);
 
 		m_application.meshRenderer().setCamera(camera);
 		m_application.textRenderer().setCamera(camera);
@@ -76,6 +76,8 @@ void rynx::application::renderer::execute() {
 		fbo_world_geometry->clear();
 
 		rynx::graphics::gl::enable_blend_for(0);
+		rynx::graphics::gl::blend_func_default_for(0);
+
 		rynx::graphics::gl::disable_blend_for(1);
 		rynx::graphics::gl::disable_blend_for(2);
 

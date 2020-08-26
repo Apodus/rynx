@@ -16,52 +16,66 @@ namespace rynx {
 				ball_renderer(mesh* circleMesh, MeshRenderer* meshRenderer) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
-					
-					m_balls = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
-					m_balls_translucent = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
 				}
+
+				struct buffer {
+					size_t num;
+					const mesh* mesh;
+					const rynx::components::position* positions;
+					const rynx::components::radius* radii;
+					const rynx::components::color* colors;
+					const rynx::matrix4* models;
+				};
 
 				virtual ~ball_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
-					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
-						rynx_profile("visualisation", "model matrices");
-						
-						m_balls->clear();
-						m_balls_translucent->clear();
-						
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::translucent, rynx::components::frustum_culled>()
-							.for_each_parallel(task_context, [this] (
-								const rynx::components::position& pos,
-								const rynx::components::radius& r,
-								const rynx::components::color& color)
+					ctx->add_task("model matrices", [this](rynx::ecs& ecs) mutable {
+						// rynx_profile("visualisation", "mesh matrices");
+						m_bufs.clear();
+
+						// collect buffers for drawing
+						ecs.query()
+							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::translucent, rynx::components::frustum_culled>()
+							.for_each_buffer([this](
+								size_t num_entities,
+								const rynx::components::position* positions,
+								const rynx::components::radius* radii,
+								const rynx::components::color* colors,
+								const rynx::matrix4* models)
 								{
-									matrix4 model;
-									model.discardSetTranslate(pos.value);
-									model.scale(r.r);
-									model.rotate_2d(pos.angle);
-									// model.rotate(pos.angle, 0, 0, 1);
+									m_bufs.emplace_back(buffer{
+										num_entities,
+										m_circleMesh,
+										positions,
+										radii,
+										colors,
+										models
+									});
+								}
+						);
 
-									m_balls->emplace_back(model);
-									m_balls->emplace_back(color.value);
-								});
-
-						ecs.query().notIn<rynx::components::boundary, rynx::components::mesh, rynx::components::frustum_culled>().in<rynx::components::translucent>()
-							.for_each_parallel(task_context, [this](
-								const rynx::components::position& pos,
-								const rynx::components::radius& r,
-								const rynx::components::color& color)
+						ecs.query()
+							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::frustum_culled>()
+							.in<rynx::components::translucent>()
+							.for_each_buffer([this](
+								size_t num_entities,
+								const rynx::components::position* positions,
+								const rynx::components::radius* radii,
+								const rynx::components::color* colors,
+								const rynx::matrix4* models)
 								{
-									matrix4 model;
-									model.discardSetTranslate(pos.value);
-									model.scale(r.r);
-									model.rotate_2d(pos.angle);
-									// model.rotate(pos.angle, 0, 0, 1);
-
-									m_balls_translucent->emplace_back(model);
-									m_balls_translucent->emplace_back(color.value);
-								});
+									m_bufs.emplace_back(buffer{
+										num_entities,
+										m_circleMesh,
+										positions,
+										radii,
+										colors,
+										models
+									});
+								}
+						);
 					});
 
 					ctx->add_task("rope matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
@@ -72,8 +86,8 @@ namespace rynx {
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 
-								auto pos_a = entity_a.get<components::position>();
-								auto pos_b = entity_b.get<components::position>();
+								const auto& pos_a = entity_a.get<const components::position>();
+								const auto& pos_b = entity_b.get<const components::position>();
 								auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
 								auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
 								auto world_pos_a = pos_a.value + relative_pos_a;
@@ -101,32 +115,23 @@ namespace rynx {
 				}
 				
 				virtual void execute() override {
+
 					{
-						rynx_profile("visualisation", "ball draw solids");
-						m_balls->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
-						});
+						for (auto&& buf : m_bufs)
+							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors));
 					}
 
 					{
 						rynx_profile("visualisation", "ball draw ropes");
 						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
-						});
-					}
-
-					{
-						rynx_profile("visualisation", "ball draw translucent");
-						m_balls_translucent->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, "Empty", matrices, colors);
+							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices, colors);
 						});
 					}
 				}
 
-				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls;
-				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_balls_translucent;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
-				
+				std::vector<buffer> m_bufs;
+
 				MeshRenderer* m_meshRenderer;
 				mesh* m_circleMesh;
 			};

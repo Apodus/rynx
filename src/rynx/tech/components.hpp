@@ -13,7 +13,7 @@ namespace rynx {
 		};
 
 		struct position_relative {
-			rynx::ecs::id host;
+			uint64_t host; // TODO: explicit entity id type.
 			vec3f relative_pos;
 		};
 
@@ -50,10 +50,12 @@ namespace rynx {
 				return linear();
 			}
 
+			// 0 -> 1
 			float linear() const {
-				return value / max_value;
+				return 1.0f - value / max_value;
 			}
 
+			// 1 -> 0
 			float linear_inv() const {
 				return 1.0f - linear();
 			}
@@ -86,6 +88,10 @@ namespace rynx {
 		struct dampening {
 			float linearDampening = 0.0f;
 			float angularDampening = 0.0f;
+		};
+
+		struct constant_force {
+			vec3f force;
 		};
 
 		struct motion {
@@ -126,6 +132,7 @@ namespace rynx {
 			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
 		};
 
+		struct draw_always {};
 		struct projectile {}; // tag for fast moving items in collision detection.
 		struct ignore_gravity {};
 		struct dead {}; // mark entity for cleanup.

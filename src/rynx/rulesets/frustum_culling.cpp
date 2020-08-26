@@ -29,13 +29,18 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 	auto update_new_entities = context.add_task("add new entities to frustum culling structures", [this](
 		rynx::ecs::edit_view<
 		entity_tracked_by_frustum_culling,
+		const components::draw_always,
 		const components::frustum_culled,
 		const components::radius,
 		const components::position> ecs)
 		{
-			auto ids = ecs.query().notIn<entity_tracked_by_frustum_culling>().in<components::position, components::radius>().ids();
+			auto ids = ecs.query()
+				.notIn<entity_tracked_by_frustum_culling, components::draw_always>()
+				.in<components::position, components::radius>()
+				.ids();
+			
 			auto entity_data_vector = ecs.query()
-				.notIn<entity_tracked_by_frustum_culling>()
+				.notIn<entity_tracked_by_frustum_culling, components::draw_always>()
 				.gather<rynx::ecs::id, components::position, components::radius>();
 			
 			for (auto&& data : entity_data_vector) {

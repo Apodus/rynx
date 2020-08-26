@@ -26,5 +26,19 @@ namespace rynx {
 			uint64_t operator()(uint64_t from, uint64_t to);
 			uint64_t operator()(uint64_t to);
 		};
+
+		// TODO: where does this belong.
+		template<typename T>
+		struct value_range {
+			value_range(T b, T e) : begin(b), end(e) {}
+			value_range() = default;
+
+			T begin;
+			T end;
+
+			T operator()(float v) const {
+				return static_cast<T>(begin * (1.0f - v) + end * v);
+			}
+		};
 	}
 }

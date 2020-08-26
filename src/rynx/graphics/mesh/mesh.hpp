@@ -28,6 +28,8 @@ namespace rynx {
 		std::vector<float> texCoords;
 		std::vector<float> normals;
 		std::vector<short> indices;
+		
+		std::string texture_name;
 
 		int getVertexCount() const;
 		int getIndexCount() const;

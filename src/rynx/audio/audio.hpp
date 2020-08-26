@@ -1,7 +1,9 @@
 #pragma once
 
-#include <rynx/math/vector.hpp>
 #include <rynx/audio/dsp/signal.hpp>
+#include <rynx/tech/unordered_map.hpp>
+#include <rynx/math/vector.hpp>
+#include <rynx/math/random.hpp>
 
 #include <vector>
 #include <cstdint>
@@ -82,6 +84,27 @@ namespace rynx {
                 undefined
             };
 
+            class named_events {
+            public:
+                void insert(const std::string& name, int value) {
+                    m_data[name].emplace_back(value);
+                }
+
+                int get(const std::string& name) const {
+                    auto it = m_data.find(name);
+                    if (it != m_data.end()) {
+                        if (!it->second.empty()) {
+                            return it->second[m_random(it->second.size())];
+                        }
+                    }
+                    return 0;
+                }
+
+            private:
+                mutable rynx::math::rand64 m_random;
+                rynx::unordered_map<std::string, std::vector<int>> m_data;
+            };
+
         private:
             std::vector<buffer> m_soundBank;
             std::vector<std::unique_ptr<std::atomic<uint32_t>>> m_channels; // Three states. 0 = free, 1 = reserved, 2 = ready for playback?
@@ -105,6 +128,8 @@ namespace rynx {
             std::unique_ptr<float[]> m_outBuf;
             size_t m_outBufLength = 0;
             format m_outputFormat = format::undefined;
+            
+            named_events m_namedEvents;
 
         public:
             audio_system(audio_system&&) = delete;
@@ -127,11 +152,13 @@ namespace rynx {
             audio_system();
             ~audio_system();
             
-            uint32_t load(std::string path);
+            uint32_t load(std::string path); // returns the id of the loaded sound buffer.
+            audio_system& load(std::string path, std::string event_name); // load sound as a named event. use the event name later to refer to it.
 
-            configuration play_sound(int soundIndex, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
-            void open_output_device(int numChannels = 64, int samplesPerRender = 256, audio_system::format format = format::int16);
+            configuration play_sound(int bufferId, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
+            configuration play_sound(const std::string& named_event, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
             
+            void open_output_device(int numChannels = 64, int samplesPerRender = 256, audio_system::format format = format::int16);
             void render_audio(void* outBuf, size_t numSamples); // Do not call this. This is called automatically.
         };
     }

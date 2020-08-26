@@ -109,7 +109,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 						auto force_dir = joint_data.get_force_direction();
 						auto rel_vel = vel_a - vel_b;
 						float current_agreement = rel_vel.dot(force_dir);
-						float multiplier = rope.strength * 20450.0f * (over_extension - 0.010805f * current_agreement);
+						float multiplier = rope.strength * 20450.0f * (over_extension - 0.010805f * current_agreement * rope.softness);
 						rope.cumulative_stress += multiplier * dt;
 						joint_data.apply_force(force_dir * multiplier, rope.m_joint);
 					}

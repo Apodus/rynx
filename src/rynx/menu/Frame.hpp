@@ -20,12 +20,11 @@ namespace rynx {
 
 			floats4 m_color;
 			vec3<float> m_prevScale;
-			std::string m_textureID;
 			matrix4 m_modelMatrix;
 			std::unique_ptr<mesh> m_backgroundMesh;
 			float m_edgeSize;
 
-			void initMesh(rynx::graphics::GPUTextures& textures);
+			void initMesh(floats4 uv_limits);
 
 		public:
 			Frame(

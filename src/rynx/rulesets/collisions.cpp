@@ -505,8 +505,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						if (impact_power < 0)
 							return;
 
-						// This *60 is not the same as dt. Just a random constant.
-						const auto proximity_force = collision.normal * collision.penetration * collision.penetration * 60.0f;
+						constexpr float bias_start = 2.0f;
+						// const float overlap_value = (collision.penetration * collision.penetration - 2.0f * collision.penetration * bias_start + bias_start * bias_start); // (penetration - bias_start)^2 - this allows collisions to maintain contact so that friction will be continuous
+						const float overlap_value = collision.penetration - bias_start;
+						const auto proximity_force = collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 60.0f; // This *60 is not the same as dt. Just a random constant.
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
 
 						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
@@ -538,6 +540,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 						tangent *= friction_power;
 
+
+						// proximity_force = bias (to keep the simulation stable, and prevent objects from sinking into each other over time)
+						// soft_impact_force = linear collision response along the collision normal
+						// "tangent" = friction response along the collision tangent
 						const float inv_dt = 1.0f / dt;
 						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
 						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;

@@ -31,7 +31,7 @@ rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
 }
 
 void rynx::application::visualisation::ambient_light_effect::prepare(rynx::scheduler::context*) {
-	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.01f);
+	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.81f);
 	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.51f);
 	math::rotateXY(m_light_direction, 0.01f);
 }
