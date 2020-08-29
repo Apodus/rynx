@@ -183,6 +183,9 @@ void rynx::MeshRenderer::instanced_draw_impl(
 	mesh.bind();
 	m_textures->bindTexture(0, mesh.texture_name);
 
+	shader->uniform("light_direction_bias", mesh.lighting_direction_bias);
+	shader->uniform("light_global_multiplier", mesh.lighting_global_multiplier);
+
 	{
 		const GLuint model_matrix_slot = shader->attribute("model");
 		glBindBuffer(GL_ARRAY_BUFFER, model_matrices_buffer);

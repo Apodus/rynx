@@ -403,7 +403,7 @@ namespace rynx {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					// TODO: Get rid of null check :( it is guarding against virtual types and tag types.
-					if (typeId <= other->m_tables.size() && other->m_tables[typeId]) {
+					if (typeId < other->m_tables.size() && other->m_tables[typeId]) {
 						other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
 					}
 					typeId = types.nextOne(typeId + 1);

@@ -40,6 +40,9 @@ namespace rynx {
 		void rebuildNormalBuffer();
 		void bind() const;
 
+		float lighting_direction_bias = 0.0f; // light vs. geometry hit angle affects how strongly the light is applied. this is a constant offset to that value.
+		float lighting_global_multiplier = 1.0f;
+
 	private:
 		/*
 			Shaders must use following attribute layout for mesh data:

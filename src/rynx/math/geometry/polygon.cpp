@@ -38,11 +38,14 @@ float rynx::polygon::radius() const {
 
 float rynx::polygon::normalize() {
 	float r = radius();
-	float inv_radius = 1.0f / r;
-	for (auto& vertice : vertices) {
-		vertice *= inv_radius;
-	}
+	scale(1.0f / r);
 	return r;
+}
+
+void rynx::polygon::scale(float s) {
+	for (auto& vertice : vertices) {
+		vertice *= s;
+	}
 }
 
 bool rynx::polygon::isConvex(int vertex) const {

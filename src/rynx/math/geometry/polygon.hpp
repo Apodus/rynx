@@ -32,6 +32,7 @@ namespace rynx {
 
 		bool isConvex(int vertex) const;
 		float normalize();
+		void scale(float s);
 		float radius() const;
 		
 		std::vector<segment> generateBoundary_Outside(float scale) const;

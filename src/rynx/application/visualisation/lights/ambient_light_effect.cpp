@@ -27,12 +27,13 @@ rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
 	// set texture units used for each geometry data.
 	m_lights_shader->uniform("tex_color", 0);
 	m_lights_shader->uniform("tex_normal", 1);
+	m_lights_shader->uniform("tex_position", 2);
 	m_light_direction.x = 1.0;
 }
 
 void rynx::application::visualisation::ambient_light_effect::prepare(rynx::scheduler::context*) {
-	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.81f);
-	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.51f);
+	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.01f); // directed ambient light
+	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.01f); // omni ambient light
 	math::rotateXY(m_light_direction, 0.01f);
 }
 
