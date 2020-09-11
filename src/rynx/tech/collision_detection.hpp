@@ -31,8 +31,7 @@ namespace rynx {
 
 		std::vector<std::unique_ptr<sphere_tree>> m_sphere_trees;
 		std::vector<collision_check> m_collision_checks;
-		dynamic_bitset m_collisionIndex;
-
+		
 	public:
 		struct category_id {
 			category_id() = default;
@@ -48,11 +47,39 @@ namespace rynx {
 			bool m_ignore_collisions = false;
 		};
 
-		enum class shape_type {
-			Sphere,
-			Boundary,
-			Projectile
+		enum kind : uint64_t {
+			sphere = 1,
+			boundary2d = 2,
+			projectile = 3
 		};
+
+		struct collision_params {
+			uint64_t id1;
+			uint64_t id2;
+			uint32_t kind1;
+			uint32_t kind2;
+			uint32_t part1;
+			uint32_t part2;
+			float radius1;
+			float radius2;
+			vec3f pos1;
+			vec3f pos2;
+			vec3f normal;
+			float penetration;
+		};
+
+		static constexpr uint32_t bits_id = 42;
+		static constexpr uint32_t bits_part = 20;
+		static constexpr uint32_t bits_kind = 2;
+
+		static constexpr uint64_t mask_id = (uint64_t(1) << bits_id) - 1;
+		static constexpr uint64_t mask_part = ~mask_id & (~uint64_t(0) >> bits_kind);
+
+		static constexpr uint64_t mask_kind_sphere = kind::sphere << (bits_id + bits_part);
+		static constexpr uint64_t mask_kind_boundary = kind::boundary2d << (bits_id + bits_part);
+		static constexpr uint64_t mask_kind_projectile = kind::projectile << (bits_id + bits_part);
+
+		static_assert(bits_id + bits_part + bits_kind <= sizeof(mask_id) * 8);
 
 		category_id add_category();
 		collision_detection& enable_collisions_between(category_id category1, category_id category2);
@@ -62,8 +89,8 @@ namespace rynx {
 		}
 
 		void clear();
-		void update();
-		void update_parallel(rynx::scheduler::task& task_context);
+		void update_sphere_trees();
+		void update_sphere_trees_parallel(rynx::scheduler::task& task_context);
 		
 		void track_entities(rynx::scheduler::task& task_context);
 		void update_entities(rynx::scheduler::task& task_context, float dt);
@@ -89,11 +116,42 @@ namespace rynx {
 		}
 
 		template<typename T, typename F> void for_each_collision_parallel(std::shared_ptr<rynx::parallel_accumulator<T>>& accumulator, F&& f, rynx::scheduler::task& task) {
+			using storage_t = decltype(accumulator->template get_local_storage<T>());
 			for (auto&& check : m_collision_checks) {
 				if (check.a == check.b)
-					sphere_tree::collisions_internal_parallel(accumulator, std::forward<F>(f), task, &check.a->root);
+					sphere_tree::collisions_internal_parallel(accumulator, [f](storage_t& storage, uint64_t id1, uint64_t id2, vec3f pos1, float radius1, vec3f pos2, float radius2, vec3f normal, float penetration) {
+						collision_params params;
+						params.id1 = id1 & mask_id;
+						params.id2 = id2 & mask_id;
+						params.kind1 = id1 >> (bits_id + bits_part);
+						params.kind2 = id2 >> (bits_id + bits_part);
+						params.normal = normal;
+						params.part1 = (id1 & mask_part) >> bits_id;
+						params.part2 = (id2 & mask_part) >> bits_id;
+						params.penetration = penetration;
+						params.pos1 = pos1;
+						params.pos2 = pos2;
+						params.radius1 = radius1;
+						params.radius2 = radius2;
+						f(storage, params);
+					}, task, &check.a->root);
 				else {
-					sphere_tree::collisions_internal_parallel_node_node(accumulator, std::forward<F>(f), task, &check.a->root, &check.b->root);
+					sphere_tree::collisions_internal_parallel_node_node(accumulator, [f](storage_t& storage, uint64_t id1, uint64_t id2, vec3f pos1, float radius1, vec3f pos2, float radius2, vec3f normal, float penetration) {
+						collision_params params;
+						params.id1 = id1 & mask_id;
+						params.id2 = id2 & mask_id;
+						params.kind1 = id1 >> (bits_id + bits_part);
+						params.kind2 = id2 >> (bits_id + bits_part);
+						params.normal = normal;
+						params.part1 = (id1 & mask_part) >> bits_id;
+						params.part2 = (id2 & mask_part) >> bits_id;
+						params.penetration = penetration;
+						params.pos1 = pos1;
+						params.pos2 = pos2;
+						params.radius1 = radius1;
+						params.radius2 = radius2;
+						f(storage, params);
+					}, task, &check.a->root, &check.b->root);
 				}
 			}
 		}

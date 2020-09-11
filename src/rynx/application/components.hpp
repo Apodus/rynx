@@ -121,28 +121,6 @@ namespace rynx {
 			rynx::math::value_range<floats4> color_range;
 			rynx::math::value_range<float> radius_range;
 		};
-		
-		struct boundary {
-			using boundary_t = decltype(polygon().generateBoundary_Outside(1.0f));
-			boundary(boundary_t&& b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
-				segments_world.resize(segments_local.size());
-				update_world_positions(pos, angle);
-			}
-
-			void update_world_positions(vec3f pos, float angle) {
-				float sin_v = math::sin(angle);
-				float cos_v = math::cos(angle);
-				const size_t num_segments = segments_local.size();
-				for (size_t i = 0; i < num_segments; ++i) {
-					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
-					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
-					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
-				}
-			}
-
-			boundary_t segments_local;
-			boundary_t segments_world;
-		};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
 		struct frustum_culled {}; // object is not visible due to frustum culling.

@@ -2,6 +2,7 @@
 
 #include <rynx/math/vector.hpp>
 #include <rynx/math/math.hpp>
+#include <rynx/math/geometry/polygon.hpp>
 
 namespace rynx {
 	namespace components {
@@ -130,6 +131,28 @@ namespace rynx {
 			float collision_elasticity = 0.5f; // [0, 1[
 			float friction_multiplier = 1.0f; // [0, 1]
 			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
+		};
+
+		struct boundary {
+			using boundary_t = decltype(rynx::polygon().generateBoundary_Outside(1.0f));
+			boundary(boundary_t&& b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
+				segments_world.resize(segments_local.size());
+				update_world_positions(pos, angle);
+			}
+
+			void update_world_positions(vec3f pos, float angle) {
+				float sin_v = math::sin(angle);
+				float cos_v = math::cos(angle);
+				const size_t num_segments = segments_local.size();
+				for (size_t i = 0; i < num_segments; ++i) {
+					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
+					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
+					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
+				}
+			}
+
+			boundary_t segments_local;
+			boundary_t segments_world;
 		};
 
 		struct draw_always {};

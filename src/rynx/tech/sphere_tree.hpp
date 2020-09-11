@@ -383,6 +383,7 @@ namespace rynx {
 			}
 		}
 
+		// TODO: remove all parts if any.
 		std::pair<vec3f, float> eraseEntity(uint64_t entityId) {
 			auto it = entryMap.find(entityId);
 			if (it != entryMap.end()) {
