@@ -69,16 +69,19 @@ namespace rynx {
 			float penetration;
 		};
 
-		static constexpr uint32_t bits_id = 42;
+		static constexpr uint32_t bits_id = rynx::ecs::bits_id;
 		static constexpr uint32_t bits_part = 20;
 		static constexpr uint32_t bits_kind = 2;
 
 		static constexpr uint64_t mask_id = (uint64_t(1) << bits_id) - 1;
 		static constexpr uint64_t mask_part = ~mask_id & (~uint64_t(0) >> bits_kind);
 
-		static constexpr uint64_t mask_kind_sphere = kind::sphere << (bits_id + bits_part);
-		static constexpr uint64_t mask_kind_boundary = kind::boundary2d << (bits_id + bits_part);
-		static constexpr uint64_t mask_kind_projectile = kind::projectile << (bits_id + bits_part);
+		static constexpr uint32_t bitshift_part = bits_id;
+		static constexpr uint32_t bitshift_kind = bits_id + bits_part;
+
+		static constexpr uint64_t mask_kind_sphere = kind::sphere << bitshift_kind;
+		static constexpr uint64_t mask_kind_boundary = kind::boundary2d << bitshift_kind;
+		static constexpr uint64_t mask_kind_projectile = kind::projectile << bitshift_kind;
 
 		static_assert(bits_id + bits_part + bits_kind <= sizeof(mask_id) * 8);
 
@@ -124,11 +127,11 @@ namespace rynx {
 						collision_params params;
 						params.id1 = id1 & mask_id;
 						params.id2 = id2 & mask_id;
-						params.kind1 = id1 >> (bits_id + bits_part);
-						params.kind2 = id2 >> (bits_id + bits_part);
+						params.kind1 = id1 >> bitshift_kind;
+						params.kind2 = id2 >> bitshift_kind;
 						params.normal = normal;
-						params.part1 = (id1 & mask_part) >> bits_id;
-						params.part2 = (id2 & mask_part) >> bits_id;
+						params.part1 = (id1 & mask_part) >> bitshift_part;
+						params.part2 = (id2 & mask_part) >> bitshift_part;
 						params.penetration = penetration;
 						params.pos1 = pos1;
 						params.pos2 = pos2;
@@ -141,11 +144,11 @@ namespace rynx {
 						collision_params params;
 						params.id1 = id1 & mask_id;
 						params.id2 = id2 & mask_id;
-						params.kind1 = id1 >> (bits_id + bits_part);
-						params.kind2 = id2 >> (bits_id + bits_part);
+						params.kind1 = id1 >> bitshift_kind;
+						params.kind2 = id2 >> bitshift_kind;
 						params.normal = normal;
-						params.part1 = (id1 & mask_part) >> bits_id;
-						params.part2 = (id2 & mask_part) >> bits_id;
+						params.part1 = (id1 & mask_part) >> bitshift_part;
+						params.part2 = (id2 & mask_part) >> bitshift_part;
 						params.penetration = penetration;
 						params.pos1 = pos1;
 						params.pos2 = pos2;

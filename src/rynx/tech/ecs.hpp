@@ -6,6 +6,8 @@
 #include <rynx/tech/profiling.hpp>
 #include <rynx/tech/memory.hpp>
 
+#include <rynx/system/assert.hpp>
+
 #include <vector>
 #include <type_traits>
 #include <tuple>
@@ -43,6 +45,8 @@ namespace rynx {
 
 		class entity_category;
 
+		static constexpr uint32_t bits_id = 42; // 2^42 - 1 entity ids (zero not included).
+		static constexpr uint64_t mask_max_id = (uint64_t(1) << bits_id) - 1;
 
 	private:
 		enum class DataAccess {
@@ -56,6 +60,7 @@ namespace rynx {
 		class entity_index {
 		public:
 			entity_id_t generateOne() {
+				rynx_assert(m_nextId + 1 <= mask_max_id, "id space out of bounds");
 				return ++m_nextId;
 			} // zero is never generated. we can use that as InvalidId.
 
