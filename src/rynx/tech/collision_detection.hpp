@@ -2,6 +2,7 @@
 
 #include <rynx/tech/dynamic_bitset.hpp>
 #include <rynx/tech/sphere_tree.hpp>
+#include <rynx/tech/components.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
 #include <memory>
@@ -95,8 +96,8 @@ namespace rynx {
 		void track_entities(rynx::scheduler::task& task_context);
 		void update_entities(rynx::scheduler::task& task_context, float dt);
 
-		void erase(uint64_t entityId, category_id from);
-		sphere_tree* get(category_id category);
+		void erase(rynx::ecs::view<const rynx::components::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from);
+		const sphere_tree* get(category_id category) const;
 
 		template<typename F> void collisions_for(category_id category, F&& f) {
 			sphere_tree::collisions_internal(std::forward<F>(f), &m_sphere_trees[category.value]->root);

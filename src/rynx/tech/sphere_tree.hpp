@@ -383,7 +383,6 @@ namespace rynx {
 			}
 		}
 
-		// TODO: remove all parts if any.
 		std::pair<vec3f, float> eraseEntity(uint64_t entityId) {
 			auto it = entryMap.find(entityId);
 			if (it != entryMap.end()) {
@@ -394,6 +393,10 @@ namespace rynx {
 				return { entry.pos, entry.radius };
 			}
 			return { vec3f(), 0.0f };
+		}
+
+		bool contains(uint64_t id) {
+			return entryMap.find(id) != entryMap.end();
 		}
 
 		void clear() {
