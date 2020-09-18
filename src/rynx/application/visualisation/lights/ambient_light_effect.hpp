@@ -18,15 +18,17 @@ namespace rynx {
 				ambient_light_effect(
 					std::shared_ptr<rynx::graphics::shaders> shader_manager
 				);
-				
+
 				virtual ~ambient_light_effect() {}
 				virtual void prepare(rynx::scheduler::context* ctx) override;
 				virtual void execute() override;
-			
-			private:
-				floats4 m_light_colors[2];
-				vec3f m_light_direction;
 
+				void set_global_ambient(rynx::floats4 color);
+				void set_global_directed(rynx::floats4 color, rynx::vec3f direction);
+			private:
+				rynx::floats4 m_light_colors[2];
+				rynx::vec3f m_light_direction;
+				
 				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};
 		}

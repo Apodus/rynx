@@ -173,18 +173,17 @@ void rynx::MeshRenderer::instanced_draw_impl(
 	rynx::graphics::shader* shader = nullptr;
 	if (type == DrawType::Forward) {
 		shader = shader_instanced.get();
+		shader->activate();
 	}
 	else if (type == DrawType::Deferred) {
 		shader = shader_instanced_deferred.get();
+		shader->activate();
+		shader->uniform("light_direction_bias", mesh.lighting_direction_bias);
+		shader->uniform("light_global_multiplier", mesh.lighting_global_multiplier);
 	}
-
-	shader->activate();
 
 	mesh.bind();
 	m_textures->bindTexture(0, mesh.texture_name);
-
-	shader->uniform("light_direction_bias", mesh.lighting_direction_bias);
-	shader->uniform("light_global_multiplier", mesh.lighting_global_multiplier);
 
 	{
 		const GLuint model_matrix_slot = shader->attribute("model");

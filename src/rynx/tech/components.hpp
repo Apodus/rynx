@@ -174,7 +174,7 @@ namespace rynx {
 		};
 
 		struct light_directed : public light_omni {
-			vec3f direction;
+			rynx::vec3f direction;
 			float angle = math::pi;
 			float edge_softness = 0.1f;
 		};

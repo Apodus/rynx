@@ -32,10 +32,17 @@ rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
 }
 
 void rynx::application::visualisation::ambient_light_effect::prepare(rynx::scheduler::context*) {
-	m_light_colors[0] = floats4(0.4f, 1.0f, 0.8f, 0.01f); // directed ambient light
-	m_light_colors[1] = floats4(1.0f, 1.0f, 1.0f, 0.01f); // omni ambient light
-	math::rotateXY(m_light_direction, 0.01f);
 }
+
+void rynx::application::visualisation::ambient_light_effect::set_global_ambient(rynx::floats4 color) {
+	m_light_colors[1] = color;
+}
+
+void rynx::application::visualisation::ambient_light_effect::set_global_directed(rynx::floats4 color, rynx::vec3f direction) {
+	m_light_colors[0] = color;
+	m_light_direction = direction;
+}
+
 
 void rynx::application::visualisation::ambient_light_effect::execute() {
 	m_lights_shader->activate();

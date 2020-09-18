@@ -47,8 +47,8 @@ namespace rynx {
 
             effect_config m_effects;
 
-            std::vector<float> prev_left;
-            std::vector<float> prev_right;
+            std::valarray<std::complex<float>> prev_left;
+            std::valarray<std::complex<float>> prev_right;
         };
 
         struct configuration {
@@ -115,6 +115,7 @@ namespace rynx {
             vec3f m_listenerLeft;
             vec3f m_listenerUp;
             vec3f m_listenerForward;
+            
             void* stream = nullptr; // portaudio stream
             void setNumChannels(int channels);
 
@@ -148,6 +149,7 @@ namespace rynx {
             audio_system& adjust_volume(float v) { m_globalVolume *= v; return *this; }
 
             audio_system& set_listener_position(rynx::vec3f pos) { m_listenerPosition = pos; return *this; }
+            audio_system& set_listener_orientation(rynx::vec3f forward, rynx::vec3f left, rynx::vec3f up) { m_listenerForward = forward; m_listenerLeft = left; m_listenerUp = up; return *this; }
 
             audio_system();
             ~audio_system();

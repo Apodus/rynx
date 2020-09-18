@@ -7,9 +7,15 @@
 
 #include <rynx/application/visualisation/default_graphics_passes.hpp>
 
+#include <rynx/application/visualisation/lights/omnilights_effect.hpp>
+#include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
+#include <rynx/application/visualisation/lights/ambient_light_effect.hpp>
+
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 #include <rynx/graphics/renderer/textrenderer.hpp>
 #include <rynx/graphics/opengl.hpp>
+
+#include <memory>
 
 rynx::application::renderer::renderer(rynx::application::Application& application, std::shared_ptr<rynx::camera> camera) : m_application(application), camera(camera) {
 	shader_copy_color = application.shaders()->load_shader(
@@ -21,7 +27,17 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 	shader_copy_color->activate();
 	shader_copy_color->uniform("tex_color", 0);
 
-	lighting_pass = rynx::application::visualisation::default_lighting_pass(application.shaders());
+	auto omnilights_handler = std::make_unique<rynx::application::visualisation::omnilights_effect>(application.shaders());
+	auto directed_lights_handler = std::make_unique<rynx::application::visualisation::directed_lights_effect>(application.shaders());
+	auto ambient_lights_handler = std::make_unique<rynx::application::visualisation::ambient_light_effect>(application.shaders());
+
+	m_ambients = ambient_lights_handler.get();
+
+	lighting_pass = std::make_unique<graphics_step>();
+	lighting_pass->add_graphics_step(std::move(omnilights_handler));
+	lighting_pass->add_graphics_step(std::move(directed_lights_handler));
+	lighting_pass->add_graphics_step(std::move(ambient_lights_handler));
+
 	geometry_pass = rynx::application::visualisation::default_geometry_pass(&application.meshRenderer());
 	gpu_textures = application.textures();
 
@@ -104,4 +120,12 @@ void rynx::application::renderer::execute() {
 void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 	geometry_pass->prepare(ctx);
 	lighting_pass->prepare(ctx);
+}
+
+void rynx::application::renderer::light_global_ambient(rynx::floats4 color) {
+	static_cast<rynx::application::visualisation::ambient_light_effect*>(m_ambients)->set_global_ambient(color);
+}
+
+void rynx::application::renderer::light_global_directed(rynx::floats4 color, rynx::vec3f direction) {
+	static_cast<rynx::application::visualisation::ambient_light_effect*>(m_ambients)->set_global_directed(color, direction);
 }

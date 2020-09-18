@@ -431,27 +431,49 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
             if (m_channels[i]->load() == 2) {
                 source_instance& data = m_channelDatas[i];
 
-                float sqr_dist = (data.m_position - m_listenerPosition).length_squared();
+                rynx::vec3f soundOriginDirection = data.m_position - m_listenerPosition;
+                float sqr_dist = soundOriginDirection.length_squared();
                 float distance = data.m_attenuation.linear * rynx::math::sqrt_approx(sqr_dist) + data.m_attenuation.quadratic * sqr_dist;
                 float volume = 1.0f / (distance + 1.0f);
                 volume *= data.m_loudness;
 
+                soundOriginDirection.normalize();
+                float x = soundOriginDirection.dot(m_listenerLeft);
+                float y = soundOriginDirection.dot(m_listenerUp);
+                float z = soundOriginDirection.dot(m_listenerForward);
+                
+                // left/right volume balance
+                float left_adj = y * y + z * z + x * x * x;
+                float right_adj = y * y + z * z - x * x * x;
+                left_adj = (left_adj + 1.0f) * 0.5f;
+                right_adj = (right_adj + 1.0f) * 0.5f;
+
+                // up/down frequency modifications
+                // float high_freq_cull = std::max(y, 0.0f);
+                // float low_freq_cull = std::max(-y, 0.0f);
+
+                // front/back frequency modifications
+
+
                 auto& sound = m_soundBank[data.m_bufferIndex];
                 float resample_multiplier = sound.sampleRate / m_currentSampleRate;
 
-                if (data.m_effects.pitch_shift != 0.0f || data.m_effects.tempo_shift != 0.0f) {
+                if constexpr (true) {
                     size_t fft_window = 2 * numSamples;
                     float multiplier = std::pow(2.0f, data.m_effects.pitch_shift);
                     float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift) * resample_multiplier;
 
                     multiplier *= tempo_mul;
 
-                    std::vector<float> chunk_left(fft_window, 0.0f);
-                    std::vector<float> chunk_right(fft_window, 0.0f);
+                    std::valarray<std::complex<float>> chunk_left;
+                    std::valarray<std::complex<float>> chunk_right;
 
-                    size_t num_samples_to_take = size_t((sound.left.size() - data.m_sampleIndex - 1) / multiplier);
-                    if (num_samples_to_take > fft_window)
-                        num_samples_to_take = fft_window;
+                    chunk_left.resize(fft_window);
+                    chunk_right.resize(fft_window);
+
+                    int32_t num_samples_to_take = int32_t(int32_t(sound.left.size() - int32_t(data.m_sampleIndex) - 1) / multiplier);
+                    if (num_samples_to_take > int32_t(fft_window))
+                        num_samples_to_take = int32_t(fft_window);
 
                     for (size_t k = 0; k < num_samples_to_take; ++k) {
                         float src_index_f = multiplier * k;
@@ -460,15 +482,33 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
                         float p_prev = 1.0f - (src_index_f - src_index_prev);
                         float p_next = 1.0f - p_prev;
 
-                        chunk_left[k] = sound.left[src_index_prev + data.m_sampleIndex] * p_prev + sound.left[src_index_next + data.m_sampleIndex] * p_next;
-                        chunk_right[k] = sound.right[src_index_prev + data.m_sampleIndex] * p_prev + sound.right[src_index_next + data.m_sampleIndex] * p_next;
+                        chunk_left[k].real(sound.left[src_index_prev + data.m_sampleIndex] * p_prev + sound.left[src_index_next + data.m_sampleIndex] * p_next);
+                        chunk_right[k].real(sound.right[src_index_prev + data.m_sampleIndex] * p_prev + sound.right[src_index_next + data.m_sampleIndex] * p_next);
+                    }
+
+                    // up/down frequency mods
+                    if constexpr (false) {
+                        fft(chunk_left);
+                        fft(chunk_right);
+
+                        for (int32_t k = 0; k < num_samples_to_take; ++k) {
+                            int32_t distance_from_spectral_center = std::abs(k - (num_samples_to_take >> 1));
+                            float low = 2.0f * distance_from_spectral_center / num_samples_to_take;
+                            float high = (num_samples_to_take - 2.0f * distance_from_spectral_center) / num_samples_to_take;
+
+                            chunk_left[k].real(chunk_left[k].real() * (1.0f - low * low * low_freq_cull - high * high * high_freq_cull));
+                            chunk_right[k].real(chunk_right[k].real() * (1.0f - low * low * low_freq_cull - high * high * high_freq_cull));
+                        }
+
+                        ifft(chunk_left);
+                        ifft(chunk_right);
                     }
 
                     float numSamples_f = float(numSamples);
                     for (size_t k = 0; k < numSamples; ++k) {
                         float p = float(k) / numSamples_f;
-                        m_outBuf[2 * k + 0] += volume * chunk_left[k] * p + data.prev_left[k + numSamples] * volume * (1.0f - p);
-                        m_outBuf[2 * k + 1] += volume * chunk_right[k] * p + data.prev_right[k + numSamples] * volume * (1.0f - p);
+                        m_outBuf[2 * k + 0] += left_adj * volume * (chunk_left[k].real() * p + data.prev_left[k + numSamples].real() * (1.0f - p));
+                        m_outBuf[2 * k + 1] += right_adj * volume * (chunk_right[k].real() * p + data.prev_right[k + numSamples].real() * (1.0f - p));
                     }
 
                     data.prev_left = std::move(chunk_left);
@@ -477,6 +517,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
                     data.m_sampleIndex += static_cast<uint32_t>(numSamples * tempo_mul);
                 }
                 else {
+                    // no effects branch.
                     for (size_t k = 0; (static_cast<int>(k * resample_multiplier) + data.m_sampleIndex + 1 < sound.left.size()) & (k < numSamples); ++k) {
                         float base = k * resample_multiplier;
                         int base_i = static_cast<int>(base);
@@ -486,8 +527,8 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
                         float mul1 = 1.0f - (base - base_i);
                         float mul2 = 1.0f - mul1;
 
-                        m_outBuf[2 * k + 0] += volume * (sound.left[index1 + data.m_sampleIndex] * mul1 + sound.left[index2 + data.m_sampleIndex] * mul2);
-                        m_outBuf[2 * k + 1] += volume * (sound.right[index1 + data.m_sampleIndex] * mul1 + sound.right[index2 + data.m_sampleIndex] * mul2);
+                        m_outBuf[2 * k + 0] += left_adj * volume * (sound.left[index1 + data.m_sampleIndex] * mul1 + sound.left[index2 + data.m_sampleIndex] * mul2);
+                        m_outBuf[2 * k + 1] += right_adj * volume * (sound.right[index1 + data.m_sampleIndex] * mul1 + sound.right[index2 + data.m_sampleIndex] * mul2);
                     }
                     data.m_sampleIndex += static_cast<uint32_t>(numSamples * resample_multiplier);
                 }
@@ -540,7 +581,6 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
             }
         }
     };
-
 
     std::memset(m_outBuf.get(), 0, sizeof(float) * m_outBufLength);
     if (m_outputFormat == audio_system::format::int16) {

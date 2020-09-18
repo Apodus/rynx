@@ -4,6 +4,7 @@
 
 #include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/graphics/framebuffer.hpp>
+#include <rynx/math/vector.hpp>
 #include <memory>
 
 namespace rynx {
@@ -21,6 +22,9 @@ namespace rynx {
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
+			void light_global_ambient(rynx::floats4 color);
+			void light_global_directed(rynx::floats4 color, rynx::vec3f direction);
+
 			void set_geometry_resolution(float percentage_x, float percentage_y);
 			void set_lights_resolution(float percentage_x, float percentage_y);
 			void on_resolution_change(size_t new_size_x, size_t new_size_y);
@@ -37,6 +41,8 @@ namespace rynx {
 			std::pair<size_t, size_t> current_resolution;
 			std::pair<float, float> current_internal_resolution_geometry;
 			std::pair<float, float> current_internal_resolution_lighting;
+
+			igraphics_step* m_ambients = nullptr;
 
 			rynx::application::Application& m_application;
 			std::shared_ptr<camera> camera;
