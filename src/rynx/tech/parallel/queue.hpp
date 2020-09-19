@@ -13,8 +13,9 @@ namespace rynx {
 		template<typename T, size_t MaxSize = 1024, size_t MaxThreads = 8>
 		class queue {
 			static_assert((MaxSize & (MaxSize - 1)) == 0, "must be power of two");
-
+			
 			class per_thread_queue {
+				static constexpr uint32_t counter_max_value = (1 << 30);
 			public:
 				per_thread_queue() {
 					m_data.resize(MaxSize);
@@ -22,8 +23,33 @@ namespace rynx {
 
 				void enque(T&& t) {
 					auto index = m_top_actual.load();
+					rynx_assert( ((index + 1) & (MaxSize - 1)) != (m_bot_actual & (MaxSize - 1)), "que overflow!");
 					m_data[index & (MaxSize - 1)] = std::move(t);
 					++m_top_actual;
+
+					if (m_bot_actual > counter_max_value) [[unlikely]] {
+						m_top_actual -= counter_max_value;
+						m_bot_actual -= counter_max_value;
+						m_bot_reserving -= counter_max_value;
+					}
+				}
+
+				void enque(std::vector<T>&& ts) {
+					auto index = m_top_actual.load();
+					
+					for (auto&& data : ts) {
+						rynx_assert(((index + 1) & (MaxSize - 1)) != (m_bot_actual & (MaxSize - 1)), "que overflow!");
+						m_data[index & (MaxSize - 1)] = std::move(data);
+						++index;
+					}
+
+					m_top_actual += ts.size();
+
+					if (m_bot_actual > counter_max_value) [[unlikely]] {
+						m_top_actual -= counter_max_value;
+						m_bot_actual -= counter_max_value;
+						m_bot_reserving -= counter_max_value;
+					}
 				}
 
 				bool deque(T& ans) {
@@ -34,8 +60,8 @@ namespace rynx {
 
 					{
 						auto index = m_bot_reserving.fetch_add(1);
-						if (index >= m_top_actual) {
-							// we didn't get it.
+						if (index >= m_top_actual) [[unlikely]] {
+							// there was stuff in que but someone else took it already.
 							--m_bot_reserving;
 							return false;
 						}
@@ -48,8 +74,8 @@ namespace rynx {
 					}
 				}
 
-				uint32_t size() const {
-					return m_top_actual - m_bot_actual;
+				bool empty() const {
+					return m_top_actual == m_bot_actual;
 				}
 
 			private:
@@ -61,13 +87,15 @@ namespace rynx {
 
 		public:
 			void enque(T&& t) {
-				m_subques[rynx::this_thread::id()].enque(std::move(t));
+				auto tid = rynx::this_thread::id();
+				rynx_assert(tid < int64_t(m_subques.size()), "overflow - you need to increase MaxThreads value");
+				m_subques[tid].enque(std::move(t));
 			}
 
 			void enque(std::vector<T>&& ts) {
-				// TODO: append with single atomic increment.
-				for(auto&& t : ts)
-					m_subques[rynx::this_thread::id()].enque(std::move(t));
+				auto tid = rynx::this_thread::id();
+				rynx_assert(tid < int64_t(m_subques.size()), "overflow - you need to increase MaxThreads value");
+				m_subques[tid].enque(std::move(ts));
 			}
 			
 			bool deque(T& t) {
@@ -81,11 +109,11 @@ namespace rynx {
 			}
 
 			bool empty() const {
-				uint32_t count = 0;
+				bool empty = true;
 				for (auto&& que : m_subques) {
-					count += que.size();
+					empty &= que.empty();
 				}
-				return count == 0;
+				return empty;
 			}
 
 		private:

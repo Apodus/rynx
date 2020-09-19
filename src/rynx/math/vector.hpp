@@ -20,8 +20,12 @@ namespace rynx {
 	// generic 3d vector template. has vectorized specialization for type float for windows due to bad optimizer.
 	template <class T>
 	struct alignas(16) vec3 {
-		vec3(const vec3 & other) : x(other.x), y(other.y), z(other.z) {}
 		vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
+		
+		vec3(const vec3&) = default;
+		vec3(vec3&&) = default;
+		vec3& operator = (vec3&&) = default;
+		vec3& operator = (const vec3&) = default;
 
 		template<typename U> explicit operator vec3<U>() const { return vec3<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z)); }
 
@@ -311,6 +315,10 @@ namespace rynx {
 
 		operator floats4() const {
 			return to_floats();
+		}
+
+		vec3<float> xyz() const {
+			return vec3<float>(x, y, z);
 		}
 
 		vec4 cross(const vec4& v2) const {

@@ -15,6 +15,12 @@ namespace rynx {
 			bool convex2;
 
 			segment();
+			segment(segment&&) = default;
+			segment(const segment&) = default;
+
+			segment& operator = (segment&&) = default;
+			segment& operator = (const segment&) = default;
+			
 			segment(const line_segment& lineSegment);
 			segment(rynx::vec3<float> a, rynx::vec3<float> b, bool c1, bool c2);
 		};

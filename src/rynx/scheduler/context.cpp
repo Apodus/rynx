@@ -10,18 +10,23 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	
 #if PARALLEL_QUEUE_TASKS
 
-	auto try_get_free_task = [this]() -> rynx::scheduler::task
+	bool need_to_recheck_tasks = false;
+
+	auto try_get_free_task = [this, &need_to_recheck_tasks]() -> rynx::scheduler::task
 	{
 		task t;
 		if (m_tasks_parallel_for.deque(t)) {
 			if (t.is_for_each()) {
 				if (!t.m_for_each->work_available() & t.m_for_each->all_work_completed()) {
+					// TODO: Check if any blocker barrier actually reaches zero OR any resource counter goes to zero.
+					//       only then recheck for tasks.
 					if (t.barriers().blocks_other_tasks()) {
 						t.barriers().on_complete();
 					}
+					need_to_recheck_tasks = true;
 					--m_task_counter;
 					t = task();
-					return findWork(); // TODO: get rid of recursive call
+
 				}
 				else {
 					rynx::scheduler::task copy = t;
@@ -88,6 +93,10 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 		}
 	}
 
+	if (need_to_recheck_tasks) {
+		return findWork();
+	}
+
 #else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 
@@ -143,9 +152,9 @@ bool rynx::scheduler::context::resourcesAvailableFor(const task& t) const {
 }
 
 void rynx::scheduler::context::erase_completed_parallel_for_tasks() {
-	rynx_profile("Profiler", "Erase completed parallel for tasks");
 #if PARALLEL_QUEUE_TASKS
 #else
+	rynx_profile("Profiler", "Erase completed parallel for tasks");
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	for (size_t i = 0; i < m_tasks_parallel_for.size(); ++i) {
 		rynx::scheduler::task& task = m_tasks_parallel_for[i];

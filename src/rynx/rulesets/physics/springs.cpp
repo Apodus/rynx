@@ -84,34 +84,76 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			float stress_decay = std::pow(0.3f, dt);
 
 			for (int i = 0; i < 10; ++i) {
-				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs](rynx::ecs::id id, components::phys::joint& rope) mutable {
-					common_values joint_data;
-					joint_data.init(rope, ecs);
-
+				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs, i](rynx::ecs::id id, components::phys::joint& rope) mutable {
 					bool connector_spring = rope.connector == components::phys::joint::connector_type::Spring;
 					bool connector_rubber_band = rope.connector == components::phys::joint::connector_type::RubberBand;
 					bool connector_rod = rope.connector == components::phys::joint::connector_type::Rod;
-					float over_extension = joint_data.get_distance() - rope.length;
-					if (connector_rubber_band | connector_spring) {
 
+					common_values joint_data;
+					joint_data.init(rope, ecs);
+					float over_extension = joint_data.get_distance() - rope.length;
+
+					if (connector_rubber_band | connector_spring) {
 						// rubber band doesn't push back. spring does.
 						over_extension -= (connector_rubber_band & (over_extension < 0)) * over_extension;
 
-						float force = 0.5f * 1200.0f * rope.strength * over_extension;
-						rope.cumulative_stress += force * dt;
+						for (int steps = 0; steps < 4; ++steps) {
+							float force = 0.5f * 1200.0f * rope.strength * over_extension;
+							rope.cumulative_stress += force * dt;
 
-						vec3f force_vector = joint_data.get_force_direction() * force;
-						joint_data.apply_force(force_vector, rope.m_joint);
+							vec3f force_vector = joint_data.get_force_direction() * force;
+							joint_data.apply_force(force_vector, rope.m_joint);
+						}
 					}
 					else if (connector_rod) {
-						auto vel_a = joint_data.mot_a->velocity_at_point_predict(joint_data.relative_pos_a, dt);
-						auto vel_b = joint_data.mot_b->velocity_at_point_predict(joint_data.relative_pos_b, dt);
+
 						auto force_dir = joint_data.get_force_direction();
-						auto rel_vel = vel_a - vel_b;
-						float current_agreement = rel_vel.dot(force_dir);
-						float multiplier = rope.strength * 20450.0f * (over_extension - 0.010805f * current_agreement);
-						rope.cumulative_stress += multiplier * dt;
-						joint_data.apply_force(force_dir * multiplier, rope.m_joint);
+
+						// TODO: Velocity at point assumes linear trajectory for rotational velocit, which provides inreasing error when dt grows.
+						//       Because rotational velocity does not provide linear velocity to point t along tangent.
+						//       The linear velocity to point t arcs along the orbit of the object. This should be taken into account.
+
+						auto compute_step = [original_dt = dt, force_dir, over_extension, &joint_data, &rope](float dt, auto& self) mutable -> void {
+							constexpr float multiplier_per_round = 0.1f;
+							for (int i = 0; i < 10; ++i) {
+								auto vel_a = joint_data.mot_a->velocity_at_point_predict(joint_data.relative_pos_a, dt);
+								auto vel_b = joint_data.mot_b->velocity_at_point_predict(joint_data.relative_pos_b, dt);
+								auto rel_vel = vel_a - vel_b;
+								float current_agreement = rel_vel.dot(force_dir);
+
+								constexpr float target_fix_time = 0.01666f;
+								float multiplier = 5.0f * rope.strength * (over_extension - current_agreement * target_fix_time) / original_dt;
+								rope.cumulative_stress += multiplier * dt;
+
+								auto linear_force = force_dir * multiplier / (joint_data.phys_a->inv_mass + joint_data.phys_b->inv_mass);
+
+								float deltaAngularAccelerationA = linear_force.dot(joint_data.relative_pos_a.normal2d()) * joint_data.phys_a->inv_moment_of_inertia;
+								float deltaAngularAccelerationB = -linear_force.dot(joint_data.relative_pos_b.normal2d()) * joint_data.phys_b->inv_moment_of_inertia;
+
+								auto dv_a = linear_force * joint_data.phys_a->inv_mass * dt;
+								auto dv_b = -linear_force * joint_data.phys_b->inv_mass * dt;
+
+								// note: position of object is not actually modified during this computation. position value written here is a copy of the original.
+								joint_data.pos_a.value += (joint_data.mot_a->velocity + dv_a) * dt * multiplier_per_round;
+								joint_data.pos_b.value += (joint_data.mot_b->velocity + dv_b) * dt * multiplier_per_round;
+								joint_data.mot_a->velocity += dv_a * multiplier_per_round;
+								joint_data.mot_b->velocity += dv_b * multiplier_per_round;
+
+								joint_data.pos_a.angle += (joint_data.mot_a->angularVelocity + deltaAngularAccelerationA * dt) * dt * multiplier_per_round;
+								joint_data.pos_b.angle += (joint_data.mot_b->angularVelocity + deltaAngularAccelerationB * dt) * dt * multiplier_per_round;
+								joint_data.mot_a->angularVelocity += deltaAngularAccelerationA * dt * multiplier_per_round;
+								joint_data.mot_b->angularVelocity += deltaAngularAccelerationB * dt * multiplier_per_round;
+
+								// update intermediate values
+								joint_data.relative_pos_a = math::rotatedXY(rope.point_a, joint_data.pos_a.angle);
+								joint_data.relative_pos_b = math::rotatedXY(rope.point_b, joint_data.pos_b.angle);
+								joint_data.world_pos_a = joint_data.pos_a.value + joint_data.relative_pos_a;
+								joint_data.world_pos_b = joint_data.pos_b.value + joint_data.relative_pos_b;
+								over_extension = joint_data.get_distance() - rope.length;
+							}
+						};
+
+						compute_step(dt, compute_step);
 					}
 
 					rope.cumulative_stress *= stress_decay;

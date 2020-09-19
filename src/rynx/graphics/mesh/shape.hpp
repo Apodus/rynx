@@ -31,6 +31,10 @@ namespace rynx {
 			return makeAAOval(radius, vertices, 1, 1);
 		}
 
+		inline polygon makeSphere(float radius, int vertices) {
+			return makeAAOval(radius, vertices, 1, 1);
+		}
+
 		inline polygon makeTriangle(const float& radius) {
 			return makeCircle(radius, 3);
 		}

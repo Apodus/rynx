@@ -80,12 +80,19 @@ namespace game {
 								}
 								*/
 
+								auto moment_of_inertia_for_center_aligned_box = [](float width, float height, float mass) {
+									return (width * width + height * height) * mass / 12.0f;
+								};
+
+								float edge_width = 5.0f;
+								float mass = 15.0f;
 								for (int k = 1; k < 30; ++k) {
 									auto id2 = ecs.create(
-										rynx::components::position({ x + 3.5f * k, y + 3.5f * k, 0 }),
+										rynx::components::position({ x + 1.2f * edge_width * k, y + 3.5f * k, 0 }),
 										rynx::components::motion(),
-										rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
-										rynx::components::radius(2.0f),
+										rynx::components::physical_body(mass, moment_of_inertia_for_center_aligned_box(edge_width, edge_width, mass), 0.1f, 1.0f),
+										rynx::components::boundary(rynx::Shape::makeBox(1.0f).generateBoundary_Outside(edge_width)),
+										rynx::components::radius(sqrtf(edge_width * edge_width / 2.0f)),
 										rynx::components::collisions{ dynamic.value },
 										rynx::components::color(),
 										rynx::components::dampening({ 0.10f, 0.10f }),

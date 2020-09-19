@@ -80,6 +80,14 @@ namespace rynx {
 				return !m_blocks.empty();
 			}
 
+			bool is_last_holder_of_any_barrier() const {
+				bool ret = false;
+				for (auto&& bar : m_blocks) {
+					ret |= (*bar.counter == 1);
+				}
+				return ret;
+			}
+
 			void on_complete() {
 				for (auto&& bar : m_blocks) {
 					bar.counter->fetch_sub(1, std::memory_order_release);

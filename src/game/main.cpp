@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
 		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		
-		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -60.8f, 0));
+		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
 		// auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, 0, 0));
 		auto ruleset_physical_springs = std::make_unique<rynx::ruleset::physics::springs>();
 
@@ -228,74 +228,84 @@ int main(int argc, char** argv) {
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ polygon.generateBoundary_Outside(1.0f) }),
+				rynx::components::boundary({ polygon.generateBoundary_Outside(1.0f) }, pos, angle),
 				rynx::components::mesh(mesh_p),
 				rynx::matrix4(),
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
+				// rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
 				rynx::components::ignore_gravity(),
 				rynx::components::dampening{0.50f, 1.0f}
 			);
 		};
 
-		auto makeChain = [&](rynx::vec3f pos, rynx::vec3f dir, float length, int numJoints, int connectWith) {
-			for (int i = 0; i < 1; ++i) {
-				float x = pos.x;
-				float y = pos.y;
-				auto id1 = ecs.create(
-					rynx::components::position({ x, y, 0 }),
+		auto makeChain = [&](rynx::vec3f pos, rynx::vec3f dir, float length, int numJoints) {
+			float x = pos.x;
+			float y = pos.y;
+			auto id1 = ecs.create(
+				rynx::components::position({ x, y, 0 }),
+				rynx::components::motion(),
+				rynx::components::ignore_gravity(),
+				rynx::components::radius(2.0f),
+				rynx::components::collisions{ collisionCategoryDynamic.value },
+				rynx::components::color(),
+				rynx::components::mesh{ meshes->get("ball") },
+				rynx::components::dampening({ 0.50f, 0.30f }),
+				rynx::matrix4()
+			);
+
+			auto rootId = id1;
+
+			ecs.attachToEntity(id1, rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f, rootId));
+
+			auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass * (height * height + width * width) * (1.0f / 12.0f); };
+
+			float rope_width = 2.0f;
+			// float rope_segment_length = length / numJoints;
+			float rope_segment_length = 3.0f * rope_width;
+			numJoints = length / (rope_segment_length - rope_width);
+
+			auto p = rynx::Shape::makeRectangle(rope_segment_length, rope_width);
+			auto bound = p.generateBoundary_Outside(1.0f);
+			auto* m = meshes->create("riprap", rynx::polygon_triangulation().generate_polygon_boundary(p, application.textures()->textureLimits("Empty")));
+			float piece_radius = sqrtf((rope_width * rope_width + rope_segment_length * rope_segment_length) * 0.25f);
+			float mass = 5.0f;
+			
+			for (int k = 1; k <= numJoints; ++k) {
+				auto id2 = ecs.create(
+					rynx::components::position(pos +  dir * (k * rope_segment_length)),
 					rynx::components::motion(),
-					rynx::components::ignore_gravity(),
-					rynx::components::physical_body(std::numeric_limits<float>::max(), 15.0f, 0.0f, 1.0f),
-					rynx::components::radius(2.0f),
+					rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, rope_segment_length, rope_width), 0.3f, 1.0f, rootId),
+					rynx::components::radius(piece_radius),
 					rynx::components::collisions{ collisionCategoryDynamic.value },
 					rynx::components::color(),
-					rynx::components::mesh{ meshes->get("ball") },
+					// rynx::components::boundary(std::vector<rynx::polygon::segment>(bound)),
+					rynx::components::dampening({ 0.60f, 0.60f }),
+					rynx::components::mesh{ meshes->get("circle_empty") },
 					rynx::matrix4()
 				);
 
-				float increment = length / numJoints;
-				for (int k = 1; k <= numJoints; ++k) {
-					auto id2 = ecs.create(
-						rynx::components::position(pos +  dir * (k * increment)),
-						rynx::components::motion(),
-						rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
-						rynx::components::radius(2.0f),
-						rynx::components::collisions{ collisionCategoryDynamic.value },
-						rynx::components::color(),
-						rynx::components::dampening({ 0.00f, 0.10f }),
-						rynx::components::mesh{ meshes->get("square_empty") },
-						rynx::matrix4()
-					);
+				rynx::components::phys::joint joint;
+				joint.connect_with_rod().rotation_free();
 
-					rynx::components::phys::joint joint;
-					
-					if(connectWith == 0)
-						joint.connect_with_rod();
-					if (connectWith == 1)
-						joint.connect_with_rubberband();
-					if (connectWith == 2)
-						joint.connect_with_spring();
-					
-					joint.id_a = id1;
-					joint.id_b = id2;
+				joint.id_a = id1;
+				joint.id_b = id2;
 
+				if(id1 == rootId)
 					joint.point_a = rynx::vec3<float>(0, 0, 0);
-					joint.point_b = rynx::vec3<float>(0, 0, 0);
-					joint.length = increment;
-					joint.strength = 1.0f;
-					ecs.create(joint);
+				else
+					joint.point_a = rynx::vec3<float>(+rope_segment_length * 0.5f - rope_width * 1.1f, 0, 0);
+				joint.point_b = rynx::vec3<float>(-rope_segment_length * 0.5f + rope_width * 1.1f, 0, 0);
+				joint.length = 0; // rope_segment_length;
+				joint.strength = 2.0f;
+				ecs.create(joint);
 
-					id1 = id2;
-				}
+				id1 = id2;
 			}
 		};
 
-		makeChain({ -200, +300, 0 }, {-1.0f, 0.0f, 0.0f}, 100.0f, 15, 0);
-		makeChain({ -350, +300, 0 }, { -1.0f, 0.0f, 0.0f }, 100.0f, 15, 1);
-		makeChain({ -500, +300, 0 }, { -1.0f, 0.0f, 0.0f }, 100.0f, 15, 2);
+		makeChain({ -500, +300, 0 }, { +1.0f, 0.0f, 0.0f }, 400.0f, 25);
 
 		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
 		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
@@ -491,14 +501,6 @@ int main(int argc, char** argv) {
 		}
 
 		{
-			float cameraHeight = cameraPosition->z;
-			gameInput.mouseWorldPosition(
-				(cameraPosition* rynx::vec3<float>{1,1,0}) +
-				mousePos * rynx::vec3<float>(cameraHeight, cameraHeight / application.aspectRatio(), 1.0f)
-			);
-		}
-
-		{
 			rynx_profile("Main", "Input handling");
 			// TODO: Simulation API
 			std::vector<std::unique_ptr<rynx::application::logic::iaction>> userActions = base_simulation.m_logic.onInput(gameInput, ecs);
@@ -583,18 +585,6 @@ int main(int argc, char** argv) {
 			auto render_time_us = timer.time_since_last_access_us();
 			render_time.observe_value(render_time_us / 1000.0f);
 
-			/*
-			auto mpos = gameInput.mouseWorldPosition();
-			{
-				rynx_profile("Main", "draw cursor");
-
-				rynx::matrix4 m;
-				m.discardSetTranslate(mpos);
-				m.scale(0.5f);
-				application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
-			}
-			*/
-
 			{
 				rynx_profile("Main", "draw");
 
@@ -638,6 +628,7 @@ int main(int argc, char** argv) {
 					rynx::graphics::screenspace_draws::draw_fullscreen();
 				}
 
+				// find mouse pos in xy-plane and draw a circle there.
 				{
 					auto ray = camera->ray_cast(mousePos.x, mousePos.y);
 					
@@ -648,7 +639,7 @@ int main(int argc, char** argv) {
 					if (collision.second) {
 						rynx::matrix4 m;
 						m.discardSetTranslate(collision.first);
-						m.scale(15.5f);
+						m.scale(1.55f);
 						application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
 					}
 				}
@@ -692,6 +683,7 @@ int main(int argc, char** argv) {
 			ecs.erase(ids_dead);
 		}
 
+		if constexpr(false)
 		{
 			rynx_profile("Main", "Sleep");
 			// NOTE: Frame time can be edited during runtime for debugging reasons.

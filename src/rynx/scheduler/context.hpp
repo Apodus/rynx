@@ -91,7 +91,7 @@ namespace rynx {
 
 #if PARALLEL_QUEUE_TASKS
 			std::vector<task> m_tasks;
-			rynx::parallel::queue<task> m_tasks_parallel_for;
+			rynx::parallel::queue<task, 1024, 9> m_tasks_parallel_for;
 			// std::mutex m_resource_mutex;
 #else
 			std::vector<task> m_tasks;
