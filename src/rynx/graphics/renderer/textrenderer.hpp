@@ -12,11 +12,11 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
-class GPUTextures;
 class Font;
 
 namespace rynx {
 	namespace graphics {
+		class GPUTextures;
 		class shaders;
 	}
 }
@@ -35,7 +35,7 @@ namespace rynx {
 
 		floats4 activeColor;
 
-		std::shared_ptr<GPUTextures> m_textures;
+		std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 		std::shared_ptr<rynx::graphics::shaders> m_shaders;
 		std::shared_ptr<camera> m_pCamera;
 		GLuint vao;
@@ -49,7 +49,7 @@ namespace rynx {
 			Right
 		};
 
-		TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
+		TextRenderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
 
 		void setCamera(std::shared_ptr<camera> pCamera) { m_pCamera = std::move(pCamera); }
 		void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});

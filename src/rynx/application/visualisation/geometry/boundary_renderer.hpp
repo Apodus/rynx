@@ -51,7 +51,7 @@ namespace rynx {
 				virtual void execute() override {
 					rynx_profile("visualisation", "ball draw solids");
 					m_edges->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-						m_meshRenderer->drawMeshInstancedDeferred(*m_boxMesh, "Empty", matrices, colors);
+						m_meshRenderer->drawMeshInstancedDeferred(*m_boxMesh, matrices, colors);
 					});
 				}
 

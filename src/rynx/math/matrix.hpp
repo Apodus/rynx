@@ -31,6 +31,7 @@ namespace rynx {
 
 		matrix4& discardSetOrtho(float left, float right, float bottom, float top, float near, float far);
 		matrix4& discardSetRotation(float angle, float x, float y, float z);
+		matrix4& discardSetRotation(float angle, vec3f direction) { return discardSetRotation(angle, direction.x, direction.y, direction.z); }
 		matrix4& discardSetRotation_z(float angle);
 		matrix4& operator = (const matrix4& other);
 

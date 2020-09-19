@@ -18,6 +18,10 @@ namespace rynx {
 			m_last_access = m_begin;
 		}
 
+		float time_since_last_access_seconds_float() {
+			return time_since_last_access_ns() * 0.000000001f;
+		}
+
 		uint64_t time_since_last_access_ms() {
 			auto point = std::chrono::high_resolution_clock::now();
 			auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(point - m_last_access).count();

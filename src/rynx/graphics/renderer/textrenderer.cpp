@@ -30,7 +30,7 @@ void getColorByCode(char c, rynx::floats4& color) {
 	color = getColorByCode(c);
 }
 
-rynx::TextRenderer::TextRenderer(std::shared_ptr<GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders) :
+rynx::TextRenderer::TextRenderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders) :
 	m_textures(textures),
 	m_shaders(shaders)
 {

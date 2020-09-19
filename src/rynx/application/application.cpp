@@ -25,7 +25,7 @@ void rynx::application::Application::openWindow(int width, int height, std::stri
 	m_window->createWindow(width, height, name);
 
 	m_input = std::make_shared<rynx::input>(m_window);
-	m_textures = std::make_shared<GPUTextures>();
+	m_textures = std::make_shared<rynx::graphics::GPUTextures>();
 	m_shaders = std::make_shared<rynx::graphics::shaders>();
 	
 	// m_meshRenderer = std::shared_ptr<MeshRenderer>(new MeshRenderer(m_textures, m_shaders));

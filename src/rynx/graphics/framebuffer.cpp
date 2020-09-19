@@ -12,7 +12,7 @@ namespace {
 	constexpr int default_resolution = -1;
 }
 
-rynx::graphics::framebuffer::framebuffer(std::shared_ptr<GPUTextures> textures, const std::string& name):
+rynx::graphics::framebuffer::framebuffer(std::shared_ptr<rynx::graphics::GPUTextures> textures, const std::string& name):
 	fbo_name(name),
 	location(0),
 	m_textures(textures)
@@ -29,7 +29,7 @@ rynx::graphics::framebuffer::~framebuffer() {
 	destroy();
 }
 
-std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(std::shared_ptr<GPUTextures> textures, std::string name) {
+std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::string name) {
 	auto fbo = std::make_shared<rynx::graphics::framebuffer>(textures, name);
 	fbo->resolution_x = m_default_resolution_x;
 	fbo->resolution_y = m_default_resolution_y;
@@ -235,6 +235,7 @@ void rynx::graphics::framebuffer::clear() const {
 		float color_clear[] = { 0, 0, 0, 0 };
 		glClearBufferfv(GL_COLOR, static_cast<int>(i), color_clear);
 	}
+	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
 void rynx::graphics::framebuffer::bind_backbuffer()

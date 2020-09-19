@@ -28,6 +28,8 @@ namespace rynx {
 		std::vector<float> texCoords;
 		std::vector<float> normals;
 		std::vector<short> indices;
+		
+		std::string texture_name;
 
 		int getVertexCount() const;
 		int getIndexCount() const;
@@ -37,6 +39,9 @@ namespace rynx {
 		void rebuildVertexBuffer();
 		void rebuildNormalBuffer();
 		void bind() const;
+
+		float lighting_direction_bias = 0.0f; // light vs. geometry hit angle affects how strongly the light is applied. this is a constant offset to that value.
+		float lighting_global_multiplier = 1.0f;
 
 	private:
 		/*

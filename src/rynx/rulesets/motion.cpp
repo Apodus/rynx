@@ -9,7 +9,7 @@
 
 void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& context, float dt) {
 	auto position_updates = context.add_task("Apply acceleration and reset", [dt](
-		rynx::ecs::view<components::motion, components::position> ecs,
+		rynx::ecs::view<components::motion, components::position, components::position_relative> ecs,
 		rynx::scheduler::task& task_context)
 		{
 			auto apply_acceleration_to_velocity = ecs.query().for_each_parallel(task_context, [dt](components::position& p, components::motion& m) {
@@ -27,6 +27,14 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 				// update position
 				p.value += linear_acceleration_effect;
 				p.angle += angular_acceleration_effect;
+			});
+
+			ecs.query().for_each_parallel(task_context, [&ecs](rynx::components::position& pos, rynx::components::position_relative relative_pos) {
+				if (!ecs.exists(relative_pos.host))
+					return;
+				
+				const auto& host_pos = ecs[relative_pos.host].get<rynx::components::position>();
+				pos.value = host_pos.value + rynx::math::rotatedXY(relative_pos.relative_pos, host_pos.angle);
 			});
 		}
 	);

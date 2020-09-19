@@ -6,6 +6,8 @@
 #include <rynx/tech/profiling.hpp>
 #include <rynx/tech/memory.hpp>
 
+#include <rynx/system/assert.hpp>
+
 #include <vector>
 #include <type_traits>
 #include <tuple>
@@ -43,6 +45,8 @@ namespace rynx {
 
 		class entity_category;
 
+		static constexpr uint32_t bits_id = 42; // 2^42 - 1 entity ids (zero not included).
+		static constexpr uint64_t mask_max_id = (uint64_t(1) << bits_id) - 1;
 
 	private:
 		enum class DataAccess {
@@ -56,6 +60,7 @@ namespace rynx {
 		class entity_index {
 		public:
 			entity_id_t generateOne() {
+				rynx_assert(m_nextId + 1 <= mask_max_id, "id space out of bounds");
 				return ++m_nextId;
 			} // zero is never generated. we can use that as InvalidId.
 
@@ -403,7 +408,7 @@ namespace rynx {
 				type_id_t typeId = types.nextOne(0);
 				while (typeId != dynamic_bitset::npos) {
 					// TODO: Get rid of null check :( it is guarding against virtual types and tag types.
-					if (typeId <= other->m_tables.size() && other->m_tables[typeId]) {
+					if (typeId < other->m_tables.size() && other->m_tables[typeId]) {
 						other->m_tables[typeId]->copyTableTypeTo(typeId, m_tables);
 					}
 					typeId = types.nextOne(typeId + 1);
@@ -507,7 +512,7 @@ namespace rynx {
 		private:
 			template<DataAccess, typename Ts> struct getTables {};
 			template<DataAccess accessType, typename... Ts> struct getTables<accessType, std::tuple<Ts...>> {
-				auto operator()(entity_category& categorySource) {
+				[[nodiscard]] auto operator()(entity_category& categorySource) {
 					if constexpr (accessType == DataAccess::Const) {
 						return std::make_tuple(&const_cast<const entity_category&>(categorySource).table<Ts>()...);
 					}
@@ -530,7 +535,7 @@ namespace rynx {
 			};
 
 			template<DataAccess accessType, typename T> struct getTableData {
-				auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
+				[[nodiscard]] auto operator()(entity_category& categorySource, const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
 					if constexpr (accessType == DataAccess::Const) {
 						return const_cast<const entity_category&>(categorySource).table<T>(typeAliases).data();
 					}

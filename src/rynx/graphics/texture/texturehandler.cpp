@@ -7,8 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-GPUTextures::GPUTextures()
-{
+rynx::graphics::GPUTextures::GPUTextures() {
 	int max_texture_units = 0;
 #ifdef _WIN32
 	glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &max_texture_units);
@@ -21,26 +20,21 @@ GPUTextures::GPUTextures()
 	current_textures.resize(max_texture_units);
 }
 
-GPUTextures::~GPUTextures()
-{
+rynx::graphics::GPUTextures::~GPUTextures() {
 	deleteAllTextures();
 }
 
-const std::string& GPUTextures::getCurrentTexture(size_t texture_unit) const
-{
+const std::string& rynx::graphics::GPUTextures::getCurrentTexture(size_t texture_unit) const {
 	rynx_assert(texture_unit < current_textures.size(), "Texture unit out of bounds! Requested: %u, size %u", static_cast<unsigned>(texture_unit), static_cast<unsigned>(current_textures.size()));
 	return current_textures[texture_unit];
 }
 
-void GPUTextures::createTextures(const std::string& filename)
-{
+void rynx::graphics::GPUTextures::createTextures(const std::string& filename) {
 	std::ifstream in(filename.c_str());
 
 	std::string line;
-	while(getline(in, line))
-	{
-		if(line.empty() || line[0] == '#')
-		{
+	while(getline(in, line)) {
+		if(line.empty() || line[0] == '#') {
 			continue;
 		}
 		std::stringstream ss(line);
@@ -55,10 +49,8 @@ void GPUTextures::createTextures(const std::string& filename)
 			
 			int maxx = 1;
 			int maxy = 1;
-			while(getline(atlasIn, line))
-			{
-				if(line.empty() || line[0] == '#')
-				{
+			while(getline(atlasIn, line)) {
+				if(line.empty() || line[0] == '#') {
 					continue;
 				}
 
@@ -82,16 +74,14 @@ void GPUTextures::createTextures(const std::string& filename)
 	}
 }
 
-unsigned GPUTextures::createTexture(const std::string& name, const std::string& filename)
-{
+unsigned rynx::graphics::GPUTextures::createTexture(const std::string& name, const std::string& filename) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 
 	Image img;
 	logmsg("Loading texture '%s' from file '%s'", name.c_str(), filename.c_str());
 	img.loadImage(filename);
 	
-	if((img.sizeX == 0) || (img.sizeY == 0))
-	{
+	if((img.sizeX == 0) || (img.sizeY == 0)) {
 		logmsg("Failed to load texture '%s' from file '%s'. File doesn't exist?", name.c_str(), filename.c_str());
 		return 0;
 	}
@@ -101,8 +91,7 @@ unsigned GPUTextures::createTexture(const std::string& name, const std::string& 
 }
 
 
-unsigned GPUTextures::getTextureID(const std::string& name) const
-{
+unsigned rynx::graphics::GPUTextures::getTextureID(const std::string& name) const {
 	rynx_assert(!name.empty(), "get texture called with an empty name!");
 	std::string realName = m_atlasHandler.getRealTextureID(name);
 	auto it = textures.find(realName);
@@ -110,10 +99,8 @@ unsigned GPUTextures::getTextureID(const std::string& name) const
 	return it->second;
 }
 
-namespace
-{
-	struct Color
-	{
+namespace {
+	struct Color {
 		unsigned char r;
 		unsigned char g;
 		unsigned char b;
@@ -121,13 +108,11 @@ namespace
 	};
 }
 
-void buildDebugMipmaps(size_t x, size_t y)
-{
+void buildDebugMipmaps(size_t x, size_t y) {
 	rynx_assert(x == y, "debug mipmaps don't work with non-square textures");
 
 	int lod = 0;
-	do
-	{
+	do {
 		size_t bit = 1;
 		while(bit < x)
 			bit <<= 1;
@@ -147,8 +132,7 @@ void buildDebugMipmaps(size_t x, size_t y)
 }
 
 
-unsigned GPUTextures::createFloatTexture(const std::string& name, int width, int height)
-{
+unsigned rynx::graphics::GPUTextures::createFloatTexture(const std::string& name, int width, int height) {
 	rynx_assert(!name.empty(), "create float texture called with empty name");
 
 	glGenTextures(1, &(textures[name]));
@@ -164,8 +148,7 @@ unsigned GPUTextures::createFloatTexture(const std::string& name, int width, int
 	return textures[name];
 }
 
-unsigned GPUTextures::createTexture(const std::string& name, int width, int height)
-{
+unsigned rynx::graphics::GPUTextures::createTexture(const std::string& name, int width, int height) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 
 	glGenTextures(1, &(textures[name]));
@@ -174,8 +157,8 @@ unsigned GPUTextures::createTexture(const std::string& name, int width, int heig
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // scale linearly when image bigger than texture
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // scale linearly when image smalled than texture
 	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
@@ -183,8 +166,7 @@ unsigned GPUTextures::createTexture(const std::string& name, int width, int heig
 	return textures[name];
 }
 
-unsigned GPUTextures::createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel)
-{
+unsigned rynx::graphics::GPUTextures::createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel) {
 	rynx_assert(!name.empty(), "create depth texture called with empty name");
 
 	glGenTextures(1, &(textures[name]));
@@ -209,13 +191,11 @@ unsigned GPUTextures::createDepthTexture(const std::string& name, int width, int
 	return textures[name];
 }
 
-unsigned GPUTextures::createTexture(const std::string& name, Image& img)
-{
+unsigned rynx::graphics::GPUTextures::createTexture(const std::string& name, Image& img) {
 	rynx_assert(!name.empty(), "create texture called with an empty name.");
 	rynx_assert(img.data, "createTexture called with nullptr img data.");
 	
-	if(textureExists(name))
-	{
+	if(textureExists(name)) {
 		logmsg("Texture for \"%s\" is already loaded!", name.c_str());
 		return textures[name];
 	}
@@ -230,12 +210,10 @@ unsigned GPUTextures::createTexture(const std::string& name, Image& img)
 
 	// 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image, 
 	// border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
-	if(img.hasAlpha)
-	{
+	if(img.hasAlpha) {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, img.sizeX, img.sizeY, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.data);
 	}
-	else
-	{
+	else {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, img.sizeX, img.sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 	}
 	
@@ -248,13 +226,11 @@ unsigned GPUTextures::createTexture(const std::string& name, Image& img)
 }
 
 
-void GPUTextures::deleteTexture(const std::string& name)
-{
+void rynx::graphics::GPUTextures::deleteTexture(const std::string& name) {
 	rynx_assert(!name.empty(), "deleting texture with an empty name?");
 	std::string realName = m_atlasHandler.getRealTextureID(name);
 	auto it = textures.find(realName);
-	if(it != textures.end())
-	{
+	if(it != textures.end()) {
 		for (auto& tex : current_textures) {
 			if (tex == name) {
 				tex = ""; // unbind.
@@ -264,20 +240,16 @@ void GPUTextures::deleteTexture(const std::string& name)
 		glDeleteTextures(1, &it->second);
 		textures.erase(it);
 	}
-	else
-	{
+	else {
 		logmsg("WARNING: tried to delete a texture that doesnt exist: \"%s\"", name.c_str());
 	}
 }
 
-void GPUTextures::unbindTexture(size_t texture_unit)
-{
-	// glActiveTexture(GL_TEXTURE0 + int(texture_unit));
+void rynx::graphics::GPUTextures::unbindTexture(size_t texture_unit) {
 	current_textures[texture_unit] = "";
 }
 
-int GPUTextures::bindTexture(size_t texture_unit, const std::string& name)
-{
+int rynx::graphics::GPUTextures::bindTexture(size_t texture_unit, const std::string& name) {
 	rynx_assert(texture_unit < current_textures.size(), "texture unit out of bounds: %d >= %d", static_cast<int>(texture_unit), static_cast<int>(current_textures.size()));
 	rynx_assert(!name.empty(), "empty name for bind texture");
 
@@ -286,16 +258,14 @@ int GPUTextures::bindTexture(size_t texture_unit, const std::string& name)
 	if(current_textures[texture_unit] == realName)
 		return 1;
 
-	if(textureExists(realName))
-	{
+	if(textureExists(realName)) {
 		glActiveTexture(GL_TEXTURE0 + int(texture_unit));
 		glBindTexture(GL_TEXTURE_2D, textures[realName]);
 		current_textures[texture_unit] = realName;
 		rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 		return 1;
 	}
-	else
-	{
+	else {
 		logmsg("Trying to bind to a texture that does not exist: \"%s\"", name.c_str());
 		rynx_assert(!textures.empty(), "please load at least one texture...");
 		std::string default_texture = textures.begin()->first;
@@ -307,30 +277,27 @@ int GPUTextures::bindTexture(size_t texture_unit, const std::string& name)
 	}
 }
 
-void GPUTextures::deleteAllTextures()
-{
-	for(auto iter = textures.begin(); iter != textures.end(); iter++)
-	{
+void rynx::graphics::GPUTextures::deleteAllTextures() {
+	for(auto iter = textures.begin(); iter != textures.end(); iter++) {
 		glDeleteTextures(1, &iter->second);
 	}
 	textures.clear();
 }
 
-bool GPUTextures::textureExists(const std::string& name) const
-{
+bool rynx::graphics::GPUTextures::textureExists(const std::string& name) const {
 	std::string realName = m_atlasHandler.getRealTextureID(name);
 	return textures.find(realName) != textures.end();
 }
 
-rynx::floats4 GPUTextures::textureLimits(const std::string& name) const {
+rynx::floats4 rynx::graphics::GPUTextures::textureLimits(const std::string& name) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name);
 }
 
-rynx::floats4 GPUTextures::textureLimits(const std::string& name, rynx::vec4<float> uvLimits) const {
+rynx::floats4 rynx::graphics::GPUTextures::textureLimits(const std::string& name, rynx::vec4<float> uvLimits) const {
 	return m_atlasHandler.getTextureCoordinateLimits(name, uvLimits);
 }
 
-void GPUTextures::insertAtlas(const TextureAtlas& atlas) {
+void rynx::graphics::GPUTextures::insertAtlas(const TextureAtlas& atlas) {
 	m_atlasHandler.addTextureAtlas(atlas);
 }
 

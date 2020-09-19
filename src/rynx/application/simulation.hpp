@@ -18,17 +18,37 @@ namespace rynx {
 			}
 
 			template<typename T>
-			void add_rule_set(std::unique_ptr<T>&& t) {
-				m_logic.add_ruleset(std::move(t));
-			}
-
-			template<typename T>
 			void set_resource(T* t) {
 				m_context->set_resource(t);
 			}
 
 			void clear() {
 				m_logic.clear();
+			}
+
+			template<typename T>
+			struct ruleset_conf {
+				ruleset_conf(simulation* host, std::unique_ptr<T> ruleset) : m_ruleset(std::move(ruleset)), m_host(host) {}
+				~ruleset_conf() { m_host->add_rule_set(std::move(m_ruleset)); }
+
+				T* operator->() { return m_ruleset.get(); }
+
+				operator T& () { return *m_ruleset; }
+				operator T* () { return m_ruleset.get(); }
+
+			private:
+				std::unique_ptr<T> m_ruleset;
+				simulation* m_host;
+			};
+
+			template<typename T, typename...Args>
+			ruleset_conf<T> create_rule_set(Args&&... args) {
+				return ruleset_conf<T>(this, std::make_unique<T>(std::forward<Args>(args)...));
+			}
+
+			template<typename T>
+			void add_rule_set(std::unique_ptr<T>&& t) {
+				m_logic.add_ruleset(std::move(t));
 			}
 
 			rynx::ecs m_ecs;

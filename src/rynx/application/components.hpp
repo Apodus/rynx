@@ -5,6 +5,7 @@
 #include <rynx/tech/object_storage.hpp>
 #include <rynx/math/geometry/polygon.hpp>
 #include <rynx/math/vector.hpp>
+#include <rynx/math/random.hpp>
 #include <rynx/tech/collision_detection.hpp>
 #include <rynx/tech/components.hpp>
 
@@ -12,45 +13,118 @@
 
 namespace rynx {
 	class mesh;
-	template<typename T> struct value_segment {
-		T begin;
-		T end;
-
-		T linear(float v) const { return begin * v + end * (1.0f - v); }
-	};
 
 	namespace components {
 		
+		struct particle_emitter {
+			rynx::math::value_range<rynx::floats4> start_color;
+			rynx::math::value_range<rynx::floats4> end_color;
+			rynx::math::value_range<float> start_radius;
+			rynx::math::value_range<float> end_radius;
+
+			rynx::math::value_range<float> lifetime_range;
+			rynx::math::value_range<float> linear_dampening;
+
+			rynx::math::value_range<float> initial_velocity;
+			rynx::math::value_range<float> initial_angle;
+			rynx::math::value_range<rynx::vec3f> constant_force;
+
+			rynx::math::value_range<float> spawn_rate;
+
+			bool rotate_with_host = false;
+			vec3f position_offset;
+
+			mutable float time_until_next_spawn = 0;
+			mutable rynx::math::rand64 m_random;
+
+			rynx::floats4 get_start_color() const { return start_color(m_random()); }
+			rynx::floats4 get_end_color() const { return end_color(m_random()); }
+			float get_start_radius() const { return start_radius(m_random()); }
+			float get_end_radius() const { return end_radius(m_random()); }
+			float get_lifetime() const { return lifetime_range(m_random()); }
+			float get_linear_damping() const { return linear_dampening(m_random()); }
+			float get_initial_velocity() const { return initial_velocity(m_random()); }
+			float get_initial_angle() const { return initial_angle(m_random()); }
+			rynx::vec3f get_constant_force() const { return constant_force(m_random()); }
+			rynx::math::rand64& get_random() const { return m_random; }
+
+			struct editor {
+				particle_emitter& host;
+
+				editor& color_ranges(rynx::math::value_range<rynx::floats4> start_color_, rynx::math::value_range<rynx::floats4> end_color_) {
+					host.start_color = start_color_;
+					host.end_color = end_color_;
+					return *this;
+				}
+
+				editor& radius_ranges(rynx::math::value_range<float> start_radius_, rynx::math::value_range<float> end_radius_) {
+					host.start_radius = start_radius_;
+					host.end_radius = end_radius_;
+					return *this;
+				}
+
+				editor& spawn_rate_range(rynx::math::value_range<float> spawn_rate_) {
+					host.spawn_rate = spawn_rate_;
+					return *this;
+				}
+
+				editor& linear_dampening_range(rynx::math::value_range<float> damp) {
+					host.linear_dampening = damp;
+					return *this;
+				}
+
+				editor& lifetime_range(rynx::math::value_range<float> lifetime) {
+					host.lifetime_range = lifetime;
+					return *this;
+				}
+
+				editor& initial_velocity_range(rynx::math::value_range<float> initial_vel) {
+					host.initial_velocity = initial_vel;
+					return *this;
+				}
+
+				editor& initial_angle_range(rynx::math::value_range<float> initial_angle_) {
+					host.initial_angle = initial_angle_;
+					return *this;
+				}
+
+				editor& constant_force_range(rynx::math::value_range<rynx::vec3f> constant_force_) {
+					host.constant_force = constant_force_;
+					return *this;
+				}
+
+				editor& rotate_with_host(bool value) {
+					host.rotate_with_host = value;
+					return *this;
+				}
+
+				editor& position_offset(vec3f offset) {
+					host.position_offset = offset;
+					return *this;
+				}
+			};
+
+			editor edit() { return editor{*this}; }
+
+			int get_spawn_count(float dt) const {
+				int count = 0;
+				time_until_next_spawn -= dt;
+				while (time_until_next_spawn <= 0.0f) {
+					++count;
+					time_until_next_spawn += 1.0f / spawn_rate(m_random());
+				}
+				return count;
+			}
+		};
 
 		struct particle_info {
-			value_segment<floats4> color;
-			value_segment<float> radius;
-		};
-		
-		struct boundary {
-			using boundary_t = decltype(polygon().generateBoundary_Outside(1.0f));
-			boundary(boundary_t&& b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
-				segments_world.resize(segments_local.size());
-				update_world_positions(pos, angle);
-			}
-
-			void update_world_positions(vec3f pos, float angle) {
-				float sin_v = math::sin(angle);
-				float cos_v = math::cos(angle);
-				const size_t num_segments = segments_local.size();
-				for (size_t i = 0; i < num_segments; ++i) {
-					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
-					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
-					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
-				}
-			}
-
-			boundary_t segments_local;
-			boundary_t segments_world;
+			rynx::math::value_range<floats4> color_range;
+			rynx::math::value_range<float> radius_range;
 		};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
 		struct frustum_culled {}; // object is not visible due to frustum culling.
+		struct invisible {}; // tag to prevent rendering of object.
 
 		namespace phys {
 			struct joint {
@@ -102,15 +176,28 @@ namespace rynx {
 
 				float length;
 				float strength;
+				float softness = 1.0f;
 
 				float cumulative_stress = 0;
 
 				connector_type connector;
 				joint_type m_joint;
 			};
-		}
 
-		struct dead {}; // mark entity for cleanup.
+			inline float compute_current_joint_length(const joint& rope, rynx::ecs::view<const rynx::components::position> ecs) {
+				auto entity_a = ecs[rope.id_a];
+				auto entity_b = ecs[rope.id_b];
+
+				auto pos_a = entity_a.get<const components::position>();
+				auto pos_b = entity_b.get<const components::position>();
+
+				auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
+				auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+				auto world_pos_a = pos_a.value + relative_pos_a;
+				auto world_pos_b = pos_b.value + relative_pos_b;
+				return (world_pos_a - world_pos_b).length();
+			}
+		}
 
 		struct mesh : public rynx::ecs::value_segregated_component {
 			mesh() = default;

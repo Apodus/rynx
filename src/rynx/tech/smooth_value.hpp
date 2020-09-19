@@ -26,7 +26,6 @@ namespace rynx {
 		template<typename U> T operator /(const U& other) { return current / other; }
 
 		smooth& setCurrent(T t) { current = t; return *this; }
-
 		smooth& tick(float dt) { current += (target - current) * dt; return *this; }
 
 		operator T() const { return current; }

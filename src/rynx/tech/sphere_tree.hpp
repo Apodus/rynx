@@ -278,7 +278,7 @@ namespace rynx {
 				return ans;
 			}
 
-			template<typename F> void forEachNode(F&& f, int depth = 0) {
+			template<typename F> void forEachNode(F&& f, int depth = 0) const {
 				f(pos, radius, depth);
 				for (auto& child : m_children) {
 					child->forEachNode(std::forward<F>(f), depth + 1);
@@ -393,6 +393,10 @@ namespace rynx {
 				return { entry.pos, entry.radius };
 			}
 			return { vec3f(), 0.0f };
+		}
+
+		bool contains(uint64_t id) {
+			return entryMap.find(id) != entryMap.end();
 		}
 
 		void clear() {
@@ -608,7 +612,7 @@ namespace rynx {
 		}
 
 		template<typename F>
-		void forEachNode(F&& f) {
+		void forEachNode(F&& f) const {
 			root.forEachNode(std::forward<F>(f));
 		}
 

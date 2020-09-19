@@ -2,6 +2,7 @@
 
 #include <rynx/math/vector.hpp>
 #include <rynx/math/math.hpp>
+#include <rynx/math/geometry/polygon.hpp>
 
 namespace rynx {
 	namespace components {
@@ -10,6 +11,11 @@ namespace rynx {
 			position(vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
 			vec3<float> value;
 			float angle = 0;
+		};
+
+		struct position_relative {
+			uint64_t host; // TODO: explicit entity id type.
+			vec3f relative_pos;
 		};
 
 		struct scale {
@@ -45,10 +51,12 @@ namespace rynx {
 				return linear();
 			}
 
+			// 0 -> 1
 			float linear() const {
-				return value / max_value;
+				return 1.0f - value / max_value;
 			}
 
+			// 1 -> 0
 			float linear_inv() const {
 				return 1.0f - linear();
 			}
@@ -81,6 +89,10 @@ namespace rynx {
 		struct dampening {
 			float linearDampening = 0.0f;
 			float angularDampening = 0.0f;
+		};
+
+		struct constant_force {
+			vec3f force;
 		};
 
 		struct motion {
@@ -121,9 +133,32 @@ namespace rynx {
 			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
 		};
 
+		struct boundary {
+			using boundary_t = decltype(rynx::polygon().generateBoundary_Outside(1.0f));
+			boundary(boundary_t&& b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
+				segments_world.resize(segments_local.size());
+				update_world_positions(pos, angle);
+			}
+
+			void update_world_positions(vec3f pos, float angle) {
+				float sin_v = math::sin(angle);
+				float cos_v = math::cos(angle);
+				const size_t num_segments = segments_local.size();
+				for (size_t i = 0; i < num_segments; ++i) {
+					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
+					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
+					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
+				}
+			}
+
+			boundary_t segments_local;
+			boundary_t segments_world;
+		};
+
+		struct draw_always {};
 		struct projectile {}; // tag for fast moving items in collision detection.
 		struct ignore_gravity {};
-
+		struct dead {}; // mark entity for cleanup.
 
 		struct light_omni {
 			// fourth value in color encodes light intensity.
@@ -139,7 +174,7 @@ namespace rynx {
 		};
 
 		struct light_directed : public light_omni {
-			vec3f direction;
+			rynx::vec3f direction;
 			float angle = math::pi;
 			float edge_softness = 0.1f;
 		};

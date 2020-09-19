@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
 		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
 			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")));
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")), "Empty");
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
 		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x);
 			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")));
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")), "Empty");
 			float radius = polygon.radius();
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
 
 			auto p = rynx::Shape::makeRectangle(rope_segment_length, rope_width);
 			auto bound = p.generateBoundary_Outside(1.0f);
-			auto* m = meshes->create("riprap", rynx::polygon_triangulation().generate_polygon_boundary(p, application.textures()->textureLimits("Empty")));
+			auto* m = meshes->create("riprap", rynx::polygon_triangulation().generate_polygon_boundary(p, application.textures()->textureLimits("Empty")), "Empty");
 			float piece_radius = sqrtf((rope_width * rope_width + rope_segment_length * rope_segment_length) * 0.25f);
 			float mass = 5.0f;
 			
@@ -500,15 +500,6 @@ int main(int argc, char** argv) {
 			// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
 		}
 
-		{
-			rynx_profile("Main", "Input handling");
-			// TODO: Simulation API
-			std::vector<std::unique_ptr<rynx::application::logic::iaction>> userActions = base_simulation.m_logic.onInput(gameInput, ecs);
-			for (auto&& action : userActions) {
-				action->apply(ecs);
-			}
-		}
-
 		timer.reset();
 		{
 			rynx_profile("Main", "Construct frame tasks");
@@ -629,6 +620,7 @@ int main(int argc, char** argv) {
 				}
 
 				// find mouse pos in xy-plane and draw a circle there.
+				/*
 				{
 					auto ray = camera->ray_cast(mousePos.x, mousePos.y);
 					
@@ -643,6 +635,7 @@ int main(int argc, char** argv) {
 						application.meshRenderer().drawMesh(*meshes->get("circle_empty"), m, "Empty");
 					}
 				}
+				*/
 
 				timer.reset();
 				application.swapBuffers();
@@ -675,7 +668,7 @@ int main(int argc, char** argv) {
 			for (auto id : ids_dead) {
 				if (ecs[id].has<rynx::components::collisions>()) {
 					auto collisions = ecs[id].get<rynx::components::collisions>();
-					collisionDetection.erase(id.value, collisions.category);
+					collisionDetection.erase(ecs, id.value, collisions.category);
 				}
 			}
 			

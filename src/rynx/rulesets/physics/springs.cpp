@@ -113,7 +113,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 						//       Because rotational velocity does not provide linear velocity to point t along tangent.
 						//       The linear velocity to point t arcs along the orbit of the object. This should be taken into account.
 
-						auto compute_step = [original_dt = dt, force_dir, over_extension, &joint_data, &rope](float dt, auto& self) mutable -> void {
+						auto compute_step = [dt, force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
 							constexpr float multiplier_per_round = 0.1f;
 							for (int i = 0; i < 10; ++i) {
 								auto vel_a = joint_data.mot_a->velocity_at_point_predict(joint_data.relative_pos_a, dt);
@@ -122,7 +122,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 								float current_agreement = rel_vel.dot(force_dir);
 
 								constexpr float target_fix_time = 0.01666f;
-								float multiplier = 5.0f * rope.strength * (over_extension - current_agreement * target_fix_time) / original_dt;
+								float multiplier = 5.0f * rope.strength * (over_extension - current_agreement * target_fix_time) / dt;
 								rope.cumulative_stress += multiplier * dt;
 
 								auto linear_force = force_dir * multiplier / (joint_data.phys_a->inv_mass + joint_data.phys_b->inv_mass);
@@ -153,7 +153,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 							}
 						};
 
-						compute_step(dt, compute_step);
+						compute_step(dt);
 					}
 
 					rope.cumulative_stress *= stress_decay;

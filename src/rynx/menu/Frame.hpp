@@ -8,26 +8,28 @@
 
 #include <memory>
 
-class GPUTextures;
-
 namespace rynx {
 	class mesh;
+
+	namespace graphics {
+		class GPUTextures;
+	}
+
 	namespace menu {
 		class Frame : public Component {
 
 			floats4 m_color;
 			vec3<float> m_prevScale;
-			std::string m_textureID;
 			matrix4 m_modelMatrix;
 			std::unique_ptr<mesh> m_backgroundMesh;
 			float m_edgeSize;
 
-			void initMesh(GPUTextures& textures);
+			void initMesh(floats4 uv_limits);
 
 		public:
 			Frame(
 				Component* parent,
-				GPUTextures& textures,
+				rynx::graphics::GPUTextures& textures,
 				const std::string& textureID,
 				float edgeSize = 0.20f);
 			

@@ -144,14 +144,14 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx:
 	return buildMeshData(uvLimits);
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_, rynx::floats4 tex_coords) {
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_, rynx::floats4 tex_coords, float line_width) {
 	
 	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
 	rynx::polygon copy = polygon_;
 	float radius = copy.normalize();
 
 	auto boundary = copy.vertices;
-	const float width = 1.0f / radius;
+	const float width = line_width / radius;
 
 	auto get_vertex = [&boundary](int index) {
 		index += static_cast<int>(boundary.size());

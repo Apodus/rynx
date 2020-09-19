@@ -77,36 +77,39 @@ namespace {
 		std::vector<collision_event>& collisions_accumulator, 
 		rynx::ecs::entity<ecs_view> polygon,
 		rynx::ecs::entity<ecs_view> ball,
-		const rynx::vec3<float> polygon_position,
 		const rynx::vec3<float> ball_position,
-		const float ball_radius
+		const float ball_radius,
+		uint32_t partIndex
 	) {
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
-		for (auto&& segment : boundaryA.segments_world) {
-			const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
-			const float distSqr = pointToLineSegment.first;
-			if (distSqr < ball_radius * ball_radius) {
-				auto normal = (pointToLineSegment.second - ball_position).normalize();
-				normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
+		const rynx::vec3f polygon_position = polygon.get<const rynx::components::position>().value;
+		const auto& segment = boundaryA.segments_world[partIndex];
+		const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
+		const float distSqr = pointToLineSegment.first;
+		
+		if (distSqr < ball_radius * ball_radius) {
+			auto normal = (pointToLineSegment.second - ball_position).normalize();
+			normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
 
-				create_collision_event(
-					collisions_accumulator,
-					polygon,
-					ball,
-					normal,
-					pointToLineSegment.second,
-					polygon_position,
-					ball_position,
-					ball_radius - rynx::math::sqrt_approx(distSqr)
-				);
-			}
+			create_collision_event(
+				collisions_accumulator,
+				polygon,
+				ball,
+				normal,
+				pointToLineSegment.second,
+				polygon_position,
+				ball_position,
+				ball_radius - rynx::math::sqrt_approx(distSqr)
+			);
 		}
 	}
 
 	void check_polygon_polygon(
 		std::vector<collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view> poly1,
-		rynx::ecs::entity<ecs_view> poly2
+		rynx::ecs::entity<ecs_view> poly2,
+		uint32_t part1,
+		uint32_t part2
 	) {
 		const auto& posA = poly1.get<const rynx::components::position>();
 		const auto& posB = poly2.get<const rynx::components::position>();
@@ -115,51 +118,49 @@ namespace {
 
 		const float radiusB = poly2.get<const rynx::components::radius>().r;
 
-		for (auto&& segmentA : boundaryA.segments_world) {
-			const auto p1 = segmentA.p1;
-			const auto p2 = segmentA.p2;
-			const float dist = rynx::math::pointDistanceLineSegment(p1, p2, posB.value).first;
-			if (dist < radiusB) {
-				for (auto&& segmentB : boundaryB.segments_world) {
-					const auto q1 = segmentB.p1;
-					const auto q2 = segmentB.p2;
+		const auto& segmentA = boundaryA.segments_world[part1];
+		const auto p1 = segmentA.p1;
+		const auto p2 = segmentA.p2;
+		const float distSqr = rynx::math::pointDistanceLineSegmentSquared(p1, p2, posB.value).first;
+		if (distSqr < radiusB * radiusB) {
+			const float dist = rynx::math::sqrt_approx(distSqr);
+			const auto& segmentB = boundaryB.segments_world[part2];
+			
+			const auto q1 = segmentB.p1;
+			const auto q2 = segmentB.p2;
+			const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
+			
+			if (collisionPoint) {
+				// how to choose normal?
+				const float b1 = rynx::math::pointDistanceLineSegment(p1, p2, q1).first;
+				const float b2 = rynx::math::pointDistanceLineSegment(p1, p2, q2).first;
 
-					const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
-					if (collisionPoint) {
+				const float a1 = rynx::math::pointDistanceLineSegment(q1, q2, p1).first;
+				const float a2 = rynx::math::pointDistanceLineSegment(q1, q2, p2).first;
 
-						// how to choose normal?
-						const float b1 = rynx::math::pointDistanceLineSegment(p1, p2, q1).first;
-						const float b2 = rynx::math::pointDistanceLineSegment(p1, p2, q2).first;
-
-						const float a1 = rynx::math::pointDistanceLineSegment(q1, q2, p1).first;
-						const float a2 = rynx::math::pointDistanceLineSegment(q1, q2, p2).first;
-
-						rynx::vec3<float> normal;
-						if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
-							normal = segmentB.getNormalXY();
-						}
-						else {
-							normal = segmentA.getNormalXY();
-							normal *= -1.f;
-						}
-						
-						float penetration1 = a1 < a2 ? a1 : a2;
-						float penetration2 = b1 < b2 ? b1 : b2;
-						float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
-
-						
-						create_collision_event(
-							collisions_accumulator,
-							poly1,
-							poly2,
-							normal,
-							collisionPoint.point(),
-							posA.value,
-							posB.value,
-							penetration
-						);
-					}
+				rynx::vec3<float> normal;
+				if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
+					normal = segmentB.getNormalXY();
 				}
+				else {
+					normal = segmentA.getNormalXY();
+					normal *= -1.f;
+				}
+						
+				float penetration1 = a1 < a2 ? a1 : a2;
+				float penetration2 = b1 < b2 ? b1 : b2;
+				float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
+		
+				create_collision_event(
+					collisions_accumulator,
+					poly1,
+					poly2,
+					normal,
+					collisionPoint.point(),
+					posA.value,
+					posB.value,
+					penetration
+				);
 			}
 		}
 	}
@@ -193,7 +194,8 @@ namespace {
 	void check_projectile_polygon(
 		std::vector<collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view>& bulletEntity,
-		rynx::ecs::entity<ecs_view>& dynamicEntity
+		rynx::ecs::entity<ecs_view>& dynamicEntity,
+		uint32_t partIndex
 	) {
 		const auto& bulletPos = bulletEntity.get<const rynx::components::position>();
 		const auto& bulletMotion = bulletEntity.get<const rynx::components::motion>();
@@ -204,26 +206,25 @@ namespace {
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
-			for (auto&& segment : boundary.segments_local) {
-				auto intersectionTest = rynx::math::lineSegmentIntersectionPoint(
-					bulletPos.value,
-					bulletPos.value - bulletMotion.velocity,
-					rynx::math::rotatedXY(segment.p1, polygonPositionComponent.angle) + polygonPositionComponent.value,
-					rynx::math::rotatedXY(segment.p2, polygonPositionComponent.angle) + polygonPositionComponent.value
-				);
+			const auto& segment = boundary.segments_world[partIndex];
+			auto intersectionTest = rynx::math::lineSegmentIntersectionPoint(
+				bulletPos.value,
+				bulletPos.value - bulletMotion.velocity,
+				rynx::math::rotatedXY(segment.p1, polygonPositionComponent.angle) + polygonPositionComponent.value,
+				rynx::math::rotatedXY(segment.p2, polygonPositionComponent.angle) + polygonPositionComponent.value
+			);
 
-				if (intersectionTest) {
-					create_collision_event(
-						collisions_accumulator,
-						bulletEntity,
-						dynamicEntity,
-						rynx::math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
-						intersectionTest.point(),
-						bulletPos.value,
-						polyPos,
-						0 // NOTE: penetration values don't really mean anything in projectile case.
-					);
-				}
+			if (intersectionTest) {
+				create_collision_event(
+					collisions_accumulator,
+					bulletEntity,
+					dynamicEntity,
+					rynx::math::rotatedXY(segment.getNormalXY(), polygonPositionComponent.angle),
+					intersectionTest.point(),
+					bulletPos.value,
+					polyPos,
+					0 // NOTE: penetration values don't really mean anything in projectile case.
+				);
 			}
 		}
 	}
@@ -232,22 +233,26 @@ namespace {
 	void check_all(
 		std::vector<collision_event>& collisions_accumulator,
 		ecs_view ecs,
-		uint64_t entityA,
-		uint64_t entityB,
-		rynx::vec3<float> a_pos,
-		float a_radius,
-		rynx::vec3<float> b_pos,
-		float b_radius,
-		rynx::vec3<float> normal,
-		float penetration)
+		const rynx::collision_detection::collision_params& params)
 	{
+		auto entityA = params.id1;
+		auto entityB = params.id2;
+		
+		rynx::vec3f a_pos = params.pos1;
+		rynx::vec3f b_pos = params.pos2;
+		rynx::vec3f normal = params.normal;
+
+		float a_radius = params.radius1;
+		float b_radius = params.radius2;
+		float penetration = params.penetration;
+
 		auto entA = ecs[entityA];
 		auto entB = ecs[entityB];
 
-		bool hasBoundaryA = entA.has<rynx::components::boundary>();
-		bool hasBoundaryB = entB.has<rynx::components::boundary>();
-		bool hasProjectileA = entA.has<rynx::components::projectile>();
-		bool hasProjectileB = entB.has<rynx::components::projectile>();
+		bool hasBoundaryA = params.kind1 == rynx::collision_detection::kind::boundary2d;
+		bool hasBoundaryB = params.kind2 == rynx::collision_detection::kind::boundary2d;
+		bool hasProjectileA = params.kind1 == rynx::collision_detection::kind::projectile;
+		bool hasProjectileB = params.kind2 == rynx::collision_detection::kind::projectile;
 
 		bool anyProjectile = hasProjectileA | hasProjectileB;
 		bool anyBoundary = hasBoundaryA | hasBoundaryB;
@@ -257,10 +262,10 @@ namespace {
 				if (anyBoundary) {
 					// projectiles do not have boundary shapes. this must be projectile vs polygon check.
 					if (hasProjectileA) {
-						check_projectile_polygon(collisions_accumulator, entA, entB);
+						check_projectile_polygon(collisions_accumulator, entA, entB, params.part2);
 					}
 					else {
-						check_projectile_polygon(collisions_accumulator, entB, entA);
+						check_projectile_polygon(collisions_accumulator, entB, entA, params.part1);
 					}
 				}
 				else if (hasProjectileA & hasProjectileB) {
@@ -279,13 +284,13 @@ namespace {
 			}
 			else {
 				if (hasBoundaryA & hasBoundaryB) {
-					check_polygon_polygon(collisions_accumulator, entA, entB);
+					check_polygon_polygon(collisions_accumulator, entA, entB, params.part1, params.part2);
 				}
 				else if (hasBoundaryA) {
-					check_polygon_ball(collisions_accumulator, entA, entB, a_pos, b_pos, b_radius);
+					check_polygon_ball(collisions_accumulator, entA, entB, b_pos, b_radius, params.part1);
 				}
 				else {
-					check_polygon_ball(collisions_accumulator, entB, entA, b_pos, a_pos, a_radius);
+					check_polygon_ball(collisions_accumulator, entB, entA, a_pos, a_radius, params.part2);
 				}
 			}
 		}
@@ -331,7 +336,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	auto positionDataToSphereTree_task = context.add_task("Update position info to collision detection.", [](
 		collision_detection& detection,
 		rynx::scheduler::task& task) {
-			detection.update_parallel(task);
+			detection.update_sphere_trees_parallel(task);
 		});
 
 	update_entities_sphere_tree.required_for(positionDataToSphereTree_task);
@@ -366,17 +371,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		rynx::scheduler::task& this_task) mutable
 		{
 			auto accumulator_copy = collisions_accumulator;
-			detection.for_each_collision_parallel(collisions_accumulator, [ecs](
+			detection.for_each_collision_parallel(collisions_accumulator, [&detection, ecs](
 				std::vector<collision_event>& accumulator,
-				uint64_t entityA,
-				uint64_t entityB,
-				vec3<float> a_pos,
-				float a_radius,
-				vec3<float> b_pos,
-				float b_radius,
-				vec3<float> normal,
-				float penetration) {
-					check_all(accumulator, ecs, entityA, entityB, a_pos, a_radius, b_pos, b_radius, normal, penetration);
+				const rynx::collision_detection::collision_params& params) {
+					check_all(accumulator, ecs, params);
 				}, this_task
 			);
 		}
@@ -505,8 +503,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						if (impact_power < 0)
 							return;
 
-						// This *60 is not the same as dt. Just a random constant.
-						const auto proximity_force = collision.normal * collision.penetration * collision.penetration * 60.0f;
+						constexpr float bias_start = 2.0f;
+						// const float overlap_value = (collision.penetration * collision.penetration - 2.0f * collision.penetration * bias_start + bias_start * bias_start); // (penetration - bias_start)^2 - this allows collisions to maintain contact so that friction will be continuous
+						const float overlap_value = collision.penetration - bias_start;
+						const auto proximity_force = collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 60.0f; // This *60 is not the same as dt. Just a random constant.
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
 
 						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
@@ -538,6 +538,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 						tangent *= friction_power;
 
+
+						// proximity_force = bias (to keep the simulation stable, and prevent objects from sinking into each other over time)
+						// soft_impact_force = linear collision response along the collision normal
+						// "tangent" = friction response along the collision tangent
 						const float inv_dt = 1.0f / dt;
 						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
 						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;

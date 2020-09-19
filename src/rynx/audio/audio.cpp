@@ -26,7 +26,7 @@ static int audio_callback(const void* /* inputBuffer */, void* outputBuffer,
     PaStreamCallbackFlags /* statusFlags */,
     void* userData)
 {
-    static_cast<rynx::sound::audio_system*>(userData)->render_audio(static_cast<float*>(outputBuffer), framesPerBuffer);
+    static_cast<rynx::sound::audio_system*>(userData)->render_audio(outputBuffer, framesPerBuffer);
     return 0;
 }
 
@@ -234,6 +234,13 @@ rynx::sound::configuration& rynx::sound::configuration::set_pitch_shift(float oc
     return *this;
 }
 
+rynx::sound::configuration& rynx::sound::configuration::set_tempo_shift(float tempo_multiplier) {
+    if (is_active()) {
+        m_soundData->m_effects.tempo_shift = tempo_multiplier;
+    }
+    return *this;
+}
+
 rynx::sound::configuration& rynx::sound::configuration::set_attenuation_quadratic(float v) {
     if (is_active()) {
         m_soundData->m_attenuation.quadratic = v;
@@ -303,13 +310,19 @@ uint32_t rynx::sound::audio_system::load(std::string path) {
     return soundIndex;
 }
 
-rynx::sound::configuration rynx::sound::audio_system::play_sound(int soundIndex, vec3f position, vec3f direction, float loudness) {
-    rynx_assert(soundIndex <= m_soundBank.size() && soundIndex >= 0, "out of bounds sound index!");
+rynx::sound::audio_system& rynx::sound::audio_system::load(std::string path, std::string event_name) {
+    m_namedEvents.insert(event_name, load(path));
+    return *this;
+}
+
+
+rynx::sound::configuration rynx::sound::audio_system::play_sound(int bufferId, vec3f position, vec3f direction, float loudness) {
+    rynx_assert(bufferId <= m_soundBank.size() && bufferId >= 0, "out of bounds sound index!");
     rynx_assert(loudness >= 0.0f && loudness <= 10.0f, "really loud sound requested. is this intentional?");
     for (size_t i = 0; i < m_channels.size(); ++i) {
         uint32_t expected = 0;
         if (m_channels[i]->compare_exchange_weak(expected, 1u)) {
-            m_channelDatas[i].m_bufferIndex = soundIndex;
+            m_channelDatas[i].m_bufferIndex = bufferId;
             m_channelDatas[i].m_sampleIndex = 0;
             m_channelDatas[i].m_position = position;
             m_channelDatas[i].m_direction = direction;
@@ -326,19 +339,33 @@ rynx::sound::configuration rynx::sound::audio_system::play_sound(int soundIndex,
     return result;
 }
 
-void rynx::sound::audio_system::open_output_device(int numChannels, int samplesPerRender) {
+rynx::sound::configuration rynx::sound::audio_system::play_sound(const std::string& named_event, vec3f position, vec3f direction, float loudness) {
+    return play_sound(m_namedEvents.get(named_event), position, direction, loudness);
+}
+
+void rynx::sound::audio_system::open_output_device(int numChannels, int samplesPerRender, rynx::sound::audio_system::format outputFormat) {
 
     setNumChannels(numChannels);
+
+    m_outputFormat = outputFormat;
 
     {
         m_currentSampleRate = static_cast<float>(Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->defaultSampleRate);
         std::cerr << "sample rate for default device: " << m_currentSampleRate << std::endl;
 
+        int portAudioFormat = 0;
+        if (m_outputFormat == format::int16)
+            portAudioFormat = paInt16;
+        if (m_outputFormat == format::int32)
+            portAudioFormat = paInt32;
+        if (m_outputFormat == format::float32)
+            portAudioFormat = paFloat32;
+
         /* Open an audio I/O stream. */
         PaError err = Pa_OpenDefaultStream(&stream,
             0, // no input channels
             2, // stereo output
-            paFloat32,
+            portAudioFormat,
             m_currentSampleRate,
             samplesPerRender,
             audio_callback,
@@ -346,6 +373,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
 
         if (err != paNoError) {
             std::cerr << "failed to open default audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
+            m_outputFormat = format::undefined;
         }
     }
 
@@ -353,6 +381,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
         PaError err = Pa_StartStream(stream);
         if (err != paNoError) {
             std::cerr << "failed to start audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
+            m_outputFormat = format::undefined;
         }
     }
 }
@@ -389,108 +418,184 @@ std::vector<float> stretch(const float* src, size_t dataRemaining, size_t window
     return result;
 }
 
-void rynx::sound::audio_system::render_audio(float* outBuf, size_t numSamples) {
-    std::memset(outBuf, 0, sizeof(float) * numSamples * 2);
-    for (size_t i = 0; i < m_channels.size(); ++i) {
-        if (m_channels[i]->load() == 2) {
-            source_instance& data = m_channelDatas[i];
+void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSamples) {
 
-            float sqr_dist = (data.m_position - m_listenerPosition).length_squared();
-            float distance = data.m_attenuation.linear * rynx::math::sqrt_approx(sqr_dist) + data.m_attenuation.quadratic * sqr_dist;
-            float volume = 1.0f / (distance + 1.0f);
-            volume *= data.m_loudness;
+    constexpr int numChannels = 2;
+    if (m_outBufLength < numSamples * numChannels) {
+        m_outBuf = std::unique_ptr<float[]>(new float[numSamples * numChannels]);
+        m_outBufLength = numSamples * numChannels;
+    }
 
-            auto& sound = m_soundBank[data.m_bufferIndex];
-            float resample_multiplier = sound.sampleRate / m_currentSampleRate;
+    auto do_render = [this, numSamples](auto* deviceBuffer) {
+        for (size_t i = 0; i < m_channels.size(); ++i) {
+            if (m_channels[i]->load() == 2) {
+                source_instance& data = m_channelDatas[i];
 
-            if (data.m_effects.pitch_shift != 0.0f || data.m_effects.tempo_shift != 0.0f) {
-                size_t fft_window = 2 * numSamples;
-                float multiplier = std::pow(2.0f, data.m_effects.pitch_shift);
-                float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift) * resample_multiplier;
+                rynx::vec3f soundOriginDirection = data.m_position - m_listenerPosition;
+                float sqr_dist = soundOriginDirection.length_squared();
+                float distance = data.m_attenuation.linear * rynx::math::sqrt_approx(sqr_dist) + data.m_attenuation.quadratic * sqr_dist;
+                float volume = 1.0f / (distance + 1.0f);
+                volume *= data.m_loudness;
 
-                multiplier *= tempo_mul;
+                soundOriginDirection.normalize();
+                float x = soundOriginDirection.dot(m_listenerLeft);
+                float y = soundOriginDirection.dot(m_listenerUp);
+                float z = soundOriginDirection.dot(m_listenerForward);
+                
+                // left/right volume balance
+                float left_adj = y * y + z * z + x * x * x;
+                float right_adj = y * y + z * z - x * x * x;
+                left_adj = (left_adj + 1.0f) * 0.5f;
+                right_adj = (right_adj + 1.0f) * 0.5f;
 
-                std::vector<float> chunk_left(fft_window, 0.0f);
-                std::vector<float> chunk_right(fft_window, 0.0f);
+                // up/down frequency modifications
+                // float high_freq_cull = std::max(y, 0.0f);
+                // float low_freq_cull = std::max(-y, 0.0f);
 
-                size_t num_samples_to_take = size_t((sound.left.size() - data.m_sampleIndex - 1) / multiplier);
-                if (num_samples_to_take > fft_window)
-                    num_samples_to_take = fft_window;
-                    
-                for (size_t k = 0; k < num_samples_to_take; ++k) {
-                    float src_index_f = multiplier * k;
-                    size_t src_index_prev = size_t(src_index_f);
-                    size_t src_index_next = size_t(src_index_f) + 1;
-                    float p_prev = 1.0f - (src_index_f - src_index_prev);
-                    float p_next = 1.0f - p_prev;
+                // front/back frequency modifications
 
-                    chunk_left[k] = sound.left[src_index_prev + data.m_sampleIndex] * p_prev + sound.left[src_index_next + data.m_sampleIndex] * p_next;
-                    chunk_right[k] = sound.right[src_index_prev + data.m_sampleIndex] * p_prev + sound.right[src_index_next + data.m_sampleIndex] * p_next;
+
+                auto& sound = m_soundBank[data.m_bufferIndex];
+                float resample_multiplier = sound.sampleRate / m_currentSampleRate;
+
+                if constexpr (true) {
+                    size_t fft_window = 2 * numSamples;
+                    float multiplier = std::pow(2.0f, data.m_effects.pitch_shift);
+                    float tempo_mul = std::pow(2.0f, data.m_effects.tempo_shift) * resample_multiplier;
+
+                    multiplier *= tempo_mul;
+
+                    std::valarray<std::complex<float>> chunk_left;
+                    std::valarray<std::complex<float>> chunk_right;
+
+                    chunk_left.resize(fft_window);
+                    chunk_right.resize(fft_window);
+
+                    int32_t num_samples_to_take = int32_t(int32_t(sound.left.size() - int32_t(data.m_sampleIndex) - 1) / multiplier);
+                    if (num_samples_to_take > int32_t(fft_window))
+                        num_samples_to_take = int32_t(fft_window);
+
+                    for (size_t k = 0; k < num_samples_to_take; ++k) {
+                        float src_index_f = multiplier * k;
+                        size_t src_index_prev = size_t(src_index_f);
+                        size_t src_index_next = size_t(src_index_f) + 1;
+                        float p_prev = 1.0f - (src_index_f - src_index_prev);
+                        float p_next = 1.0f - p_prev;
+
+                        chunk_left[k].real(sound.left[src_index_prev + data.m_sampleIndex] * p_prev + sound.left[src_index_next + data.m_sampleIndex] * p_next);
+                        chunk_right[k].real(sound.right[src_index_prev + data.m_sampleIndex] * p_prev + sound.right[src_index_next + data.m_sampleIndex] * p_next);
+                    }
+
+                    // up/down frequency mods
+                    if constexpr (false) {
+                        fft(chunk_left);
+                        fft(chunk_right);
+
+                        for (int32_t k = 0; k < num_samples_to_take; ++k) {
+                            int32_t distance_from_spectral_center = std::abs(k - (num_samples_to_take >> 1));
+                            float low = 2.0f * distance_from_spectral_center / num_samples_to_take;
+                            float high = (num_samples_to_take - 2.0f * distance_from_spectral_center) / num_samples_to_take;
+
+                            chunk_left[k].real(chunk_left[k].real() * (1.0f - low * low * low_freq_cull - high * high * high_freq_cull));
+                            chunk_right[k].real(chunk_right[k].real() * (1.0f - low * low * low_freq_cull - high * high * high_freq_cull));
+                        }
+
+                        ifft(chunk_left);
+                        ifft(chunk_right);
+                    }
+
+                    float numSamples_f = float(numSamples);
+                    for (size_t k = 0; k < numSamples; ++k) {
+                        float p = float(k) / numSamples_f;
+                        m_outBuf[2 * k + 0] += left_adj * volume * (chunk_left[k].real() * p + data.prev_left[k + numSamples].real() * (1.0f - p));
+                        m_outBuf[2 * k + 1] += right_adj * volume * (chunk_right[k].real() * p + data.prev_right[k + numSamples].real() * (1.0f - p));
+                    }
+
+                    data.prev_left = std::move(chunk_left);
+                    data.prev_right = std::move(chunk_right);
+
+                    data.m_sampleIndex += static_cast<uint32_t>(numSamples * tempo_mul);
+                }
+                else {
+                    // no effects branch.
+                    for (size_t k = 0; (static_cast<int>(k * resample_multiplier) + data.m_sampleIndex + 1 < sound.left.size()) & (k < numSamples); ++k) {
+                        float base = k * resample_multiplier;
+                        int base_i = static_cast<int>(base);
+                        size_t index1 = static_cast<int>(k * resample_multiplier);
+                        size_t index2 = index1 + 1;
+
+                        float mul1 = 1.0f - (base - base_i);
+                        float mul2 = 1.0f - mul1;
+
+                        m_outBuf[2 * k + 0] += left_adj * volume * (sound.left[index1 + data.m_sampleIndex] * mul1 + sound.left[index2 + data.m_sampleIndex] * mul2);
+                        m_outBuf[2 * k + 1] += right_adj * volume * (sound.right[index1 + data.m_sampleIndex] * mul1 + sound.right[index2 + data.m_sampleIndex] * mul2);
+                    }
+                    data.m_sampleIndex += static_cast<uint32_t>(numSamples * resample_multiplier);
                 }
 
-                float numSamples_f = float(numSamples);
-                for (size_t k = 0; k < numSamples; ++k) {
-                    float p = float(k) / numSamples_f;
-                    outBuf[2 * k + 0] += volume * chunk_left[k] * p + data.prev_left[k + numSamples] * volume * (1.0f - p);
-                    outBuf[2 * k + 1] += volume * chunk_right[k] * p + data.prev_right[k + numSamples] * volume * (1.0f - p);
+                // sound playback complete.
+                if (data.m_sampleIndex >= sound.left.size()) {
+                    data.m_sampleIndex = 0;
+                    data.m_bufferIndex = 0;
+                    data.m_loudness = 0;
+
+                    data.m_effects.pitch_shift = 0;
+                    data.m_effects.tempo_shift = 0;
+
+                    ++data.m_soundCounter;
+
+                    for (uint32_t k = 0; k < numSamples; ++k) {
+                        data.prev_left[k + numSamples] = 0.0f;
+                        data.prev_right[k + numSamples] = 0.0f;
+                    }
+
+                    m_channels[i]->store(0);
                 }
-
-                data.prev_left = std::move(chunk_left);
-                data.prev_right = std::move(chunk_right);
-
-                data.m_sampleIndex += static_cast<uint32_t>(numSamples * tempo_mul);
-            }
-            else {
-                for (size_t k = 0; (static_cast<int>(k * resample_multiplier) + data.m_sampleIndex + 1 < sound.left.size()) & (k < numSamples); ++k) {
-                    float base = k * resample_multiplier;
-                    int base_i = static_cast<int>(base);
-                    size_t index1 = static_cast<int>(k * resample_multiplier);
-                    size_t index2 = index1 + 1;
-
-                    float mul1 = 1.0f - (base - base_i);
-                    float mul2 = 1.0f - mul1;
-
-                    outBuf[2 * k + 0] += volume * (sound.left[index1 + data.m_sampleIndex] * mul1 + sound.left[index2 + data.m_sampleIndex] * mul2);
-                    outBuf[2 * k + 1] += volume * (sound.right[index1 + data.m_sampleIndex] * mul1 + sound.right[index2 + data.m_sampleIndex] * mul2);
-                }
-                data.m_sampleIndex += static_cast<uint32_t>(numSamples * resample_multiplier);
-            }
-
-            // sound playback complete.
-            if (data.m_sampleIndex >= sound.left.size()) {
-                data.m_sampleIndex = 0;
-                data.m_bufferIndex = 0;
-                data.m_loudness = 0;
-
-                data.m_effects.pitch_shift = 0;
-                data.m_effects.tempo_shift = 0;
-
-                ++data.m_soundCounter;
-
-                for (uint32_t k = 0; k < numSamples; ++k) {
-                    data.prev_left[k + numSamples] = 0.0f;
-                    data.prev_right[k + numSamples] = 0.0f;
-                }
-
-                m_channels[i]->store(0);
             }
         }
+
+        float max = 0;
+        for (size_t i = 0; i < numSamples * numChannels; ++i) {
+            float v = m_outBuf[i] * m_volumeScaleCurrent;
+            v *= v;
+            max = (v > max) ? v : max;
+        }
+
+        float scaleMultiplier = 1.04f - 0.08f * (max > 0.5f);
+        m_volumeScaleCurrent *= scaleMultiplier;
+        m_volumeScaleCurrent = std::min(m_volumeScaleCurrent, 1.0f);
+
+        for (size_t i = 0; i < numSamples * numChannels; ++i) {
+            float volume_i = m_outBuf[i] * m_volumeScaleCurrent;
+            float mixed_float_value = std::tan(volume_i * m_globalVolume);
+
+            using output_format_t = std::remove_pointer_t<decltype(deviceBuffer)>;
+            if constexpr (std::is_same_v<output_format_t, int16_t>) {
+                *deviceBuffer++ = static_cast<int16_t>(std::numeric_limits<int16_t>::max() * mixed_float_value);
+            }
+            if constexpr (std::is_same_v<output_format_t, int32_t>) {
+                *deviceBuffer++ = static_cast<int32_t>(std::numeric_limits<int32_t>::max() * mixed_float_value);
+            }
+            if constexpr (std::is_same_v<output_format_t, float>) {
+                *deviceBuffer++ = mixed_float_value;
+            }
+        }
+    };
+
+    std::memset(m_outBuf.get(), 0, sizeof(float) * m_outBufLength);
+    if (m_outputFormat == audio_system::format::int16) {
+        std::memset(deviceBuffer, 0, sizeof(int16_t) * numSamples * numChannels);
+        do_render(static_cast<int16_t*>(deviceBuffer));
     }
-
-    float max = 0;
-    for (size_t i = 0; i < numSamples * 2; ++i) {
-        float v = outBuf[i] * m_volumeScaleCurrent;
-        v *= v;
-        max = (v > max) ? v : max;
+    else if(m_outputFormat == audio_system::format::int32)
+    {
+        std::memset(deviceBuffer, 0, sizeof(int32_t) * numSamples * numChannels);
+        do_render(static_cast<int32_t*>(deviceBuffer));
     }
-
-    float scaleMultiplier = 1.04f - 0.08f * (max > 0.1f);
-    m_volumeScaleCurrent *= scaleMultiplier;
-    m_volumeScaleCurrent = std::min(m_volumeScaleCurrent, 1.0f);
-
-    for (size_t i = 0; i < numSamples * 2; ++i) {
-        float volume_i = outBuf[i] * m_volumeScaleCurrent;
-        outBuf[i] = std::tan(volume_i * m_globalVolume); // lol mix hehe. quality.
+    else if(m_outputFormat == audio_system::format::float32)
+    {
+        std::memset(deviceBuffer, 0, sizeof(float) * numSamples * numChannels);
+        do_render(static_cast<float*>(deviceBuffer));
     }
 }
 

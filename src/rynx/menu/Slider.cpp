@@ -12,7 +12,7 @@
 #include <rynx/menu/Frame.hpp>
 
 
-rynx::menu::SlideBarVertical::SlideBarVertical(GPUTextures& textures, std::string baseTexture, std::string knobTexture, Component* parent, vec3<float> scale, float minValue, float maxValue, float initialValue)
+rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string baseTexture, std::string knobTexture, Component* parent, vec3<float> scale, float minValue, float maxValue, float initialValue)
 	: Component(parent, scale) {
 	rynx_assert(minValue < maxValue, "wut");
 

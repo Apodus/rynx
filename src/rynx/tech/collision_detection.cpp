@@ -32,35 +32,85 @@ void rynx::collision_detection::clear() {
 	}
 }
 
-void rynx::collision_detection::update() {
+void rynx::collision_detection::update_sphere_trees() {
 	for (auto& tree : m_sphere_trees) {
 		tree->update();
 	}
 }
 
-void rynx::collision_detection::update_parallel(rynx::scheduler::task& task_context) {
+void rynx::collision_detection::update_sphere_trees_parallel(rynx::scheduler::task& task_context) {
 	for (auto& tree : m_sphere_trees) {
 		tree->update_parallel(task_context);
 	}
 }
 
+struct tracked_by_collisions {};
 void rynx::collision_detection::track_entities(rynx::scheduler::task& task_context) {
-	struct tracked_by_collisions {};
-	task_context.extend_task_independent([](rynx::scheduler::task& task_context, rynx::ecs::edit_view<rynx::components::collisions, tracked_by_collisions, rynx::components::position, rynx::components::radius> ecs) {
-		auto collisions = ecs.query()
-			.in<rynx::components::physical_body>()
-			.notIn<tracked_by_collisions>()
-			.gather<rynx::ecs::id, rynx::components::collisions, rynx::components::position, rynx::components::radius>();
-		
-		for (auto&& col : collisions) {
-			ecs.attachToEntity(std::get<0>(col), tracked_by_collisions{});
-		}
-		
-		task_context.extend_task_independent([collisions = std::move(collisions)](rynx::collision_detection& detection) {
-			for (auto&& col : collisions) {
-				detection.m_sphere_trees[std::get<1>(col).category]->insert_entity(std::get<0>(col).value, std::get<2>(col).value, std::get<3>(col).r);
+	task_context.extend_task_independent([](
+		rynx::scheduler::task& task_context,
+		rynx::collision_detection& detection,
+		rynx::ecs::edit_view<
+			const tracked_by_collisions,
+			const rynx::components::boundary,
+			const rynx::components::collisions,
+			const rynx::components::position,
+			const rynx::components::radius> ecs) {
+		{
+			auto spheres = ecs.query()
+				.in<rynx::components::physical_body, rynx::components::motion>()
+				.notIn<rynx::components::projectile, rynx::components::boundary, tracked_by_collisions>()
+				.for_each([&detection](
+					rynx::ecs::id id,
+					rynx::components::collisions col,
+					rynx::components::position pos,
+					rynx::components::radius r)
+			{
+				rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+				uint64_t part_id = id.value | mask_kind_sphere;
+				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
+			});
+
+			auto boundaries = ecs.query()
+				.in<rynx::components::physical_body, rynx::components::radius, rynx::components::position>()
+				.notIn<rynx::components::projectile, tracked_by_collisions>()
+				.for_each([&detection](
+					rynx::ecs::id id,
+					const rynx::components::boundary& boundary,
+					rynx::components::collisions col)
+			{
+				for (uint64_t i = 0; i < boundary.segments_world.size(); ++i) {
+					const vec3f part_pos = (boundary.segments_world[i].p1 + boundary.segments_world[i].p2) * 0.5f;
+					const float part_radius = (boundary.segments_world[i].p1 - boundary.segments_world[i].p2).length() * 0.5f;
+					const uint64_t part_id = id.value | (i << bits_id) | mask_kind_boundary;
+					detection.m_sphere_trees[col.category]->insert_entity(part_id, part_pos, part_radius);
+					logmsg("tracking %llu", part_id);
+				}
+			});
+
+			auto projectiles = ecs.query()
+				.in<rynx::components::physical_body, rynx::components::projectile>()
+				.notIn<tracked_by_collisions>()
+				.for_each([&detection](
+					rynx::ecs::id id,
+					rynx::components::collisions col,
+					rynx::components::position pos,
+					rynx::components::radius r)
+			{
+				rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+				uint64_t part_id = id.value | mask_kind_projectile;
+				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
+			});
+
+
+			auto added_entities = ecs.query()
+				.in<rynx::components::physical_body, rynx::components::collisions, rynx::components::position, rynx::components::radius>()
+				.notIn<tracked_by_collisions>()
+				.ids();
+
+			for (auto id : added_entities) {
+				ecs.attachToEntity(id.value, tracked_by_collisions{});
 			}
-		});
+		}
 	});
 }
 
@@ -74,22 +124,41 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 			const rynx::components::motion,
 			const rynx::components::radius,
 			const rynx::components::physical_body,
-			const rynx::components::projectile> ecs)
+			const rynx::components::projectile,
+			const rynx::components::boundary> ecs)
 	{
-		auto non_projectiles = ecs.query()
-			.notIn<rynx::components::projectile>()
-			.in<rynx::components::physical_body, rynx::components::motion>()
+		auto spheres = ecs.query()
+			.in<rynx::components::physical_body, rynx::components::motion, tracked_by_collisions>()
+			.notIn<rynx::components::projectile, rynx::components::boundary>()
 			.for_each_parallel(task_context, [&detection](
 				rynx::ecs::id id,
 				rynx::components::collisions col,
 				rynx::components::position pos,
 				rynx::components::radius r)
 		{
-			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value, r.r);
+			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+			uint64_t part_id = id.value | mask_kind_sphere;
+			detection.m_sphere_trees[col.category]->update_entity(part_id, pos.value, r.r);
+		});
+
+		auto boundaries = ecs.query()
+			.notIn<rynx::components::projectile>()
+			.in<rynx::components::physical_body, rynx::components::motion, rynx::components::radius, rynx::components::position, tracked_by_collisions>()
+			.for_each_parallel(task_context, [&detection](
+				rynx::ecs::id id,
+				const rynx::components::boundary& boundary,
+				rynx::components::collisions col)
+		{
+			for (uint64_t i = 0; i < boundary.segments_world.size(); ++i) {
+				const vec3f part_pos = (boundary.segments_world[i].p1 + boundary.segments_world[i].p2) * 0.5f;
+				const float part_radius = (boundary.segments_world[i].p1 - boundary.segments_world[i].p2).length() * 0.5f;
+				const uint64_t part_id = id.value | (i << bits_id) | mask_kind_boundary;
+				detection.m_sphere_trees[col.category]->update_entity(part_id, part_pos, part_radius);
+			}
 		});
 
 		auto projectiles = ecs.query()
-			.in<rynx::components::physical_body, rynx::components::projectile>()
+			.in<rynx::components::physical_body, rynx::components::projectile, tracked_by_collisions>()
 			.for_each_parallel(task_context, [&detection, dt](
 				rynx::ecs::id id,
 				rynx::components::collisions col,
@@ -97,15 +166,36 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 				rynx::components::motion motion,
 				rynx::components::radius r)
 		{
-			detection.m_sphere_trees[col.category]->update_entity(id.value, pos.value - motion.velocity * dt, r.r);
+			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+			uint64_t part_id = id.value | mask_kind_projectile;
+			detection.m_sphere_trees[col.category]->update_entity(part_id, pos.value - motion.velocity * dt, r.r);
 		});
 	});
 
 	task_context.completion_blocked_by(*update_task);
 }
 
-void rynx::collision_detection::erase(uint64_t entityId, category_id from) {
-	m_sphere_trees[from.value]->eraseEntity(entityId);
+void rynx::collision_detection::erase(rynx::ecs::view<const rynx::components::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from) {
+	auto& sphere_tree = m_sphere_trees[from.value];
+	
+	auto entity = ecs[entityId];
+	if (const auto* boundary = entity.try_get<const rynx::components::boundary>()) {
+		for (uint32_t i = 0; i < boundary->segments_world.size(); ++i) {
+			uint64_t id = mask_kind_boundary | entityId | (uint64_t(i) << bits_id);
+			rynx_assert(sphere_tree->contains(id), "");
+			sphere_tree->eraseEntity(id);
+		}
+	}
+	else if (entity.has<rynx::components::projectile>()) {
+		uint64_t id = mask_kind_projectile | entityId;
+		rynx_assert(sphere_tree->contains(id), "");
+		sphere_tree->eraseEntity(id);
+	}
+	else {
+		uint64_t id = mask_kind_sphere | entityId;
+		rynx_assert(sphere_tree->contains(id), "");
+		sphere_tree->eraseEntity(id);
+	}
 }
 
-rynx::sphere_tree* rynx::collision_detection::get(category_id category) { return m_sphere_trees[category.value].get(); }
+const rynx::sphere_tree* rynx::collision_detection::get(category_id category) const { return m_sphere_trees[category.value].get(); }
