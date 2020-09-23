@@ -34,13 +34,11 @@
 #include <rynx/rulesets/frustum_culling.hpp>
 #include <rynx/rulesets/motion.hpp>
 #include <rynx/rulesets/physics/springs.hpp>
+#include <rynx/rulesets/lifetime.hpp>
 
 #include <game/view.hpp>
 #include <game/gametypes.hpp>
 #include <game/logic.hpp>
-
-#include <game/logic/shooting.hpp>
-#include <game/logic/keyboard_movement.hpp>
 
 #include <game/logic/enemies/minilisk.hpp>
 #include <game/logic/enemies/minilisk_spawner.hpp>
@@ -77,15 +75,6 @@ int main(int argc, char** argv) {
 		meshes->create("square_empty", rynx::Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", rynx::Shape::makeBox(1.0f), "Smoke");
 		meshes->create("square_rope", rynx::Shape::makeBox(1.0f), "Rope");
-		
-		auto* tube_mesh = meshes->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
-		tube_mesh->normals.clear();
-		tube_mesh->putNormal(0, +1, 0);
-		tube_mesh->putNormal(0, -1, 0);
-		tube_mesh->putNormal(0, -1, 0);
-		tube_mesh->putNormal(0, +1, 0);
-		tube_mesh->bind();
-		tube_mesh->rebuildNormalBuffer();
 	}
 
 	rynx::scheduler::task_scheduler scheduler;
@@ -123,47 +112,21 @@ int main(int argc, char** argv) {
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = std::make_unique<rynx::ruleset::physics_2d>();
-		auto ruleset_particle_update = std::make_unique<rynx::ruleset::particle_system>();
+		auto ruleset_collisionDetection = base_simulation.create_rule_set<rynx::ruleset::physics_2d>();
+		auto ruleset_particle_update = base_simulation.create_rule_set<rynx::ruleset::particle_system>();
+		auto ruleset_frustum_culling = base_simulation.create_rule_set<rynx::ruleset::frustum_culling>(camera);
+		auto ruleset_motion_updates = base_simulation.create_rule_set<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
+		auto ruleset_physical_springs = base_simulation.create_rule_set<rynx::ruleset::physics::springs>();
+		auto ruleset_lifetime_updates = base_simulation.create_rule_set<rynx::ruleset::lifetime_updates>();
 		
-		auto ruleset_shooting = std::make_unique<game::logic::shooting_logic>(gameInput, collisionCategoryProjectiles);
-		auto ruleset_keyboardMovement = std::make_unique<game::logic::keyboard_movement_logic>(gameInput);
-		auto ruleset_frustum_culling = std::make_unique<rynx::ruleset::frustum_culling>(camera);
+		auto ruleset_minilisk = base_simulation.create_rule_set<game::logic::minilisk_logic>();
+		auto ruleset_minilisk_gen = base_simulation.create_rule_set<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
+		spawner = ruleset_minilisk_gen.operator->();
 
-		auto ruleset_bullet_hits = std::make_unique<game::logic::bullet_hitting_logic>(collisionDetection, collisionCategoryDynamic, collisionCategoryStatic, collisionCategoryProjectiles);
-		auto ruleset_minilisk = std::make_unique<game::logic::minilisk_logic>();
-		auto ruleset_minilisk_gen = std::make_unique<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
-		
-		auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
-		// auto ruleset_motion_updates = std::make_unique<rynx::ruleset::motion_updates>(vec3<float>(0, 0, 0));
-		auto ruleset_physical_springs = std::make_unique<rynx::ruleset::physics::springs>();
-
-		spawner = ruleset_minilisk_gen.get();
-
-		ruleset_bullet_hits->depends_on(*ruleset_collisionDetection);
-		ruleset_physical_springs->depends_on(*ruleset_motion_updates);
-
-		ruleset_collisionDetection->depends_on(*ruleset_physical_springs); // ropes really only must be done before collision resolving. not before collision detection.
-		ruleset_collisionDetection->depends_on(*ruleset_motion_updates);
-		ruleset_frustum_culling->depends_on(*ruleset_motion_updates);
-
-
-		base_simulation.add_rule_set(std::move(ruleset_motion_updates));
-		base_simulation.add_rule_set(std::move(ruleset_physical_springs));
-
-		base_simulation.add_rule_set(std::move(ruleset_collisionDetection));
-		base_simulation.add_rule_set(std::move(ruleset_particle_update));
-		base_simulation.add_rule_set(std::move(ruleset_frustum_culling));
-
-		base_simulation.add_rule_set(std::move(ruleset_shooting));
-		base_simulation.add_rule_set(std::move(ruleset_keyboardMovement));
-
-		base_simulation.add_rule_set(std::move(ruleset_bullet_hits));
-		base_simulation.add_rule_set(std::move(ruleset_minilisk));
-		base_simulation.add_rule_set(std::move(ruleset_minilisk_gen));
+		ruleset_physical_springs->depends_on(ruleset_motion_updates);
+		ruleset_collisionDetection->depends_on(ruleset_motion_updates);
+		ruleset_frustum_culling->depends_on(ruleset_motion_updates);
 	}
-
-	rynx::smooth<rynx::vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
 	
 	// setup simulation initial state
 	{
@@ -233,7 +196,7 @@ int main(int argc, char** argv) {
 				rynx::matrix4(),
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
-				// rynx::components::motion({ 0, 0, 0 }, angular_velocity),
+				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
 				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
 				rynx::components::ignore_gravity(),
 				rynx::components::dampening{0.50f, 1.0f}
@@ -249,7 +212,7 @@ int main(int argc, char** argv) {
 				rynx::components::ignore_gravity(),
 				rynx::components::radius(2.0f),
 				rynx::components::collisions{ collisionCategoryDynamic.value },
-				rynx::components::color(),
+				rynx::components::color({1.0f, 1.0f, 1.0f, 1.0f}),
 				rynx::components::mesh{ meshes->get("ball") },
 				rynx::components::dampening({ 0.50f, 0.30f }),
 				rynx::matrix4()
@@ -442,6 +405,12 @@ int main(int argc, char** argv) {
 
 	auto camera_orientation_key = gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(1), "camera_orientation");
 
+	camera->setUpVector({ 0, 1, 0 });
+	camera->setDirection({ 0, 0, -1 });
+	camera->setPosition({ 0, 0, +130 });
+
+	rynx::smooth<rynx::vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
+
 	rynx::timer timer;
 	rynx::numeric_property<float> logic_time;
 	rynx::numeric_property<float> render_time;
@@ -479,14 +448,16 @@ int main(int argc, char** argv) {
 
 			rynx::vec3f direction = rotator_y * rotator_x * rynx::vec3f(0, 0, -1);
 
+			camera->tick(3.0f * dt);
 			camera->setPosition(cameraPosition);
 			camera->setDirection(direction);
+			camera->setUpVector({ 0.0f, 1.0f, 0.0f });
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
 			camera->rebuild_view_matrix();
 		}
 
 		if (gameInput.isKeyPressed(cameraUp)) {
-			config = audio.play_sound(soundIndex, rynx::vec3f(), rynx::vec3f());
+			// config = audio.play_sound(soundIndex, rynx::vec3f(), rynx::vec3f());
 		}
 
 		{
@@ -531,6 +502,8 @@ int main(int argc, char** argv) {
 
 			{
 				rynx_profile("Main", "prepare");
+				render.light_global_ambient({ 1.0f, 1.0f, 1.0f, 1.0f });
+				render.light_global_directed({ 1.0f, 1.0f, 1.0f, 1.0f }, {1.0f, 0.0f, 0.0f});
 				render.prepare(base_simulation.m_context);
 				scheduler.start_frame();
 
@@ -547,6 +520,9 @@ int main(int argc, char** argv) {
 					root.scale_local({ 2 , 2 / application.aspectRatio(), 0 });
 					menuCamera->setProjection(0.01f, 50.0f, application.aspectRatio());
 					menuCamera->setPosition({ 0, 0, 1 });
+					menuCamera->setDirection({ 0, 0, -1 });
+					menuCamera->setUpVector({ 0, 1, 0 });
+					menuCamera->tick(1.0f);
 					menuCamera->rebuild_view_matrix();
 
 					application.meshRenderer().setCamera(menuCamera);
@@ -578,7 +554,6 @@ int main(int argc, char** argv) {
 
 			{
 				rynx_profile("Main", "draw");
-
 				render.execute();
 
 				// TODO: debug visualisations should be drawn on their own fbo.
