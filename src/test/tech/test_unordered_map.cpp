@@ -73,7 +73,7 @@ TEST_CASE("dynamic_bitset", "verify insert/remove")
 	}
 }
 
-
+/*
 TEST_CASE("unordered_map benchmark", "std vs rynx") {
 
 	auto bench_insert = [](auto& map) {
@@ -154,6 +154,5 @@ TEST_CASE("unordered_map benchmark", "std vs rynx") {
 			return sum;
 		};
 	}
-
-
 }
+*/

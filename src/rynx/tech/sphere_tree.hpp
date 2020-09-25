@@ -707,6 +707,7 @@ namespace rynx {
 			auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 			auto leaf_node_count = leaf_nodes.size();
 			task.parallel().for_each(0, leaf_node_count, 8).for_each([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
+				auto& local_accumulator = accumulator->template get_local_storage<T>();
 				const node* a = leaf_nodes[node_index];
 				for (size_t i = 0; i < a->m_members.size(); ++i) {
 					const auto& m1 = a->m_members[i];
@@ -715,7 +716,7 @@ namespace rynx {
 						float distSqr = (m1.pos - m2.pos).length_squared();
 						float radiusSqr = sqr(m1.radius + m2.radius);
 						if (distSqr < radiusSqr) {
-							f(accumulator->template get_local_storage<T>(), m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
+							f(local_accumulator, m1.entityId, m2.entityId, m1.pos, m1.radius, m2.pos, m2.radius, (m1.pos - m2.pos).normalize(), math::sqrt_approx(radiusSqr) - math::sqrt_approx(distSqr));
 						}
 					}
 				}

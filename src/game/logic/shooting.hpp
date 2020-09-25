@@ -6,6 +6,7 @@
 
 namespace game {
 	namespace components {
+		/*
 		struct weapon {
 			float range = 10;
 			float projectileSpeed = 20;
@@ -116,5 +117,6 @@ namespace game {
 				});
 			}
 		};
+		*/
 	}
 }

@@ -82,7 +82,7 @@ void rynx::application::renderer::on_resolution_change(size_t new_size_x, size_t
 void rynx::application::renderer::execute() {
 	{
 		rynx_profile("Main", "draw");
-		m_application.meshRenderer().setDepthTest(true);
+		m_application.meshRenderer().setDepthTest(false);
 
 		m_application.meshRenderer().setCamera(camera);
 		m_application.textRenderer().setCamera(camera);

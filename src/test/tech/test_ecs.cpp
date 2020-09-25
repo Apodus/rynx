@@ -13,8 +13,6 @@ namespace rynx {
 TEST_CASE("rynx ecs", "sort")
 {
 	rynx::ecs r;
-	r.type_index_using<int>();
-
 	r.create(3);
 	r.create(7);
 	r.create(-100);
@@ -126,6 +124,37 @@ TEST_CASE("ecs multiple tables of ints")
 			});
 		REQUIRE(count_of_ints == 100);
 	}
+}
+
+TEST_CASE("ecs attach & erase")
+{
+	int count = 0;
+	rynx::ecs db;
+	auto id = db.create(1);
+	db[id].add(1.0f);
+	db.query().for_each([&count](int a, float b) {
+		++count;
+		REQUIRE(a == 1);
+		REQUIRE(b == 1.0f);
+	});
+
+	db.query().for_each([&count](int a) {
+		++count;
+		REQUIRE(a == 1);
+	});
+
+	db.query().for_each([&count](float b) {
+		++count;
+		REQUIRE(b == 1.0f);
+	});
+
+	db[id].remove<int>();
+	db.query().for_each([&count](float b) {
+		++count;
+		REQUIRE(b == 1.0f);
+	});
+
+	REQUIRE(count == 4);
 }
 
 TEST_CASE("ecs for_each iterates correct amount of entities")

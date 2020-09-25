@@ -140,15 +140,23 @@ namespace rynx {
 				update_world_positions(pos, angle);
 			}
 
+			boundary(boundary&& other) = default;
+			boundary& operator=(boundary&& other) = default;
+
+			boundary(const boundary& other) = delete;
+			boundary& operator=(const boundary& other) = delete;
+
 			void update_world_positions(vec3f pos, float angle) {
 				float sin_v = math::sin(angle);
 				float cos_v = math::cos(angle);
 				const size_t num_segments = segments_local.size();
+				rynx_assert(segments_local.size() == segments_world.size(), "boundary not initialized");
 				for (size_t i = 0; i < num_segments; ++i) {
 					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
 					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
 					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
 				}
+				rynx_assert(segments_local.size() == num_segments, "boundary edited during update");
 			}
 
 			boundary_t segments_local;

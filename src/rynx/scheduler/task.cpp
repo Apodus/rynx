@@ -53,10 +53,16 @@ void rynx::scheduler::task::run() {
 	rynx_assert(m_barriers->can_start(), "task is being run while still blocked by barriers!");
 
 	{
-		// logmsg("start %s", m_name.c_str());
+		if (m_enable_logging && !is_for_each()) {
+			logmsg("start %s", m_name.c_str());
+		}
+		
 		rynx_profile("Scheduler", "work");
 		m_op(this);
-		// logmsg("end %s", m_name.c_str());
+		
+		if (m_enable_logging && !is_for_each()) {
+			logmsg("end %s", m_name.c_str());
+		}
 	}
 
 	{
@@ -113,6 +119,7 @@ rynx::scheduler::task::task(const task& other) {
 	m_for_each = other.m_for_each;
 
 	m_context = other.m_context;
+	m_enable_logging = other.m_enable_logging;
 }
 
 void rynx::scheduler::task::notify_work_available() const {

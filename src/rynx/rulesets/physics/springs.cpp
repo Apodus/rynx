@@ -84,7 +84,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 			float stress_decay = std::pow(0.3f, dt);
 
 			for (int i = 0; i < 10; ++i) {
-				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs, i](rynx::ecs::id id, components::phys::joint& rope) mutable {
+				auto generate_springs_work = ecs.query().for_each_parallel(task, [dt, stress_decay, ecs, i](components::phys::joint& rope) mutable {
 					bool connector_spring = rope.connector == components::phys::joint::connector_type::Spring;
 					bool connector_rubber_band = rope.connector == components::phys::joint::connector_type::RubberBand;
 					bool connector_rod = rope.connector == components::phys::joint::connector_type::Rod;
@@ -113,7 +113,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 						//       Because rotational velocity does not provide linear velocity to point t along tangent.
 						//       The linear velocity to point t arcs along the orbit of the object. This should be taken into account.
 
-						auto compute_step = [dt, force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
+						auto compute_step = [force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
 							constexpr float multiplier_per_round = 0.1f;
 							for (int i = 0; i < 10; ++i) {
 								auto vel_a = joint_data.mot_a->velocity_at_point_predict(joint_data.relative_pos_a, dt);

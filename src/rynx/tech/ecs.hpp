@@ -227,9 +227,9 @@ namespace rynx {
 			}
 
 			virtual void moveFromIndexTo(index_t index, itable* dst) override {
-				static_cast<component_table*>(dst)->emplace_back(std::move(m_data[index]));
-				if (index + 1 != static_cast<index_t>(m_data.size()))
-					m_data[index] = std::move(m_data.back());
+				T moved(std::move(m_data[index]));
+				m_data[index] = std::move(m_data.back());
+				static_cast<component_table*>(dst)->emplace_back(std::move(moved));
 				m_data.pop_back();
 			}
 
@@ -257,13 +257,6 @@ namespace rynx {
 			std::vector<std::remove_reference_t<T>> m_data;
 		};
 
-		struct migrate_move {
-			migrate_move(entity_id_t id_, index_t newIndex_, entity_category* new_category_) : id(id_), newIndex(newIndex_), new_category(new_category_) {}
-			entity_id_t id;
-			index_t newIndex;
-			entity_category* new_category;
-		};
-
 		class entity_category {
 		public:
 			entity_category(dynamic_bitset types, type_index* typeIndex) : m_types(std::move(types)), m_typeIndex(typeIndex) {}
@@ -283,10 +276,8 @@ namespace rynx {
 				m_ids.pop_back();
 				
 				// update ecs-wide id<->category mapping
+				idmap.find(m_ids[index].value)->second = { this, index };
 				idmap.erase(erasedEntityId.value);
-				if (index != m_ids.size()) {
-					idmap.find(m_ids[index].value)->second = { this, index };
-				}
 			}
 
 			// TODO: Rename better. This is like bubble-sort single step.
@@ -395,7 +386,7 @@ namespace rynx {
 			}
 
 			template<typename Component> void eraseComponentFromIndex([[maybe_unused]] const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, [[maybe_unused]] index_t index) {
-				if constexpr (!std::is_empty_v<std::remove_cvref_t<Component>>) {
+				if constexpr (!std::is_empty_v<std::remove_cvref_t<Component>> && !std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<Component>>) {
 					auto& t = table<Component>(typeAliases);
 					t[index] = std::move(t.back());
 					t.pop_back();
@@ -444,7 +435,7 @@ namespace rynx {
 
 			const dynamic_bitset& types() const { return m_types; }
 
-			void migrateEntity(
+			void migrateEntityFrom(
 				const dynamic_bitset& types,
 				entity_category* source,
 				index_t source_index,
@@ -461,14 +452,15 @@ namespace rynx {
 				}
 
 				m_ids.emplace_back(source->m_ids[source_index]);
+				
+				rynx_assert(source->m_ids.size() > source_index, "out of bounds");
 				source->m_ids[source_index] = source->m_ids.back();
-				source->m_ids.pop_back();
-
+				
 				// update mapping
+				idmap.find(source->m_ids[source_index].value)->second = { source, index_t(source_index) };
+				source->m_ids.pop_back();
+				
 				idmap.find(m_ids.back().value)->second = { this, index_t(m_ids.size() - 1) };
-				if (source->m_ids.size() != source_index) {
-					idmap.find(source->m_ids[source_index].value)->second = { source, index_t(source_index) };
-				}
 			}
 
 			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> auto& table(type_id_t typeIndex) {
@@ -477,6 +469,7 @@ namespace rynx {
 				}
 				if (!m_tables[typeIndex]) {
 					if constexpr (std::is_empty_v<U>) {
+						rynx_assert(false, "never create tag tables");
 						m_tables[typeIndex] = std::make_unique<tag_table<U>>();
 					}
 					else {
@@ -485,6 +478,7 @@ namespace rynx {
 				}
 				
 				if constexpr (std::is_empty_v<U>) {
+					rynx_assert(false, "never create tag tables");
 					return *static_cast<tag_table<U>*>(m_tables[typeIndex].get());
 				}
 				else {
@@ -937,22 +931,32 @@ namespace rynx {
 		// TODO: don't use boolean template parameter. use enum class instead.
 		template<typename category_source, bool allowEditing = false>
 		class entity {
-		public:
-			entity(category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {
+		private:
+			void update_category_and_index() {
 				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
 				m_entity_category = categoryAndIndex.first;
 				m_category_index = categoryAndIndex.second;
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 			}
+
+		public:
+			entity(category_source& parent, entity_id_t id) : categorySource(&parent), m_id(id) {
+				update_category_and_index();
+			}
+
+			entity(const entity& other) = default;
 
 			template<typename T> T& get() {
 				categorySource->template componentTypesAllowed<T&>();
-				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				rynx_assert(has<T>(), "requested component type not in entity");
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				return m_entity_category->template table<T>()[m_category_index];
 			}
 
 			template<typename T> T& get(rynx::type_index::virtual_type type) {
 				categorySource->template componentTypesAllowed<T&>();
-				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				rynx_assert(has<T>(), "requested component type not in entity");
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				return m_entity_category->template table<T>(type.type_value)[m_category_index];
 			}
 
@@ -960,6 +964,7 @@ namespace rynx {
 				categorySource->template componentTypesAllowed<T&>();
 				type_id_t typeIndex = categorySource->template typeId<T>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				if (m_entity_category->types().test(typeIndex)) {
 					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
 				}
@@ -970,6 +975,7 @@ namespace rynx {
 				categorySource->template componentTypesAllowed<T&>();
 				type_id_t typeIndex = type.type_value;
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				if (m_entity_category->types().test(typeIndex)) {
 					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
 				}
@@ -979,6 +985,7 @@ namespace rynx {
 			template<typename... Ts> bool has() const noexcept {
 				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
 			}
 
@@ -995,21 +1002,25 @@ namespace rynx {
 			template<typename... Ts> void remove() {
 				static_assert(allowEditing && sizeof...(Ts) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
 				categorySource->editor().template removeFromEntity<Ts...>(m_id);
+				update_category_and_index();
 			}
 
 			template<typename T> void remove(rynx::type_index::virtual_type type) {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Removing components like this is not allowed. Use edit_view to remove components instead.");
 				categorySource->editor().template type_alias<T>(type).template removeFromEntity<T>(m_id);
+				update_category_and_index();
 			}
 
 			template<typename T> void add(T&& t) {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
 				categorySource->editor().template attachToEntity<T>(m_id, std::forward<T>(t));
+				update_category_and_index();
 			}
 
 			template<typename T> void add(T&& t, rynx::type_index::virtual_type type) {
 				static_assert(allowEditing && sizeof(T) >= 0, "You took this entity from an ecs::view. Adding components like this is not allowed. Use edit_view to add components instead.");
 				categorySource->editor().template type_alias<T>(type).template attachToEntity<T>(m_id, std::forward<T>(t));
+				update_category_and_index();
 			}
 
 			entity_id_t id() const { return m_id; }
@@ -1027,6 +1038,7 @@ namespace rynx {
 				auto categoryAndIndex = categorySource->category_and_index_for(m_id);
 				m_entity_category = categoryAndIndex.first;
 				m_category_index = categoryAndIndex.second;
+				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == id, "entity mapping is broken");
 			}
 			template<typename T> const T& get() const {
 				categorySource->template componentTypesAllowed<T>();
@@ -1278,7 +1290,11 @@ namespace rynx {
 		void erase(entity_id_t entityId) {
 			auto it = m_idCategoryMap.find(entityId);
 			if (it != m_idCategoryMap.end()) [[likely]] {
-				it->second.first->erase(it->second.second, m_idCategoryMap);
+				auto* category = it->second.first;
+				index_t entity_index = it->second.second;
+				
+				category->erase(entity_index, m_idCategoryMap);
+				erase_category_if_empty(category);
 			}
 		}
 		
@@ -1309,6 +1325,14 @@ namespace rynx {
 			}
 			else {
 				return m_types.id<T>();
+			}
+		}
+
+		void erase_category_if_empty(entity_category* source_category) {
+			return;
+			if (source_category->ids().empty()) {
+				rynx_assert(m_categories.find(source_category->types())->second.get() == source_category, "???");
+				m_categories.erase(source_category->types());
 			}
 		}
 
@@ -1431,25 +1455,33 @@ namespace rynx {
 			template<typename... Components>
 			edit_t& attachToEntity(entity_id_t id, Components&& ... components) {
 				auto it = m_ecs.m_idCategoryMap.find(id);
+				auto* source_category = it->second.first;
+				index_t source_index = it->second.second;
+
 				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
-				const dynamic_bitset& initialTypes = it->second.first->types();
+				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
+				
+				const dynamic_bitset& initialTypes = source_category->types();
 				dynamic_bitset resultTypes = initialTypes;
 				(compute_type_category(resultTypes, components), ...);
 				
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
-					destinationCategoryIt->second->copyTypesFrom(it->second.first); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
+					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
 
+				rynx_assert(destinationCategoryIt->second->types() != source_category->types(), "attaching component to entity, but entity already has that component!");
+
 				// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
-				destinationCategoryIt->second->migrateEntity(
+				destinationCategoryIt->second->migrateEntityFrom(
 					initialTypes, // types moved
-					it->second.first, // source category
-					it->second.second, // source index
+					source_category, // source category
+					source_index, // source index
 					m_ecs.m_idCategoryMap
 				);
-
+				
+				m_ecs.erase_category_if_empty(source_category);
 				destinationCategoryIt->second->insertComponents(m_typeAliases, std::forward<Components>(components)...);
 				return *this;
 			}
@@ -1457,8 +1489,13 @@ namespace rynx {
 			template<typename... Components>
 			edit_t& removeFromEntity(entity_id_t id) {
 				auto it = m_ecs.m_idCategoryMap.find(id);
+				auto* source_category = it->second.first;
+				index_t source_index = it->second.second;
+
 				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
-				const dynamic_bitset& initialTypes = it->second.first->types();
+				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
+
+				const dynamic_bitset& initialTypes = source_category->types();
 				dynamic_bitset resultTypes = initialTypes;
 
 				(reset_component<Components>(resultTypes, id), ...);
@@ -1466,35 +1503,48 @@ namespace rynx {
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
-					destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
+					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
-				it->second.first->eraseComponentsFromIndex<Components...>(m_typeAliases, it->second.second);
-				destinationCategoryIt->second->migrateEntity(resultTypes, it->second.first, it->second.second, m_ecs.m_idCategoryMap);
+				source_category->eraseComponentsFromIndex<Components...>(m_typeAliases, source_index);
+				destinationCategoryIt->second->migrateEntityFrom(
+					resultTypes,
+					source_category,
+					source_index,
+					m_ecs.m_idCategoryMap
+				);
+				
+				m_ecs.erase_category_if_empty(source_category);
 				return *this;
 			}
 
 			edit_t& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
 				auto it = m_ecs.m_idCategoryMap.find(id);
 				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
-				const dynamic_bitset& initialTypes = it->second.first->types();
+				
+				auto* source_category = it->second.first;
+				index_t source_index = it->second.second;
+
+				const dynamic_bitset& initialTypes = source_category->types();
 				dynamic_bitset resultTypes = initialTypes;
 				resultTypes.reset(t.type_value);
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
-					destinationCategoryIt->second->copyTypesFrom(it->second.first, resultTypes);
+					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
 				// normally we would need to erase the components from source category entity first.
 				// but no need to erase any actual data from actual vectors here, since virtual types do not describe actual data types.
-				destinationCategoryIt->second->migrateEntity(
+				destinationCategoryIt->second->migrateEntityFrom(
 					resultTypes,
-					it->second.first,
-					it->second.second,
+					source_category,
+					source_index,
 					m_ecs.m_idCategoryMap
 				);
+				
+				m_ecs.erase_category_if_empty(source_category);
 				return *this;
 			}
 		};

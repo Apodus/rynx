@@ -84,8 +84,14 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 				[this](rynx::scheduler::task& task_context)
 				{
 					rynx_profile("culling", "update sphere trees");
+					
 					auto bar1 = m_in_frustum.update_parallel(task_context);
 					auto bar2 = m_out_frustum.update_parallel(task_context);
+					
+					/*
+					auto in_frustum_update = task_context.extend_task_execute_parallel("update in frustum", [this](rynx::scheduler::task& context) { m_in_frustum.update_parallel(context); });
+					auto out_frustum_update = task_context.extend_task_execute_parallel("update in frustum", [this](rynx::scheduler::task& context) { m_out_frustum.update_parallel(context); });
+					*/
 
 					auto frustum_migrates = task_context.make_task("find frustum migrates", [this](rynx::scheduler::task& task_context) {
 						const rynx::matrix4& view_matrix = m_pCamera->getView();
@@ -122,15 +128,16 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 						);
 
 						if (!move_to_inside.empty() || !move_to_outside.empty()) {
-							task_context.extend_task_independent("apply frustum migrates", [this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](
-								rynx::ecs::edit_view<components::frustum_culled> ecs) {
+							task_context.extend_task_independent(
+								"apply frustum migrates",
+								[this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](rynx::ecs::edit_view<components::frustum_culled> ecs) {
 								for (auto id : move_to_inside) {
-									ecs[id].remove<components::frustum_culled>();
+									ecs.removeFromEntity<components::frustum_culled>(id);
 									auto id_data = m_out_frustum.eraseEntity(id);
 									m_in_frustum.insert_entity(id, id_data.first, id_data.second);
 								}
 								for (auto id : move_to_outside) {
-									ecs[id].add(components::frustum_culled());
+									ecs.attachToEntity(id, components::frustum_culled());
 									auto id_data = m_in_frustum.eraseEntity(id);
 									m_out_frustum.insert_entity(id, id_data.first, id_data.second);
 								}
@@ -140,6 +147,11 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 					
 					frustum_migrates.depends_on(bar1);
 					frustum_migrates.depends_on(bar2);
+					
+					/*
+					frustum_migrates.depends_on(in_frustum_update);
+					frustum_migrates.depends_on(out_frustum_update);
+					*/
 				}
 			);
 

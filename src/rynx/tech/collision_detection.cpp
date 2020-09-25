@@ -47,7 +47,6 @@ void rynx::collision_detection::update_sphere_trees_parallel(rynx::scheduler::ta
 struct tracked_by_collisions {};
 void rynx::collision_detection::track_entities(rynx::scheduler::task& task_context) {
 	task_context.extend_task_independent([](
-		rynx::scheduler::task& task_context,
 		rynx::collision_detection& detection,
 		rynx::ecs::edit_view<
 			const tracked_by_collisions,
@@ -71,20 +70,16 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 			});
 
 			auto boundaries = ecs.query()
-				.in<rynx::components::physical_body, rynx::components::radius, rynx::components::position>()
+				.in<rynx::components::physical_body, rynx::components::radius, rynx::components::position, rynx::components::boundary>()
 				.notIn<rynx::components::projectile, tracked_by_collisions>()
 				.for_each([&detection](
 					rynx::ecs::id id,
-					const rynx::components::boundary& boundary,
+					rynx::components::position pos,
+					rynx::components::radius r,
 					rynx::components::collisions col)
 			{
-				for (uint64_t i = 0; i < boundary.segments_world.size(); ++i) {
-					const vec3f part_pos = (boundary.segments_world[i].p1 + boundary.segments_world[i].p2) * 0.5f;
-					const float part_radius = (boundary.segments_world[i].p1 - boundary.segments_world[i].p2).length() * 0.5f;
-					const uint64_t part_id = id.value | (i << bits_id) | mask_kind_boundary;
-					detection.m_sphere_trees[col.category]->insert_entity(part_id, part_pos, part_radius);
-					logmsg("tracking %llu", part_id);
-				}
+				const uint64_t part_id = id.value | mask_kind_boundary;
+				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 			});
 
 			auto projectiles = ecs.query()
@@ -143,18 +138,16 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 
 		auto boundaries = ecs.query()
 			.notIn<rynx::components::projectile>()
-			.in<rynx::components::physical_body, rynx::components::motion, rynx::components::radius, rynx::components::position, tracked_by_collisions>()
+			.in<rynx::components::physical_body, rynx::components::motion, rynx::components::radius, rynx::components::position, rynx::components::boundary, tracked_by_collisions>()
 			.for_each_parallel(task_context, [&detection](
 				rynx::ecs::id id,
-				const rynx::components::boundary& boundary,
+				rynx::components::position pos,
+				rynx::components::radius r,
 				rynx::components::collisions col)
 		{
-			for (uint64_t i = 0; i < boundary.segments_world.size(); ++i) {
-				const vec3f part_pos = (boundary.segments_world[i].p1 + boundary.segments_world[i].p2) * 0.5f;
-				const float part_radius = (boundary.segments_world[i].p1 - boundary.segments_world[i].p2).length() * 0.5f;
-				const uint64_t part_id = id.value | (i << bits_id) | mask_kind_boundary;
-				detection.m_sphere_trees[col.category]->update_entity(part_id, part_pos, part_radius);
-			}
+			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+			uint64_t part_id = id.value | mask_kind_boundary;
+			detection.m_sphere_trees[col.category]->update_entity(part_id, pos.value, r.r);
 		});
 
 		auto projectiles = ecs.query()
@@ -180,11 +173,16 @@ void rynx::collision_detection::erase(rynx::ecs::view<const rynx::components::bo
 	
 	auto entity = ecs[entityId];
 	if (const auto* boundary = entity.try_get<const rynx::components::boundary>()) {
+		/*
 		for (uint32_t i = 0; i < boundary->segments_world.size(); ++i) {
 			uint64_t id = mask_kind_boundary | entityId | (uint64_t(i) << bits_id);
 			rynx_assert(sphere_tree->contains(id), "");
 			sphere_tree->eraseEntity(id);
 		}
+		*/
+		uint64_t id = mask_kind_boundary | entityId;
+		rynx_assert(sphere_tree->contains(id), "");
+		sphere_tree->eraseEntity(id);
 	}
 	else if (entity.has<rynx::components::projectile>()) {
 		uint64_t id = mask_kind_projectile | entityId;

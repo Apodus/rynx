@@ -3,7 +3,8 @@
 in vec2 uv_pass;
 in vec4 color_pass;
 uniform sampler2D tex;
-out vec4 frag_color;
+
+layout(location = 0) out vec4 frag_color;
 
 void main()
 {

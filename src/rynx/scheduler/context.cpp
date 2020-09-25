@@ -20,6 +20,10 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 				if (!t.m_for_each->work_available() & t.m_for_each->all_work_completed()) {
 					// TODO: Check if any blocker barrier actually reaches zero OR any resource counter goes to zero.
 					//       only then recheck for tasks.
+					if (t.m_enable_logging) {
+						logmsg("end parfor %s", t.name().c_str());
+					}
+					
 					if (t.barriers().blocks_other_tasks()) {
 						t.barriers().on_complete();
 					}

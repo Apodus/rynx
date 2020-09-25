@@ -77,29 +77,44 @@ namespace {
 		std::vector<collision_event>& collisions_accumulator, 
 		rynx::ecs::entity<ecs_view> polygon,
 		rynx::ecs::entity<ecs_view> ball,
-		const rynx::vec3<float> ball_position,
-		const float ball_radius,
-		uint32_t partIndex
+		const rynx::vec3f ball_position,
+		const rynx::vec3f polygon_position,
+		const float ball_radius
 	) {
 		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
-		const rynx::vec3f polygon_position = polygon.get<const rynx::components::position>().value;
-		const auto& segment = boundaryA.segments_world[partIndex];
-		const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
-		const float distSqr = pointToLineSegment.first;
+		const float radiusSqr = ball_radius * ball_radius;
 		
-		if (distSqr < ball_radius * ball_radius) {
-			auto normal = (pointToLineSegment.second - ball_position).normalize();
-			normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
+		int collisions_detected = 0;
+		rynx::vec3f collision_normal;
+		rynx::vec3f collision_point;
+		float penetration = 0;
 
+		for (size_t i = 0; i < boundaryA.segments_world.size(); ++i) {
+			const auto& segment = boundaryA.segments_world[i];
+			const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
+			const float distSqr = pointToLineSegment.first;
+
+			if (distSqr < radiusSqr) {
+				auto normal = (pointToLineSegment.second - ball_position).normalize();
+				normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
+
+				penetration += ball_radius - rynx::math::sqrt_approx(distSqr);
+				collision_normal += normal;
+				collision_point += pointToLineSegment.second;
+				collisions_detected += 1;
+			}
+		}
+
+		if (collisions_detected > 0) {
 			create_collision_event(
 				collisions_accumulator,
 				polygon,
 				ball,
-				normal,
-				pointToLineSegment.second,
+				(collision_normal / float(collisions_detected)).normalize(),
+				collision_point / float(collisions_detected),
 				polygon_position,
 				ball_position,
-				ball_radius - rynx::math::sqrt_approx(distSqr)
+				penetration / float(collisions_detected)
 			);
 		}
 	}
@@ -108,60 +123,74 @@ namespace {
 		std::vector<collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view> poly1,
 		rynx::ecs::entity<ecs_view> poly2,
-		uint32_t part1,
-		uint32_t part2
+		rynx::vec3f pos_a,
+		rynx::vec3f pos_b,
+		float radius_a,
+		float radius_b
 	) {
-		const auto& posA = poly1.get<const rynx::components::position>();
-		const auto& posB = poly2.get<const rynx::components::position>();
 		const auto& boundaryA = poly1.get<const rynx::components::boundary>();
 		const auto& boundaryB = poly2.get<const rynx::components::boundary>();
 
-		const float radiusB = poly2.get<const rynx::components::radius>().r;
+		// this probably wont work but lets try
+		int collisions_detected = 0;
+		rynx::vec3f collision_normal;
+		rynx::vec3f collision_point;
+		float penetration = 0;
 
-		const auto& segmentA = boundaryA.segments_world[part1];
-		const auto p1 = segmentA.p1;
-		const auto p2 = segmentA.p2;
-		const float distSqr = rynx::math::pointDistanceLineSegmentSquared(p1, p2, posB.value).first;
-		if (distSqr < radiusB * radiusB) {
-			const float dist = rynx::math::sqrt_approx(distSqr);
-			const auto& segmentB = boundaryB.segments_world[part2];
+		for (const auto& segmentA : boundaryA.segments_world) {
 			
-			const auto q1 = segmentB.p1;
-			const auto q2 = segmentB.p2;
-			const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
+			rynx::vec3f segmentPos = (segmentA.p1 + segmentA.p2) * 0.5f;
+			float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
 			
-			if (collisionPoint) {
-				// how to choose normal?
-				const float b1 = rynx::math::pointDistanceLineSegment(p1, p2, q1).first;
-				const float b2 = rynx::math::pointDistanceLineSegment(p1, p2, q2).first;
+			for (const auto& segmentB : boundaryB.segments_world) {
+				const auto& p1 = segmentA.p1;
+				const auto& p2 = segmentA.p2;
 
-				const float a1 = rynx::math::pointDistanceLineSegment(q1, q2, p1).first;
-				const float a2 = rynx::math::pointDistanceLineSegment(q1, q2, p2).first;
+				const auto& q1 = segmentB.p1;
+				const auto& q2 = segmentB.p2;
 
-				rynx::vec3<float> normal;
-				if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
-					normal = segmentB.getNormalXY();
+				const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
+
+				if (collisionPoint) {
+					// how to choose normal?
+					const float b1 = rynx::math::pointDistanceLineSegmentSquared(p1, p2, q1).first;
+					const float b2 = rynx::math::pointDistanceLineSegmentSquared(p1, p2, q2).first;
+
+					const float a1 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p1).first;
+					const float a2 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p2).first;
+
+					rynx::vec3<float> normal;
+					if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
+						normal = segmentB.getNormalXY();
+					}
+					else {
+						normal = segmentA.getNormalXY();
+						normal *= -1.f;
+					}
+
+					float penetration1 = a1 < a2 ? a1 : a2;
+					float penetration2 = b1 < b2 ? b1 : b2;
+					float penetration_single = penetration1 < penetration2 ? rynx::math::sqrt_approx(penetration1) : rynx::math::sqrt_approx(penetration2);
+
+					penetration += penetration_single;
+					collision_normal += normal;
+					collision_point += collisionPoint.point();
+					collisions_detected += 1;
 				}
-				else {
-					normal = segmentA.getNormalXY();
-					normal *= -1.f;
-				}
-						
-				float penetration1 = a1 < a2 ? a1 : a2;
-				float penetration2 = b1 < b2 ? b1 : b2;
-				float penetration = penetration1 < penetration2 ? penetration1 : penetration2;
-		
-				create_collision_event(
-					collisions_accumulator,
-					poly1,
-					poly2,
-					normal,
-					collisionPoint.point(),
-					posA.value,
-					posB.value,
-					penetration
-				);
 			}
+		}
+
+		if (collisions_detected > 0) {
+			create_collision_event(
+				collisions_accumulator,
+				poly1,
+				poly2,
+				(collision_normal / float(collisions_detected)).normalize(),
+				collision_point / float(collisions_detected),
+				pos_a,
+				pos_b,
+				penetration / float(collisions_detected)
+			);
 		}
 	}
 
@@ -284,13 +313,13 @@ namespace {
 			}
 			else {
 				if (hasBoundaryA & hasBoundaryB) {
-					check_polygon_polygon(collisions_accumulator, entA, entB, params.part1, params.part2);
+					check_polygon_polygon(collisions_accumulator, entA, entB, a_pos, b_pos, a_radius, b_radius);
 				}
 				else if (hasBoundaryA) {
-					check_polygon_ball(collisions_accumulator, entA, entB, b_pos, b_radius, params.part1);
+					check_polygon_ball(collisions_accumulator, entA, entB, b_pos, a_pos, b_radius);
 				}
 				else {
-					check_polygon_ball(collisions_accumulator, entB, entA, a_pos, a_radius, params.part2);
+					check_polygon_ball(collisions_accumulator, entB, entA, a_pos, b_pos, a_radius);
 				}
 			}
 		}
@@ -346,14 +375,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		"Update boundary local -> boundary world",
 		[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
 			ecs.query().in<components::motion>().for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
-				float sin_v = math::sin(pos.angle);
-				float cos_v = math::cos(pos.angle);
-				const size_t num_segments = boundary.segments_local.size();
-				for (size_t i = 0; i < num_segments; ++i) {
-					boundary.segments_world[i].p1 = math::rotatedXY(boundary.segments_local[i].p1, sin_v, cos_v) + pos.value;
-					boundary.segments_world[i].p2 = math::rotatedXY(boundary.segments_local[i].p2, sin_v, cos_v) + pos.value;
-					boundary.segments_world[i].normal = math::rotatedXY(boundary.segments_local[i].normal, sin_v, cos_v);
-				}
+				boundary.update_world_positions(pos.value, pos.angle);
 			});
 		}
 	);
@@ -379,7 +401,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			);
 		}
 	);
-
+	
 	findCollisionsTask.depends_on(collisions_find_barrier);
 	findCollisionsTask.depends_on(updateBoundaryWorld);
 
@@ -475,7 +497,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			}
 		}
 
-		auto collisions_resolve_task = task.extend_task_execute_sequential("collision resolve", [ecs, overlaps_vector, extra_infos, dt](rynx::scheduler::task& task) {
+		auto collisions_resolve_task = task.extend_task_execute_parallel("collision resolve", [ecs, overlaps_vector, extra_infos, dt](rynx::scheduler::task& task) {
 			// NOTE TODO: The task is not thread-safe. We are now resolving all collision events in parallel, which means
 			//            that we are resolving multiple collisions for the same entity in parallel, which will yield incorrect results.
 			//            however, in practice this issue doesn't appear to be great. Might be that the iterative nature of approaching
@@ -503,8 +525,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						if (impact_power < 0)
 							return;
 
-						constexpr float bias_start = 2.0f;
-						// const float overlap_value = (collision.penetration * collision.penetration - 2.0f * collision.penetration * bias_start + bias_start * bias_start); // (penetration - bias_start)^2 - this allows collisions to maintain contact so that friction will be continuous
+						constexpr float bias_start = 0.25f;
 						const float overlap_value = collision.penetration - bias_start;
 						const auto proximity_force = collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 60.0f; // This *60 is not the same as dt. Just a random constant.
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");

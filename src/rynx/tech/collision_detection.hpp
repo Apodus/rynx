@@ -132,6 +132,7 @@ namespace rynx {
 						params.normal = normal;
 						params.part1 = (id1 & mask_part) >> bitshift_part;
 						params.part2 = (id2 & mask_part) >> bitshift_part;
+						rynx_assert(params.part1 == 0 && params.part2 == 0, "o ou");
 						params.penetration = penetration;
 						params.pos1 = pos1;
 						params.pos2 = pos2;
@@ -149,6 +150,7 @@ namespace rynx {
 						params.normal = normal;
 						params.part1 = (id1 & mask_part) >> bitshift_part;
 						params.part2 = (id2 & mask_part) >> bitshift_part;
+						rynx_assert(params.part1 == 0 && params.part2 == 0, "o ou");
 						params.penetration = penetration;
 						params.pos1 = pos1;
 						params.pos2 = pos2;
