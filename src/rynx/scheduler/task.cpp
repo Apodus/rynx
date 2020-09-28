@@ -89,16 +89,6 @@ rynx::scheduler::task::task_resources::~task_resources() {
 	}
 }
 
-/*
-rynx::scheduler::task& rynx::scheduler::task::depends_on(task_token& other) {
-	return other.required_for(*this);
-}
-
-rynx::scheduler::task& rynx::scheduler::task::required_for(task_token& other) {
-	return other.depends_on(*this);
-}
-*/
-
 rynx::scheduler::task& rynx::scheduler::task::operator & (task_token& other) {
 	completion_blocked_by(*other);
 	return *this;

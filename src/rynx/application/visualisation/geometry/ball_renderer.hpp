@@ -37,7 +37,7 @@ namespace rynx {
 
 						// collect buffers for drawing
 						ecs.query()
-							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::translucent, rynx::components::frustum_culled>()
+							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::translucent, rynx::components::frustum_culled, rynx::components::invisible>()
 							.for_each_buffer([this](
 								size_t num_entities,
 								const rynx::components::position* positions,
@@ -57,7 +57,7 @@ namespace rynx {
 						);
 
 						ecs.query()
-							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::frustum_culled>()
+							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::frustum_culled, rynx::components::invisible>()
 							.in<rynx::components::translucent>()
 							.for_each_buffer([this](
 								size_t num_entities,
@@ -82,7 +82,7 @@ namespace rynx {
 						{
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
-							ecs.query().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
+							ecs.query().notIn<rynx::components::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 

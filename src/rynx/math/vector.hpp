@@ -40,9 +40,10 @@ namespace rynx {
 		vec3& operator*=(vec3<T> other) { x *= other.x; y *= other.y; z *= other.z; return *this; }
 		vec3& operator/=(vec3<T> other) { x /= other.x; y /= other.y; z /= other.z; return *this; }
 
-		vec3 operator+(const vec3<T> & other) const { return vec3(x + other.x, y + other.y, z + other.z); }
-		vec3 operator-(const vec3<T> & other) const { return vec3(x - other.x, y - other.y, z - other.z); }
-		vec3 operator*(const vec3<T> & other) const { return vec3(x * other.x, y * other.y, z * other.z); }
+		vec3 operator+(const vec3<T>& other) const { return vec3(x + other.x, y + other.y, z + other.z); }
+		vec3 operator-(const vec3<T>& other) const { return vec3(x - other.x, y - other.y, z - other.z); }
+		vec3 operator*(const vec3<T>& other) const { return vec3(x * other.x, y * other.y, z * other.z); }
+		vec3 operator/(const vec3<T>& other) const { return vec3(x / other.x, y / other.y, z / other.z); }
 
 		vec3 operator*(const T & scalar) const { return vec3(x * scalar, y * scalar, z * scalar); }
 		vec3 operator/(const T & scalar) const { return vec3(x / scalar, y / scalar, z / scalar); }

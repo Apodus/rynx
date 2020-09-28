@@ -15,7 +15,7 @@ namespace rynx {
 			static_assert((MaxSize & (MaxSize - 1)) == 0, "must be power of two");
 			
 			class per_thread_queue {
-				static constexpr uint32_t counter_max_value = (1 << 30);
+				static constexpr int32_t counter_max_value = (1 << 30);
 			public:
 				per_thread_queue() {
 					m_data.resize(MaxSize);
@@ -25,7 +25,7 @@ namespace rynx {
 					auto index = m_top_actual.load();
 					rynx_assert( ((index + 1) & (MaxSize - 1)) != (m_bot_actual & (MaxSize - 1)), "que overflow!");
 					m_data[index & (MaxSize - 1)] = std::move(t);
-					++m_top_actual;
+					m_top_actual.fetch_add(1);
 
 					if (m_bot_actual > counter_max_value) [[unlikely]] {
 						m_top_actual -= counter_max_value;
@@ -43,7 +43,7 @@ namespace rynx {
 						++index;
 					}
 
-					m_top_actual += ts.size();
+					m_top_actual.fetch_add(ts.size());
 
 					if (m_bot_actual > counter_max_value) [[unlikely]] {
 						m_top_actual -= counter_max_value;
@@ -62,7 +62,7 @@ namespace rynx {
 						auto index = m_bot_reserving.fetch_add(1);
 						if (index >= m_top_actual) [[unlikely]] {
 							// there was stuff in que but someone else took it already.
-							--m_bot_reserving;
+							m_bot_reserving.fetch_add(-1);
 							return false;
 						}
 					}
@@ -80,9 +80,9 @@ namespace rynx {
 
 			private:
 				std::vector<T> m_data;
-				alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_top_actual = 0;
-				alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_bot_reserving = 0;
-				alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_bot_actual = 0;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int32_t> m_top_actual = 0;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int32_t> m_bot_reserving = 0;
+				alignas(std::hardware_destructive_interference_size) std::atomic<int32_t> m_bot_actual = 0;
 			};
 
 		public:
@@ -100,7 +100,7 @@ namespace rynx {
 			
 			bool deque(T& t) {
 				auto current = rynx::this_thread::id();
-				for (int i = 0; i < MaxThreads; ++i) {
+				for (int i = 1; i <= MaxThreads; ++i) {
 					if (m_subques[(current + i) % MaxThreads].deque(t)) {
 						return true;
 					}

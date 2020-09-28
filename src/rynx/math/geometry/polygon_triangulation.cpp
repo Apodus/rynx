@@ -35,7 +35,7 @@ void rynx::polygon_triangulation::addTriangle(int earNode, int t1, int t2) {
 	unhandled.pop_back();
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 uvLimits) {
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 uvLimits, rynx::vec3<std::pair<float, float>> poly_extents) {
 	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
 
 	float uvHalfWidthX = (uvLimits[2] - uvLimits[0]) * 0.5f;
@@ -47,8 +47,15 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 u
 	// build vertex buffer
 	for (rynx::vec3<float>& v : polygon->vertices) {
 		polyMesh->putVertex(float(v.x), float(v.y), 0.0f);
-		float uvX = uvCenterX + static_cast<float>(v.x) * uvHalfWidthX; // assumes [-1, +1] meshes
-		float uvY = uvCenterY + static_cast<float>(v.y) * uvHalfHeightY; // assumes [-1, +1] meshes
+		
+		float scaled_x = 2.0f * (v.x - poly_extents.x.first) / (poly_extents.x.second - poly_extents.x.first) - 1.0f;
+		float scaled_y = 2.0f * (v.y - poly_extents.y.first) / (poly_extents.y.second - poly_extents.y.first) - 1.0f;
+
+		rynx_assert(scaled_x <= +1.0f && scaled_y <= +1.0f, "");
+		rynx_assert(scaled_x >= -1.0f && scaled_y >= -1.0f, "");
+
+		float uvX = uvCenterX + scaled_x * uvHalfWidthX; // assumes [-1, +1] meshes
+		float uvY = uvCenterY + scaled_y * uvHalfHeightY; // assumes [-1, +1] meshes
 		polyMesh->putUVCoord(uvX, uvY);
 	}
 
@@ -140,8 +147,9 @@ rynx::polygon_triangulation::polygon_triangulation() {
 std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx::polygon& polygon_, floats4 uvLimits) {
 	rynx::polygon copy = polygon_;
 	copy.normalize();
+	rynx::vec3<std::pair<float, float>> poly_extents = copy.extents();
 	makeTriangles(copy);
-	return buildMeshData(uvLimits);
+	return buildMeshData(uvLimits, poly_extents);
 }
 
 std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_, rynx::floats4 tex_coords, float line_width) {

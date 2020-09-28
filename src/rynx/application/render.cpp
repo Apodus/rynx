@@ -93,7 +93,6 @@ void rynx::application::renderer::execute() {
 
 		rynx::graphics::gl::enable_blend_for(0);
 		rynx::graphics::gl::blend_func_default_for(0);
-
 		rynx::graphics::gl::disable_blend_for(1);
 		rynx::graphics::gl::disable_blend_for(2);
 
@@ -120,6 +119,10 @@ void rynx::application::renderer::execute() {
 void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 	geometry_pass->prepare(ctx);
 	lighting_pass->prepare(ctx);
+}
+
+void rynx::application::renderer::geometry_step_insert_front(std::unique_ptr<igraphics_step> step) {
+	geometry_pass->add_graphics_step(std::move(step), true);
 }
 
 void rynx::application::renderer::light_global_ambient(rynx::floats4 color) {

@@ -22,6 +22,8 @@ namespace rynx {
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
+			void geometry_step_insert_front(std::unique_ptr<igraphics_step>);
+
 			void light_global_ambient(rynx::floats4 color);
 			void light_global_directed(rynx::floats4 color, rynx::vec3f direction);
 

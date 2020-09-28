@@ -177,6 +177,7 @@ namespace rynx {
 				float length;
 				float strength;
 				float softness = 1.0f;
+				float response_time = 0.016f;
 
 				float cumulative_stress = 0;
 

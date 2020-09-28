@@ -28,7 +28,7 @@ namespace rynx {
 			friend class scheduler::task;
 
 			// TODO: fix the number of threads here later if necessary.
-			static constexpr int numThreads = 2;
+			static constexpr int numThreads = 4;
 
 		private:
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
@@ -77,11 +77,7 @@ namespace rynx {
 				wake_up_sleeping_workers();
 			}
 
-			void dump() {
-				for (auto& ctx : m_contexts) {
-					ctx.second->dump();
-				}
-			}
+			void dump();
 		};
 	}
 }

@@ -66,3 +66,15 @@ void rynx::scheduler::task_scheduler::checkComplete() {
 		}
 	}
 }
+
+
+void rynx::scheduler::task_scheduler::dump() {
+	rynx::this_thread::rynx_thread_raii poser_thread;
+	for (auto& ctx : m_contexts) {
+		ctx.second->dump();
+	}
+
+	for (auto& worker : m_threads) {
+		std::cerr << "worker: " << worker->getTask().name() << std::endl;
+	}
+}

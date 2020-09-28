@@ -20,8 +20,13 @@ namespace rynx {
 
 		class graphics_step : public igraphics_step {
 		public:
-			graphics_step& add_graphics_step(std::unique_ptr<igraphics_step> graphics_step) {
-				m_graphics_steps.emplace_back(std::move(graphics_step));
+			graphics_step& add_graphics_step(std::unique_ptr<igraphics_step> graphics_step, bool front = false) {
+				if (front) {
+					m_graphics_steps.insert(m_graphics_steps.begin(), std::move(graphics_step));
+				}
+				else {
+					m_graphics_steps.emplace_back(std::move(graphics_step));
+				}
 				return *this;
 			}
 

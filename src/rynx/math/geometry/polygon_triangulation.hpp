@@ -22,7 +22,7 @@ namespace rynx {
 		rynx::vec3<float>& getVertexUnhandled(int i);
 		void addTriangle(int earNode, int t1, int t2);
 
-		std::unique_ptr<mesh> buildMeshData(floats4 uvLimits);
+		std::unique_ptr<mesh> buildMeshData(floats4 uvLimits, rynx::vec3<std::pair<float, float>> poly_extents);
 		bool isEar(int t1, int t2, int t3);
 		bool triangulateOneStep();
 		void triangulate();

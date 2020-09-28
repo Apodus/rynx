@@ -39,8 +39,13 @@ namespace rynx {
 		bool isConvex(int vertex) const;
 		float normalize();
 		void scale(float s);
-		float radius() const;
+		void scale(vec3f ranges);
 		
+		rynx::vec3<std::pair<float, float>> extents() const;
+
+		float radius() const;
+		float max_component_value() const;
+
 		std::vector<segment> generateBoundary_Outside(float scale) const;
 		std::vector<segment> generateBoundary_Inside(float scale) const;
 	};

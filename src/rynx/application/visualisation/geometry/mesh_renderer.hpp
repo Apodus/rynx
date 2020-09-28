@@ -38,9 +38,9 @@ namespace rynx {
 					ctx->add_task("model matrices", [this](rynx::ecs& ecs) mutable {
 						m_bufs.clear();
 						
-						// collect buffers for drawing, first solids, then transluscents.
+						// collect buffers for drawing, first solids, then translucents.
 						ecs.query()
-							.notIn<rynx::components::translucent, components::frustum_culled>()
+							.notIn<rynx::components::translucent, components::frustum_culled, rynx::components::invisible>()
 							.for_each_buffer([this](
 								size_t num_entities,
 								const rynx::components::mesh* meshes,
@@ -60,7 +60,7 @@ namespace rynx {
 								});
 
 						ecs.query()
-							.notIn<components::frustum_culled>()
+							.notIn<components::frustum_culled, rynx::components::invisible>()
 							.in<rynx::components::translucent>()
 							.for_each_buffer([this](
 								size_t num_entities,

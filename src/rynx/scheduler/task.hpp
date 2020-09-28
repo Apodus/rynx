@@ -229,7 +229,15 @@ namespace rynx {
 
 			operator bool() const { return static_cast<bool>(m_op); }
 			const std::string& name() const { return m_name; }
-			void clear() { m_op = nullptr; }
+			void clear() {
+				m_op = nullptr;
+				m_barriers.reset();
+				m_for_each.reset();
+				m_name.clear();
+				m_resources.reset();
+				m_resources_shared.clear();
+			}
+
 			void enable_log() {
 				m_enable_logging = true;
 			}

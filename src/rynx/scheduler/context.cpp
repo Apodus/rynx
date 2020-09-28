@@ -10,27 +10,28 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	
 #if PARALLEL_QUEUE_TASKS
 
-	bool need_to_recheck_tasks = false;
-
-	auto try_get_free_task = [this, &need_to_recheck_tasks]() -> rynx::scheduler::task
+	bool task_was_completed = false;
+	auto try_get_free_task = [this, &task_was_completed]() -> rynx::scheduler::task
 	{
 		task t;
 		if (m_tasks_parallel_for.deque(t)) {
 			if (t.is_for_each()) {
-				if (!t.m_for_each->work_available() & t.m_for_each->all_work_completed()) {
-					// TODO: Check if any blocker barrier actually reaches zero OR any resource counter goes to zero.
-					//       only then recheck for tasks.
-					if (t.m_enable_logging) {
-						logmsg("end parfor %s", t.name().c_str());
-					}
-					
-					if (t.barriers().blocks_other_tasks()) {
-						t.barriers().on_complete();
-					}
-					need_to_recheck_tasks = true;
-					--m_task_counter;
-					t = task();
+				if (!t.m_for_each->work_available()) {					
+					if (t.m_for_each->all_work_completed()) {
+						task_was_completed = true;
+						if (t.m_enable_logging) {
+							logmsg("end parfor %s", t.name().c_str());
+						}
 
+						if (t.barriers().blocks_other_tasks()) {
+							t.barriers().on_complete();
+						}
+						--m_task_counter;
+						t = task();
+					}
+					else {
+						m_tasks_parallel_for.enque(std::move(t));
+					}
 				}
 				else {
 					rynx::scheduler::task copy = t;
@@ -61,45 +62,45 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 		return {};
 	};
 
-	if(m_taskMutex.try_lock())
-	{
-		{
-			task t = try_get_protected_task();
-			m_taskMutex.unlock();
-			if (t) {
-				return t;
-			}
-		}
 
+	do {
+		task_was_completed = false;
+		if (m_taskMutex.try_lock())
 		{
-			task t = try_get_free_task();
-			if (t) {
-				return t;
+			{
+				task t = try_get_protected_task();
+				m_taskMutex.unlock();
+				if (t) {
+					return t;
+				}
 			}
-		}
-	}
-	else
-	{
-		{
-			task t = try_get_free_task();
-			if (t) {
-				return t;
-			}
-		}
 
-		{
-			m_taskMutex.lock();
-			task t = try_get_protected_task();
-			m_taskMutex.unlock();
-			if (t) {
-				return t;
+			{
+				task t = try_get_free_task();
+				if (t) {
+					return t;
+				}
 			}
 		}
-	}
+		else
+		{
+			{
+				task t = try_get_free_task();
+				if (t) {
+					return t;
+				}
+			}
 
-	if (need_to_recheck_tasks) {
-		return findWork();
-	}
+			{
+				m_taskMutex.lock();
+				task t = try_get_protected_task();
+				m_taskMutex.unlock();
+				if (t) {
+					return t;
+				}
+			}
+		}
+	} while (!m_tasks_parallel_for.empty() | task_was_completed);
 
 #else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
@@ -198,8 +199,26 @@ void rynx::scheduler::context::schedule_task(task task) {
 }
 
 void rynx::scheduler::context::dump() {
-#if false && PARALLEL_QUEUE_TASKS
-	// TODO :(
+#if PARALLEL_QUEUE_TASKS
+	std::lock_guard<std::mutex> lock(m_taskMutex);
+	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
+	for (auto&& task : m_tasks) {
+		(void)task;
+		std::cout << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << " -- " << task.name() << std::endl;
+		task.barriers().dump();
+		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
+	}
+
+	while (!m_tasks_parallel_for.empty()) {
+		task t;
+		m_tasks_parallel_for.deque(t);
+		if (t.is_for_each()) {
+			std::cout << "for each (" << t.name() << ")\n\tno work available: " << t.for_each_no_work_available() << "\n\tall work done: " << t.for_each_all_work_completed() << "\n";
+		}
+		else {
+			std::cout << "free task: " << t.name() << "\n";
+		}
+	}
 #else
 	std::lock_guard<std::mutex> lock(m_taskMutex);
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
