@@ -366,7 +366,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		collision_detection& detection,
 		rynx::scheduler::task& task) {
 			detection.update_sphere_trees_parallel(task);
-		});
+		}
+	);
 
 	update_entities_sphere_tree.required_for(positionDataToSphereTree_task);
 	positionDataToSphereTree_task.required_for(collisions_find_barrier);
@@ -432,68 +433,72 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		std::vector<rynx::scheduler::barrier> barriers;
 		{
 			rynx_profile("collisions", "fetch motion components");
-			for (size_t i = 0; i < overlaps_vector->size(); ++i) {
-				auto overlaps = overlaps_vector->operator[](i);
-				auto extras = extra_infos->operator[](i);
+			{
+				auto parallel_ops = task.parallel();
+				for (size_t i = 0; i < overlaps_vector->size(); ++i) {
+					auto overlaps = overlaps_vector->operator[](i);
+					auto extras = extra_infos->operator[](i);
 
-				barriers.emplace_back(task.parallel().for_each(0, overlaps->size(), 64).for_each([overlaps, extras, ecs](int64_t index) mutable {
-					auto& collision = overlaps->operator[](index);
-					collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
-					collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
+					parallel_ops.for_each(0, overlaps->size(), 64).for_each([overlaps, extras, ecs](int64_t index) mutable {
+						auto& collision = overlaps->operator[](index);
+						collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
+						collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
 
-					if (collision.a_motion == nullptr) {
-						collision.a_motion = &g_dummy_motion;
-					}
+						if (collision.a_motion == nullptr) {
+							collision.a_motion = &g_dummy_motion;
+						}
 
-					if (collision.b_motion == nullptr) {
-						collision.b_motion = &g_dummy_motion;
-					}
+						if (collision.b_motion == nullptr) {
+							collision.b_motion = &g_dummy_motion;
+						}
 
-					auto& extra = extras->operator[](index);
-					const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
-					const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
+						auto& extra = extras->operator[](index);
+						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
+						const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
 
-					const float rel_pos_len_a = rel_pos_a.length();
-					const float rel_pos_len_b = rel_pos_b.length();
-					extra.relative_position_length_a = rel_pos_len_a;
-					extra.relative_position_length_b = rel_pos_len_b;
-					extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
-					extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
+						const float rel_pos_len_a = rel_pos_a.length();
+						const float rel_pos_len_b = rel_pos_b.length();
+						extra.relative_position_length_a = rel_pos_len_a;
+						extra.relative_position_length_b = rel_pos_len_b;
+						extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
+						extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
 
-					if (auto* storage = ecs[collision.a_id].try_get<rynx::components::collision_custom_reaction>()) {
-						rynx::components::collision_custom_reaction::event e;
-						e.body = collision.b_body;
-						e.id = collision.b_id;
-						e.normal = collision.normal;
-						
-						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
-							return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
-						};
+						if (auto* storage = ecs[collision.a_id].try_get<rynx::components::collision_custom_reaction>()) {
+							rynx::components::collision_custom_reaction::event e;
+							e.body = collision.b_body;
+							e.id = collision.b_id;
+							e.normal = collision.normal;
 
-						const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
-						const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
-						const vec3<float> total_rel_v = rel_v_a - rel_v_b;
-						e.relative_velocity = total_rel_v;
-						storage->events.emplace_back(e);
-					}
+							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+							};
 
-					if (auto* storage = ecs[collision.b_id].try_get<rynx::components::collision_custom_reaction>()) {
-						rynx::components::collision_custom_reaction::event e;
-						e.body = collision.a_body;
-						e.id = collision.a_id;
-						e.normal = -collision.normal;
+							const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
+							const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
+							const vec3<float> total_rel_v = rel_v_a - rel_v_b;
+							e.relative_velocity = total_rel_v;
+							storage->events.emplace_back(e);
+						}
 
-						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
-							return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
-						};
+						if (auto* storage = ecs[collision.b_id].try_get<rynx::components::collision_custom_reaction>()) {
+							rynx::components::collision_custom_reaction::event e;
+							e.body = collision.a_body;
+							e.id = collision.a_id;
+							e.normal = -collision.normal;
 
-						const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
-						const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
-						const vec3<float> total_rel_v = rel_v_a - rel_v_b;
-						e.relative_velocity = -total_rel_v;
-						storage->events.emplace_back(e);
-					}
-				}));
+							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+							};
+
+							const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
+							const vec3<float> rel_v_b = velocity_at_point(extra.relative_position_length_b, extra.relative_position_tangent_b, *collision.b_motion);
+							const vec3<float> total_rel_v = rel_v_a - rel_v_b;
+							e.relative_velocity = -total_rel_v;
+							storage->events.emplace_back(e);
+						}
+					});
+				}
+				barriers.emplace_back(parallel_ops.barrier());
 			}
 		}
 

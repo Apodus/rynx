@@ -19,11 +19,6 @@ namespace rynx {
 			barrier& operator = (const barrier& other) = default;
 			barrier& operator = (barrier&& other) = default;
 
-			void busy_wait() const {
-				while(!*this) {}
-				return;
-			}
-
 			operator bool() const { return counter->load(std::memory_order_acquire) == 0; }
 
 			std::string name;

@@ -507,7 +507,7 @@ namespace rynx {
 						accumulator->emplace_back(plip{ index, newLeaf.first });
 					}
 				}
-			});
+			}).barrier();
 
 			task_context.extend_task_execute_parallel([this, accumulator]() {
 				accumulator->for_each([this](std::vector<plip>& found_migrates) {

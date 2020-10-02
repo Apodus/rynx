@@ -232,7 +232,7 @@ namespace rynx {
 			void clear() {
 				m_op = nullptr;
 				m_barriers.reset();
-				m_for_each.reset();
+				m_for_each.clear();
 				m_name.clear();
 				m_resources.reset();
 				m_resources_shared.clear();
@@ -265,7 +265,9 @@ namespace rynx {
 			}
 
 			struct parallel_for_each_data {
-				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end), work_remaining(end - begin), task_is_cleaned_up(0) {}
+				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end) {
+					work_remaining = end - index;
+				}
 				
 				bool work_available() const {
 					return index < end;
@@ -275,10 +277,14 @@ namespace rynx {
 					return work_remaining <= 0;
 				}
 
+				int64_t get_work() {
+					return index.fetch_add(work_size);
+				}
+
 				alignas(std::hardware_destructive_interference_size) std::atomic<int64_t> index; // used when reserving new chunk of work. is updated when starting to work.
 				alignas(std::hardware_destructive_interference_size) std::atomic<int64_t> work_remaining; // used when checking if task is done. is updated when work chunk is completed.
-				alignas(std::hardware_destructive_interference_size) std::atomic<int> task_is_cleaned_up;
-				const int64_t end;
+				int64_t end;
+				int64_t work_size = 1;
 			};
 
 		public:
@@ -288,130 +294,105 @@ namespace rynx {
 			//       where its resources would no longer be reserved, but work would still need to be done.
 			//       That would make life much more complicated. That is the reason why pre-divided work sizes
 			//       approach to parallel fors was abandoned.
-			struct parallel_operations {
-				parallel_operations(task& parent) : m_parent(parent) {}
-
-				struct parallel_for_operation {
-					parallel_for_operation(rynx::scheduler::task& parent) : m_parent(parent) {}
-
-					rynx::scheduler::task& m_parent;
-					int64_t begin = 0;
-					int64_t end = 0;
-					int64_t work_size = 1;
-					bool self_participate = true;
-					
-					// if you are creating multiple parallel for tasks with deferred_work, then might be better to
-					// skip notify workers during task creation and just notify once after all tasks are created.
-					bool notify_workers = true;
-
-					parallel_for_operation& range_begin(int64_t begin_) {
-						begin = begin_;
-						return *this;
-					}
-
-					parallel_for_operation& range_end(int64_t end_) {
-						end = end_;
-						return *this;
-					}
-
-
-					parallel_for_operation& work_per_iteration(int64_t work_size_) {
-						work_size = work_size_;
-						return *this;
-					}
-
-					parallel_for_operation& deferred_work() {
-						self_participate = false;
-						return *this;
-					}
-
-					parallel_for_operation& skip_worker_wakeup() {
-						notify_workers = false;
-						return *this;
-					}
-
-
-
-					template<typename F>
-					barrier for_each(F&& op) {
-						barrier bar;
-
-						std::shared_ptr<parallel_for_each_data> for_each_data = std::make_shared<parallel_for_each_data>(begin, end);
-
-						if (m_parent.m_enable_logging) {
-							logmsg("start parfor %s", this->m_parent.name().c_str());
+			
+			struct parallel_for_operation {
+				parallel_for_operation(rynx::scheduler::task& parent) : m_parent(&parent), m_ops(std::make_shared<std::vector<std::function<void()>>>()) {
+					m_executor = std::make_unique<rynx::scheduler::task_token>(parent.extend_task_execute_parallel(this->m_parent->name() + " (parallel for)", [ops = this->m_ops]() mutable {
+						for (auto&& op : *ops) {
+							op();
 						}
-
-						{
-							task_token work = m_parent.make_extension_task_execute_parallel(this->m_parent.name() + " (parallel for)", [task_context = m_parent.m_context, work_size = work_size, end = end, for_each_data, op]() mutable {
-								for (;;) {
-									int64_t my_index = for_each_data->index.fetch_add(work_size);
-									if (my_index >= end) {
-										if (for_each_data->work_remaining.load() <= 0) {
-											if (for_each_data->all_work_completed()) {
-												if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-													task_context->erase_completed_parallel_for_tasks();
-												}
-											}
-										}
-										return;
-									}
-									int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
-									for (int64_t i = my_index; i < limit; ++i) {
-										op(i);
-									}
-									for_each_data->work_remaining -= work_size;
-								}
-							});
-							work->m_for_each = for_each_data;
-							work.required_for(bar);
-						}
-
-						if(notify_workers)
-							m_parent.notify_work_available();
-						
-						if (self_participate) {
-							for (;;) {
-								int64_t my_index = for_each_data->index.fetch_add(work_size);
-								if (my_index >= end) {
-									if (for_each_data->work_remaining <= 0) {
-										if (for_each_data->all_work_completed()) {
-											if (for_each_data->task_is_cleaned_up.exchange(1) == 0) {
-												m_parent.m_context->erase_completed_parallel_for_tasks();
-											}
-										}
-									}
-									return bar;
-								}
-								int64_t limit = my_index + work_size >= end ? end : my_index + work_size;
-								for (int64_t i = my_index; i < limit; ++i) {
-									op(i);
-								}
-								for_each_data->work_remaining -= work_size;
-							}
-						}
-						return bar;
-					}
-				};
-
-				parallel_for_operation for_each(int64_t begin = 0, int64_t end = 0, int64_t work_size = 256) {
-					parallel_for_operation op(m_parent);
-					op.begin = begin;
-					op.end = end;
-					op.work_size = work_size;
-					return op;
+					}));
+					m_executor->required_for(m_barrier);
 				}
 
-				task& m_parent;
+				parallel_for_operation(parallel_for_operation&& other) = default;
+				parallel_for_operation& operator = (parallel_for_operation&& other) = default;
+
+				~parallel_for_operation() {
+					m_executor.reset();
+					if (m_parent->m_enable_logging) {
+						logmsg("start parfor: %s", this->m_parent.name().c_str());
+					}
+
+					if(notify_workers)
+						m_parent->notify_work_available();
+
+					if (self_participate) {
+						for (auto&& op : *m_ops) {
+							op();
+						}
+					}
+				}
+
+
+				rynx::scheduler::barrier barrier() const {
+					return m_barrier;
+				}
+
+				std::unique_ptr<rynx::scheduler::task_token> m_executor;
+				rynx::scheduler::barrier m_barrier;
+
+				rynx::scheduler::task* m_parent;
+				std::shared_ptr<parallel_for_each_data> for_each_data;
+				std::shared_ptr<std::vector<std::function<void()>>> m_ops;
+				bool self_participate = true;
+					
+				// if you are creating multiple parallel for tasks with deferred_work, then might be better to
+				// skip notify workers during task creation and just notify once after all tasks are created.
+				bool notify_workers = true;
+
+				parallel_for_operation& range(int64_t begin_, int64_t end_, int64_t work_size_) {
+					for_each_data = std::make_shared<parallel_for_each_data>(begin_, end_);
+					for_each_data->work_size = work_size_;
+					return *this;
+				}
+
+				parallel_for_operation& deferred_work() {
+					self_participate = false;
+					return *this;
+				}
+
+				parallel_for_operation& skip_worker_wakeup() {
+					notify_workers = false;
+					return *this;
+				}
+
+				// TODO: Naming of functions is now super unclear. Fix.
+				//       Could also merge the foreach functions, or enforce in other ways that you can't misuse them.
+				parallel_for_operation& for_each(int64_t begin, int64_t end, int64_t work_size = 256) {
+					range(begin, end, work_size);
+					return *this;
+				}
+
+				template<typename F>
+				parallel_for_operation& for_each(F&& op) {
+					rynx_assert(for_each_data != nullptr, "no operation range given. call range(..) first.");
+					
+					auto work_on_task = [for_each_data = this->for_each_data, op]() mutable  {
+						const int64_t local_work_size = for_each_data->work_size;
+						const int64_t local_end = for_each_data->end;
+						for (;;) {
+							int64_t my_index = for_each_data->get_work();
+							if (my_index >= local_end) {
+								return;
+							}
+							int64_t limit = my_index + local_work_size >= local_end ? local_end : my_index + local_work_size;
+							for (int64_t i = my_index; i < limit; ++i) {
+								op(i);
+							}
+							for_each_data->work_remaining -= limit - my_index;
+						}
+					};
+
+					(*m_executor)->m_for_each.emplace_back(for_each_data);
+					m_ops->emplace_back(std::move(work_on_task));
+					for_each_data.reset();
+					return *this;
+				}
 			};
 
-			// to allow passing task as a parameter when parallel operations context is expected.
-			operator parallel_operations() const {
-				return parallel_operations(*this);
-			}
-
-			parallel_operations parallel() {
-				return parallel_operations(*this);
+			parallel_for_operation parallel() {
+				return parallel_for_operation(*this);
 			}
 
 			explicit operator rynx::scheduler::context* () {
@@ -422,19 +403,25 @@ namespace rynx {
 				return m_context;
 			}
 
-		private:
 			bool is_for_each() const {
-				return static_cast<bool>(m_for_each);
+				return !m_for_each.empty();
 			}
 
 			bool for_each_all_work_completed() const {
-				return m_for_each->work_remaining.load() <= 0;
+				bool all_work_done = true;
+				for (auto&& work_range : m_for_each)
+					all_work_done &= work_range->all_work_completed();
+				return all_work_done;
 			}
 
 			bool for_each_no_work_available() const {
-				return m_for_each->index.load() >= m_for_each->end;
+				bool work_available = false;
+				for (auto&& work_range : m_for_each)
+					work_available |= work_range->work_available();
+				return !work_available;
 			}
-			
+
+		private:
 			void notify_work_available() const;
 			
 			struct task_resources : public operation_resources {
@@ -468,7 +455,7 @@ namespace rynx {
 
 			std::shared_ptr<task_resources> m_resources;
 			std::vector<std::shared_ptr<task_resources>> m_resources_shared;
-			std::shared_ptr<parallel_for_each_data> m_for_each;
+			std::vector<std::shared_ptr<parallel_for_each_data>> m_for_each;
 
 			context* m_context = nullptr;
 			bool m_enable_logging = false;

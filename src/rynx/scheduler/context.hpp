@@ -15,8 +15,6 @@
 
 #include <iostream>
 
-#define PARALLEL_QUEUE_TASKS 1
-
 namespace rynx {
 	namespace scheduler {
 		class task_token;
@@ -89,14 +87,9 @@ namespace rynx {
 			std::atomic<int32_t> m_task_counter = 0;
 			std::atomic<int32_t> m_tasks_per_frame = 0;
 
-#if PARALLEL_QUEUE_TASKS
 			std::vector<task> m_tasks;
 			rynx::parallel::queue<task, 1024, 9> m_tasks_parallel_for;
-			// std::mutex m_resource_mutex;
-#else
-			std::vector<task> m_tasks;
-			std::vector<task> m_tasks_parallel_for;
-#endif
+
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
 			
@@ -139,7 +132,6 @@ namespace rynx {
 			}
 
 		private:
-			void erase_completed_parallel_for_tasks();
 			[[nodiscard]] task findWork();
 
 		public:

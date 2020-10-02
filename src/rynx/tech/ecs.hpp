@@ -844,25 +844,29 @@ namespace rynx {
 				}
 			}
 
-			template<typename F, typename TaskContext> void for_each_parallel(TaskContext&& task_context, F&& op) {
+			template<typename F, typename TaskContext> auto for_each_parallel(TaskContext&& task_context, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
 				}
 				this->template unpack_types<Args...>();
 
+				auto parallel_ops_container = task_context.parallel();
+				
 				auto& categories = this->m_ecs.categories();
 				for (auto&& entity_category : categories) {
 					if (entity_category.second->includesAll(this->includeTypes) & entity_category.second->includesNone(this->excludeTypes)) {
 						auto& ids = entity_category.second->ids();
 						if constexpr (is_id_query) {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), parallel_ops_container, ids, entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 						else {
-							call_user_op_parallel<is_id_query>(std::forward<F>(op), task_context, ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
+							call_user_op_parallel<is_id_query>(std::forward<F>(op), parallel_ops_container, ids, entity_category.second->template table_data<accessType, FArg>(this->m_typeAliases), entity_category.second->template table_data<accessType, Args>(this->m_typeAliases)...);
 						}
 					}
 				}
+
+				return parallel_ops_container;
 			}
 
 		private:
@@ -900,17 +904,17 @@ namespace rynx {
 				rynx_assert(ids.size() == ids_size, "creating/deleting entities is not allowed during iteration.");
 			}
 
-			template<bool isIdQuery, typename F, typename TaskContext, typename... Ts>
-			static auto call_user_op_parallel(F&& op, TaskContext&& task_context, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+			template<bool isIdQuery, typename F, typename ParallelOp, typename... Ts>
+			static void call_user_op_parallel(F&& op, ParallelOp&& parallel_ops_container, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					return task_context.parallel().for_each(0, ids.size()).deferred_work().skip_worker_wakeup().for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					parallel_ops_container.for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&ids, op, index](auto*... ptrs) mutable {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					return task_context.parallel().for_each(0, ids.size()).deferred_work().skip_worker_wakeup().for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					parallel_ops_container.for_each(0, ids.size()).for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([op, index](auto... ptrs) mutable {
 							op(ptrs[index]...);
 						}, args);
@@ -1140,13 +1144,11 @@ namespace rynx {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				
-				return task_context.extend_task_execute_parallel([op = std::move(op), query_config = std::move(*this)](TaskContext& task_context) mutable {
-					entity_iterator<accessType, category_source, decltype(&F::operator())> it(query_config.m_ecs);
-					it.include(std::move(query_config.inTypes));
-					it.exclude(std::move(query_config.notInTypes));
-					it.type_aliases(std::move(query_config.m_typeAliases));
-					it.for_each_parallel(task_context, op);
-				});
+				entity_iterator<accessType, category_source, decltype(&F::operator())> it(this->m_ecs);
+				it.include(std::move(this->inTypes));
+				it.exclude(std::move(this->notInTypes));
+				it.type_aliases(std::move(this->m_typeAliases));
+				return it.for_each_parallel(task_context, std::forward<F>(op));
 			}
 
 			template<typename F>
