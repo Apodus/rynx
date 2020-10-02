@@ -530,7 +530,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						if (impact_power < 0)
 							return;
 
-						constexpr float bias_start = 0.25f;
+						constexpr float bias_start = 0.05f;
 						const float overlap_value = collision.penetration - bias_start;
 						const auto proximity_force = collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 60.0f; // This *60 is not the same as dt. Just a random constant.
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
