@@ -98,7 +98,11 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 					//       Because rotational velocity does not provide linear velocity to point t along tangent.
 					//       The linear velocity to point t arcs along the orbit of the object. This should be taken into account.
 
-					auto compute_step = [force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
+					// tightly spun joints get reduced lookahead time which reduces the time to correct the joint length (increases the pull).
+					float time_lookahead_mod = 1.0f - std::fabsf(over_extension) / rope.length;
+					time_lookahead_mod *= time_lookahead_mod;
+
+					auto compute_step = [time_lookahead_mod, force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
 						constexpr float multiplier_per_round = 0.1f;
 						for (int i = 0; i < 10; ++i) {
 							auto vel_a = joint_data.mot_a->velocity_at_point_predict(joint_data.relative_pos_a, dt);
@@ -106,9 +110,9 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 							auto rel_vel = vel_a - vel_b;
 							float current_agreement = rel_vel.dot(force_dir);
 							if (current_agreement < 0.0f)
-								current_agreement = 0.0f;
-
-							float multiplier = 5.0f * rope.strength * (over_extension - current_agreement * rope.response_time);
+								current_agreement *= 0.7f;
+							
+							float multiplier = 5.0f * rope.strength * (over_extension - current_agreement * rope.response_time * time_lookahead_mod);
 							
 							if (rope.connector == components::phys::joint::connector_type::Rod) {
 								multiplier /= dt; // faster response at low dt.

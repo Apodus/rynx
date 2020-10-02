@@ -46,6 +46,7 @@ namespace rynx {
             float m_loudness = 1.0f;
 
             effect_config m_effects;
+            bool m_ambient = false;
 
             std::valarray<std::complex<float>> prev_left;
             std::valarray<std::complex<float>> prev_right;
@@ -60,6 +61,11 @@ namespace rynx {
         public:
             configuration() = default;
             configuration(audio_system& audio, source_instance& sound);
+            
+            // ambient sound is without a particular source position,
+            // like music, or narration. or something.
+            configuration& set_ambient(bool value);
+
             configuration& set_position(vec3f pos);
             configuration& set_direction(vec3f dir);
             configuration& set_loudness(float loudness);

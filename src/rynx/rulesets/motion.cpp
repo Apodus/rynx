@@ -9,7 +9,7 @@
 
 void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& context, float dt) {
 	auto position_updates = context.add_task("Apply acceleration and reset", [dt](
-		rynx::ecs::view<components::motion, components::position, components::position_relative> ecs,
+		rynx::ecs::view<const components::constant_force, components::motion, components::position, components::position_relative> ecs,
 		rynx::scheduler::task& task_context)
 		{
 			auto apply_acceleration_to_velocity = ecs.query().for_each_parallel(task_context, [dt](components::position& p, components::motion& m) {
@@ -29,7 +29,12 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 				p.angle += angular_acceleration_effect;
 			});
 
-			ecs.query().for_each_parallel(task_context, [&ecs](rynx::components::position& pos, rynx::components::position_relative relative_pos) {
+			// TODO: constant force might be applied before acceleration is reset in above task.
+			ecs.query().for_each_parallel(task_context, [dt](rynx::components::motion& m, const rynx::components::constant_force force) {
+				m.acceleration += force.force * dt;
+			});
+
+			ecs.query().for_each_parallel(task_context, [ecs](rynx::components::position& pos, rynx::components::position_relative relative_pos) {
 				if (!ecs.exists(relative_pos.host))
 					return;
 				

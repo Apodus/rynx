@@ -206,6 +206,14 @@ rynx::sound::configuration::configuration(audio_system& audio, source_instance& 
     m_soundCounter = sound.m_soundCounter;
 }
 
+rynx::sound::configuration& rynx::sound::configuration::set_ambient(bool value) {
+    if (is_active()) {
+        m_soundData->m_ambient = value;
+    }
+    return *this;
+}
+
+
 rynx::sound::configuration& rynx::sound::configuration::set_position(vec3f pos) {
     if (is_active()) {
         m_soundData->m_position = pos;
@@ -454,6 +462,11 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
 
                 // front/back frequency modifications
 
+                if (data.m_ambient) {
+                    left_adj = 1.0f;
+                    right_adj = 1.0f;
+                    volume = data.m_loudness;
+                }
 
                 auto& sound = m_soundBank[data.m_bufferIndex];
                 float resample_multiplier = sound.sampleRate / m_currentSampleRate;
@@ -538,6 +551,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
                     data.m_sampleIndex = 0;
                     data.m_bufferIndex = 0;
                     data.m_loudness = 0;
+                    data.m_ambient = false;
 
                     data.m_effects.pitch_shift = 0;
                     data.m_effects.tempo_shift = 0;
