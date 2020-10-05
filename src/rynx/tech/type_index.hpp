@@ -7,6 +7,12 @@
 
 #include <atomic>
 
+#ifndef _WIN32
+namespace std {
+	constexpr size_t hardware_destructive_interference_size = 64;
+}
+#endif
+
 namespace rynx {
 	class type_index {
 		enum class type_model {
