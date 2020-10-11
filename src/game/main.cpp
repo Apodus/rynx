@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
 				rynx::components::radius(polygon.radius()),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 2.0f),
 				rynx::components::ignore_gravity()
 			);
 		};
@@ -197,9 +197,9 @@ int main(int argc, char** argv) {
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f),
+				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 2.0f),
 				rynx::components::ignore_gravity(),
-				rynx::components::dampening{0.50f, 1.0f}
+				rynx::components::dampening{0.1f, 0.0f}
 			);
 		};
 
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
 				else
 					joint.point_a = rynx::vec3<float>(+rope_segment_length * 0.5f - rope_width * 1.1f, 0, 0);
 				joint.point_b = rynx::vec3<float>(-rope_segment_length * 0.5f + rope_width * 1.1f, 0, 0);
-				joint.length = 0; // rope_segment_length;
+				joint.length = rope_segment_length * 0.5f; // rope_segment_length;
 				joint.strength = 2.0f;
 				ecs.create(joint);
 
@@ -274,9 +274,11 @@ int main(int argc, char** argv) {
 		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
 		// makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
 
+		/*
 		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.25f);
 		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.30f);
 		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.15f);
+		*/
 
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);

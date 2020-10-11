@@ -29,7 +29,7 @@ namespace rynx {
 
 					auto compute_t = [](float t, control_point p0, control_point p1) {
 						float a = (p0.position - p1.position).length_squared();
-						float b = std::powf(a, (p0.alpha + p1.alpha) * 0.25f);
+						float b = std::pow(a, (p0.alpha + p1.alpha) * 0.25f);
 						return t + b;
 					};
 

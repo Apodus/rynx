@@ -53,7 +53,7 @@ namespace game {
 								auto id1 = ecs.create(
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
-									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 1.0f),
+									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 2.0f),
 									rynx::components::radius(2.0f),
 									rynx::components::collisions{ dynamic.value },
 									rynx::components::color(),
@@ -92,7 +92,7 @@ namespace game {
 										rynx::components::motion(),
 										rynx::components::physical_body(mass, moment_of_inertia_for_center_aligned_box(edge_width, edge_width, mass), 0.1f, 1.0f),
 										rynx::components::boundary(rynx::Shape::makeBox(1.0f).generateBoundary_Outside(edge_width)),
-										rynx::components::radius(sqrtf(edge_width * edge_width / 2.0f)),
+										rynx::components::radius(sqrtf(edge_width * edge_width * 0.25f)),
 										rynx::components::collisions{ dynamic.value },
 										rynx::components::color(),
 										rynx::components::dampening({ 0.10f, 0.10f }),

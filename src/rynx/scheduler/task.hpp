@@ -309,17 +309,19 @@ namespace rynx {
 				parallel_for_operation& operator = (parallel_for_operation&& other) = default;
 
 				~parallel_for_operation() {
-					m_executor.reset();
-					if (m_parent->m_enable_logging) {
-						logmsg("start parfor: %s", this->m_parent.name().c_str());
-					}
+					if (m_executor) {
+						m_executor.reset();
+						if (m_parent->m_enable_logging) {
+							logmsg("start parfor: %s", this->m_parent.name().c_str());
+						}
 
-					if(notify_workers)
-						m_parent->notify_work_available();
+						if(notify_workers)
+							m_parent->notify_work_available();
 
-					if (self_participate) {
-						for (auto&& op : *m_ops) {
-							op();
+						if (self_participate) {
+							for (auto&& op : *m_ops) {
+								op();
+							}
 						}
 					}
 				}

@@ -99,7 +99,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 					//       The linear velocity to point t arcs along the orbit of the object. This should be taken into account.
 
 					// tightly spun joints get reduced lookahead time which reduces the time to correct the joint length (increases the pull).
-					float time_lookahead_mod = 1.0f - std::fabsf(over_extension) / rope.length;
+					float time_lookahead_mod = 1.0f - std::abs(over_extension) / rope.length;
 					time_lookahead_mod *= time_lookahead_mod;
 
 					auto compute_step = [time_lookahead_mod, force_dir, over_extension, &joint_data, &rope](float dt) mutable -> void {
