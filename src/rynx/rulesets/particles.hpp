@@ -62,13 +62,14 @@ namespace rynx {
 							float upness = velocity.dot(target_direction) / velocity.length();
 							upness = upness * upness * upness * upness;
 
-							pos.value += offset;
+							auto particle_pos = pos;
+							particle_pos.value += offset;
 
 							// in general creating new entities is not safe inside a query, but now we know that we are not touching the same entity categories,
 							// because we iterated over particle_emitter components, and we are only creating entities that do not have particle_emitter component.
 							ecs.create(
 								p_info,
-								pos,
+								particle_pos,
 								rynx::components::radius(p_info.radius_range.begin),
 								rynx::components::motion(velocity, emitter.get_random()(-1.0f, +1.0f)),
 								rynx::components::lifetime(emitter.get_lifetime()),
