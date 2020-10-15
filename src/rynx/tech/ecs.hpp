@@ -273,11 +273,12 @@ namespace rynx {
 				rynx_assert(index < m_ids.size(), "out of bounds");
 				auto erasedEntityId = m_ids[index];
 				m_ids[index] = std::move(m_ids.back());
-				m_ids.pop_back();
 				
 				// update ecs-wide id<->category mapping
 				idmap.find(m_ids[index].value)->second = { this, index };
 				idmap.erase(erasedEntityId.value);
+				
+				m_ids.pop_back();
 			}
 
 			// TODO: Rename better. This is like bubble-sort single step.
@@ -872,7 +873,7 @@ namespace rynx {
 		private:
 			template<bool isIdQuery, typename F, typename... Ts>
 			static void call_user_op(F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
-				[[maybe_unused]] auto ids_size = ids.size();
+				auto ids_size = ids.size();
 				if constexpr (isIdQuery) {
 					std::for_each(ids.data(), ids.data() + ids_size, [=](const id entityId) mutable {
 						op(entityId, (*data_ptrs++)...);
@@ -1300,7 +1301,6 @@ namespace rynx {
 			}
 		}
 		
-		// TODO: c++20 Concepts will help here.
 		template<typename T>
 		void erase(const T& iterable) {
 			for (auto&& id : iterable) {

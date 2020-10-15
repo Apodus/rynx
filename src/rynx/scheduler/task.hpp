@@ -312,7 +312,7 @@ namespace rynx {
 					if (m_executor) {
 						m_executor.reset();
 						if (m_parent->m_enable_logging) {
-							logmsg("start parfor: %s", this->m_parent.name().c_str());
+							logmsg("start parfor: %s", this->m_parent->name().c_str());
 						}
 
 						if(notify_workers)

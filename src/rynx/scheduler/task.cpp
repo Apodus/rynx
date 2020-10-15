@@ -52,23 +52,24 @@ void rynx::scheduler::task::run() {
 	rynx_assert(static_cast<bool>(m_op), "no op in task that is being run!");
 	rynx_assert(m_barriers->can_start(), "task is being run while still blocked by barriers!");
 
+	if(!is_for_each())
 	{
-		if (m_enable_logging && !is_for_each()) {
+		if (m_enable_logging) {
 			logmsg("start %s", m_name.c_str());
 		}
 		
-		rynx_profile("Scheduler", "work");
-		m_op(this);
-		
-		if (m_enable_logging && !is_for_each()) {
+		{
+			rynx_profile("Scheduler", "work");
+			m_op(this);
+		}
+
+		if (m_enable_logging) {
 			logmsg("end %s", m_name.c_str());
 		}
 	}
-
-	{
-		if (!is_for_each()) {
-			m_context->task_finished();
-		}
+	else {
+		rynx_profile("Scheduler", "work");
+		m_op(this);
 	}
 
 	{
@@ -80,6 +81,10 @@ void rynx::scheduler::task::run() {
 		rynx_profile("Scheduler", "release resources");
 		m_resources.reset();
 		m_resources_shared.clear();
+	}
+
+	if (!is_for_each()) {
+		m_context->task_finished();
 	}
 }
 

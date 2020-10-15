@@ -11,12 +11,6 @@ rynx::polygon::segment::segment(rynx::vec3<float> a, rynx::vec3<float> b, bool c
 	convex2 = c2;
 }
 
-rynx::polygon::triangle::triangle(int a, int b, int c) {
-	this->a = a;
-	this->b = b;
-	this->c = c;
-}
-
 rynx::vec3<float>& rynx::polygon::operator [](int index) {
 	return vertices[index];
 }

@@ -25,13 +25,7 @@ namespace rynx {
 			segment(rynx::vec3<float> a, rynx::vec3<float> b, bool c1, bool c2);
 		};
 
-		struct triangle {
-			int a, b, c;
-			triangle(int a, int b, int c);
-		};
-
 		std::vector<rynx::vec3<float>> vertices;
-		std::vector<triangle> triangles;
 
 		rynx::vec3<float>& operator [](int index);
 		const rynx::vec3<float>& operator [](int index) const;

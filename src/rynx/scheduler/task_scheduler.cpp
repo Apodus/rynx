@@ -18,6 +18,14 @@ bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex
 	return false;
 }
 
+void rynx::scheduler::task_scheduler::worker_activated() {
+	++m_active_workers;
+}
+
+void rynx::scheduler::task_scheduler::worker_deactivated() {
+	--m_active_workers;
+}
+
 void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 	rynx_profile("Profiler", "Wake up sleeping workers");
 	for (int i = 0; i < numThreads; ++i) {
@@ -27,7 +35,7 @@ void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 	}
 }
 
-rynx::scheduler::task_scheduler::task_scheduler() : m_threads({ nullptr }) {
+rynx::scheduler::task_scheduler::task_scheduler() : m_threads({ nullptr }), m_deadlock_detector(this) {
 	for (int i = 0; i < numThreads; ++i) {
 		m_threads[i] = new rynx::scheduler::task_thread(this, i);
 	}
@@ -47,7 +55,7 @@ rynx::scheduler::context* rynx::scheduler::task_scheduler::make_context() {
 	return m_contexts.emplace(id, std::make_unique<scheduler::context>(id, this)).first->second.get();
 }
 
-void rynx::scheduler::task_scheduler::checkComplete() {
+bool rynx::scheduler::task_scheduler::checkComplete() {
 	bool contextsHaveNoQueuedTasks = true;
 	for (auto& context : m_contexts) {
 		contextsHaveNoQueuedTasks &= context.second->isFinished();
@@ -63,8 +71,10 @@ void rynx::scheduler::task_scheduler::checkComplete() {
 			if (m_frameComplete.exchange(1) == 0) {
 				m_waitForComplete.signal();
 			}
+			return true;
 		}
 	}
+	return false;
 }
 
 

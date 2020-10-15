@@ -18,9 +18,9 @@ rynx::scheduler::task_thread::task_thread(task_scheduler* pTaskMaster, int myInd
 void rynx::scheduler::task_thread::threadEntry(int myThreadIndex) {
 	rynx::this_thread::rynx_thread_raii rynx_thread_utilities_required_token;
 	while (m_alive) {
-		if (!m_task)
-			wait();
+		wait();
 
+		m_scheduler->worker_activated();
 		while (m_scheduler->find_work_for_thread_index(myThreadIndex)) {
 			m_scheduler->wake_up_sleeping_workers();
 			m_task.run();
@@ -29,6 +29,7 @@ void rynx::scheduler::task_thread::threadEntry(int myThreadIndex) {
 		
 		m_sleeping.store(true);
 		m_scheduler->checkComplete();
+		m_scheduler->worker_deactivated();
 	}
 	logmsg("task thread exit");
 }

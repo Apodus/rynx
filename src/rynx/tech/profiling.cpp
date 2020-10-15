@@ -90,6 +90,9 @@ namespace rynx {
 		}
 
 		void write_profile_log() {
+			if (!g_profiling_storage)
+				return;
+
 			if constexpr (enabled) {
 				std::ofstream out("profile.json");
 				out << "{" << "\"traceEvents\": [";

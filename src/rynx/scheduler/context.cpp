@@ -21,11 +21,9 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 							logmsg("end parfor %s", t.name().c_str());
 						}
 
-						if (t.barriers().blocks_other_tasks()) {
-							t.barriers().on_complete();
-						}
-						--m_task_counter;
+						t.barriers().on_complete();
 						t = task();
+						task_finished();
 					}
 					else {
 						m_tasks_parallel_for.enque(std::move(t));
@@ -54,6 +52,13 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 				m_tasks[i] = std::move(m_tasks.back());
 				m_tasks.pop_back();
 				reserve_resources(t.resources());
+				
+				if (t.is_for_each()) {
+					rynx::scheduler::task copy = t;
+					m_tasks_parallel_for.enque(std::move(t));
+					return copy;
+				}
+
 				return t;
 			}
 		}
@@ -131,9 +136,7 @@ void rynx::scheduler::context::schedule_task(task task) {
 	++m_task_counter;
 	++m_tasks_per_frame;
 
-	if (task.is_for_each() ||
-		(task.resources().empty() && task.barriers().can_start())
-		)
+	if (task.resources().empty() && task.barriers().can_start())
 	{
 		m_tasks_parallel_for.enque(std::move(task));
 	}

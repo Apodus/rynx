@@ -2,15 +2,11 @@
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/geometry/math.hpp>
-
+#include <rynx/math/geometry/triangle.hpp>
 #include <stdexcept>
 
 namespace {
 	struct TriangulationException {};
-}
-
-std::vector<typename rynx::polygon::triangle>& rynx::polygon_triangulation::getTriangles() {
-	return polygon->triangles;
 }
 
 void rynx::polygon_triangulation::resetUnhandledMarkers() {
@@ -20,16 +16,16 @@ void rynx::polygon_triangulation::resetUnhandledMarkers() {
 }
 
 void rynx::polygon_triangulation::resetForPostProcess() {
-	polygon->triangles.clear();
+	triangles.clear();
 	resetUnhandledMarkers();
 }
 
-rynx::vec3<float>& rynx::polygon_triangulation::getVertexUnhandled(int i) {
+rynx::vec3<float> rynx::polygon_triangulation::getVertexUnhandled(int i) {
 	return polygon->vertices[unhandled[i]];
 }
 
 void rynx::polygon_triangulation::addTriangle(int earNode, int t1, int t2) {
-	polygon->triangles.push_back(typename rynx::polygon::triangle(unhandled[t1], unhandled[earNode], unhandled[t2]));
+	triangles.push_back(typename rynx::polygon_triangulation::triangle(unhandled[t1], unhandled[earNode], unhandled[t2]));
 	for (unsigned i = earNode; i < unhandled.size() - 1; ++i)
 		unhandled[i] = unhandled[i + 1];
 	unhandled.pop_back();
@@ -45,8 +41,8 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 u
 	float uvCenterY = uvHalfHeightY + uvLimits[1];
 
 	// build vertex buffer
-	for (rynx::vec3<float>& v : polygon->vertices) {
-		polyMesh->putVertex(float(v.x), float(v.y), 0.0f);
+	for (rynx::vec3<float> v : polygon->vertices) {
+		polyMesh->putVertex(v.x, v.y, 0.0f);
 		
 		float scaled_x = 2.0f * (v.x - poly_extents.x.first) / (poly_extents.x.second - poly_extents.x.first) - 1.0f;
 		float scaled_y = 2.0f * (v.y - poly_extents.y.first) / (poly_extents.y.second - poly_extents.y.first) - 1.0f;
@@ -77,7 +73,7 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 u
 	}
 
 	// build index buffer
-	for (const typename rynx::polygon::triangle& t : getTriangles()) {
+	for (const auto& t : triangles) {
 		polyMesh->putTriangleIndices(t.a, t.b, t.c);
 	}
 
@@ -141,10 +137,22 @@ void rynx::polygon_triangulation::triangulate() {
 	while (!triangulateOneStep());
 }
 
-rynx::polygon_triangulation::polygon_triangulation() {
+std::vector<rynx::polygon_triangulation::triangle> rynx::polygon_triangulation::make_triangle_indices(const rynx::polygon& polygon_) {
+	makeTriangles(polygon_);
+	return triangles;
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx::polygon& polygon_, floats4 uvLimits) {
+rynx::triangles rynx::polygon_triangulation::make_triangles(const rynx::polygon& polygon_) {
+	makeTriangles(polygon_);
+	
+	rynx::triangles tris;
+	for (auto t : this->triangles) {
+		tris.data().emplace_back(polygon_.vertices[t.a], polygon_.vertices[t.b], polygon_.vertices[t.c]);
+	}
+	return tris;
+}
+
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::make_mesh(const rynx::polygon& polygon_, floats4 uvLimits) {
 	rynx::polygon copy = polygon_;
 	copy.normalize();
 	rynx::vec3<std::pair<float, float>> poly_extents = copy.extents();
@@ -152,7 +160,7 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::triangulate(const rynx:
 	return buildMeshData(uvLimits, poly_extents);
 }
 
-std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_boundary(const rynx::polygon& polygon_, rynx::floats4 tex_coords, float line_width) {
+std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::make_boundary_mesh(const rynx::polygon& polygon_, rynx::floats4 tex_coords, float line_width) {
 	
 	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
 	rynx::polygon copy = polygon_;
@@ -219,18 +227,21 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::generate_polygon_bounda
 	return polyMesh;
 }
 
-void rynx::polygon_triangulation::makeTriangles(rynx::polygon& polygon_) {
-	polygon = &polygon_;
+void rynx::polygon_triangulation::makeTriangles(const rynx::polygon& polygon_) {
+	this->polygon = &polygon_;
 	resetForPostProcess();
 
 	try {
 		triangulate();
 	}
 	catch (const TriangulationException&) {
-		polygon_editor editor(polygon_);
+		rynx::polygon copy = polygon_;
+		polygon_editor editor(copy);
 		editor.reverse();
 		try {
+			this->polygon = &copy;
 			triangulate();
+			this->polygon = nullptr;
 		}
 		catch (const TriangulationException&) {
 			throw std::runtime_error("Broken polygon");
