@@ -53,7 +53,7 @@ namespace game {
 								auto id1 = ecs.create(
 									rynx::components::position({x, y, 0 }),
 									rynx::components::motion(),
-									rynx::components::physical_body(5.0f, 15.0f, 0.3f, 2.0f),
+									rynx::components::physical_body().mass(5.0f).elasticity(0.3f).friction(2.0f).moment_of_inertia(15.0f),
 									rynx::components::radius(2.0f),
 									rynx::components::collisions{ dynamic.value },
 									rynx::components::color(),
@@ -90,7 +90,7 @@ namespace game {
 									auto id2 = ecs.create(
 										rynx::components::position({ x + 1.2f * edge_width * k, y + 3.5f * k, 0 }),
 										rynx::components::motion(),
-										rynx::components::physical_body(mass, moment_of_inertia_for_center_aligned_box(edge_width, edge_width, mass), 0.1f, 1.0f),
+										rynx::components::physical_body().mass(mass).moment_of_inertia(moment_of_inertia_for_center_aligned_box(edge_width, edge_width, mass)).elasticity(0.1f).friction(1.0f),
 										rynx::components::boundary(rynx::Shape::makeBox(1.0f).generateBoundary_Outside(edge_width)),
 										rynx::components::radius(sqrtf(edge_width * edge_width * 0.25f)),
 										rynx::components::collisions{ dynamic.value },
@@ -128,7 +128,7 @@ namespace game {
 									rynx::components::collisions{ dynamic.value },
 									rynx::components::boundary({ rynx::Shape::makeBox(edge_length).generateBoundary_Outside(1.0f) }),
 									rynx::components::radius(radius),
-									rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, edge_length, edge_length), 0.2f, 1.0f),
+									rynx::components::physical_body().mass(mass).moment_of_inertia(rectangle_moment_of_inertia(mass, edge_length, edge_length)).elasticity(0.2f).friction(1.0f),
 									rynx::components::color({ 1,1,0,1 }),
 									rynx::components::motion({ 0, 0, 0 }, 0),
 									rynx::components::dampening({ 0.2f, 1.f })

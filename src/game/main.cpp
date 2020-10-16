@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
 		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
 			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")), "Empty");
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().make_boundary_mesh(polygon, application.textures()->textureLimits("Empty")), "Empty");
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
 				rynx::components::radius(polygon.radius()),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 2.0f),
+				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()),
 				rynx::components::ignore_gravity()
 			);
 		};
@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
 		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x);
 			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
-			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().generate_polygon_boundary(polygon, application.textures()->textureLimits("Empty")), "Empty");
+			auto* mesh_p = meshes->create(mesh_name, rynx::polygon_triangulation().make_boundary_mesh(polygon, application.textures()->textureLimits("Empty")), "Empty");
 			float radius = polygon.radius();
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 2.0f),
+				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()),
 				rynx::components::ignore_gravity(),
 				rynx::components::dampening{0.1f, 0.0f}
 			);
@@ -220,7 +220,11 @@ int main(int argc, char** argv) {
 
 			auto rootId = id1;
 
-			ecs.attachToEntity(id1, rynx::components::physical_body(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 0.0f, 1.0f, rootId));
+			ecs.attachToEntity(id1, rynx::components::physical_body(rootId)
+				.mass(std::numeric_limits<float>::max())
+				.elasticity(0.0f)
+				.friction(2.0f)
+				.moment_of_inertia(std::numeric_limits<float>::max()));
 
 			auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass * (height * height + width * width) * (1.0f / 12.0f); };
 
@@ -231,15 +235,15 @@ int main(int argc, char** argv) {
 
 			auto p = rynx::Shape::makeRectangle(rope_segment_length, rope_width);
 			auto bound = p.generateBoundary_Outside(1.0f);
-			auto* m = meshes->create("riprap", rynx::polygon_triangulation().generate_polygon_boundary(p, application.textures()->textureLimits("Empty")), "Empty");
+			auto* m = meshes->create("riprap", rynx::polygon_triangulation().make_boundary_mesh(p, application.textures()->textureLimits("Empty")), "Empty");
 			float piece_radius = sqrtf((rope_width * rope_width + rope_segment_length * rope_segment_length) * 0.25f);
 			float mass = 5.0f;
 			
 			for (int k = 1; k <= numJoints; ++k) {
 				auto id2 = ecs.create(
-					rynx::components::position(pos +  dir * (k * rope_segment_length)),
+					rynx::components::position(pos + dir * (k * rope_segment_length)),
 					rynx::components::motion(),
-					rynx::components::physical_body(mass, rectangle_moment_of_inertia(mass, rope_segment_length, rope_width), 0.3f, 1.0f, rootId),
+					rynx::components::physical_body(rootId).mass(mass).moment_of_inertia(rectangle_moment_of_inertia(mass, rope_segment_length, rope_width)).friction(1.0f).elasticity(0.3f),
 					rynx::components::radius(piece_radius),
 					rynx::components::collisions{ collisionCategoryDynamic.value },
 					rynx::components::color(),
