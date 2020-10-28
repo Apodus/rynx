@@ -352,9 +352,9 @@ rynx::sound::configuration rynx::sound::audio_system::play_sound(const std::stri
 }
 
 void rynx::sound::audio_system::open_output_device(int numChannels, int samplesPerRender, rynx::sound::audio_system::format outputFormat) {
-
+    std::cout << "opening audio output.." << std::endl;
+    
     setNumChannels(numChannels);
-
     m_outputFormat = outputFormat;
 
     {

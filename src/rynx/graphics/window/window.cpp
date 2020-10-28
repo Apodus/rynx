@@ -38,7 +38,6 @@ Window::Window() {
 
 Window::~Window() {
 	glfwDestroyWindow(m_pWindow);
-	glfwTerminate();
 	m_pWindow = nullptr;
 	g_resizeEventMapper.reset();
 }
@@ -68,6 +67,7 @@ GLFWwindow* Window::createWindow(std::string name) {
 	GLFWwindow* window = glfwCreateWindow(static_cast<int>(m_width), static_cast<int>(m_height), name.c_str(), monitor, nullptr);
 
 	if (!window) {
+		std::cout << "Could not create window. Ensure OpenGL 4.3 is supported by your drivers." << std::endl;
 		glfwTerminate();
 		throw std::runtime_error("Failed to create GLFW window");
 	}
@@ -89,6 +89,7 @@ void Window::createWindow(int width, int height, std::string name) {
 
 	// Initialize GLFW
 	if (!glfwInit()) {
+		std::cout << "Failed to init GLFW" << std::endl;
 		throw std::string("Failed to init GLFW");
 	}
 
