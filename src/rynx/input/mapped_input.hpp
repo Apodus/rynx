@@ -58,8 +58,16 @@ namespace rynx {
 			}
 
 			void rebindAction(int32_t applicationKey, int32_t physicalKey) {
+				auto original = keyBindings.find(applicationKey);
+				if(original != keyBindings.end()) {
+					auto original_phys = original->second;
+					auto& boundGameKeys = reverseBindings[original_phys];
+					auto it = std::find(boundGameKeys.begin(), boundGameKeys.end(), applicationKey);
+					rynx_assert(it != boundGameKeys.end(), "key was supposed to be bound?");
+					boundGameKeys.erase(it);
+				}
 				keyBindings[applicationKey] = physicalKey;
-				reverseBindings[physicalKey] = applicationKey;
+				reverseBindings[physicalKey].emplace_back(applicationKey);
 			}
 
 			int32_t applicationKeyByName(const std::string& actionName) const {
@@ -99,7 +107,7 @@ namespace rynx {
 				auto clicked = userIO->getAnyClicked();
 				if (clicked == 0)
 					return 0;
-				return reverseBindings.find(clicked)->second;
+				return reverseBindings.find(clicked)->second.front();
 			}
 
 			int32_t getAnyClicked_PhysicalKey() {
@@ -110,7 +118,7 @@ namespace rynx {
 				auto released = userIO->getAnyReleased();
 				if (released == 0)
 					return 0;
-				return reverseBindings.find(released)->second;
+				return reverseBindings.find(released)->second.front();
 			}
 
 			int32_t getAnyReleased_PhysicalKey() {
@@ -122,9 +130,9 @@ namespace rynx {
 			int32_t gameKeyCounter = 0;
 			int32_t bindNextClicked = InvalidAction;
 			std::shared_ptr<rynx::input> userIO;
-			unordered_map<int32_t, int32_t> keyBindings;
-			unordered_map<int32_t, int32_t> reverseBindings;
-			unordered_map<std::string, int32_t> applicationKeyByName_map;
+			rynx::unordered_map<int32_t, int32_t> keyBindings;
+			rynx::unordered_map<int32_t, std::vector<int32_t>> reverseBindings;
+			rynx::unordered_map<std::string, int32_t> applicationKeyByName_map;
 
 			vec3<float> m_mouseWorldPos; // TODO: is this an ok place to have this?
 		};
