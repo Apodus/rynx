@@ -1,5 +1,6 @@
 
 #include <rynx/math/geometry/polygon.hpp>
+#include <rynx/math/spline.hpp>
 
 rynx::polygon::segment::segment() : line_segment(), convex1(true), convex2(true) {}
 rynx::polygon::segment::segment(const line_segment& lineSegment) {
@@ -63,6 +64,10 @@ rynx::vec3<std::pair<float, float>> rynx::polygon::extents() const {
 		if (p.z < min_v.z) min_v.z = p.z;
 	}
 	return { {min_v.x, max_v.x}, {min_v.y, max_v.y}, {min_v.z, max_v.z} };
+}
+
+rynx::math::spline rynx::polygon::as_spline(float alpha) const {
+	return rynx::math::spline(vertices, alpha);
 }
 
 float rynx::polygon::normalize() {

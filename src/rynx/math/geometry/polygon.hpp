@@ -3,9 +3,13 @@
 
 #include <rynx/math/geometry/line_segment.hpp>
 #include <rynx/math/geometry/math.hpp>
+
 #include <vector>
 
 namespace rynx {
+	namespace math {
+		class spline;
+	}
 
 	class polygon {
 	public:
@@ -25,7 +29,22 @@ namespace rynx {
 			segment(rynx::vec3<float> a, rynx::vec3<float> b, bool c1, bool c2);
 		};
 
-		std::vector<rynx::vec3<float>> vertices;
+		polygon() = default;
+		polygon(const polygon& other) = default;
+		polygon(polygon&& other) = default;
+
+		polygon(std::vector<rynx::vec3f> verts) : vertices(std::move(verts)) {}
+		polygon(std::vector<rynx::vec3f>&& verts) : vertices(std::move(verts)) {}
+
+		polygon& operator = (const std::vector<rynx::vec3f>& verts) { vertices = verts; return *this; }
+		polygon& operator = (std::vector<rynx::vec3f>&& verts) { vertices = std::move(verts); return *this; }
+
+		polygon& operator = (const polygon& other) { vertices = other.vertices; return *this; }
+		polygon& operator = (polygon&& other) { vertices = std::move(other.vertices); return *this; }
+
+		rynx::math::spline as_spline(float alpha = 1.0f) const;
+
+		std::vector<rynx::vec3f> vertices;
 
 		rynx::vec3<float>& operator [](int index);
 		const rynx::vec3<float>& operator [](int index) const;

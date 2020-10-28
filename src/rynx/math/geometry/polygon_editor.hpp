@@ -13,5 +13,6 @@ namespace rynx {
 		void insertVertex(rynx::vec3<float> v);
 		void vertexMultiply(float xMultiply, float yMultiply);
 		void reverse();
+		void smooth(int factor = 3, float alpha = 1.0f);
 	};
 }

@@ -1,5 +1,6 @@
 
 #include <rynx/math/geometry/polygon_editor.hpp>
+#include <rynx/math/spline.hpp>
 
 rynx::polygon_editor::polygon_editor(rynx::polygon& polygon) : polygon(polygon) {}
 
@@ -41,4 +42,8 @@ void rynx::polygon_editor::reverse() {
 		++bot;
 		--top;
 	}
+}
+
+void rynx::polygon_editor::smooth(int factor, float alpha) {
+	polygon = polygon.as_spline(alpha).generate(factor);
 }
