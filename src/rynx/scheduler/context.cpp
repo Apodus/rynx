@@ -108,14 +108,6 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 	return {};
 }
 
-void rynx::scheduler::context::set_parallel_for_task_assignment_strategy_as_random() {
-	m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers;
-}
-
-void rynx::scheduler::context::set_parallel_for_task_assignment_strategy_as_first_available() {
-	m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::SameTaskForEachWorkers;
-}
-
 rynx::scheduler::task_token rynx::scheduler::context::add_task(task task) {
 	return task_token(std::move(task));
 }

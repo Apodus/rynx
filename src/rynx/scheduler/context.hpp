@@ -8,14 +8,15 @@
 #include <rynx/math/random.hpp>
 
 #include <rynx/tech/parallel/queue.hpp>
+#include <rynx/tech/binary_config.hpp>
 
 #include <mutex>
 #include <atomic>
 #include <shared_mutex>
-
 #include <iostream>
 
 namespace rynx {
+
 	namespace scheduler {
 		class task_token;
 		class task;
@@ -100,12 +101,7 @@ namespace rynx {
 			std::mutex m_taskMutex;
 			task_scheduler* m_scheduler = nullptr;
 
-			enum class ParallelForTaskAssignmentStrategy {
-				RandomTaskForEachWorkers,
-				SameTaskForEachWorkers
-			};
-
-			ParallelForTaskAssignmentStrategy m_currentParallelForTaskStrategy = ParallelForTaskAssignmentStrategy::RandomTaskForEachWorkers;
+			rynx::binary_config m_execution_state;
 
 			// TODO: hide these as private.
 		public:
@@ -136,8 +132,7 @@ namespace rynx {
 
 		public:
 
-			void set_parallel_for_task_assignment_strategy_as_random();
-			void set_parallel_for_task_assignment_strategy_as_first_available();
+			rynx::binary_config& access_state() { return m_execution_state; }
 
 			[[nodiscard]] bool resourcesAvailableFor(const task& t) const;
 
