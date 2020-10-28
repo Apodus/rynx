@@ -1,6 +1,7 @@
 
 #include <rynx/application/logic.hpp>
 #include <rynx/scheduler/barrier.hpp>
+#include <rynx/scheduler/context.hpp>
 
 rynx::application::logic::iruleset::iruleset() {
 	m_barrier = std::make_unique<rynx::scheduler::barrier>("SystemBarrier");
@@ -20,4 +21,30 @@ rynx::scheduler::barrier rynx::application::logic::iruleset::barrier() const { r
 
 void rynx::application::logic::iruleset::required_for(iruleset& other) {
 	other.m_dependOn.emplace_back(std::make_unique<rynx::scheduler::barrier>(*m_barrier));
+}
+
+
+rynx::application::logic& rynx::application::logic::add_ruleset(std::unique_ptr<iruleset> ruleset) {
+	m_rules.emplace_back(std::move(ruleset));
+	return *this;
+}
+
+void rynx::application::logic::generate_tasks(rynx::scheduler::context& context, float dt) {
+	for (auto& ruleset : m_rules) {
+		if (ruleset->state_id().is_enabled()) {
+			ruleset->process(context, dt);
+		}
+	}
+}
+
+void rynx::application::logic::entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
+	for (auto& ruleset : m_rules) {
+		ruleset->on_entities_erased(context, ids);
+	}
+}
+
+void rynx::application::logic::clear() {
+	for (auto& ruleset : m_rules) {
+		ruleset->clear();
+	}
 }
