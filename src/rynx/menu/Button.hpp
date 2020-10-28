@@ -37,13 +37,13 @@ namespace rynx {
 			Button(
 				rynx::graphics::GPUTextures& textures,
 				std::string texture,
-				Component* parent,
 				vec3<float> scale,
 				vec3<float> position = vec3<float>(),
 				float frame_edge_percentage = 0.2f
-			) : Component(parent, scale, position)
-				, m_frame(this, textures, std::move(texture), frame_edge_percentage)
+			) : Component(scale, position)
+				, m_frame(textures, std::move(texture), frame_edge_percentage)
 			{
+				m_frame.set_parent(this);
 				m_defaultScale = scale;
 				initialize();
 			}
@@ -53,7 +53,7 @@ namespace rynx {
 			Button& text(std::string t) { m_text = std::move(t); return *this; }
 			Button& color_frame(floats4 color) { m_color = color; return *this; }
 			Button& color_text(floats4 color) { m_textColor = color; return *this; }
-			template<typename F> Button& onClick(F&& op) { m_onClick = std::forward<F>(op); return *this; }
+			Button& onClick(std::function<void()> op) { m_onClick = std::move(op); return *this; }
 
 		private:
 			void initialize();

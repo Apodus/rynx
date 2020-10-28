@@ -76,12 +76,6 @@ namespace rynx {
 				vec3<float> position = vec3<float>(0, 0, 0)
 			);
 
-			Component(
-				Component* parent,
-				vec3<float> scale,
-				vec3<float> position = vec3<float>(0, 0, 0)
-			);
-
 			virtual ~Component() {}
 
 			void input(rynx::mapped_input& input);
@@ -92,7 +86,11 @@ namespace rynx {
 			Component& alignToOuterEdge(Component* other, Align sideOf);
 			Component& alignToInnerEdge(Component* other, Align sideOf);
 
+			void set_parent(Component* other);
 			void addChild(std::shared_ptr<Component> child);
+			std::shared_ptr<Component> detachChild(const Component* ptr);
+			void reparent(Component& other);
+
 			bool inRectComponent(float x, float y) const;
 			bool inRectComponent(vec3<float> v) { return inRectComponent(v.x, v.y); }
 			bool inScreen() const;

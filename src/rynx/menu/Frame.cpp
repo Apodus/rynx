@@ -8,10 +8,9 @@
 
 
 rynx::menu::Frame::Frame(
-	Component* parent,
 	rynx::graphics::GPUTextures& textures,
 	const std::string& textureID,
-	float edgeSize) : Component(parent, vec3<float>(), vec3<float>()) {
+	float edgeSize) : Component(vec3<float>(), vec3<float>()) {
 	m_backgroundMesh = std::make_unique<rynx::mesh>();
 	m_color = Color::WHITE;
 	m_edgeSize = edgeSize;

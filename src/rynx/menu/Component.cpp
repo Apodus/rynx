@@ -1,4 +1,5 @@
 #include <rynx/menu/Component.hpp>
+#include <rynx/system/assert.hpp>
 
 void rynx::menu::Component::privateAlign(Align sideOf, float mul) {
 	if (sideOf & LEFT) {
@@ -78,19 +79,28 @@ rynx::menu::Component::Component(
 	m_scale = scale;
 }
 
-rynx::menu::Component::Component(
-	Component* parent,
-	vec3<float> scale,
-	vec3<float> position
-) {
-	m_pParent = parent;
-	m_position = position;
-	m_scale = scale;
+void rynx::menu::Component::set_parent(Component* other) {
+	m_pParent = other;
 }
 
 void rynx::menu::Component::addChild(std::shared_ptr<Component> child) {
+	child->m_pParent = this;
 	m_children.emplace_back(std::move(child));
 }
+
+std::shared_ptr<rynx::menu::Component> rynx::menu::Component::detachChild(const Component* ptr) {
+	auto it = std::find_if(m_children.begin(), m_children.end(), [ptr](const std::shared_ptr<Component>& child) { return child.get() == ptr; });
+	rynx_assert(it != m_children.end(), "detached child must exist");
+	std::shared_ptr<Component> detachedChild = std::move(*it);
+	m_children.erase(it);
+	return detachedChild;
+}
+
+void rynx::menu::Component::reparent(Component& other) {
+	rynx_assert(m_pParent, "must have parent");
+	other.addChild(m_pParent->detachChild(this));
+}
+
 
 void rynx::menu::Component::input(rynx::mapped_input& input) {
 	if (m_active) {

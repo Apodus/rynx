@@ -28,7 +28,6 @@ namespace rynx {
 
 		public:
 			Frame(
-				Component* parent,
 				rynx::graphics::GPUTextures& textures,
 				const std::string& textureID,
 				float edgeSize = 0.20f);

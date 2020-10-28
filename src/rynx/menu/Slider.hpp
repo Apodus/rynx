@@ -28,7 +28,7 @@ namespace rynx {
 			Div* m_knobDiv = nullptr;
 
 		public:
-			SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string knobTexture, std::string baseTexture, Component* parent, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
+			SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string knobTexture, std::string baseTexture, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
 
 			SlideBarVertical& onValueChanged(std::function<void(float)> t);
 
