@@ -4,6 +4,7 @@
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 #include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
+#include <rynx/tech/binary_config.hpp>
 
 #include <rynx/tech/profiling.hpp>
 #include <rynx/tech/ecs.hpp>
@@ -12,6 +13,8 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct boundary_renderer : public rynx::application::graphics_step::igraphics_step {
+
+				std::shared_ptr<rynx::binary_config::id> m_enabled;
 
 				boundary_renderer(mesh* boxMesh, MeshRenderer* meshRenderer) {
 					m_boxMesh = boxMesh;
@@ -22,12 +25,17 @@ namespace rynx {
 				virtual ~boundary_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
+					if (m_enabled && !m_enabled->is_enabled()) {
+						m_edges->clear();
+						return;
+					}
+
 					rynx_profile("visualisation", "boundary_renderer");
 					ctx->add_task("fetch polygon boundaries", [this](const rynx::ecs& ecs, rynx::scheduler::task& task_context) {
 						m_edges->clear();
 						
-						ecs.query().notIn<rynx::components::mesh, rynx::components::translucent, components::frustum_culled, rynx::components::invisible>()
-							.for_each_parallel(task_context, [this](
+						ecs.query().notIn<components::frustum_culled, rynx::components::invisible>()
+							.for_each_parallel(task_context, [this, &ecs](
 								const rynx::components::boundary& m,
 								const rynx::components::color& color)
 								{
@@ -39,17 +47,33 @@ namespace rynx {
 										model_.rotate_2d(std::atan((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
 										// model_.rotate_2d(math::atan_approx((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
 										// model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
-										model_.scale((edge.p1 - edge.p2).length(), m_line_width * 0.5f, 1.0f);
+										model_.scale((edge.p1 - edge.p2).length() * 0.5f, m_line_width * 0.5f, 1.0f);
 
 										m_edges->emplace_back(model_);
 										m_edges->emplace_back(color.value);
+									}
+
+									auto draw_point = [&](rynx::vec3f point, rynx::floats4 color, float radius) {
+										rynx::matrix4 model;
+										model.discardSetTranslate(point);
+										model.scale(radius);
+										m_edges->emplace_back(model);
+										m_edges->emplace_back(color);
+									};
+
+									for (auto&& edge : m.segments_world) {
+										draw_point(edge.p1, rynx::floats4{ 1.0f, 1.0f, 1.0f, 1.0f }, m_line_width);
 									}
 								});
 					});
 				}
 				
 				virtual void execute() override {
-					rynx_profile("visualisation", "ball draw solids");
+					if (m_enabled && !m_enabled->is_enabled()) {
+						return;
+					}
+
+					rynx_profile("visualisation", "debug poly boundaries");
 					m_edges->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 						m_meshRenderer->drawMeshInstancedDeferred(*m_boxMesh, matrices, colors);
 					});

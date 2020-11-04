@@ -53,51 +53,51 @@ rynx::input::~input() {
 #pragma warning (disable : 4800) // forcing int value to boolean
 #endif
 
-bool rynx::input::isKeyClicked(int key) const {
-	return m_buttonStates[key] & KEY_CLICK;
+bool rynx::input::isKeyClicked(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_CLICK;
 }
 
-bool rynx::input::isKeyPressed(int key) const {
-	return m_buttonStates[key] & KEY_PRESSED;
+bool rynx::input::isKeyPressed(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_PRESSED;
 }
 
-bool rynx::input::isKeyDown(int key) const {
-	return m_buttonStates[key] & KEY_DOWN;
+bool rynx::input::isKeyDown(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_DOWN;
 }
 
-bool rynx::input::isKeyRepeat(int key) const {
-	return m_buttonStates[key] & KEY_REPEAT;
+bool rynx::input::isKeyRepeat(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_REPEAT;
 }
 
-bool rynx::input::isKeyReleased(int key) const {
-	return m_buttonStates[key] & KEY_RELEASED;
+bool rynx::input::isKeyReleased(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_RELEASED;
 }
 
-bool rynx::input::isKeyConsumed(int key) const {
-	return m_buttonStates[key] & KEY_CONSUMED;
+bool rynx::input::isKeyConsumed(rynx::key::physical key) const {
+	return m_buttonStates[key.id] & KEY_CONSUMED;
 }
 
-void rynx::input::consume(int key) {
-	m_buttonStates[key] |= KEY_CONSUMED;
+void rynx::input::consume(rynx::key::physical key) {
+	m_buttonStates[key.id] |= KEY_CONSUMED;
 }
 
 
-int rynx::input::getAnyClicked() {
+rynx::key::physical rynx::input::getAnyClicked() {
 	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
 		if(m_buttonStates[index] & KEY_PRESSED) {
-			return index;
+			return rynx::key::physical{ static_cast<int32_t>(index) };
 		}
 	}
-	return 0;
+	return { 0 };
 }
 
-int rynx::input::getAnyReleased() {
+rynx::key::physical rynx::input::getAnyReleased() {
 	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
 		if(m_buttonStates[index] & KEY_RELEASED) {
-			return index;
+			return rynx::key::physical{ static_cast<int32_t>(index) };
 		}
 	}
-	return 0;
+	return { 0 };
 }
 
 float rynx::input::getMouseScroll() const {

@@ -3,6 +3,7 @@
 #include <rynx/graphics/renderer/screenspace.hpp>
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/graphics/framebuffer.hpp>
+#include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/application/application.hpp>
 
 #include <rynx/application/visualisation/default_graphics_passes.hpp>
@@ -11,9 +12,15 @@
 #include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
 #include <rynx/application/visualisation/lights/ambient_light_effect.hpp>
 
+#include <rynx/application/visualisation/geometry/ball_renderer.hpp>
+#include <rynx/application/visualisation/geometry/boundary_renderer.hpp>
+#include <rynx/application/visualisation/geometry/mesh_renderer.hpp>
+#include <rynx/application/visualisation/geometry/model_matrix_updates.hpp>
+
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 #include <rynx/graphics/renderer/textrenderer.hpp>
 #include <rynx/graphics/opengl.hpp>
+
 
 #include <memory>
 
@@ -33,12 +40,34 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 
 	m_ambients = ambient_lights_handler.get();
 
-	lighting_pass = std::make_unique<graphics_step>();
-	lighting_pass->add_graphics_step(std::move(omnilights_handler));
-	lighting_pass->add_graphics_step(std::move(directed_lights_handler));
-	lighting_pass->add_graphics_step(std::move(ambient_lights_handler));
+	{
+		lighting_pass = std::make_unique<graphics_step>();
+		lighting_pass->add_graphics_step(std::move(omnilights_handler));
+		lighting_pass->add_graphics_step(std::move(directed_lights_handler));
+		lighting_pass->add_graphics_step(std::move(ambient_lights_handler));
+	}
 
-	geometry_pass = rynx::application::visualisation::default_geometry_pass(&application.meshRenderer());
+	{
+		auto* tube_mesh = application.meshRenderer().meshes()->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
+		tube_mesh->normals.clear();
+		tube_mesh->putNormal(0, +1, 0);
+		tube_mesh->putNormal(0, -1, 0);
+		tube_mesh->putNormal(0, -1, 0);
+		tube_mesh->putNormal(0, +1, 0);
+		tube_mesh->bind();
+		tube_mesh->rebuildNormalBuffer();
+
+		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
+		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(application.meshRenderer().meshes()->get("square_tube_normals"), &application.meshRenderer());
+		boundary_rendering->m_enabled = m_debug_draw_config;
+
+		geometry_pass = std::make_unique<graphics_step>();
+		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
+		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
+		geometry_pass->add_graphics_step(std::move(boundary_rendering));
+		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(application.meshRenderer().meshes()->get("circle_empty"), &application.meshRenderer()));
+	}
+
 	gpu_textures = application.textures();
 
 	current_internal_resolution_geometry = { 1.0f, 1.0f };

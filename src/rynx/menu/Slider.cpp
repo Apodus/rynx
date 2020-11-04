@@ -47,7 +47,7 @@ rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::onValueChanged(std::
 void rynx::menu::SlideBarVertical::onInput(rynx::mapped_input& input) {
 	auto mousePos = input.mouseMenuPosition(aspectRatio());
 	if (inRectComponent(mousePos)) {
-		int mouseKey1 = input.applicationKeyByName("menuCursorActivation");
+		rynx::key::logical mouseKey1 = input.applicationKeyByName("menuCursorActivation");
 		if (input.isKeyPressed(mouseKey1))
 			m_mouseDragActive = true;
 		if (input.isKeyReleased(mouseKey1))

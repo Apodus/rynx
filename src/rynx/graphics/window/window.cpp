@@ -137,8 +137,8 @@ void Window::swap_buffers() const {
 }
 
 void Window::enable_grab() const {
-	// TODO: Confine mouse cursor within window region
-	glfwSetInputMode(m_pWindow, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	// When using this, must draw your own in-game cursor. And remember to release mouse eventually.
+	glfwSetInputMode(m_pWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void Window::disable_grab() const {

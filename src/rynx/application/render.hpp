@@ -4,6 +4,7 @@
 
 #include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/graphics/framebuffer.hpp>
+#include <rynx/tech/binary_config.hpp>
 #include <rynx/math/vector.hpp>
 #include <memory>
 
@@ -31,6 +32,11 @@ namespace rynx {
 			void set_lights_resolution(float percentage_x, float percentage_y);
 			void on_resolution_change(size_t new_size_x, size_t new_size_y);
 
+			renderer& debug_draw_binary_config(rynx::binary_config::id& conf) {
+				m_debug_draw_config->include_id(conf);
+				return *this;
+			}
+
 		private:
 			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
 			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
@@ -45,6 +51,8 @@ namespace rynx {
 			std::pair<float, float> current_internal_resolution_lighting;
 
 			igraphics_step* m_ambients = nullptr;
+
+			std::shared_ptr<rynx::binary_config::id> m_debug_draw_config;
 
 			rynx::application::Application& m_application;
 			std::shared_ptr<camera> camera;

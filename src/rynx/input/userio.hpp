@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <rynx/math/vector.hpp>
+#include <rynx/input/key_types.hpp>
 
 struct GLFWwindow;
 
@@ -42,8 +43,8 @@ namespace rynx {
 		input(std::shared_ptr<Window> window);
 		~input();
 
-		inline int getMouseKeyCode(int mouseButton) const {
-			return mouseButton + 256;
+		inline rynx::key::physical getMouseKeyCode(int mouseButton) const {
+			return { mouseButton + 256 };
 		}
 
 		template<class T>
@@ -62,18 +63,18 @@ namespace rynx {
 			return m_mouseDelta;
 		}
 
-		bool isKeyClicked(int key) const;
-		bool isKeyPressed(int key) const;
-		bool isKeyDown(int key) const;
-		bool isKeyRepeat(int key) const;
-		bool isKeyReleased(int key) const;
-		bool isKeyConsumed(int key) const;
-		void consume(int key);
+		bool isKeyClicked(rynx::key::physical key) const;
+		bool isKeyPressed(rynx::key::physical key) const;
+		bool isKeyDown(rynx::key::physical key) const;
+		bool isKeyRepeat(rynx::key::physical key) const;
+		bool isKeyReleased(rynx::key::physical key) const;
+		bool isKeyConsumed(rynx::key::physical key) const;
+		void consume(rynx::key::physical key);
 
 		float getMouseScroll() const;
 
-		int getAnyClicked();
-		int getAnyReleased();
+		rynx::key::physical getAnyClicked();
+		rynx::key::physical getAnyReleased();
 
 		void update();
 

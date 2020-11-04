@@ -96,9 +96,8 @@ namespace {
 
 			if (distSqr < radiusSqr) {
 				auto normal = (pointToLineSegment.second - ball_position).normalize();
-				normal *= 2.0f * (normal.dot(segment.normal) < 0) - 1.0f;
-
-				penetration += ball_radius - rynx::math::sqrt_approx(distSqr);
+				float penetration_current = ball_radius - rynx::math::sqrt_approx(distSqr);
+				penetration = std::max(penetration, penetration_current);
 				collision_normal += normal;
 				collision_point += pointToLineSegment.second;
 				collisions_detected += 1;
@@ -114,7 +113,7 @@ namespace {
 				collision_point / float(collisions_detected),
 				polygon_position,
 				ball_position,
-				penetration / float(collisions_detected)
+				penetration
 			);
 		}
 	}
@@ -133,9 +132,12 @@ namespace {
 
 		// this probably wont work but lets try
 		int collisions_detected = 0;
-		rynx::vec3f collision_normal;
+		rynx::vec3f collision_normal_a;
+		rynx::vec3f collision_normal_b;
 		rynx::vec3f collision_point;
 		float penetration = 0;
+
+		std::array<rynx::vec3f, 4> collision_points;
 
 		for (const auto& segmentA : boundaryA.segments_world) {
 			
@@ -159,37 +161,47 @@ namespace {
 					const float a1 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p1).first;
 					const float a2 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p2).first;
 
-					rynx::vec3<float> normal;
-					if (((a1 < b1) & (a1 < b2)) | ((a2 < b1) & (a2 < b2))) {
-						normal = segmentB.getNormalXY();
-					}
-					else {
-						normal = segmentA.getNormalXY();
-						normal *= -1.f;
-					}
-
 					float penetration1 = a1 < a2 ? a1 : a2;
 					float penetration2 = b1 < b2 ? b1 : b2;
 					float penetration_single = penetration1 < penetration2 ? rynx::math::sqrt_approx(penetration1) : rynx::math::sqrt_approx(penetration2);
 
-					penetration += penetration_single;
-					collision_normal += normal;
+					collision_normal_a += segmentA.normal;
+					collision_normal_b += segmentB.normal;
+
+					penetration = std::max(penetration, penetration_single);
+					collision_points[collisions_detected & 3] = collisionPoint.point();
 					collision_point += collisionPoint.point();
 					collisions_detected += 1;
 				}
 			}
 		}
 
-		if (collisions_detected > 0) {
+		if (collisions_detected > 1) {
+			rynx::vec3f normal;
+			if (collisions_detected == 2) {
+				normal = (collision_points[0] - collision_points[1]).normal2d();
+			}
+			else {
+				normal = (collision_points[0] - collision_points[1]) + (collision_points[0] - collision_points[2]).normal2d();
+			}
+
+			if (collision_normal_a.length_squared() > collision_normal_b.length_squared()) {
+				normal *= (normal.dot(collision_normal_a) < 0) * 2.0f - 1.0f;
+			}
+			else {
+				normal *= (normal.dot(collision_normal_b) > 0) * 2.0f - 1.0f;
+			}
+
 			create_collision_event(
 				collisions_accumulator,
 				poly1,
 				poly2,
-				(collision_normal / float(collisions_detected)).normalize(),
+				// (collision_normal / float(collisions_detected)).normalize(),
+				normal.normalize(),
 				collision_point / float(collisions_detected),
 				pos_a,
 				pos_b,
-				penetration / float(collisions_detected)
+				penetration
 			);
 		}
 	}
@@ -210,8 +222,8 @@ namespace {
 				collisions_accumulator,
 				bulletEntity,
 				dynamicEntity,
-				((bulletPos.value - bulletMotion.velocity) - ballPos).normalize(),
-				pointDistanceResult.second,
+				((bulletPos.value - bulletMotion.velocity) - ballPos).normalize(), // normal
+				pointDistanceResult.second, // collision point
 				bulletPos.value,
 				ballPos,
 				0 // NOTE: penetration values don't really mean anything in projectile case.
@@ -236,11 +248,15 @@ namespace {
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
 			const auto& segment = boundary.segments_world[partIndex];
+			
+			float sin_v = rynx::math::sin(polygonPositionComponent.angle);
+			float cos_v = rynx::math::cos(polygonPositionComponent.angle);
+			
 			auto intersectionTest = rynx::math::lineSegmentIntersectionPoint(
 				bulletPos.value,
 				bulletPos.value - bulletMotion.velocity,
-				rynx::math::rotatedXY(segment.p1, polygonPositionComponent.angle) + polygonPositionComponent.value,
-				rynx::math::rotatedXY(segment.p2, polygonPositionComponent.angle) + polygonPositionComponent.value
+				rynx::math::rotatedXY(segment.p1, sin_v, cos_v) + polygonPositionComponent.value,
+				rynx::math::rotatedXY(segment.p2, sin_v, cos_v) + polygonPositionComponent.value
 			);
 
 			if (intersectionTest) {
@@ -430,6 +446,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			extra_infos->operator[](i)->resize(overlaps_vector->operator[](i)->size());
 		}
 
+		g_dummy_motion = rynx::components::motion{};
 		std::vector<rynx::scheduler::barrier> barriers;
 		{
 			rynx_profile("collisions", "fetch motion components");
@@ -532,7 +549,6 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 						constexpr float bias_start = 0.05f;
 						const float overlap_value = collision.penetration - bias_start;
-						const auto proximity_force = collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 60.0f; // This *60 is not the same as dt. Just a random constant.
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
 
 						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
@@ -546,6 +562,11 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						const float bot = collision.a_body.inv_mass + collision.b_body.inv_mass + inertia1 + inertia2;
 
 						const float soft_j = top / bot;
+
+						// This *60 is not the same as dt. Just a random constant.
+						const auto proximity_force =
+							collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 0.5f *
+							(collision.a_body.bias_multiply + collision.b_body.bias_multiply) / (collision.a_body.inv_mass + collision.b_body.inv_mass);
 
 						const vec3<float> normal = collision.normal;
 						const auto soft_impact_force = normal * soft_j;

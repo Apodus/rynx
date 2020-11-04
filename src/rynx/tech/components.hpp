@@ -128,6 +128,12 @@ namespace rynx {
 				, collision_id(collision_id)
 			{}
 
+			physical_body& bias(float value) {
+				rynx_assert(value > 0, "bias must be positive value");
+				bias_multiply = value;
+				return *this;
+			}
+
 			// TODO: move implementations to cpp
 			physical_body& mass(float m) {
 				inv_mass = 1.0f / m;
@@ -187,6 +193,7 @@ namespace rynx {
 				}
 			}
 
+			float bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
 			float inv_mass = 1.0f;
 			float inv_moment_of_inertia = 1.0f;
 			float collision_elasticity = 0.5f; // [0, 1[
