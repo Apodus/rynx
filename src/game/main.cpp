@@ -112,15 +112,15 @@ int main(int argc, char** argv) {
 
 	// setup game logic
 	{
-		auto ruleset_collisionDetection = base_simulation.create_rule_set<rynx::ruleset::physics_2d>();
-		auto ruleset_particle_update = base_simulation.create_rule_set<rynx::ruleset::particle_system>();
-		auto ruleset_frustum_culling = base_simulation.create_rule_set<rynx::ruleset::frustum_culling>(camera);
-		auto ruleset_motion_updates = base_simulation.create_rule_set<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
-		auto ruleset_physical_springs = base_simulation.create_rule_set<rynx::ruleset::physics::springs>();
-		auto ruleset_lifetime_updates = base_simulation.create_rule_set<rynx::ruleset::lifetime_updates>();
+		auto ruleset_collisionDetection = base_simulation.rule_set().create<rynx::ruleset::physics_2d>();
+		auto ruleset_particle_update = base_simulation.rule_set().create<rynx::ruleset::particle_system>();
+		auto ruleset_frustum_culling = base_simulation.rule_set().create<rynx::ruleset::frustum_culling>(camera);
+		auto ruleset_motion_updates = base_simulation.rule_set().create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
+		auto ruleset_physical_springs = base_simulation.rule_set().create<rynx::ruleset::physics::springs>();
+		auto ruleset_lifetime_updates = base_simulation.rule_set().create<rynx::ruleset::lifetime_updates>();
 		
-		auto ruleset_minilisk = base_simulation.create_rule_set<game::logic::minilisk_logic>();
-		auto ruleset_minilisk_gen = base_simulation.create_rule_set<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
+		auto ruleset_minilisk = base_simulation.rule_set().create<game::logic::minilisk_logic>();
+		auto ruleset_minilisk_gen = base_simulation.rule_set().create<game::logic::minilisk_test_spawner_logic>(application.meshRenderer().meshes(), collisionCategoryDynamic);
 		spawner = ruleset_minilisk_gen.operator->();
 
 		ruleset_physical_springs->depends_on(ruleset_motion_updates);
@@ -324,11 +324,11 @@ int main(int argc, char** argv) {
 
 	// construct menus
 	{
-		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", &root, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, rynx::vec3<float>(0.4f, 0.1f, 0));
-		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", &root, rynx::vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), "Frame", rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
+		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", rynx::vec3<float>(0.4f, 0.1f, 0));
+		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), "Frame", "Selection", rynx::vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text("Dynamics").font(&fontConsola);
 		sampleButton->alignToInnerEdge(&root, rynx::menu::Align::BOTTOM_LEFT);
