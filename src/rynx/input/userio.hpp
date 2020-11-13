@@ -39,6 +39,8 @@ namespace rynx {
 			KEY_CONSUMED = 32
 		};
 
+		static bool isKeyInState(int8_t keyState, int8_t requestedState, bool ignoreConsumed);
+
 	public:
 		input(std::shared_ptr<Window> window);
 		~input();
@@ -63,11 +65,11 @@ namespace rynx {
 			return m_mouseDelta;
 		}
 
-		bool isKeyClicked(rynx::key::physical key) const;
-		bool isKeyPressed(rynx::key::physical key) const;
-		bool isKeyDown(rynx::key::physical key) const;
-		bool isKeyRepeat(rynx::key::physical key) const;
-		bool isKeyReleased(rynx::key::physical key) const;
+		bool isKeyClicked(rynx::key::physical key, bool ignoreConsumed = false) const;
+		bool isKeyPressed(rynx::key::physical key, bool ignoreConsumed = false) const;
+		bool isKeyDown(rynx::key::physical key, bool ignoreConsumed = false) const;
+		bool isKeyRepeat(rynx::key::physical key, bool ignoreConsumed = false) const;
+		bool isKeyReleased(rynx::key::physical key, bool ignoreConsumed = false) const;
 		bool isKeyConsumed(rynx::key::physical key) const;
 		void consume(rynx::key::physical key);
 

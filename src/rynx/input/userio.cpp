@@ -53,24 +53,29 @@ rynx::input::~input() {
 #pragma warning (disable : 4800) // forcing int value to boolean
 #endif
 
-bool rynx::input::isKeyClicked(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_CLICK;
+
+bool rynx::input::isKeyInState(int8_t keyValue, int8_t requestedValue, bool ignoreConsumed) {
+	return (keyValue & (requestedValue | (!ignoreConsumed * rynx::input::KEY_CONSUMED))) == requestedValue;
 }
 
-bool rynx::input::isKeyPressed(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_PRESSED;
+bool rynx::input::isKeyClicked(rynx::key::physical key, bool ignoreConsumed) const {
+	return isKeyInState(m_buttonStates[key.id], KEY_CLICK, ignoreConsumed);
 }
 
-bool rynx::input::isKeyDown(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_DOWN;
+bool rynx::input::isKeyPressed(rynx::key::physical key, bool ignoreConsumed) const {
+	return isKeyInState(m_buttonStates[key.id], KEY_PRESSED, ignoreConsumed);
 }
 
-bool rynx::input::isKeyRepeat(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_REPEAT;
+bool rynx::input::isKeyDown(rynx::key::physical key, bool ignoreConsumed) const {
+	return isKeyInState(m_buttonStates[key.id], KEY_DOWN, ignoreConsumed);
 }
 
-bool rynx::input::isKeyReleased(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_RELEASED;
+bool rynx::input::isKeyRepeat(rynx::key::physical key, bool ignoreConsumed) const {
+	return isKeyInState(m_buttonStates[key.id], KEY_REPEAT, ignoreConsumed);
+}
+
+bool rynx::input::isKeyReleased(rynx::key::physical key, bool ignoreConsumed) const {
+	return isKeyInState(m_buttonStates[key.id], KEY_RELEASED, ignoreConsumed);
 }
 
 bool rynx::input::isKeyConsumed(rynx::key::physical key) const {

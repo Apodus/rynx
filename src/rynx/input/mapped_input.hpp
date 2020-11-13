@@ -83,36 +83,64 @@ namespace rynx {
 			return applicationKeyByName_map.find(actionName)->second;
 		}
 
-		bool isKeyClicked(rynx::key::logical key) const {
-			return userIO->isKeyClicked(keyBindings.find(key)->second);
+		bool isKeyClicked(rynx::key::logical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyClicked(keyBindings.find(key)->second, ignoreConsumed);
+		}
+		
+		bool isKeyClicked(rynx::key::physical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyClicked(key, ignoreConsumed);
 		}
 
-		bool isKeyPressed(rynx::key::logical key) const {
-			return userIO->isKeyPressed(keyBindings.find(key)->second);
+		bool isKeyPressed(rynx::key::logical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyPressed(keyBindings.find(key)->second, ignoreConsumed);
 		}
 
-		bool isKeyDown(rynx::key::logical key) const {
-			return userIO->isKeyDown(keyBindings.find(key)->second);
+		bool isKeyPressed(rynx::key::physical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyPressed(key, ignoreConsumed);
 		}
 
-		bool isKeyRepeat(rynx::key::logical key) const {
-			return userIO->isKeyRepeat(keyBindings.find(key)->second);
+		bool isKeyDown(rynx::key::logical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyDown(keyBindings.find(key)->second, ignoreConsumed);
+		}
+		
+		bool isKeyDown(rynx::key::physical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyDown(key, ignoreConsumed);
 		}
 
-		bool isKeyReleased(rynx::key::logical key) const {
-			return userIO->isKeyReleased(keyBindings.find(key)->second);
+		bool isKeyRepeat(rynx::key::logical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyRepeat(keyBindings.find(key)->second, ignoreConsumed);
+		}
+
+		bool isKeyRepeat(rynx::key::physical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyRepeat(key, ignoreConsumed);
+		}
+
+		bool isKeyReleased(rynx::key::logical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyReleased(keyBindings.find(key)->second, ignoreConsumed);
+		}
+
+		bool isKeyReleased(rynx::key::physical key, bool ignoreConsumed = false) const {
+			return userIO->isKeyReleased(key, ignoreConsumed);
 		}
 
 		bool isKeyConsumed(rynx::key::logical key) const {
 			return userIO->isKeyConsumed(keyBindings.find(key)->second);
 		}
 
+		bool isKeyConsumed(rynx::key::physical key) const {
+			return userIO->isKeyConsumed(key);
+		}
+
 		void consume(rynx::key::logical key) {
 			return userIO->consume(keyBindings.find(key)->second);
 		}
 
+		void consume(rynx::key::physical key) {
+			return userIO->consume(key);
+		}
+
 		// NOTE: getAny* functions are not guaranteed to return correct value in cases where you have bound several gameKey codes to the same physical key.
-		rynx::key::logical getAnyClicked_GameKey() {
+		rynx::key::logical getAnyClicked_LogicalKey() {
 			auto clicked = userIO->getAnyClicked();
 			if (clicked.id == 0)
 				return rynx::key::invalid_logical_key;
@@ -123,7 +151,7 @@ namespace rynx {
 			return userIO->getAnyClicked();
 		}
 
-		rynx::key::logical getAnyReleased_GameKey() {
+		rynx::key::logical getAnyReleased_LogicalKey() {
 			auto released = userIO->getAnyReleased();
 			if (released.id == 0)
 				return rynx::key::invalid_logical_key;
