@@ -13,16 +13,18 @@ namespace rynx {
 	namespace Shape {
 		inline polygon makeAAOval(float radius, int vertices, float x_scale, float y_scale) {
 			polygon shape;
-			polygon_editor editor(shape);
-			for (int i = 0; i < vertices; ++i) {
-				float angle = float(-i * 2) * math::pi / vertices;
-				editor.insertVertex(
-					vec3<float>(
-						x_scale * radius * std::sin(angle),
-						y_scale * radius * std::cos(angle),
-						0.0f
-					)
-				);
+			{
+				polygon_editor editor(shape);
+				for (int i = 0; i < vertices; ++i) {
+					float angle = float(-i * 2) * math::pi / vertices;
+					editor.push_back(
+						vec3<float>(
+							x_scale * radius * std::sin(angle),
+							y_scale * radius * std::cos(angle),
+							0.0f
+						)
+					);
+				}
 			}
 			return shape;
 		}
@@ -41,24 +43,26 @@ namespace rynx {
 
 		inline polygon makeRectangle(float width, float height, int widthDivs = 1, int heightDivs = 1) {
 			polygon shape;
-			polygon_editor editor(shape);
+			{
+				polygon_editor editor(shape);
 
-			auto addLine = [&](const vec3<float>& start, const vec3<float>& end, int divs) {
-				rynx_assert(divs > 0, "zero segments is not an option");
-				for (int i = 0; i < divs; ++i) {
-					editor.insertVertex(start * float(divs - i) / float(divs) + end * float(i) / float(divs));
-				}
-			};
+				auto addLine = [&](const vec3<float>& start, const vec3<float>& end, int divs) {
+					rynx_assert(divs > 0, "zero segments is not an option");
+					for (int i = 0; i < divs; ++i) {
+						editor.push_back(start * float(divs - i) / float(divs) + end * float(i) / float(divs));
+					}
+				};
 
-			auto topLeft = vec3<float>(-width / float(2), +height / float(2), float(0));
-			auto botLeft = vec3<float>(-width / float(2), -height / float(2), float(0));
-			auto botRight = vec3<float>(+width / float(2), -height / float(2), float(0));
-			auto topRight = vec3<float>(+width / float(2), +height / float(2), float(0));
+				auto topLeft = vec3<float>(-width / float(2), +height / float(2), float(0));
+				auto botLeft = vec3<float>(-width / float(2), -height / float(2), float(0));
+				auto botRight = vec3<float>(+width / float(2), -height / float(2), float(0));
+				auto topRight = vec3<float>(+width / float(2), +height / float(2), float(0));
 
-			addLine(topLeft, botLeft, heightDivs);
-			addLine(botLeft, botRight, widthDivs);
-			addLine(botRight, topRight, heightDivs);
-			addLine(topRight, topLeft, widthDivs);
+				addLine(topLeft, botLeft, heightDivs);
+				addLine(botLeft, botRight, widthDivs);
+				addLine(botRight, topRight, heightDivs);
+				addLine(topRight, topLeft, widthDivs);
+			}
 
 			return shape;
 		}
