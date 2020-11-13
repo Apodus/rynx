@@ -39,15 +39,15 @@ namespace rynx {
 								const rynx::components::boundary& m,
 								const rynx::components::color& color)
 								{
-									for (auto&& edge : m.segments_world) {
-										vec3<float> mid = (edge.p1 + edge.p2) * 0.5f;
+									for (size_t i = 0; i < m.segments_world.size(); ++i) {
+										auto p1 = m.segments_world.vertex_position(i);
+										auto p2 = m.segments_world.vertex_position(i + 1);
+										vec3<float> mid = (p1 + p2) * 0.5f;
 
 										matrix4 model_;
 										model_.discardSetTranslate(mid.x, mid.y, mid.z);
-										model_.rotate_2d(std::atan((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
-										// model_.rotate_2d(math::atan_approx((edge.p1.y - edge.p2.y) / (edge.p1.x - edge.p2.x)));
-										// model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
-										model_.scale((edge.p1 - edge.p2).length() * 0.5f, m_line_width * 0.5f, 1.0f);
+										model_.rotate_2d(std::atan((p1.y - p2.y) / (p1.x - p2.x)));
+										model_.scale((p1 - p2).length() * 0.5f, m_line_width * 0.5f, 1.0f);
 
 										m_edges->emplace_back(model_);
 										m_edges->emplace_back(color.value);
@@ -61,8 +61,8 @@ namespace rynx {
 										m_edges->emplace_back(color);
 									};
 
-									for (auto&& edge : m.segments_world) {
-										draw_point(edge.p1, rynx::floats4{ 1.0f, 1.0f, 1.0f, 1.0f }, m_line_width);
+									for (size_t i = 0; i < m.segments_world.size(); ++i) {
+										draw_point(m.segments_world.vertex_position(i), rynx::floats4{ 1.0f, 1.0f, 1.0f, 1.0f }, m_line_width);
 									}
 								});
 					});
