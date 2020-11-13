@@ -109,6 +109,26 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 	});
 }
 
+void rynx::collision_detection::update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id) {
+	auto entity = ecs[id];
+	auto collisions = entity.get<const rynx::components::collisions>();
+	auto radius = entity.get<const rynx::components::radius>();
+	auto pos = entity.get<const rynx::components::position>();
+
+	bool projectile = entity.has<rynx::components::projectile>();
+	bool boundary = entity.has<rynx::components::boundary>();
+	bool sphere = !(projectile | boundary);
+
+	uint64_t part_id = projectile * mask_kind_projectile + boundary * mask_kind_boundary + sphere * mask_kind_sphere + id.value;
+
+	// could be that we are running an editor or something, and our force updated entity has just been created
+	// before running an iteration of collision detection updates, where this entity will become tracked.
+	// if this is the case, then just don't do anything - let the normal path pick the entity up.
+	// otherwise update immediately.
+	if(m_sphere_trees[collisions.category]->contains(part_id))
+		m_sphere_trees[collisions.category]->update_entity(part_id, pos.value, radius.r);
+}
+
 void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context, float dt) {
 	auto update_task = task_context.extend_task_independent([dt](
 		rynx::scheduler::task& task_context,

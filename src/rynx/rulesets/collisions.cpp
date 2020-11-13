@@ -90,7 +90,7 @@ namespace {
 		float penetration = 0;
 
 		for (size_t i = 0; i < boundaryA.segments_world.size(); ++i) {
-			const auto& segment = boundaryA.segments_world[i];
+			const auto segment = boundaryA.segments_world.segment(i);
 			const auto pointToLineSegment = rynx::math::pointDistanceLineSegmentSquared(segment.p1, segment.p2, ball_position);
 			const float distSqr = pointToLineSegment.first;
 
@@ -139,12 +139,14 @@ namespace {
 
 		std::array<rynx::vec3f, 4> collision_points;
 
-		for (const auto& segmentA : boundaryA.segments_world) {
+		for (size_t i = 0; i < boundaryA.segments_world.size(); ++i) {
+			const auto segmentA = boundaryA.segments_world.segment(i);
+			const rynx::vec3f segmentPos = (segmentA.p1 + segmentA.p2) * 0.5f;
+			const float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
 			
-			rynx::vec3f segmentPos = (segmentA.p1 + segmentA.p2) * 0.5f;
-			float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
-			
-			for (const auto& segmentB : boundaryB.segments_world) {
+			for (size_t k = 0; k < boundaryB.segments_world.size(); ++k) {
+				const auto segmentB = boundaryB.segments_world.segment(k);
+
 				const auto& p1 = segmentA.p1;
 				const auto& p2 = segmentA.p2;
 
@@ -247,7 +249,7 @@ namespace {
 
 		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
 			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
-			const auto& segment = boundary.segments_world[partIndex];
+			const auto segment = boundary.segments_world.segment(partIndex);
 			
 			float sin_v = rynx::math::sin(polygonPositionComponent.angle);
 			float cos_v = rynx::math::cos(polygonPositionComponent.angle);

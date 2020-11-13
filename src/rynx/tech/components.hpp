@@ -3,7 +3,7 @@
 #include <rynx/math/vector.hpp>
 #include <rynx/math/math.hpp>
 #include <rynx/math/geometry/polygon.hpp>
-
+#include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/geometry/triangle.hpp>
 
@@ -202,9 +202,8 @@ namespace rynx {
 		};
 
 		struct boundary {
-			using boundary_t = decltype(rynx::polygon().generateBoundary_Outside(1.0f));
-			boundary(boundary_t&& b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
-				segments_world.resize(segments_local.size());
+			boundary(rynx::polygon b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
+				segments_world = segments_local;
 				update_world_positions(pos, angle);
 			}
 
@@ -215,20 +214,25 @@ namespace rynx {
 			boundary& operator=(const boundary& other) = delete;
 
 			void update_world_positions(vec3f pos, float angle) {
-				float sin_v = math::sin(angle);
-				float cos_v = math::cos(angle);
+				const float sin_v = math::sin(angle);
+				const float cos_v = math::cos(angle);
 				const size_t num_segments = segments_local.size();
-				rynx_assert(segments_local.size() == segments_world.size(), "boundary not initialized");
-				for (size_t i = 0; i < num_segments; ++i) {
-					segments_world[i].p1 = math::rotatedXY(segments_local[i].p1, sin_v, cos_v) + pos;
-					segments_world[i].p2 = math::rotatedXY(segments_local[i].p2, sin_v, cos_v) + pos;
-					segments_world[i].normal = math::rotatedXY(segments_local[i].normal, sin_v, cos_v);
+				
+				{
+					auto editor = segments_world.edit();
+					for (size_t i = 0; i < num_segments; ++i) {
+						rynx::vec3f new_position = math::rotatedXY(segments_local.vertex_position(i), sin_v, cos_v) + pos;
+						rynx::vec3f new_segment_normal = math::rotatedXY(segments_local.segment_normal(i), sin_v, cos_v);
+						rynx::vec3f new_vertex_normal = math::rotatedXY(segments_local.vertex_normal(i), sin_v, cos_v);
+						editor.vertex(int(i)).set(new_position, new_segment_normal, new_vertex_normal);
+					}
 				}
+				
 				rynx_assert(segments_local.size() == num_segments, "boundary edited during update");
 			}
 
-			boundary_t segments_local;
-			boundary_t segments_world;
+			rynx::polygon segments_local;
+			rynx::polygon segments_world;
 		};
 
 		struct draw_always {};

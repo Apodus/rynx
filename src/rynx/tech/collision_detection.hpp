@@ -98,6 +98,7 @@ namespace rynx {
 		
 		void track_entities(rynx::scheduler::task& task_context);
 		void update_entities(rynx::scheduler::task& task_context, float dt);
+		void update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id);
 
 		void erase(rynx::ecs::view<const rynx::components::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from);
 		const sphere_tree* get(category_id category) const;
