@@ -30,7 +30,7 @@ namespace rynx {
 		public:
 			SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string knobTexture, std::string baseTexture, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
 
-			SlideBarVertical& onValueChanged(std::function<void(float)> t);
+			SlideBarVertical& on_value_changed(std::function<void(float)> t);
 
 			virtual void draw(MeshRenderer&, TextRenderer&) const override {}
 			virtual void onInput(rynx::mapped_input& input) override;

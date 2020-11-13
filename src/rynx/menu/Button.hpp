@@ -31,8 +31,6 @@ namespace rynx {
 			TextRenderer::Align m_align;
 			Font* m_font = nullptr;
 
-			std::function<void()> m_onClick;
-
 		public:
 			Button(
 				rynx::graphics::GPUTextures& textures,
@@ -53,14 +51,13 @@ namespace rynx {
 			Button& text(std::string t) { m_text = std::move(t); return *this; }
 			Button& color_frame(floats4 color) { m_color = color; return *this; }
 			Button& color_text(floats4 color) { m_textColor = color; return *this; }
-			Button& onClick(std::function<void()> op) { m_onClick = std::move(op); return *this; }
-
+			
 		private:
 			void initialize();
+
 			virtual void onInput(rynx::mapped_input& input) override;
 			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const override;
 			virtual void update(float dt) override;
 		};
-
 	}
 }

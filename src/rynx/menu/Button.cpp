@@ -17,29 +17,26 @@ void rynx::menu::Button::initialize() {
 	m_textColor = Color::WHITE;
 	m_textColor.tick(1.0f);
 	m_align = TextRenderer::Align::Center;
-}
 
-void rynx::menu::Button::onInput(rynx::mapped_input& input) {
-	vec3<float> mouseMenuPos = input.mouseMenuPosition(aspectRatio());
-	if (inRectComponent(mouseMenuPos)) {
-		// m_scale = m_defaultScale * 1.2f;
-		m_color.target_value().a = 1.0f;
-		m_textColor = vec4<float>(1.0f, 1.0f, 1.0f, 1.0f);
-
-		auto mouseLeft = input.applicationKeyByName("menuCursorActivation");
-		if (input.isKeyClicked(mouseLeft)) {
-			input.consume(mouseLeft);
-			m_color.setCurrent({ 0, 1, 0, 1 });
-			if (m_onClick)
-				m_onClick();
+	on_hover([this](rynx::vec3f mousePos, bool inRect) {
+		if (inRect) {
+			m_color.target_value().a = 1.0f;
+			m_textColor = vec4<float>(1.0f, 1.0f, 1.0f, 1.0f);
 		}
-	}
-	else {
-		// m_scale = m_defaultScale;
-		m_color.target_value().a = 0.3f;
-		m_textColor = vec4<float>(0.7f, 0.7f, 0.7f, 1.0f);
-	}
+		else {
+			m_color.target_value().a = 0.3f;
+			m_textColor = vec4<float>(0.7f, 0.7f, 0.7f, 1.0f);
+		}
+
+		return inRect;
+	});
+
+	on_click([this]() {
+		m_color.setCurrent({ 0, 1, 0, 1 });
+	});
 }
+
+void rynx::menu::Button::onInput(rynx::mapped_input& input) {}
 
 void rynx::menu::Button::draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const {
 	m_frame.draw(meshRenderer, textRenderer);

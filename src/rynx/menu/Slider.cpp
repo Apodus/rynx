@@ -39,7 +39,7 @@ rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& text
 	setValue(initialValue);
 }
 
-rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::onValueChanged(std::function<void(float)> t) {
+rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_value_changed(std::function<void(float)> t) {
 	m_callback = std::move(t);
 	return *this;
 }
@@ -47,7 +47,7 @@ rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::onValueChanged(std::
 void rynx::menu::SlideBarVertical::onInput(rynx::mapped_input& input) {
 	auto mousePos = input.mouseMenuPosition(aspectRatio());
 	if (inRectComponent(mousePos)) {
-		rynx::key::logical mouseKey1 = input.applicationKeyByName("menuCursorActivation");
+		rynx::key::physical mouseKey1 = input.getMouseKeyPhysical(0);
 		if (input.isKeyPressed(mouseKey1))
 			m_mouseDragActive = true;
 		if (input.isKeyReleased(mouseKey1))
