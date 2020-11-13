@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <memory>
 #include <cstring>
+#include <vector>
 
 namespace rynx {
 	template<typename T>
@@ -33,12 +34,35 @@ namespace rynx {
 			return *this;
 		}
 
+		T& front() { return *m_data.get(); }
+		T& back() { return *(m_data.get() + (m_size - 1)); }
+
+		T front() const { return *m_data.get(); }
+		T back() const { return *(m_data.get() + (m_size - 1)); }
+
+
+		T* begin() { return m_data.get(); }
+		T* end() { return m_data.get() + m_size; }
+		
+		const T* begin() const { return m_data.get(); }
+		const T* end() const { return m_data.get() + m_size; }
+
+		T* data() { return m_data.get(); }
+		const T* data() const { return m_data.get(); }
+
 		dynamic_buffer& operator=(dynamic_buffer&& other) noexcept {
 			m_data = std::move(other.m_data);
 			m_size = other.m_size;
 			other.m_size = 0;
 			other.m_data.reset(nullptr);
 			return *this;
+		}
+
+		std::vector<T> as_vector() const {
+			std::vector<T> result;
+			result.resize(m_size);
+			memcpy(result.data(), m_data.get(), sizeof(T) * m_size);
+			return result;
 		}
 
 		dynamic_buffer(size_t s, T initialValue) {
@@ -104,11 +128,11 @@ namespace rynx {
 			rynx_assert(ptr != nullptr, "trying to fill an invalid buffer");
 			auto* end = ptr + m_size;
 			while (ptr != end)
-				* ptr++ = t;
+				*ptr++ = t;
 			return *this;
 		}
 
-		const T& operator [](size_t index) const {
+		T operator [](size_t index) const {
 			rynx_assert(index < m_size, "index out of bounds");
 			return *(m_data.get() + index);
 		}
@@ -121,6 +145,91 @@ namespace rynx {
 
 	private:
 		std::unique_ptr<T[]> m_data;
+		size_t m_size = 0;
+	};
+
+	template<typename T>
+	class pod_vector
+	{
+	public:
+		pod_vector() = default;
+		pod_vector(const pod_vector&) = default;
+		pod_vector(pod_vector&&) = default;
+
+		pod_vector(const std::vector<T>& other) {
+			*this = other;
+		}
+
+		pod_vector& operator = (const std::vector<T>& other) {
+			m_data.resize_discard(other.size());
+			m_size = other.size();
+			memcpy(begin(), other.data(), sizeof(T) * m_size);
+			return *this;
+		}
+
+		pod_vector& operator = (const pod_vector&) = default;
+		pod_vector& operator = (pod_vector&&) = default;
+
+		T& front() { return m_data.front(); }
+		T& back() { return m_data[m_size  - 1]; }
+
+		T front() const { return m_data.front(); }
+		T back() const { return m_data[m_size - 1]; }
+
+		T* begin() { return m_data.data(); }
+		T* end() { return m_data.data() + m_size; }
+
+		const T* begin() const { return m_data.data(); }
+		const T* end() const { return m_data.data() + m_size; }
+
+		T operator [](size_t index) const { return m_data[index]; }
+		T& operator [](size_t index) { return m_data[index]; }
+
+		void resize(size_t newSize) { m_size = newSize; m_data.resize(newSize); }
+		size_t size() const { return m_size; }
+
+		T pop_back() { return m_data[--m_size]; }
+		bool empty() const { return m_size == 0; }
+
+		std::vector<T> as_vector() const {
+			std::vector<T> result;
+			result.resize(m_size);
+			memcpy(result.data(), m_data.data(), sizeof(T) * m_size);
+			return result;
+		}
+		
+		void emplace_back(T t) {
+			if (m_size == m_data.size()) {
+				m_data.resize((m_size == 0) ? 8 : (2 * m_size));
+			}
+			m_data[m_size] = t;
+			++m_size;
+		}
+
+		void erase(T* iter) {
+			int32_t n = int32_t(iter - m_data.data()); // / sizeof(T);
+			while (n + 1 < m_size) {
+				m_data[n] = m_data[n + 1];
+				++n;
+			}
+			--m_size;
+		}
+
+		void insert(T* where, T v) {
+			emplace_back(T());
+			T* it = end();
+			--it;
+			
+			while (it != where) {
+				*it = *(it - 1);
+				--it;
+			}
+
+			*(where + 1) = v;
+		}
+
+	private:
+		rynx::dynamic_buffer<T> m_data;
 		size_t m_size = 0;
 	};
 }
