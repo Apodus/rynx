@@ -1,28 +1,13 @@
 
 #include <rynx/math/geometry/polygon.hpp>
+#include <rynx/math/geometry/polygon_editor.hpp>
+
 #include <rynx/math/spline.hpp>
-
-rynx::polygon::segment::segment() : line_segment(), convex1(true), convex2(true) {}
-rynx::polygon::segment::segment(const line_segment& lineSegment) {
-	static_cast<line_segment&>(*this) = lineSegment;
-}
-
-rynx::polygon::segment::segment(rynx::vec3<float> a, rynx::vec3<float> b, bool c1, bool c2) : line_segment(a, b) {
-	convex1 = c1;
-	convex2 = c2;
-}
-
-rynx::vec3<float>& rynx::polygon::operator [](int index) {
-	return vertices[index];
-}
-
-const rynx::vec3<float>& rynx::polygon::operator [](int index) const {
-	return vertices[index];
-}
+#include <rynx/math/geometry/bounding_sphere.hpp>
 
 float rynx::polygon::max_component_value() const {
 	float max_d = 0;
-	for (auto vertice : vertices) {
+	for (auto vertice : m_vertices) {
 		rynx::vec3f p = vertice * vertice;
 		if (p.x > max_d) {
 			max_d = p.x;
@@ -39,7 +24,7 @@ float rynx::polygon::max_component_value() const {
 
 float rynx::polygon::radius() const {
 	float max_d = 0;
-	for (auto vertice : vertices) {
+	for (auto vertice : m_vertices) {
 		float distance_sqr = vertice.length_squared();
 		if (distance_sqr > max_d) {
 			max_d = distance_sqr;
@@ -52,7 +37,7 @@ rynx::vec3<std::pair<float, float>> rynx::polygon::extents() const {
 	vec3f max_v;
 	vec3f min_v;
 
-	for (auto vertice : vertices) {
+	for (auto vertice : m_vertices) {
 		rynx::vec3f p = vertice;
 		if (p.x > max_v.x) max_v.x = p.x;
 		if (p.x < min_v.x) min_v.x = p.x;
@@ -67,7 +52,7 @@ rynx::vec3<std::pair<float, float>> rynx::polygon::extents() const {
 }
 
 rynx::math::spline rynx::polygon::as_spline(float alpha) const {
-	return rynx::math::spline(vertices, alpha);
+	return rynx::math::spline(m_vertices.as_vector(), alpha);
 }
 
 float rynx::polygon::normalize() {
@@ -76,57 +61,43 @@ float rynx::polygon::normalize() {
 	return r;
 }
 
-void rynx::polygon::scale(float s) {
-	for (auto& vertice : vertices) {
+rynx::polygon& rynx::polygon::scale(float s) {
+	for (auto& vertice : m_vertices) {
 		vertice *= s;
 	}
+	return *this;
 }
 
-void rynx::polygon::scale(vec3f ranges) {
-	for (auto& vertice : vertices) {
+rynx::polygon& rynx::polygon::scale(vec3f ranges) {
+	for (auto& vertice : m_vertices) {
 		vertice *= ranges;
 	}
+	recompute_normals();
+	return *this;
+}
+
+std::pair<rynx::vec3f, float> rynx::polygon::bounding_sphere() const {
+	return rynx::math::bounding_sphere(m_vertices.as_vector()); // todo, no conversion to vector should be required
+}
+
+rynx::polygon_editor rynx::polygon::edit() {
+	return polygon_editor(*this);
 }
 
 bool rynx::polygon::isConvex(int vertex) const {
 	rynx::vec3<float> left;
 	rynx::vec3<float> right;
 	if (vertex == 0)
-		left = vertices[vertices.size() - 1];
+		left = m_vertices.back();
 	else
-		left = vertices[vertex - 1];
+		left = m_vertices[vertex - 1];
 
-	left -= vertices[vertex];
+	left -= m_vertices[vertex];
 
-	if (vertex == vertices.size() - 1)
-		right = (*this)[0];
+	if (vertex == m_vertices.size() - 1)
+		right = m_vertices.front();
 	else
-		right = vertices[vertex + 1];
-	right -= (*this)[vertex];
+		right = m_vertices[vertex + 1];
+	right -= m_vertices[vertex];
 	return left.cross2d(right) < 0.0f;
-}
-
-
-std::vector<rynx::polygon::segment> rynx::polygon::generateBoundary_Outside(float scale) const {
-	std::vector<segment> boundary;
-	if (vertices.size() < 3) {
-		return boundary;
-	}
-
-	for (size_t i = 0; i < vertices.size() - 1; ++i) {
-		boundary.emplace_back(segment(vertices[i] * scale, vertices[i + 1] * scale, isConvex(int(i)), isConvex(int(i + 1))));
-	}
-	boundary.emplace_back(segment(vertices[vertices.size() - 1] * scale, vertices[0] * scale, isConvex(int(vertices.size() - 1)), isConvex(0)));
-	return boundary;
-}
-
-std::vector<rynx::polygon::segment> rynx::polygon::generateBoundary_Inside(float scale) const {
-	std::vector<segment> boundary = generateBoundary_Outside(scale);
-	for (auto&& plop : boundary) {
-		auto tmp = plop.p1;
-		plop.p1 = plop.p2;
-		plop.p2 = tmp;
-		plop.computeNormalXY();
-	}
-	return boundary;
 }

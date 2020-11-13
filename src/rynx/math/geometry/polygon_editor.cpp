@@ -2,48 +2,54 @@
 #include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/spline.hpp>
 
-rynx::polygon_editor::polygon_editor(rynx::polygon& polygon) : polygon(polygon) {}
-
-void rynx::polygon_editor::deleteVertex(int index) {
-	auto& vertices = polygon.vertices;
-	for (int i = index; i < static_cast<int>(vertices.size()) - 1; ++i) {
-		vertices[i] = vertices[i + 1];
-	}
-	vertices.pop_back();
+rynx::polygon_editor::polygon_editor(rynx::polygon& polygon) : polygon(polygon) {
+	if (!polygon.m_vertices.empty())
+		polygon.m_vertices.pop_back();
 }
 
-void rynx::polygon_editor::insertVertexAfter(int index, rynx::vec3<float> v) {
-	auto& vertices = polygon.vertices;
-	vertices.push_back(v);
-	for (int i = static_cast<int>(vertices.size()) - 1; i > index; --i) {
-		vertices[i] = vertices[i - 1];
-	}
-	vertices[index] = v;
+rynx::polygon_editor::~polygon_editor() {
+	polygon.m_vertices.emplace_back(polygon.m_vertices.front());
+	polygon.recompute_normals();
 }
 
-void rynx::polygon_editor::insertVertex(rynx::vec3<float> v) {
-	polygon.vertices.emplace_back(v);
+rynx::polygon_editor::vertex_t rynx::polygon_editor::vertex(int index) {
+	return vertex_t(polygon, index);
 }
 
-void rynx::polygon_editor::vertexMultiply(float xMultiply, float yMultiply) {
-	for (int i = 0; i < static_cast<int>(polygon.vertices.size()); ++i) {
-		polygon[i].x *= xMultiply;
-		polygon[i].y *= yMultiply;
-	}
+rynx::polygon_editor& rynx::polygon_editor::erase(int index) {
+	auto& vertices = polygon.m_vertices;
+	vertices.erase(vertices.begin() + index);
+	return *this;
 }
 
-void rynx::polygon_editor::reverse() {
-	int size = static_cast<int>(polygon.vertices.size());
-	int bot = 0, top = size - 1;
-	while (bot < top) {
-		rynx::vec3<float> tmp = polygon[top];
-		polygon[top] = polygon[bot];
-		polygon[bot] = tmp;
-		++bot;
-		--top;
-	}
+rynx::polygon_editor& rynx::polygon_editor::insert(int index, rynx::vec3<float> v) {
+	auto& vertices = polygon.m_vertices;
+	vertices.insert(vertices.begin() + index, v);
+	return *this;
 }
 
-void rynx::polygon_editor::smooth(int factor, float alpha) {
+rynx::polygon_editor& rynx::polygon_editor::push_back(rynx::vec3<float> v) {
+	polygon.m_vertices.emplace_back(v);
+	return *this;
+}
+
+rynx::polygon_editor& rynx::polygon_editor::scale(float xMultiply, float yMultiply) {
+	polygon.scale({ xMultiply, yMultiply, 1.0f });
+	return *this;
+}
+
+rynx::polygon_editor& rynx::polygon_editor::translate(rynx::vec3f v) {
+	for (auto& vertex : polygon.m_vertices)
+		vertex += v;
+	return *this;
+}
+
+rynx::polygon_editor& rynx::polygon_editor::reverse() {
+	polygon.invert();
+	return *this;
+}
+
+rynx::polygon_editor& rynx::polygon_editor::smooth(int factor, float alpha) {
 	polygon = polygon.as_spline(alpha).generate(factor);
+	return *this;
 }

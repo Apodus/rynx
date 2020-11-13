@@ -11,7 +11,7 @@ namespace {
 
 void rynx::polygon_triangulation::resetUnhandledMarkers() {
 	unhandled.clear();
-	for (unsigned i = 0; i < polygon->vertices.size(); ++i)
+	for (unsigned i = 0; i < polygon->size(); ++i)
 		unhandled.emplace_back(i);
 }
 
@@ -21,7 +21,7 @@ void rynx::polygon_triangulation::resetForPostProcess() {
 }
 
 rynx::vec3<float> rynx::polygon_triangulation::getVertexUnhandled(int i) {
-	return polygon->vertices[unhandled[i]];
+	return polygon->vertex_position(unhandled[i]);
 }
 
 void rynx::polygon_triangulation::addTriangle(int earNode, int t1, int t2) {
@@ -41,7 +41,8 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 u
 	float uvCenterY = uvHalfHeightY + uvLimits[1];
 
 	// build vertex buffer
-	for (rynx::vec3<float> v : polygon->vertices) {
+	for (size_t i = 0; i < polygon->size(); ++i) {
+		auto v = polygon->vertex_position(i);
 		polyMesh->putVertex(v.x, v.y, 0.0f);
 		
 		float scaled_x = 2.0f * (v.x - poly_extents.x.first) / (poly_extents.x.second - poly_extents.x.first) - 1.0f;
@@ -59,17 +60,17 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 u
 	// build normals buffer
 	{
 		auto push_normal = [this, &polyMesh](size_t prev, size_t current, size_t next) {
-			auto ab = polygon->vertices[prev] - polygon->vertices[current];
-			auto bc = polygon->vertices[current] - polygon->vertices[next];
+			auto ab = polygon->vertex_position(prev) - polygon->vertex_position(current);
+			auto bc = polygon->vertex_position(current) - polygon->vertex_position(next);
 			auto normal = (ab.normal2d().normalize() + bc.normal2d().normalize()).normalize();
 			polyMesh->putNormal(normal.x, normal.y, normal.z);
 		};
 
-		push_normal(polygon->vertices.size() - 1, 0, 1);
-		for (size_t i = 1; i < polygon->vertices.size() - 1; ++i) {
+		push_normal(polygon->size() - 1, 0, 1);
+		for (size_t i = 1; i < polygon->size() - 1; ++i) {
 			push_normal(i - 1, i, i + 1);
 		}
-		push_normal(polygon->vertices.size() - 2, polygon->vertices.size() - 1, 0);
+		push_normal(polygon->size() - 2, polygon->size() - 1, 0);
 	}
 
 	// build index buffer
@@ -147,7 +148,7 @@ rynx::triangles rynx::polygon_triangulation::make_triangles(const rynx::polygon&
 	
 	rynx::triangles tris;
 	for (auto t : this->triangles) {
-		tris.data().emplace_back(polygon_.vertices[t.a], polygon_.vertices[t.b], polygon_.vertices[t.c]);
+		tris.data().emplace_back(polygon_.vertex_position(t.a), polygon_.vertex_position(t.b), polygon_.vertex_position(t.c));
 	}
 	return tris;
 }
@@ -166,13 +167,10 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::make_boundary_mesh(cons
 	rynx::polygon copy = polygon_;
 	float radius = copy.normalize();
 
-	auto boundary = copy.vertices;
 	const float width = line_width / radius;
 
-	auto get_vertex = [&boundary](int index) {
-		index += static_cast<int>(boundary.size());
-		index = index % boundary.size();
-		return boundary[index];
+	auto get_vertex = [&copy](int index) {
+		return copy.vertex_position((index + static_cast<int>(copy.size())) % copy.size());
 	};
 
 	auto a = get_vertex(-1);
@@ -195,7 +193,7 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::make_boundary_mesh(cons
 	polyMesh->putUVCoord(tex_coords.x, tex_coords.y);
 	polyMesh->putUVCoord(tex_coords.z, tex_coords.w);
 
-	for (int i = 1; i < boundary.size(); ++i) {
+	for (int i = 1; i < copy.size(); ++i) {
 		a = get_vertex(i - 1);
 		b = get_vertex(i + 0);
 		c = get_vertex(i + 1);
@@ -223,7 +221,6 @@ std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::make_boundary_mesh(cons
 	int numVerts = polyMesh->getVertexCount();
 	polyMesh->putTriangleIndices(1, 0, numVerts - 1);
 	polyMesh->putTriangleIndices(0, numVerts - 1, numVerts - 2);
-	
 	return polyMesh;
 }
 

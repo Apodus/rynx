@@ -8,7 +8,8 @@ namespace rynx {
 	class line_segment {
 	public:
 		line_segment();
-		line_segment(vec3<float> a, vec3<float> b);
+		line_segment(vec3f a, vec3f b);
+		line_segment(vec3f a, vec3f b, vec3f normal);
 		line_segment(const line_segment& other);
 
 		float length() const;

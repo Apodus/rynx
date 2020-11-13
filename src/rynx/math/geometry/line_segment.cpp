@@ -6,11 +6,11 @@
 
 rynx::line_segment::line_segment() {}
 
-rynx::line_segment::line_segment(vec3<float> a, vec3<float> b) {
-	p1 = a;
-	p2 = b;
+rynx::line_segment::line_segment(vec3f a, vec3f b) : p1(a), p2(b) {
 	computeNormalXY();
 }
+
+rynx::line_segment::line_segment(vec3f a, vec3f b, vec3f normal) : p1(a), p2(b), normal(normal) {}
 
 rynx::line_segment::line_segment(const line_segment& other) {
 	p1 = other.p1;
