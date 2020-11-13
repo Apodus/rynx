@@ -6,6 +6,7 @@
 
 #include <utility>
 #include <memory>
+#include <stdexcept>
 
 namespace rynx {
 	template<typename T>
