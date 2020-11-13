@@ -47,25 +47,16 @@ namespace rynx {
 		// Sphere from 3 or 4 points implementation details obtained from
 		// https://www.flipcode.com/archives/Smallest_Enclosing_Spheres.shtml
 
-		/*
-		Sphere::Sphere(const Point& O, const Point& A, const Point& B, const Point& C)
-		{
-			Vector a = A - O;
-			Vector b = B - O;
-			Vector c = C - O;
+		inline rynx::vec3f bounding_sphere(rynx::vec3f a, rynx::vec3f b, rynx::vec3f c) {
+			const auto a_ = b - a;
+			const auto b_ = c - a;
 
-			float Denominator = 2.0f * Matrix::det(a.x, a.y, a.z,
-				b.x, b.y, b.z,
-				c.x, c.y, c.z);
+			const auto a_cross_b = a_.cross(b_);
+			float Denominator = 2.0f * a_cross_b.length_squared();
 
-			Vector o = (c.length_squared()) * (a_cross_b) +
-				(b.length_squared()) * (c_cross_a) +
-				(a.length_squared()) * (b_cross_c)) / Denominator;
-
-			radius = length(o);
-			center = O + o;
-		}
-		*/
+			auto o = (a_cross_b.cross(a_) * b_.length_squared() + b_.cross(a_cross_b) * a_.length_squared()) / Denominator;
+			return a + o;
+		};
 
 		template<typename T> std::pair<rynx::vec3<float>, float> bounding_sphere(std::vector<T>& points) {
 			std::pair<size_t, float> indexFar1 = farPoint(access(points[0]).pos, points);
@@ -90,18 +81,7 @@ namespace rynx {
 				const float radius3 = access(points[indexFar3.first]).radius;
 				maxRadius = maxRadius > radius3 ? maxRadius : radius3;
 
-				auto bounding_sphere_for_points = [](auto a, auto b, auto c) {
-					const auto a_ = b - a;
-					const auto b_ = c - a;
-
-					const auto a_cross_b = a_.cross(b_);
-					float Denominator = 2.0f * a_cross_b.length_squared();
-
-					auto o = (a_cross_b.cross(a_) * b_.length_squared() + b_.cross(a_cross_b) * a_.length_squared()) / Denominator;
-					return a + o;
-				};
-
-				const auto proposed_center = bounding_sphere_for_points(a, b, c);
+				const auto proposed_center = bounding_sphere(a, b, c);
 
 				const auto a_push = (proposed_center - a).normalize();
 				const auto b_push = (proposed_center - b).normalize();
@@ -111,13 +91,46 @@ namespace rynx {
 				const auto b_fixed = b - b_push * radius2;
 				const auto c_fixed = c - c_push * radius3;
 
-				const auto proposed_center_fixed = bounding_sphere_for_points(a_fixed, b_fixed, c_fixed);
+				const auto proposed_center_fixed = bounding_sphere(a_fixed, b_fixed, c_fixed);
 				const auto weighted_radius = farPoint(proposed_center_fixed, points).second;
 				return { proposed_center_fixed, weighted_radius };
 			}
 			else {
 				return { center, (center - a).length() + radius1 };
 			}
+		}
+
+		inline std::pair<rynx::vec3f, float> bounding_sphere(const std::vector<rynx::vec3f>& points) {
+			auto furthest_point = [&](rynx::vec3f p) {
+				float furthest_dist_sqr = 0;
+				rynx::vec3f result;
+				int32_t index = -1;
+				int32_t counter = 0;
+				for (auto point : points) {
+					float dist_sqr = (p - point).length_squared();
+					if (dist_sqr > furthest_dist_sqr) {
+						furthest_dist_sqr = dist_sqr;
+						result = point;
+						index = counter;
+					}
+					++counter;
+				}
+
+				return std::make_pair(result, index);
+			};
+
+			auto [p_random, i_random] = furthest_point(points[0]);
+			auto [p1, i1] = furthest_point(p_random);
+			auto [p2, i2] = furthest_point(p1);
+			auto [p3, i3] = furthest_point((p1+p2) * 0.5f);
+
+			if ((i3 != i2) & (i3 != i1)) {
+				auto sphere1 = bounding_sphere(p1, p2, p3);
+				auto [radius_point, i_radius_point] = furthest_point(sphere1);
+				return { sphere1, (sphere1 - radius_point).length() };
+			}
+
+			return { (p1 + p2) * 0.5f, (p1 - p2).length() * 0.5f };
 		}
 	}
 }
