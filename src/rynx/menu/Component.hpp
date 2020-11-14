@@ -93,8 +93,10 @@ namespace rynx {
 			void on_input(std::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
 
 			Component* parent() const { return m_pParent; }
-			float& velocity_position() { return m_position_update_velocity; }
-			float& scale_position() { return m_scale_update_velocity; }
+			float velocity_position() const { return m_position_update_velocity; }
+			float scale_position() const { return m_scale_update_velocity; }
+			void velocity_position(float v) { m_position_update_velocity = v; }
+			void scale_position(float v) { m_scale_update_velocity = v; }
 
 			void input(rynx::mapped_input& input);
 			void tick(float dt, float aspectRatio);
