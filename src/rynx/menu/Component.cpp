@@ -105,6 +105,13 @@ void rynx::menu::Component::reparent(Component& other) {
 
 void rynx::menu::Component::input(rynx::mapped_input& input) {
 	if (m_active) {
+		// input is handled in reverse order. the last thing drawn on the screen is the first to
+		// handle input. in case multiple buttons are drawn on top of each other (for example some menu layer + popup dialog)
+		// the top most (last drawn) menu element should be the one to consume any mouse clicks.
+		for (auto it = m_children.rbegin(); it != m_children.rend(); ++it) {
+			(*it)->input(input);
+		}
+
 		rynx::vec3f mousePos = input.mouseMenuPosition(m_aspectRatio);
 		if (!m_on_hover.empty()) {
 			bool inRect = inRectComponent(mousePos);
@@ -142,9 +149,6 @@ void rynx::menu::Component::input(rynx::mapped_input& input) {
 			input_func(input);
 
 		onInput(input);
-		for (auto&& child : m_children) {
-			child->input(input);
-		}
 	}
 }
 
