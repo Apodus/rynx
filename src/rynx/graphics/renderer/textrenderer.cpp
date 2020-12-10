@@ -85,6 +85,24 @@ void rynx::TextRenderer::drawText(const std::string& text, float x, float y, flo
 	drawTextBuffers(length);
 }
 
+rynx::vec3f rynx::TextRenderer::position(std::string text, int32_t cursor_pos, float x, float y, float lineHeight, Align align, const Font& font) {
+	float dx = font.getLength(text.substr(0, cursor_pos), lineHeight);
+	float textWidth = font.getLength(text, lineHeight);
+
+	switch (align) {
+	case Align::Center:
+		x -= textWidth * 0.5f;
+		break;
+	case Align::Left:
+		break;
+	case Align::Right:
+		x -= textWidth;
+		break;
+	}
+
+	return {x+dx, y, 0};
+}
+
 void rynx::TextRenderer::drawTextBuffers(int textLength) {
 	if (textLength == 0)
 		return;
@@ -166,11 +184,11 @@ int rynx::TextRenderer::fillTextBuffers(const std::string& text, const Font& fon
 void rynx::TextRenderer::fillTextureCoordinates(const Font& font, char c) {
 	floats4 textureCoordinates = font.getTextureCoordinates(c);
 
-	m_texCoordBuffer.push_back(textureCoordinates.left); m_texCoordBuffer.push_back(textureCoordinates.top);
-	m_texCoordBuffer.push_back(textureCoordinates.right); m_texCoordBuffer.push_back(textureCoordinates.top);
-	m_texCoordBuffer.push_back(textureCoordinates.right); m_texCoordBuffer.push_back(textureCoordinates.bottom);
+	m_texCoordBuffer.push_back(textureCoordinates.x); m_texCoordBuffer.push_back(textureCoordinates.z);
+	m_texCoordBuffer.push_back(textureCoordinates.y); m_texCoordBuffer.push_back(textureCoordinates.z);
+	m_texCoordBuffer.push_back(textureCoordinates.y); m_texCoordBuffer.push_back(textureCoordinates.w);
 
-	m_texCoordBuffer.push_back(textureCoordinates.right); m_texCoordBuffer.push_back(textureCoordinates.bottom);
-	m_texCoordBuffer.push_back(textureCoordinates.left); m_texCoordBuffer.push_back(textureCoordinates.bottom);
-	m_texCoordBuffer.push_back(textureCoordinates.left); m_texCoordBuffer.push_back(textureCoordinates.top);
+	m_texCoordBuffer.push_back(textureCoordinates.y); m_texCoordBuffer.push_back(textureCoordinates.w);
+	m_texCoordBuffer.push_back(textureCoordinates.x); m_texCoordBuffer.push_back(textureCoordinates.w);
+	m_texCoordBuffer.push_back(textureCoordinates.x); m_texCoordBuffer.push_back(textureCoordinates.z);
 }

@@ -98,10 +98,10 @@ void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, 
 		floats4 limits = m_textures->textureLimits("Empty");
 		m_rectangle->texture_name = "Empty";
 
-		float botCoordX = limits.data[0];
-		float botCoordY = limits.data[1];
-		float topCoordX = limits.data[2];
-		float topCoordY = limits.data[3];
+		float botCoordX = limits.x;
+		float botCoordY = limits.y;
+		float topCoordX = limits.z;
+		float topCoordY = limits.w;
 
 		m_rectangle->texCoords.clear();
 		m_rectangle->putUVCoord(topCoordX, botCoordY);
@@ -120,10 +120,10 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 	
 	if (m_rectangle->texture_name != texture_name) {
 		floats4 limits = m_textures->textureLimits(texture_name);
-		float botCoordX = limits.data[0];
-		float botCoordY = limits.data[1];
-		float topCoordX = limits.data[2];
-		float topCoordY = limits.data[3];
+		float botCoordX = limits.x;
+		float botCoordY = limits.y;
+		float topCoordX = limits.z;
+		float topCoordY = limits.w;
 
 		m_rectangle->texCoords.clear();
 		m_rectangle->putUVCoord(topCoordX, botCoordY);

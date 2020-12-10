@@ -11,6 +11,7 @@ namespace rynx {
 	class mesh {
 	public:
 		mesh();
+		~mesh();
 
 		void putVertex(float x, float y, float z);
 		void putVertex(rynx::vec3f v);
@@ -52,11 +53,11 @@ namespace rynx {
 		*/
 		enum Attributes { POSITION, TEXCOORD, NORMAL };
 
-		GLuint vao;
+		GLuint vao = ~0u;
 
-		GLuint vbo;
-		GLuint tbo;
-		GLuint nbo;
-		GLuint ibo;
+		GLuint vbo = ~0u;
+		GLuint tbo = ~0u;
+		GLuint nbo = ~0u;
+		GLuint ibo = ~0u;
 	};
 }

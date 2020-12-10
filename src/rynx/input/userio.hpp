@@ -14,8 +14,13 @@ struct GLFWwindow;
 class Window;
 
 namespace rynx {
+
+	class scoped_input_inhibitor;
+
 	class input
 	{
+		friend class scoped_input_inhibitor;
+
 		void onKeyEvent(int key, int scancode, int action, int mods);
 		void onMouseButtonEvent(int key, int action, int mods);
 		void onMouseScrollEvent(double xoffset, double yoffset);
@@ -39,14 +44,41 @@ namespace rynx {
 			KEY_CONSUMED = 32
 		};
 
-		static bool isKeyInState(int8_t keyState, int8_t requestedState, bool ignoreConsumed);
+		struct inhibit_state {
+			int32_t keyboard = 0;
+			int32_t mouse = 0;
+		};
+
+		inhibit_state m_inhibited;
+
+		int32_t isInhibited(rynx::key::physical key) const {
+			int32_t keyboardInhibited = ((m_inhibited.keyboard > 0) * (key.id < getMouseKeyCode(0).id));
+			int32_t mouseInhibited = ((m_inhibited.mouse > 0) * (key.id >= getMouseKeyCode(0).id));
+			return keyboardInhibited | mouseInhibited;
+		}
+
+		int32_t isUnhinged(rynx::key::physical key) const {
+			return isInhibited(key) ^ 1;
+		}
+
+		static bool isKeyValueInState(int8_t keyState, int8_t requestedState, bool ignoreConsumed);
+		inline bool isKeyInState(rynx::key::physical key, int8_t requestedState, bool ignoreConsumed) const {
+			return
+				isUnhinged(key) *
+				isKeyValueInState(m_buttonStates[key.id], requestedState, ignoreConsumed);
+		}
 
 	public:
 		input(std::shared_ptr<Window> window);
 		~input();
 
-		inline rynx::key::physical getMouseKeyCode(int mouseButton) const {
-			return { mouseButton + 256 };
+		// as long as you hold on to the scoped inhibitor, the inhibit holds.
+		scoped_input_inhibitor inhibit_mouse_scoped();
+		scoped_input_inhibitor inhibit_keyboard_scoped();
+		scoped_input_inhibitor inhibit_mouse_and_keyboard_scoped();
+
+		constexpr rynx::key::physical getMouseKeyCode(int mouseButton) const {
+			return { mouseButton + 400 };
 		}
 
 		template<class T>
@@ -85,5 +117,32 @@ namespace rynx {
 		static void scrollCallbackDummy(GLFWwindow* window, double xoffset, double yoffset);
 		static void cursorPosCallbackDummy(GLFWwindow* window, double xpos, double ypos);
 		static void cursorEnterCallbackDummy(GLFWwindow* window, int entered);
+	};
+
+	class scoped_input_inhibitor {
+	public:
+		scoped_input_inhibitor() {}
+		scoped_input_inhibitor(input::inhibit_state* host, bool keyboard, bool mouse) : host(host), inhibit_mouse(mouse), inhibit_keyboard(keyboard) {
+			if (inhibit_mouse) {
+				++host->mouse;
+			}
+			if (inhibit_keyboard) {
+				++host->keyboard;
+			}
+		}
+
+		~scoped_input_inhibitor() {
+			if (inhibit_mouse) {
+				--host->mouse;
+			}
+			if (inhibit_keyboard) {
+				--host->keyboard;
+			}
+		}
+
+	private:
+		input::inhibit_state* host = nullptr;
+		bool inhibit_mouse = false;
+		bool inhibit_keyboard = false;
 	};
 }

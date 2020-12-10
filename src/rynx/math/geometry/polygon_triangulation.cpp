@@ -34,11 +34,11 @@ void rynx::polygon_triangulation::addTriangle(int earNode, int t1, int t2) {
 std::unique_ptr<rynx::mesh> rynx::polygon_triangulation::buildMeshData(floats4 uvLimits, rynx::vec3<std::pair<float, float>> poly_extents) {
 	std::unique_ptr<rynx::mesh> polyMesh = std::make_unique<rynx::mesh>();
 
-	float uvHalfWidthX = (uvLimits[2] - uvLimits[0]) * 0.5f;
-	float uvHalfHeightY = (uvLimits[3] - uvLimits[1]) * 0.5f;
+	float uvHalfWidthX = (uvLimits.z - uvLimits.x) * 0.5f;
+	float uvHalfHeightY = (uvLimits.w - uvLimits.y) * 0.5f;
 
-	float uvCenterX = uvHalfWidthX + uvLimits[0];
-	float uvCenterY = uvHalfHeightY + uvLimits[1];
+	float uvCenterX = uvHalfWidthX + uvLimits.x;
+	float uvCenterY = uvHalfHeightY + uvLimits.y;
 
 	// build vertex buffer
 	for (size_t i = 0; i < polygon->size(); ++i) {

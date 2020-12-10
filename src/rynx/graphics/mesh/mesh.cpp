@@ -5,6 +5,38 @@
 
 rynx::mesh::mesh() {}
 
+rynx::mesh::~mesh() {
+	bind();
+
+	if (vbo != ~0u) {
+		glDeleteBuffers(1, &vbo);
+	}
+	
+	if (tbo != ~0u) {
+		glDeleteBuffers(1, &tbo);
+	}
+
+	if (nbo != ~0u) {
+		glDeleteBuffers(1, &nbo);
+	}
+
+	if (ibo != ~0u) {
+		glDeleteBuffers(1, &ibo);
+	}
+
+	if (vao != ~0u) {
+		glDeleteVertexArrays(1, &vao);
+	}
+
+	auto verifyNoGlErrors = []() {
+		auto error = glGetError();
+		rynx_assert(error == GL_NO_ERROR, "oh shit");
+		return error == GL_NO_ERROR;
+	};
+
+	rynx_assert(verifyNoGlErrors(), "gl error");
+}
+
 void rynx::mesh::putVertex(float x, float y, float z) {
 	vertices.push_back(x);
 	vertices.push_back(y);

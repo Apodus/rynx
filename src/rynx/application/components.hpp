@@ -49,7 +49,11 @@ namespace rynx {
 			rynx::math::rand64& get_random() const { return m_random; }
 
 			struct editor {
+			private:
 				particle_emitter& host;
+
+			public:
+				editor(particle_emitter& host) : host(host) {}
 
 				editor& color_ranges(rynx::math::value_range<rynx::floats4> start_color_, rynx::math::value_range<rynx::floats4> end_color_) {
 					host.start_color = start_color_;

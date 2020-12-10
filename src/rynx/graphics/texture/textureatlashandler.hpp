@@ -56,13 +56,13 @@ public:
 
 	rynx::floats4 getTextureCoordinateLimits(const std::string& textureID, rynx::floats4 uvLimits) const {
 		rynx::floats4 subtex_limits = getTextureCoordinateLimits(textureID);
-		float width = subtex_limits[2] - subtex_limits[0];
-		float height = subtex_limits[3] - subtex_limits[1];
+		float width = subtex_limits.z - subtex_limits.x;
+		float height = subtex_limits.w - subtex_limits.y;
 		
-		uvLimits[0] *= width;
-		uvLimits[2] *= width;
-		uvLimits[1] *= height;
-		uvLimits[3] *= height;
+		uvLimits.x *= width;
+		uvLimits.z *= width;
+		uvLimits.y *= height;
+		uvLimits.w *= height;
 		return subtex_limits + uvLimits;
 	}
 

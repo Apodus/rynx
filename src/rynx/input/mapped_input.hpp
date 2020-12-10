@@ -23,6 +23,12 @@ namespace rynx {
 		};
 		*/
 
+		auto inhibit_mouse_scoped() { return this->userIO->inhibit_mouse_scoped(); }
+		auto inhibit_keyboard_scoped() { return this->userIO->inhibit_keyboard_scoped(); }
+		auto inhibit_mouse_and_keyboard_scoped() { return this->userIO->inhibit_mouse_and_keyboard_scoped(); }
+		// TODO: support inhibit of logical keys?
+
+
 		mapped_input& mouseWorldPosition(vec3<float> worldPos) {
 			m_mouseWorldPos = worldPos;
 			return *this;

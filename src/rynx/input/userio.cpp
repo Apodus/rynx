@@ -54,52 +54,60 @@ rynx::input::~input() {
 #endif
 
 
-bool rynx::input::isKeyInState(int8_t keyValue, int8_t requestedValue, bool ignoreConsumed) {
+bool rynx::input::isKeyValueInState(int8_t keyValue, int8_t requestedValue, bool ignoreConsumed) {
 	return (keyValue & (requestedValue | (!ignoreConsumed * rynx::input::KEY_CONSUMED))) == requestedValue;
 }
 
 bool rynx::input::isKeyClicked(rynx::key::physical key, bool ignoreConsumed) const {
-	return isKeyInState(m_buttonStates[key.id], KEY_CLICK, ignoreConsumed);
+	return isKeyInState(key, KEY_CLICK, ignoreConsumed);
 }
 
 bool rynx::input::isKeyPressed(rynx::key::physical key, bool ignoreConsumed) const {
-	return isKeyInState(m_buttonStates[key.id], KEY_PRESSED, ignoreConsumed);
+	return isKeyInState(key, KEY_PRESSED, ignoreConsumed);
 }
 
 bool rynx::input::isKeyDown(rynx::key::physical key, bool ignoreConsumed) const {
-	return isKeyInState(m_buttonStates[key.id], KEY_DOWN, ignoreConsumed);
+	return isKeyInState(key, KEY_DOWN, ignoreConsumed);
 }
 
 bool rynx::input::isKeyRepeat(rynx::key::physical key, bool ignoreConsumed) const {
-	return isKeyInState(m_buttonStates[key.id], KEY_REPEAT, ignoreConsumed);
+	return isKeyInState(key, KEY_REPEAT, ignoreConsumed);
 }
 
 bool rynx::input::isKeyReleased(rynx::key::physical key, bool ignoreConsumed) const {
-	return isKeyInState(m_buttonStates[key.id], KEY_RELEASED, ignoreConsumed);
+	return isKeyInState(key, KEY_RELEASED, ignoreConsumed);
 }
 
 bool rynx::input::isKeyConsumed(rynx::key::physical key) const {
-	return m_buttonStates[key.id] & KEY_CONSUMED;
+	return m_buttonStates[key.id] & KEY_CONSUMED * isUnhinged(key);
 }
 
 void rynx::input::consume(rynx::key::physical key) {
-	m_buttonStates[key.id] |= KEY_CONSUMED;
+	if(isUnhinged(key))
+		m_buttonStates[key.id] |= KEY_CONSUMED;
 }
 
-
 rynx::key::physical rynx::input::getAnyClicked() {
-	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
-		if(m_buttonStates[index] & KEY_PRESSED) {
-			return rynx::key::physical{ static_cast<int32_t>(index) };
+	for(int32_t index = 0; index < m_buttonStates.size(); ++index) {
+		if (
+			(m_buttonStates[index] & KEY_PRESSED) &&
+			isUnhinged(rynx::key::physical{index}) &&
+			((m_buttonStates[index] & KEY_CONSUMED) == 0)
+		) {
+			return rynx::key::physical{ index };
 		}
 	}
 	return { 0 };
 }
 
 rynx::key::physical rynx::input::getAnyReleased() {
-	for(unsigned index = 0; index < m_buttonStates.size(); ++index) {
-		if(m_buttonStates[index] & KEY_RELEASED) {
-			return rynx::key::physical{ static_cast<int32_t>(index) };
+	for(int32_t index = 0; index < m_buttonStates.size(); ++index) {
+		if(
+			(m_buttonStates[index] & KEY_RELEASED) &&
+			isUnhinged(rynx::key::physical{ index }) &&
+			((m_buttonStates[index] & KEY_CONSUMED) == 0)
+		) {
+			return rynx::key::physical{ index };
 		}
 	}
 	return { 0 };
@@ -137,18 +145,17 @@ void rynx::input::onKeyEvent(int key, int /* scancode */, int action, int /* mod
 
 void rynx::input::onMouseButtonEvent(int key, int action, int /* mods */) {
 	if (action == GLFW_PRESS) {
-		m_buttonStates[key + 256] |= KEY_PRESSED | KEY_DOWN;
+		m_buttonStates[getMouseKeyCode(key).id] |= KEY_PRESSED | KEY_DOWN;
 		m_mousePosition_clickBegin = m_mousePosition;
 	}
 
 	if (action == GLFW_RELEASE) {
 		uint8_t value = KEY_RELEASED;
-		if ((m_mousePosition - m_mousePosition_clickBegin).length_squared() < 0.02f * 0.02f)
-		{
+		if ((m_mousePosition - m_mousePosition_clickBegin).length_squared() < 0.02f * 0.02f) {
 			value |= KEY_CLICK;
 		}
 
-		m_buttonStates[key + 256] = value;
+		m_buttonStates[getMouseKeyCode(key).id] = value;
 	}
 }
 
@@ -175,8 +182,6 @@ void rynx::input::onMouseEnterEvent(int entered) {
 		m_mouseInScreen = false;
 	}
 }
-
-
 
 
 
@@ -210,3 +215,6 @@ void rynx::input::cursorEnterCallbackDummy(GLFWwindow* /* window */, int entered
 		g_mouseEnteredHandler(entered);
 }
 
+rynx::scoped_input_inhibitor rynx::input::inhibit_mouse_scoped() { return scoped_input_inhibitor(&m_inhibited, false, true); }
+rynx::scoped_input_inhibitor rynx::input::inhibit_keyboard_scoped() { return scoped_input_inhibitor(&m_inhibited, true, false); }
+rynx::scoped_input_inhibitor rynx::input::inhibit_mouse_and_keyboard_scoped() { return scoped_input_inhibitor(&m_inhibited, true, true); }

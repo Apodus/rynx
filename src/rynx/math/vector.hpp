@@ -171,18 +171,7 @@ namespace rynx {
 	// not simd representation of four consecutive float values.
 	struct floats4 {
 #pragma warning (disable : 4201)
-		union {
-			struct {
-				float x, y, z, w;
-			};
-			struct {
-				float r, g, b, a;
-			};
-			struct {
-				float left, right, top, bottom;
-			};
-			float data[4];
-		};
+		float x, y, z, w;
 
 		floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
 		floats4(const vec3<float>& other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
@@ -201,7 +190,7 @@ namespace rynx {
 		floats4& operator+=(const floats4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
 		floats4& operator-=(const floats4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
 
-
+		/*
 		const float& operator [](int index) const {
 			rynx_assert(index >= 0 && index < 4, "index out of bounds");
 			return data[index];
@@ -211,6 +200,7 @@ namespace rynx {
 			rynx_assert(index >= 0 && index < 4, "index out of bounds");
 			return data[index];
 		}
+		*/
 	};
 
 	template <class T>

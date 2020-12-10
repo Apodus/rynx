@@ -55,16 +55,17 @@ namespace rynx {
 		void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
 		void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
 		void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
+		rynx::vec3f position(std::string text, int32_t cursor_pos, float x, float y, float lineHeight, Align align, const Font& font);
 
 		void drawTextBuffers(int textLength);
 		int fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
 
 		void fillColorBuffer(const floats4& activeColor_) {
 			for (int i = 0; i < 6; ++i) {
-				m_colorBuffer.push_back(activeColor_[0]);
-				m_colorBuffer.push_back(activeColor_[1]);
-				m_colorBuffer.push_back(activeColor_[2]);
-				m_colorBuffer.push_back(activeColor_[3]);
+				m_colorBuffer.push_back(activeColor_.x);
+				m_colorBuffer.push_back(activeColor_.y);
+				m_colorBuffer.push_back(activeColor_.z);
+				m_colorBuffer.push_back(activeColor_.w);
 			}
 		}
 

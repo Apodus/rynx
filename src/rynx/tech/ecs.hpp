@@ -14,6 +14,94 @@
 #include <algorithm>
 #include <numeric>
 
+// for reflection stuff
+#include <typeinfo>
+
+namespace rynx {
+	
+	namespace reflection {
+		class field {
+		public:
+			std::string m_field_name;
+			std::string m_type_name;
+			int32_t m_memory_offset = 0;
+			int32_t m_memory_size = 0;
+
+			template<typename MemberType, typename ObjectType>
+			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr) {
+				rynx::reflection::field f;
+				f.m_memory_offset = reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr));
+				f.m_memory_size = sizeof(MemberType);
+				f.m_type_name = typeid(MemberType).name();
+				f.m_field_name = fieldName;
+				return f;
+			}
+		};
+
+		class type {
+		public:
+			std::string m_type_name;
+			std::vector<field> m_members;
+			int32_t m_type_index_value = -1;
+
+			template<typename MemberType, typename ObjectType>
+			type& add_field(std::string fieldName, MemberType ObjectType::* ptr) {
+				m_members.emplace_back(rynx::reflection::field::construct(fieldName, ptr));
+				return *this;
+			}
+		};
+
+		template <typename T>
+		class make_reflect {
+		public:
+			rynx::reflection::type operator()(rynx::type_index& typeIndex) {
+				rynx::reflection::type result{ std::string(typeid(T).name()) };
+				result.m_type_index_value = static_cast<int32_t>(typeIndex.id<T>());
+				return result;
+			}
+		};
+
+		class reflections {
+		public:
+			reflections(rynx::type_index& index) : m_type_index(index) {}
+
+			template<typename T>
+			rynx::reflection::type& create() {
+				auto result = std::make_unique<rynx::reflection::type>();
+				result->m_type_name = std::string(typeid(T).name());
+				result->m_type_index_value = static_cast<int32_t>(m_type_index.id<T>());
+				m_reflections.emplace(std::string(typeid(T).name()), std::move(result));
+				return get<T>();
+			}
+
+			template<typename T>
+			rynx::reflection::type& get() {
+				auto it = m_reflections.find(typeid(T).name());
+				if (it == m_reflections.end()) {
+					rynx::reflection::type& reflection = create<T>();
+					reflection.m_type_name = "!!" + reflection.m_type_name;
+					return reflection;
+				}
+				return *it->second;
+			}
+
+			rynx::reflection::type& get(const rynx::reflection::field& f) {
+				auto it = m_reflections.find(f.m_type_name);
+				if (it == m_reflections.end()) {
+					auto t = std::make_unique<rynx::reflection::type>();
+					t->m_type_name = "!!" + f.m_type_name;
+					it = m_reflections.emplace(f.m_type_name, std::move(t)).first;
+				}
+				return *it->second;
+			}
+
+		private:
+			rynx::type_index& m_type_index;
+			rynx::unordered_map<std::string, std::unique_ptr<rynx::reflection::type>> m_reflections;
+		};
+	}
+}
+
 namespace rynx {
 
 	template<typename T> struct remove_first_type { using type = std::tuple<>; };
@@ -124,6 +212,10 @@ namespace rynx {
 		}
 
 	public:
+		type_index& get_type_index() {
+			return m_types;
+		}
+
 		struct id {
 			id() : value(entity_index::InvalidId) {}
 			id(entity_id_t v) : value(v) {}
@@ -141,6 +233,9 @@ namespace rynx {
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) = 0;
 			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) = 0;
 
+			virtual rynx::reflection::type reflection(rynx::reflection::reflections& reflections) = 0;
+			virtual void* get(index_t) = 0;
+
 			// virtual itable* deepCopy() const = 0;
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
@@ -156,6 +251,9 @@ namespace rynx {
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>&) override {}
 			virtual void swap_to_given_order(const std::vector<index_t>&) override {}
+			
+			virtual rynx::reflection::type reflection(rynx::reflection::reflections&) override { return {}; }
+			virtual void* get(index_t) override { return nullptr; }
 
 			virtual void copyTableTypeTo(type_id_t, std::vector<std::unique_ptr<itable>>&) override {}
 			virtual void moveFromIndexTo(index_t, itable*) override {}
@@ -212,6 +310,12 @@ namespace rynx {
 					}
 				}
 			}
+
+			virtual rynx::reflection::type reflection(rynx::reflection::reflections& reflections) override {
+				return reflections.get<T>();
+			}
+
+			virtual void* get(index_t i) override { return &m_data[i]; }
 
 			virtual void erase(entity_id_t id) override {
 				m_data[id] = std::move(m_data.back());
@@ -503,6 +607,16 @@ namespace rynx {
 			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 			template<typename T> const auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) const { return const_cast<entity_category*>(this)->table<T>(typeAliases); }
+			itable& table(int32_t type_index_value) { return *m_tables[type_index_value]; }
+
+			// this is not particularly fast - but required for some editor related things for example.
+			template<typename Func> void forEachTable(Func&& func) {
+				for (auto&& table : m_tables) {
+					if (table) {
+						func(table.get());
+					}
+				}
+			}
 
 		private:
 			template<DataAccess, typename Ts> struct getTables {};
@@ -951,6 +1065,19 @@ namespace rynx {
 
 			entity(const entity& other) = default;
 
+			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
+				std::vector<rynx::reflection::type> result;
+				m_entity_category->forEachTable([&result, &reflections](itable* tbl) {
+					result.emplace_back(tbl->reflection(reflections));
+				});
+				return result;
+			}
+
+			// for editor use only.
+			void* get(int32_t type_index_value) {
+				return m_entity_category->table(type_index_value).get(m_category_index);
+			}
+
 			template<typename T> T& get() {
 				categorySource->template componentTypesAllowed<T&>();
 				rynx_assert(has<T>(), "requested component type not in entity");
@@ -1045,6 +1172,15 @@ namespace rynx {
 				m_category_index = categoryAndIndex.second;
 				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == id, "entity mapping is broken");
 			}
+
+			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
+				std::vector<rynx::reflection::type> result;
+				m_entity_category->forEachTable([&result, &reflections](itable* tbl) {
+					result.emplace_back(tbl->reflection(reflections));
+				});
+				return result;
+			}
+
 			template<typename T> const T& get() const {
 				categorySource->template componentTypesAllowed<T>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
