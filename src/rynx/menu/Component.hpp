@@ -15,6 +15,11 @@ namespace rynx {
 	class TextRenderer;
 	class MeshRenderer;
 	class mapped_input;
+	class scoped_input_inhibitor;
+
+	namespace graphics {
+		class GPUTextures;
+	}
 	
 	namespace menu {
 		enum Align {
@@ -31,13 +36,25 @@ namespace rynx {
 			CENTER_HORIZONTAL = 32
 		};
 
+		class System;
+
 		class Component {
+			friend class rynx::menu::System;
+
 		private:
+			enum class offset_kind {
+				RelativeToHostScale,
+				RelativeToSelfScale,
+				RelativeToParentScale,
+				Absolute
+			};
+			
 			struct Attachment {
 				Component* attachedTo = nullptr;
 				vec3<float> align;
 				float offset = 0;
 				float innerOuterMultiplier = 1;
+				offset_kind offsetKind = offset_kind::RelativeToSelfScale;
 				bool is_attached = false;
 				operator bool() const { return is_attached; }
 			};
@@ -59,6 +76,7 @@ namespace rynx {
 
 			rynx::smooth<vec3<float>> m_position;
 			rynx::smooth<vec3<float>> m_scale;
+			rynx::smooth<rynx::floats4> m_color;
 			
 			vec3<float> m_worldPosition;
 			vec3<float> m_worldScale;
@@ -69,10 +87,18 @@ namespace rynx {
 			float m_aspectRatio = 1;
 			bool m_active = true;
 			bool m_respect_aspect_ratio = false;
+			
+			// if dynamic scale is true, the scale is adapted to contain all children.
+			// children will be marked to ignore parent scale.
+			bool m_dynamic_scale = false;
+			bool m_ignore_parent_scale = false;
 
 			std::vector<std::function<bool(rynx::vec3f, bool)>> m_on_hover;
 			std::vector<std::function<void(rynx::mapped_input&)>> m_on_input;
 			std::vector<std::function<void()>> m_on_click;
+
+			std::unique_ptr<Component> m_background;
+			System* m_menuSystem = nullptr;
 
 			virtual void onInput(rynx::mapped_input& input) = 0;
 			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const = 0;
@@ -92,22 +118,34 @@ namespace rynx {
 			void on_click(std::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
 			void on_input(std::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
 
+			void set_background(rynx::graphics::GPUTextures& textures, std::string texture, float edge_size = 0.2f);
+
 			Component* parent() const { return m_pParent; }
 			float velocity_position() const { return m_position_update_velocity; }
 			float scale_position() const { return m_scale_update_velocity; }
 			void velocity_position(float v) { m_position_update_velocity = v; }
 			void scale_position(float v) { m_scale_update_velocity = v; }
 
+			rynx::floats4& color() { return m_color.value(); }
+			void color(rynx::floats4 value) { m_color.target_value() = value; }
+
 			void input(rynx::mapped_input& input);
+			
+			virtual void onDedicatedInput(rynx::mapped_input&) {}
+			virtual void onDedicatedInputLost() {}
+			virtual void onDedicatedInputGained() {}
+
 			void tick(float dt, float aspectRatio);
 			void position_approach(float percentage) { m_position.tick(percentage); }
 			void visualise(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const;
+
+			void set_dynamic_position_and_scale() { m_dynamic_scale = true; }
 
 			class AlignConfig {
 			private:
 				Component* m_host;
 				Component* m_align_to;
-				
+
 				void private_do_align(rynx::menu::Align sideOf, float directionMultiplier) {
 					m_host->privateAttach(m_align_to, sideOf);
 					m_host->privateAlign(sideOf, directionMultiplier);
@@ -133,6 +171,33 @@ namespace rynx {
 					return *this;
 				}
 
+				AlignConfig& offset_kind_relative_to_self() {
+					m_host->m_horizontalAttachment.offsetKind = offset_kind::RelativeToSelfScale;
+					m_host->m_verticalAttachment.offsetKind = offset_kind::RelativeToSelfScale;
+					return *this;
+				}
+
+				AlignConfig& offset_kind_relative_to_host() {
+					m_host->m_horizontalAttachment.offsetKind = offset_kind::RelativeToHostScale;
+					m_host->m_verticalAttachment.offsetKind = offset_kind::RelativeToHostScale;
+					return *this;
+				}
+
+				AlignConfig& offset_kind_relative_to_parent() {
+					m_host->m_horizontalAttachment.offsetKind = offset_kind::RelativeToParentScale;
+					m_host->m_verticalAttachment.offsetKind = offset_kind::RelativeToParentScale;
+					return *this;
+				}
+
+				AlignConfig& offset_kind_absolute() {
+					m_host->m_horizontalAttachment.offsetKind = offset_kind::Absolute;
+					m_host->m_verticalAttachment.offsetKind = offset_kind::Absolute;
+					return *this;
+				}
+
+				AlignConfig& center_x() { private_do_align(rynx::menu::Align::CENTER_HORIZONTAL, 0.0f); return *this; }
+				AlignConfig& center_y() { private_do_align(rynx::menu::Align::CENTER_VERTICAL, 0.0f); return *this; }
+
 				AlignConfig& left_inside() { private_do_align(rynx::menu::Align::LEFT, -1); return *this; }
 				AlignConfig& right_inside() { private_do_align(rynx::menu::Align::RIGHT, -1); return *this; }
 				AlignConfig& bottom_inside() { private_do_align(rynx::menu::Align::BOTTOM, -1); return *this; }
@@ -156,6 +221,7 @@ namespace rynx {
 
 			AlignConfig align() { return { this }; }
 
+			void clear_children() { m_children.clear(); }
 			void addChild(std::shared_ptr<Component> child);
 			std::shared_ptr<Component> detachChild(const Component* ptr);
 			
@@ -179,6 +245,38 @@ namespace rynx {
 			vec3<float> position_relative(vec3<float> direction) const;
 			vec3<float>& target_scale();
 			vec3<float>& target_position();
+		};
+
+		// TODO: naming is too vague. this is an instance of a menu tree.
+		//       contains the menu root component, which may have child components.
+		//       a menu "System" is guaranteed to not have a parent menu element.
+		class System {
+			std::unique_ptr<Component> m_root;
+
+			// some components require dedicated focus state to function correctly.
+			// for example think of a text input box. clickin this will enable inputs
+			// for the text input box, but then we must also disable inputs for any other
+			// text input box. or else user can by accident select multiple text input boxes
+			// and be surprised when key strokes will be added to all of them. so this focused
+			// component points to either nothing, or the currently active dedicated input.
+			Component* m_keyboardInputCapturedBy = nullptr;
+			Component* m_mouseInputCapturedBy = nullptr;
+
+		public:
+			System();
+			
+			void capture_mouse_input(Component* component);
+			void capture_keyboard_input(Component* component);
+			void release_mouse_input();
+			void release_keyboard_input();
+
+			rynx::scoped_input_inhibitor inhibit_dedicated_inputs(rynx::mapped_input& input);
+
+			Component* root() { return m_root.get(); }
+
+			void input(rynx::mapped_input& input);
+			void update(float dt, float aspectRatio);
+			void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer);
 		};
 	}
 }

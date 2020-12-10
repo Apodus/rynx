@@ -25,13 +25,13 @@ rynx::menu::Frame::Frame(
 }
 
 void rynx::menu::Frame::initMesh(floats4 limits) {
-	float edgeUV_x = m_edgeSize * (limits.data[2] - limits[0]);
-	float edgeUV_y = m_edgeSize * (limits.data[3] - limits[1]);
+	float edgeUV_x = m_edgeSize * (limits.z - limits.x);
+	float edgeUV_y = m_edgeSize * (limits.w - limits.y);
 
-	float botCoordX = limits.data[0];
-	float botCoordY = limits.data[1];
-	float topCoordX = limits.data[2];
-	float topCoordY = limits.data[3];
+	float botCoordX = limits.x;
+	float botCoordY = limits.y;
+	float topCoordX = limits.z;
+	float topCoordY = limits.w;
 
 	m_backgroundMesh->texCoords.clear();
 	m_backgroundMesh->putUVCoord(botCoordX, topCoordY);

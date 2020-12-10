@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rynx/menu/Frame.hpp>
+#include <rynx/menu/Text.hpp>
 #include <rynx/menu/Component.hpp>
 
 #include <rynx/math/matrix.hpp>
@@ -21,15 +22,8 @@ namespace rynx {
 
 		class Button : public Component {
 		protected:
-			std::string m_text;
-			rynx::smooth<floats4> m_color;
-			rynx::smooth<floats4> m_textColor;
-
 			vec3<float> m_defaultScale;
-			
-			Frame m_frame;
-			TextRenderer::Align m_align;
-			Font* m_font = nullptr;
+			std::shared_ptr<rynx::menu::Text> m_textField;
 
 		public:
 			Button(
@@ -39,18 +33,15 @@ namespace rynx {
 				vec3<float> position = vec3<float>(),
 				float frame_edge_percentage = 0.2f
 			) : Component(scale, position)
-				, m_frame(textures, std::move(texture), frame_edge_percentage)
 			{
-				m_frame.set_parent(this);
+				m_textField = std::make_shared<rynx::menu::Text>(rynx::vec3f(1.0f, 1.0f, 0.0f));
+				set_background(textures, std::move(texture), frame_edge_percentage);
 				m_defaultScale = scale;
+				this->addChild(m_textField);
 				initialize();
 			}
 
-			Button& font(Font* font) { m_font = font; return *this; }
-			Button& text(std::string t, Font* font) { m_text = std::move(t); m_font = font; return *this; }
-			Button& text(std::string t) { m_text = std::move(t); return *this; }
-			Button& color_frame(floats4 color) { m_color = color; return *this; }
-			Button& color_text(floats4 color) { m_textColor = color; return *this; }
+			Text& text() { return *m_textField; } 
 			
 		private:
 			void initialize();
