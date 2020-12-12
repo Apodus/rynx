@@ -30,7 +30,7 @@ namespace rynx {
 			template<typename MemberType, typename ObjectType>
 			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr) {
 				rynx::reflection::field f;
-				f.m_memory_offset = reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr));
+				f.m_memory_offset = static_cast<int32_t>(reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr)));
 				f.m_memory_size = sizeof(MemberType);
 				f.m_type_name = typeid(MemberType).name();
 				f.m_field_name = fieldName;

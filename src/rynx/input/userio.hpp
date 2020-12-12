@@ -77,6 +77,29 @@ namespace rynx {
 		scoped_input_inhibitor inhibit_keyboard_scoped();
 		scoped_input_inhibitor inhibit_mouse_and_keyboard_scoped();
 
+		struct modifiers_t {
+			
+			modifiers_t(rynx::input* host) : m_host(host) {}
+
+			bool shift_left();
+			bool shift_right();
+
+			bool alt_left();
+			bool alt_right();
+
+			bool ctrl_left();
+			bool ctrl_right();
+
+			bool shift() { return shift_left() || shift_right(); }
+			bool alt() { return alt_left() || alt_right(); }
+			bool ctrl() { return ctrl_left() || ctrl_right(); }
+		
+		private:
+			rynx::input* m_host;
+		};
+
+		modifiers_t modifiers() { return { this }; }
+
 		constexpr rynx::key::physical getMouseKeyCode(int mouseButton) const {
 			return { mouseButton + 400 };
 		}

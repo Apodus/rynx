@@ -30,6 +30,22 @@ void getColorByCode(char c, rynx::floats4& color) {
 	color = getColorByCode(c);
 }
 
+float rynx::renderable_text::alignmentOffset() const {
+	float textWidth = m_font->getLength(m_str, m_textHeight);
+	switch (m_align) {
+	case align::Center: return -textWidth * 0.5f;
+	case align::Left: return 0;
+	case align::Right: return -textWidth;
+	}
+	rynx_assert(false, "unreachable code");
+}
+
+rynx::vec3f rynx::renderable_text::position(int32_t cursor_pos) const {
+	float dx = m_font->getLength(std::string_view(m_str.data(), cursor_pos), m_textHeight);
+	return m_pos + rynx::vec3f{ alignmentOffset() + dx, 0, 0 };
+}
+
+
 rynx::TextRenderer::TextRenderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders) :
 	m_textures(textures),
 	m_shaders(shaders)
@@ -65,42 +81,17 @@ rynx::TextRenderer::TextRenderer(std::shared_ptr<rynx::graphics::GPUTextures> te
 	glBindVertexArray(0);
 }
 
-void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
-	drawText(text, x, y, lineHeight, Color::WHITE, font, custom);
-}
-
-void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
-	drawText(text, x, y, lineHeight, color, Align::Center, font, custom);
-}
-
-void rynx::TextRenderer::drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
-	activeColor = color;
+void rynx::TextRenderer::drawText(const rynx::renderable_text& text_line) {
+	activeColor = text_line.color();
+	std::string_view text = text_line.text();
 	rynx_assert(text.length() < MAX_TEXT_LENGTH, "too long text to render!");
 	if (text.length() >= MAX_TEXT_LENGTH) {
 		return;
 	}
 
-	m_textures->bindTexture(0, font.getTextureID());
-	int length = fillTextBuffers(text, font, x, y, lineHeight, lineHeight, align, custom);
+	m_textures->bindTexture(0, text_line.font().getTextureID());
+	int length = fillTextBuffers(text_line);
 	drawTextBuffers(length);
-}
-
-rynx::vec3f rynx::TextRenderer::position(std::string text, int32_t cursor_pos, float x, float y, float lineHeight, Align align, const Font& font) {
-	float dx = font.getLength(text.substr(0, cursor_pos), lineHeight);
-	float textWidth = font.getLength(text, lineHeight);
-
-	switch (align) {
-	case Align::Center:
-		x -= textWidth * 0.5f;
-		break;
-	case Align::Left:
-		break;
-	case Align::Right:
-		x -= textWidth;
-		break;
-	}
-
-	return {x+dx, y, 0};
 }
 
 void rynx::TextRenderer::drawTextBuffers(int textLength) {
@@ -132,22 +123,21 @@ void rynx::TextRenderer::drawTextBuffers(int textLength) {
 	m_colorBuffer.clear();
 }
 
-int rynx::TextRenderer::fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom) {
+int rynx::TextRenderer::fillTextBuffers(const renderable_text& line) {
+	std::string_view text = line.text();
+	float scaleY = line.font_size();
+	float scaleX = line.font_size();
+
+	const Font& font = line.font();
+	
 	int skippedCharacters = 0;
 	int length = int(text.length());
 	float textHeight = scaleY;
-	float textWidth = font.getLength(text, scaleY);
+	
+	float x = line.pos().x;
+	float y = line.pos().y;
 
-	switch (align) {
-	case Align::Center:
-		x -= textWidth * 0.5f;
-		break;
-	case Align::Left:
-		break;
-	case Align::Right:
-		x -= textWidth;
-		break;
-	}
+	x += line.alignmentOffset();
 	y -= textHeight * 0.5f;
 
 	for (int i = 0; i < length; ++i) {
@@ -159,8 +149,6 @@ int rynx::TextRenderer::fillTextBuffers(const std::string& text, const Font& fon
 			getColorByCode(c, activeColor);
 			continue;
 		}
-
-		custom(text, i, x, y, scaleX, scaleY, activeColor);
 
 		float width = font.width(c, scaleX);
 		float height = font.height(c, scaleY);
@@ -191,4 +179,23 @@ void rynx::TextRenderer::fillTextureCoordinates(const Font& font, char c) {
 	m_texCoordBuffer.push_back(textureCoordinates.y); m_texCoordBuffer.push_back(textureCoordinates.w);
 	m_texCoordBuffer.push_back(textureCoordinates.x); m_texCoordBuffer.push_back(textureCoordinates.w);
 	m_texCoordBuffer.push_back(textureCoordinates.x); m_texCoordBuffer.push_back(textureCoordinates.z);
+}
+
+void rynx::TextRenderer::fillColorBuffer(const rynx::floats4& activeColor_) {
+	for (int i = 0; i < 6; ++i) {
+		m_colorBuffer.push_back(activeColor_.x);
+		m_colorBuffer.push_back(activeColor_.y);
+		m_colorBuffer.push_back(activeColor_.z);
+		m_colorBuffer.push_back(activeColor_.w);
+	}
+}
+
+void rynx::TextRenderer::fillCoordinates(float x, float y, float charWidth, float charHeight) {
+	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
+	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y);
+	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
+
+	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
+	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y + charHeight);
+	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
 }

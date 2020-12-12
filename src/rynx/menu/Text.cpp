@@ -16,9 +16,9 @@ rynx::menu::Text::Text(
 ) : Component(scale, position)
 {
 	m_defaultScale = scale;
-	m_text = "";
+	
 	m_text_color = Color::WHITE;
-	m_align = TextRenderer::Align::Center;
+	m_textline.align_center();
 
 	on_hover([this](rynx::vec3f mousePos, bool inRect) {
 		m_color = m_text_color - m_text_color * m_text_dimming_when_not_hovering * inRect * config.dim_when_not_hover;
@@ -41,18 +41,18 @@ void rynx::menu::Text::onDedicatedInput(rynx::mapped_input& input) {
 		const bool alhabetic_accept = config.input_type_alhabet && (key.id >= 'A' && key.id <= 'Z');
 		const bool numeric_accept = config.input_type_numeric && (key.id >= '0' && key.id <= '9');
 		if (alhabetic_accept || numeric_accept) {
-			m_text.insert(m_text.begin() + m_cursor_pos, static_cast<char8_t>(key.id));
+			m_textline.text().insert(m_textline.text().begin() + m_cursor_pos, static_cast<char8_t>(key.id));
 			++m_cursor_pos;
 		}
 		else if (key == rynx::key::codes::backspace()) {
 			if (m_cursor_pos > 0) {
 				--m_cursor_pos;
-				m_text.erase(m_text.begin() + m_cursor_pos);
+				m_textline.text().erase(m_textline.text().begin() + m_cursor_pos);
 			}
 		}
 		else if (key == rynx::key::codes::delete_key()) {
-			if (m_cursor_pos < m_text.size()) {
-				m_text.erase(m_text.begin() + m_cursor_pos);
+			if (m_cursor_pos < m_textline.text().size()) {
+				m_textline.text().erase(m_textline.text().begin() + m_cursor_pos);
 			}
 		}
 		else if (key == rynx::key::codes::arrow_left()) {
@@ -61,13 +61,13 @@ void rynx::menu::Text::onDedicatedInput(rynx::mapped_input& input) {
 			}
 		}
 		else if (key == rynx::key::codes::arrow_right()) {
-			if (m_cursor_pos < m_text.size()) {
+			if (m_cursor_pos < m_textline.text().size()) {
 				++m_cursor_pos;
 			}
 		}
 		else if (key == rynx::key::codes::enter()) {
 			if (m_commit) {
-				m_commit(m_text);
+				m_commit(m_textline.text());
 			}
 			m_menuSystem->release_keyboard_input();
 		}
@@ -86,22 +86,33 @@ void rynx::menu::Text::onDedicatedInputLost() {
 }
 
 void rynx::menu::Text::draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const {
-	if (!m_text.empty()) {
-		const vec3<float>& m_pos = position_world();
-		float x_offset = 0;
-		if (m_align == TextRenderer::Align::Left)
-			x_offset = -scale_world().x * 0.47f;
-		if (m_align == TextRenderer::Align::Right)
-			x_offset = +scale_world().x * 0.47f;
-
-		textRenderer.drawText(m_text, m_pos.x + x_offset, m_pos.y, scale_world().y * 0.75f, m_color, m_align, *m_font);
+	if (m_textline) {
+		textRenderer.drawText(m_textline);
 		
 		if (m_hasDedicatedInput) {
-			vec3f cursorPos = textRenderer.position(m_text, m_cursor_pos, m_pos.x + x_offset, m_pos.y, scale_world().y * 0.75f, m_align, *m_font);
-			textRenderer.drawText("I", cursorPos.x, cursorPos.y, scale_world().y * 0.5f, m_color, rynx::TextRenderer::Align::Center, *m_font);
+			vec3f cursorPos = m_textline.position(m_cursor_pos);
+			
+			rynx::renderable_text blob;
+			blob.text() = "|";
+			blob.font(m_textline.font());
+			blob.font_size(m_textline.font_size());
+			blob.align_center();
+			blob.pos() = rynx::vec3f(cursorPos.x, cursorPos.y, 0);
+			blob.color() = m_color;
+			blob.color().w *= 0.75f;
+
+			textRenderer.drawText(blob);
 		}
 	}
 }
 
 void rynx::menu::Text::update(float dt) {
+	m_textline.pos() = position_world();
+	if (m_textline.is_align_left())
+		m_textline.pos() += rynx::vec3f(-scale_world().x * 0.47f, 0, 0);
+	else if (m_textline.is_align_right())
+		m_textline.pos() += rynx::vec3f(+scale_world().x * 0.47f, 0, 0);
+	
+	m_textline.font_size(scale_world().y * 0.75f);
+	m_textline.color() = m_color;
 }

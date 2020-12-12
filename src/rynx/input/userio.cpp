@@ -18,6 +18,15 @@ namespace {
 	std::function<void(int)> g_mouseEnteredHandler;
 }
 
+bool rynx::input::modifiers_t::shift_left() { return m_host->isKeyDown(rynx::key::codes::shift_left(), true); }
+bool rynx::input::modifiers_t::shift_right() { return m_host->isKeyDown(rynx::key::codes::shift_right(), true); }
+
+bool rynx::input::modifiers_t::alt_left() { return m_host->isKeyDown(rynx::key::codes::alt_left(), true); }
+bool rynx::input::modifiers_t::alt_right() { return m_host->isKeyDown(rynx::key::codes::alt_right(), true); }
+
+bool rynx::input::modifiers_t::ctrl_left() { return m_host->isKeyDown(rynx::key::codes::control_left(), true); }
+bool rynx::input::modifiers_t::ctrl_right() { return m_host->isKeyDown(rynx::key::codes::control_right(), true); }
+
 rynx::input::input(std::shared_ptr<Window> window)
 {
 	rynx_assert(!g_keyboardKeyEventHandler, "Multiple UserIO initialisations not allowed :( Never fix");

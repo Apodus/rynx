@@ -501,8 +501,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
 
                     // up/down frequency mods
                     if constexpr (false) {
-                    	/*
-			fft(chunk_left);
+			            fft(chunk_left);
                         fft(chunk_right);
 
                         for (int32_t k = 0; k < num_samples_to_take; ++k) {
@@ -516,8 +515,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
 
                         ifft(chunk_left);
                         ifft(chunk_right);
-			*/
-		    }
+		            }
 
                     float numSamples_f = float(numSamples);
                     for (size_t k = 0; k < numSamples; ++k) {

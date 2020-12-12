@@ -15,6 +15,7 @@ typedef unsigned GLuint;
 class Font;
 
 namespace rynx {
+	class camera;
 	namespace graphics {
 		class GPUTextures;
 		class shaders;
@@ -22,7 +23,54 @@ namespace rynx {
 }
 
 namespace rynx {
-	class camera;
+	
+	struct renderable_text {
+	public:
+		enum class align {
+			Left,
+			Right,
+			Center
+		};
+
+		renderable_text& text(std::string s) { m_str = std::move(s); return *this; }
+		std::string& text() { return m_str; }
+		renderable_text& align_left() { m_align = align::Left; return *this; }
+		renderable_text& align_right() { m_align = align::Right; return *this; }
+		renderable_text& align_center() { m_align = align::Center; return *this; }
+		
+		renderable_text& pos(rynx::vec3f v) { m_pos = v; return *this; }
+		rynx::vec3f& pos() { return m_pos; }
+		
+		renderable_text& color(rynx::floats4 color) { m_color = color; return *this; }
+		rynx::floats4& color() { return m_color; }
+		
+		renderable_text& font(const Font& font) { m_font = &font; return *this; }
+		renderable_text& font_size(float v) { m_textHeight = v; return *this; }
+
+		std::string_view text() const { return m_str; }
+		rynx::vec3f pos() const { return m_pos; }
+		rynx::floats4 color() const { return m_color; }
+		float font_size() const { return m_textHeight; }
+		const Font& font() const { return *m_font; }
+
+		float alignmentOffset() const;
+		rynx::vec3f position(int32_t cursor_pos) const;
+
+		bool is_align_left() const { return m_align == align::Left; }
+		bool is_align_right() const { return m_align == align::Right; }
+		bool is_align_center() const { return m_align == align::Center; }
+
+		operator bool() const { return !m_str.empty(); }
+
+	private:
+		std::string m_str;
+		rynx::vec3f m_pos;
+		rynx::floats4 m_color;
+		renderable_text::align m_align;
+		const Font* m_font = nullptr;
+		float m_textHeight = 0.1f;
+	};
+
 	class TextRenderer {
 
 		static constexpr int MAX_TEXT_LENGTH = 1024;
@@ -41,44 +89,17 @@ namespace rynx {
 		GLuint vao;
 		GLuint vbo, cbo, tbo;
 
+		// private implementation.
+		int fillTextBuffers(const renderable_text& text);
+		void drawTextBuffers(int textLength);
+		void fillColorBuffer(const floats4& activeColor_);
+		void fillCoordinates(float x, float y, float charWidth, float charHeight);
+		void fillTextureCoordinates(const Font& font, char c);
+
 	public:
-
-		enum class Align {
-			Left,
-			Center,
-			Right
-		};
-
 		TextRenderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
 
 		void setCamera(std::shared_ptr<camera> pCamera) { m_pCamera = std::move(pCamera); }
-		void drawText(const std::string& text, float x, float y, float lineHeight, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
-		void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
-		void drawText(const std::string& text, float x, float y, float lineHeight, floats4 color, Align align, const Font& font, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
-		rynx::vec3f position(std::string text, int32_t cursor_pos, float x, float y, float lineHeight, Align align, const Font& font);
-
-		void drawTextBuffers(int textLength);
-		int fillTextBuffers(const std::string& text, const Font& font, float x, float y, float scaleX, float scaleY, Align align, std::function<void(const std::string&, int, float&, float&, float&, float&, floats4&)> custom = [](const std::string&, int, float&, float&, float&, float&, floats4&) {});
-
-		void fillColorBuffer(const floats4& activeColor_) {
-			for (int i = 0; i < 6; ++i) {
-				m_colorBuffer.push_back(activeColor_.x);
-				m_colorBuffer.push_back(activeColor_.y);
-				m_colorBuffer.push_back(activeColor_.z);
-				m_colorBuffer.push_back(activeColor_.w);
-			}
-		}
-
-		void fillCoordinates(float x, float y, float charWidth, float charHeight) {
-			m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
-			m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y);
-			m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
-
-			m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
-			m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y + charHeight);
-			m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
-		}
-
-		void fillTextureCoordinates(const Font& font, char c);
+		void drawText(const renderable_text& text);
 	};
 }

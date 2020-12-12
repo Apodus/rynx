@@ -15,7 +15,7 @@ public:
 		this->fontData.fillTextureCoordinates();
 	}
 
-	float totalWidth(const std::string& text) const {
+	float totalWidth(std::string_view text) const {
 		float sum = 0.0f;
 		for (unsigned i = 0; i < text.length(); ++i) {
 			char c = text[i];
@@ -28,7 +28,7 @@ public:
 		return sum;
 	}
 
-	float getLength(const std::string& text, float lineHeight) const {
+	float getLength(std::string_view text, float lineHeight) const {
 		float totalWidth = this->totalWidth(text);
 		return totalWidth * lineHeight;
 	}

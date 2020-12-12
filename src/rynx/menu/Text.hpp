@@ -21,13 +21,12 @@ namespace rynx {
 
 		class Text : public Component {
 		private:
-			std::string m_text;
 			rynx::floats4 m_text_color;
 			rynx::floats4 m_text_dimming_when_not_hovering;
 
 			vec3<float> m_defaultScale;
-			TextRenderer::Align m_align;
-			Font* m_font = nullptr;
+			
+			rynx::renderable_text m_textline;
 
 			struct Config {
 				bool allow_input = true;
@@ -48,10 +47,16 @@ namespace rynx {
 				vec3<float> position = vec3<float>()
 			);
 
-			Text& text_align(TextRenderer::Align align) { m_align = align; return *this; }
-			Text& font(Font* font) { m_font = font; return *this; }
-			Text& text(std::string t) { m_text = std::move(t); return *this; }
+			Text& text_align_left() { m_textline.align_left(); return *this; }
+			Text& text_align_right() { m_textline.align_right(); return *this; }
+			Text& text_align_center() { m_textline.align_center(); return *this; }
 			
+			Text& font(Font* font) { m_textline.font(*font); return *this; }
+			Text& text(std::string t) { m_textline.text() = std::move(t); return *this; }
+			Text& on_value_changed(std::function<void(const std::string&)> op) { m_commit = std::move(op); return *this; }
+			Text& color(floats4 c) { m_text_color = c; return *this; }
+			floats4& color() { return m_text_color; }
+
 			Text& dimming(float v) {
 				m_text_dimming_when_not_hovering = rynx::floats4(v, v, v, 0.0f);
 				return *this;
