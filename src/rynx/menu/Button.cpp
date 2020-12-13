@@ -31,7 +31,7 @@ void rynx::menu::Button::initialize() {
 }
 
 void rynx::menu::Button::onInput(rynx::mapped_input&) {}
-void rynx::menu::Button::draw(rynx::graphics::renderer&, rynx::graphics::text_renderer&) const {}
+void rynx::menu::Button::draw(rynx::graphics::renderer&) const {}
 void rynx::menu::Button::update(float dt) {
 	m_background->color(m_color);
 }

@@ -85,9 +85,9 @@ void rynx::menu::Text::onDedicatedInputLost() {
 	m_hasDedicatedInput = false;
 }
 
-void rynx::menu::Text::draw([[maybe_unused]] rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const {
+void rynx::menu::Text::draw(rynx::graphics::renderer& renderer) const {
 	if (m_textline) {
-		textRenderer.drawText(m_textline);
+		renderer.drawText(m_textline);
 		
 		if (m_hasDedicatedInput) {
 			vec3f cursorPos = m_textline.position(m_cursor_pos);
@@ -101,7 +101,7 @@ void rynx::menu::Text::draw([[maybe_unused]] rynx::graphics::renderer& meshRende
 			blob.color() = m_color;
 			blob.color().w *= 0.75f;
 
-			textRenderer.drawText(blob);
+			renderer.drawText(blob);
 		}
 	}
 }

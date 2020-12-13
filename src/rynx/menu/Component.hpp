@@ -102,7 +102,7 @@ namespace rynx {
 			System* m_menuSystem = nullptr;
 
 			virtual void onInput(rynx::mapped_input& input) = 0;
-			virtual void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const = 0;
+			virtual void draw(rynx::graphics::renderer& renderer) const = 0;
 			virtual void update(float dt) = 0;
 
 			float aspectRatio() const { return m_aspectRatio; }
@@ -138,7 +138,7 @@ namespace rynx {
 
 			void tick(float dt, float aspectRatio);
 			void position_approach(float percentage) { m_position.tick(percentage); }
-			void visualise(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const;
+			void visualise(rynx::graphics::renderer& renderer) const;
 
 			void set_dynamic_position_and_scale() { m_dynamic_scale = true; }
 
@@ -277,7 +277,7 @@ namespace rynx {
 
 			void input(rynx::mapped_input& input);
 			void update(float dt, float aspectRatio);
-			void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer);
+			void draw(rynx::graphics::renderer& renderer);
 		};
 	}
 }

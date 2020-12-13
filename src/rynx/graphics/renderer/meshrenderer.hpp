@@ -92,8 +92,6 @@ namespace rynx {
 			void setDepthTest(bool depthTestEnabled);
 			std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
-			rynx::graphics::text_renderer& text_renderer() { return *m_pTextRenderer; }
-
 			void loadDefaultMesh(const std::string& textureName);
 			void cameraToGPU();
 			void setCamera(std::shared_ptr<camera> camera);

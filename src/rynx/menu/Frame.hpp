@@ -38,7 +38,7 @@ namespace rynx {
 			virtual void update(float) override;
 
 			virtual void onInput(rynx::mapped_input&) override {}
-			virtual void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer&) const override;
+			virtual void draw(rynx::graphics::renderer& renderer) const override;
 		};
 	}
 }
