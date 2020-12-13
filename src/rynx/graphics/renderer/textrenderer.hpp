@@ -24,7 +24,7 @@ namespace rynx {
 
 namespace rynx {
 	namespace graphics {
-		struct renderable_text {
+		class renderable_text {
 		public:
 			enum class align {
 				Left,

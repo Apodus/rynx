@@ -28,10 +28,8 @@ void rynx::application::Application::openWindow(int width, int height, std::stri
 	m_textures = std::make_shared<rynx::graphics::GPUTextures>();
 	m_shaders = std::make_shared<rynx::graphics::shaders>();
 	
-	m_meshRenderer = std::make_shared<rynx::graphics::renderer>(m_textures, m_shaders);
-	m_textRenderer = std::make_shared<rynx::graphics::text_renderer>(m_textures, m_shaders);
-
-	m_debugVisualization = std::make_shared<application::DebugVisualization>(m_meshRenderer);
+	m_renderer = std::make_shared<rynx::graphics::renderer>(m_textures, m_shaders);
+	m_debugVisualization = std::make_shared<application::DebugVisualization>(m_renderer);
 }
 
 void rynx::application::Application::loadTextures(std::string path) {

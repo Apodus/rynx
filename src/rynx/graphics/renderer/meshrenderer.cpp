@@ -77,6 +77,7 @@ void rynx::graphics::renderer::setDepthTest(bool depthTestEnabled)
 
 void rynx::graphics::renderer::setCamera(std::shared_ptr<camera> camera) {
 	m_pCamera = camera;
+	m_pTextRenderer->setCamera(camera);
 }
 
 void rynx::graphics::renderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color) {
@@ -163,6 +164,10 @@ void rynx::graphics::renderer::drawMesh(const rynx::graphics::mesh& mesh, const 
 	
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
+}
+
+void rynx::graphics::renderer::drawText(const rynx::graphics::renderable_text& text) {
+	m_pTextRenderer->drawText(text);
 }
 
 void rynx::graphics::renderer::instanced_draw_impl(

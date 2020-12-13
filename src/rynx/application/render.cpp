@@ -48,7 +48,7 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 	}
 
 	{
-		auto* tube_mesh = application.meshRenderer().meshes()->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
+		auto* tube_mesh = application.renderer().meshes()->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
 		tube_mesh->normals.clear();
 		tube_mesh->putNormal(0, +1, 0);
 		tube_mesh->putNormal(0, -1, 0);
@@ -58,14 +58,22 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 		tube_mesh->rebuildNormalBuffer();
 
 		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
-		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(application.meshRenderer().meshes()->get("square_tube_normals"), &application.meshRenderer());
+
+		auto& renderer = application.renderer();
+		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(
+			renderer.meshes()->get("square_tube_normals"),
+			&renderer
+		);
 		boundary_rendering->m_enabled = m_debug_draw_config;
 
 		geometry_pass = std::make_unique<graphics_step>();
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
-		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&application.meshRenderer()));
+		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
-		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(application.meshRenderer().meshes()->get("circle_empty"), &application.meshRenderer()));
+		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(
+			renderer.meshes()->get("circle_empty"),
+			&renderer
+		));
 	}
 
 	gpu_textures = application.textures();
@@ -111,11 +119,10 @@ void rynx::application::renderer::on_resolution_change(size_t new_size_x, size_t
 void rynx::application::renderer::execute() {
 	{
 		rynx_profile("Main", "draw");
-		m_application.meshRenderer().setDepthTest(false);
+		m_application.renderer().setDepthTest(false);
 
-		m_application.meshRenderer().setCamera(camera);
-		m_application.textRenderer().setCamera(camera);
-		m_application.meshRenderer().cameraToGPU();
+		m_application.renderer().setCamera(camera);
+		m_application.renderer().cameraToGPU();
 
 		fbo_world_geometry->bind_as_output();
 		fbo_world_geometry->clear();

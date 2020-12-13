@@ -11,12 +11,15 @@
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 
+#include <rynx/graphics/renderer/textrenderer.hpp>
+
 namespace rynx {
 	class camera;
 	
 	namespace graphics {
 		class mesh;
 		class text_renderer;
+		class renderable_text;
 
 		class mesh_collection {
 		public:
@@ -89,6 +92,8 @@ namespace rynx {
 			void setDepthTest(bool depthTestEnabled);
 			std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
+			rynx::graphics::text_renderer& text_renderer() { return *m_pTextRenderer; }
+
 			void loadDefaultMesh(const std::string& textureName);
 			void cameraToGPU();
 			void setCamera(std::shared_ptr<camera> camera);
@@ -100,6 +105,8 @@ namespace rynx {
 			void drawMesh(const std::string& mesh_name, const matrix4& model, const floats4& color = floats4(1, 1, 1, 1)) {
 				drawMesh(*m_meshes->get(mesh_name), model, color);
 			}
+
+			void drawText(const rynx::graphics::renderable_text& text);
 
 			void drawMeshInstanced(const mesh& mesh, const std::vector<matrix4>& models, const std::vector<floats4>& colors) {
 				instanced_draw_impl(mesh, models.size(), models.data(), colors.data(), DrawType::Forward);
