@@ -11,8 +11,10 @@
 
 
 namespace rynx {
-	class mesh;
-	class MeshRenderer;
+	namespace graphics {
+		class mesh;
+		class renderer;
+	}
 	namespace scheduler {
 		class context;
 	}
@@ -20,9 +22,9 @@ namespace rynx {
 	namespace application {
 		class DebugVisualization : public igraphics_step {
 		public:
-			DebugVisualization(std::shared_ptr<MeshRenderer> meshRenderer) : m_meshRenderer(meshRenderer) {}
+			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer) : m_meshRenderer(meshRenderer) {}
 
-			void addDebugVisual(mesh* mesh, matrix4 m, floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 m, floats4 color, float lifetime = 0.0f);
 			
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 			virtual void execute() override;
@@ -34,8 +36,8 @@ namespace rynx {
 				std::vector<float> lifetimes;
 			};
 
-			rynx::unordered_map<mesh*, buffer_obj> m_data;
-			std::shared_ptr<MeshRenderer> m_meshRenderer;
+			rynx::unordered_map<rynx::graphics::mesh*, buffer_obj> m_data;
+			std::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
 		};
 	}
 }

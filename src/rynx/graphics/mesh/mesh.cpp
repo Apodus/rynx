@@ -3,9 +3,9 @@
 #include <rynx/graphics/internal/includes.hpp>
 #include <rynx/system/assert.hpp>
 
-rynx::mesh::mesh() {}
+rynx::graphics::mesh::mesh() {}
 
-rynx::mesh::~mesh() {
+rynx::graphics::mesh::~mesh() {
 	bind();
 
 	if (vbo != ~0u) {
@@ -37,46 +37,46 @@ rynx::mesh::~mesh() {
 	rynx_assert(verifyNoGlErrors(), "gl error");
 }
 
-void rynx::mesh::putVertex(float x, float y, float z) {
+void rynx::graphics::mesh::putVertex(float x, float y, float z) {
 	vertices.push_back(x);
 	vertices.push_back(y);
 	vertices.push_back(z);
 }
 
-void rynx::mesh::putUVCoord(float u, float v) {
+void rynx::graphics::mesh::putUVCoord(float u, float v) {
 	texCoords.push_back(u);
 	texCoords.push_back(v);
 }
 
-void rynx::mesh::putTriangleIndices(int i1, int i2, int i3) {
+void rynx::graphics::mesh::putTriangleIndices(int i1, int i2, int i3) {
 	indices.push_back(static_cast<short>(i1));
 	indices.push_back(static_cast<short>(i2));
 	indices.push_back(static_cast<short>(i3));
 }
 
-void rynx::mesh::putNormal(float x, float y, float z) {
+void rynx::graphics::mesh::putNormal(float x, float y, float z) {
 	normals.push_back(x);
 	normals.push_back(y);
 	normals.push_back(z);
 }
 
-void rynx::mesh::putVertex(rynx::vec3f v) {
+void rynx::graphics::mesh::putVertex(rynx::vec3f v) {
 	putVertex(v.x, v.y, v.z);
 }
 
-void rynx::mesh::putNormal(rynx::vec3f v) {
+void rynx::graphics::mesh::putNormal(rynx::vec3f v) {
 	putNormal(v.x, v.y, v.z);
 }
 
-int rynx::mesh::getVertexCount() const {
+int rynx::graphics::mesh::getVertexCount() const {
 	return int(vertices.size() / 3);
 }
 
-int rynx::mesh::getIndexCount() const {
+int rynx::graphics::mesh::getIndexCount() const {
 	return int(indices.size());
 }
 
-void rynx::mesh::build() {
+void rynx::graphics::mesh::build() {
 
 	auto verifyNoGlErrors = []() {
 		auto error = glGetError();
@@ -114,21 +114,21 @@ void rynx::mesh::build() {
 	verifyNoGlErrors();
 }
 
-void rynx::mesh::rebuildTextureBuffer() {
+void rynx::graphics::mesh::rebuildTextureBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, tbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * texCoords.size(), &texCoords[0]);
 }
 
-void rynx::mesh::rebuildVertexBuffer() {
+void rynx::graphics::mesh::rebuildVertexBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * vertices.size(), &vertices[0]);
 }
 
-void rynx::mesh::rebuildNormalBuffer() {
+void rynx::graphics::mesh::rebuildNormalBuffer() {
 	glBindBuffer(GL_ARRAY_BUFFER, nbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * normals.size(), &normals[0]);
 }
 
-void rynx::mesh::bind() const {
+void rynx::graphics::mesh::bind() const {
 	glBindVertexArray(vao);
 }

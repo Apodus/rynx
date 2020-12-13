@@ -11,9 +11,10 @@
 #include <functional>
 
 namespace rynx {
-	
-	class TextRenderer;
-	class MeshRenderer;
+	namespace graphics {
+		class text_renderer;
+		class renderer;
+	}
 	class mapped_input;
 	class scoped_input_inhibitor;
 
@@ -101,7 +102,7 @@ namespace rynx {
 			System* m_menuSystem = nullptr;
 
 			virtual void onInput(rynx::mapped_input& input) = 0;
-			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const = 0;
+			virtual void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const = 0;
 			virtual void update(float dt) = 0;
 
 			float aspectRatio() const { return m_aspectRatio; }
@@ -137,7 +138,7 @@ namespace rynx {
 
 			void tick(float dt, float aspectRatio);
 			void position_approach(float percentage) { m_position.tick(percentage); }
-			void visualise(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const;
+			void visualise(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const;
 
 			void set_dynamic_position_and_scale() { m_dynamic_scale = true; }
 
@@ -276,7 +277,7 @@ namespace rynx {
 
 			void input(rynx::mapped_input& input);
 			void update(float dt, float aspectRatio);
-			void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer);
+			void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer);
 		};
 	}
 }

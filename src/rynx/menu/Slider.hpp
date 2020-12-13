@@ -32,7 +32,7 @@ namespace rynx {
 
 			SlideBarVertical& on_value_changed(std::function<void(float)> t);
 
-			virtual void draw(MeshRenderer&, TextRenderer&) const override {}
+			virtual void draw(rynx::graphics::renderer&, rynx::graphics::text_renderer&) const override {}
 			virtual void onInput(rynx::mapped_input& input) override;
 			virtual void update(float dt) override;
 			void onActivate(float x, float /* y */);

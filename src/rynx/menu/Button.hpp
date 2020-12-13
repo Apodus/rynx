@@ -15,7 +15,6 @@
 class Font;
 
 namespace rynx {
-	class mesh;
 	class mapped_input;
 	
 	namespace menu {
@@ -47,7 +46,7 @@ namespace rynx {
 			void initialize();
 
 			virtual void onInput(rynx::mapped_input& input) override;
-			virtual void draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const override;
+			virtual void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const override;
 			virtual void update(float dt) override;
 		};
 	}

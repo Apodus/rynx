@@ -9,7 +9,9 @@
 #include <memory>
 
 namespace rynx {
-	class mesh;
+	namespace graphics {
+		class mesh;
+	}
 
 	namespace graphics {
 		class GPUTextures;
@@ -19,7 +21,7 @@ namespace rynx {
 		class Frame : public Component {
 			vec3<float> m_prevScale;
 			matrix4 m_modelMatrix;
-			std::unique_ptr<mesh> m_backgroundMesh;
+			std::unique_ptr<rynx::graphics::mesh> m_backgroundMesh;
 			float m_edgeSize;
 
 			void initMesh(floats4 uv_limits);
@@ -36,7 +38,7 @@ namespace rynx {
 			virtual void update(float) override;
 
 			virtual void onInput(rynx::mapped_input&) override {}
-			virtual void draw(rynx::MeshRenderer& meshRenderer, TextRenderer&) const override;
+			virtual void draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer&) const override;
 		};
 	}
 }

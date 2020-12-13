@@ -4,7 +4,7 @@
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
-rynx::MeshRenderer::MeshRenderer(
+rynx::graphics::renderer::renderer(
 	std::shared_ptr<rynx::graphics::GPUTextures> textures,
 	std::shared_ptr<rynx::graphics::shaders> shaders
 )
@@ -13,11 +13,13 @@ rynx::MeshRenderer::MeshRenderer(
 	m_shaders = shaders;
 	m_meshes = std::make_shared<mesh_collection>(m_textures);
 	init();
+
+	m_pTextRenderer = std::make_unique<rynx::graphics::text_renderer>(textures, shaders);
 }
 
 static constexpr int32_t InstancesPerDrawCall = 1024 * 10;
 
-void rynx::MeshRenderer::init() {
+void rynx::graphics::renderer::init() {
 	glClearColor(0.2f, 0.3f, 0.5f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	
@@ -61,11 +63,11 @@ void rynx::MeshRenderer::init() {
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
-void rynx::MeshRenderer::loadDefaultMesh(const std::string& textureName) {
+void rynx::graphics::renderer::loadDefaultMesh(const std::string& textureName) {
 	m_rectangle = m_meshes->create("empty_box", Shape::makeBox(2.f), textureName);
 }
 
-void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
+void rynx::graphics::renderer::setDepthTest(bool depthTestEnabled)
 {
 	if (depthTestEnabled)
 		glEnable(GL_DEPTH_TEST);
@@ -73,17 +75,17 @@ void rynx::MeshRenderer::setDepthTest(bool depthTestEnabled)
 		glDisable(GL_DEPTH_TEST);
 }
 
-void rynx::MeshRenderer::setCamera(std::shared_ptr<camera> camera) {
+void rynx::graphics::renderer::setCamera(std::shared_ptr<camera> camera) {
 	m_pCamera = camera;
 }
 
-void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color) {
+void rynx::graphics::renderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color) {
 	matrix4 model;
 	model.identity();
 	drawLine(p1, p2, model, width, color);
 }
 
-void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color) {
+void rynx::graphics::renderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color) {
 	vec3<float> mid = (p1 + p2) * 0.5f;
 
 	matrix4 model_;
@@ -116,7 +118,7 @@ void rynx::MeshRenderer::drawLine(const vec3<float>& p1, const vec3<float>& p2, 
 	drawMesh(*m_rectangle, model_, color);
 }
 
-void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& texture_name, const floats4& color) {
+void rynx::graphics::renderer::drawRectangle(const matrix4& model, const std::string& texture_name, const floats4& color) {
 	
 	if (m_rectangle->texture_name != texture_name) {
 		floats4 limits = m_textures->textureLimits(texture_name);
@@ -139,7 +141,7 @@ void rynx::MeshRenderer::drawRectangle(const matrix4& model, const std::string& 
 	drawMesh(*m_rectangle, model, color);
 }
 
-void rynx::MeshRenderer::cameraToGPU() {
+void rynx::graphics::renderer::cameraToGPU() {
 	auto set_camera_to_shader = [this](rynx::graphics::shader& shader) {
 		shader.activate();
 		shader.uniform("view", m_pCamera->getView());
@@ -151,7 +153,7 @@ void rynx::MeshRenderer::cameraToGPU() {
 	set_camera_to_shader(*shader_instanced_deferred);
 }
 
-void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, const floats4& color) {
+void rynx::graphics::renderer::drawMesh(const rynx::graphics::mesh& mesh, const matrix4& model, const floats4& color) {
 	shader_single->activate();
 	mesh.bind();
 
@@ -163,8 +165,8 @@ void rynx::MeshRenderer::drawMesh(const rynx::mesh& mesh, const matrix4& model, 
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
-void rynx::MeshRenderer::instanced_draw_impl(
-	const mesh& mesh,
+void rynx::graphics::renderer::instanced_draw_impl(
+	const rynx::graphics::mesh& mesh,
 	size_t num_instances,
 	const matrix4* models,
 	const floats4* colors,

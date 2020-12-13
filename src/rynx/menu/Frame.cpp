@@ -11,7 +11,7 @@ rynx::menu::Frame::Frame(
 	rynx::graphics::GPUTextures& textures,
 	const std::string& textureID,
 	float edgeSize) : Component(vec3<float>(), vec3<float>()) {
-	m_backgroundMesh = std::make_unique<rynx::mesh>();
+	m_backgroundMesh = std::make_unique<rynx::graphics::mesh>();
 	m_color = Color::WHITE;
 	m_edgeSize = edgeSize;
 
@@ -110,6 +110,6 @@ void rynx::menu::Frame::update(float) {
 	m_modelMatrix.scale(parentDimensions.x * .5f, parentDimensions.y * .5f, 1);
 }
 
-void rynx::menu::Frame::draw(rynx::MeshRenderer& meshRenderer, rynx::TextRenderer&) const {
+void rynx::menu::Frame::draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer&) const {
 	meshRenderer.drawMesh(*m_backgroundMesh, m_modelMatrix, m_color);
 }

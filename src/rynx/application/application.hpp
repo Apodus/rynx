@@ -11,12 +11,12 @@
 class Window;
 
 namespace rynx {
-	class mesh;
 	class input;
-	class MeshRenderer;
-	class TextRenderer;
 
 	namespace graphics {
+		class mesh;
+		class renderer;
+		class text_renderer;
 		class GPUTextures;
 		class shaders;
 	}
@@ -42,8 +42,8 @@ namespace rynx {
 			std::shared_ptr<rynx::input> input() { return m_input; }
 			std::shared_ptr<rynx::graphics::shaders> shaders() { return m_shaders; }
 
-			MeshRenderer& meshRenderer() { return *m_meshRenderer; }
-			TextRenderer& textRenderer() { return *m_textRenderer; }
+			rynx::graphics::renderer& meshRenderer() { return *m_meshRenderer; }
+			rynx::graphics::text_renderer& textRenderer() { return *m_textRenderer; }
 
 			std::shared_ptr<DebugVisualization> debugVis() { return m_debugVisualization; }
 			std::shared_ptr<rynx::graphics::GPUTextures> textures() { return m_textures; }
@@ -56,8 +56,8 @@ namespace rynx {
 			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::shared_ptr<rynx::graphics::shaders> m_shaders;
 
-			std::shared_ptr<MeshRenderer> m_meshRenderer;
-			std::shared_ptr<TextRenderer> m_textRenderer;
+			std::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
+			std::shared_ptr<rynx::graphics::text_renderer> m_textRenderer;
 
 			std::vector<std::function<void(size_t, size_t)>> m_resizeCallbacks;
 			bool m_window_resized = false;

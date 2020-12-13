@@ -266,7 +266,7 @@ void rynx::menu::Component::tick(float dt, float aspectRatio) {
 	}
 }
 
-void rynx::menu::Component::visualise(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const {
+void rynx::menu::Component::visualise(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const {
 	if (inScreen()) {
 		if (m_background) {
 			m_background->draw(meshRenderer, textRenderer);
@@ -445,6 +445,6 @@ void rynx::menu::System::update(float dt, float aspectRatio) {
 	m_root->tick(dt, aspectRatio);
 }
 
-void rynx::menu::System::draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) {
+void rynx::menu::System::draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) {
 	m_root->visualise(meshRenderer, textRenderer);
 }

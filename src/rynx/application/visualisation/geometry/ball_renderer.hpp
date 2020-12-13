@@ -13,7 +13,7 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
-				ball_renderer(mesh* circleMesh, MeshRenderer* meshRenderer) {
+				ball_renderer(rynx::graphics::mesh* circleMesh, rynx::graphics::renderer* meshRenderer) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
 					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
@@ -21,7 +21,7 @@ namespace rynx {
 
 				struct buffer {
 					size_t num;
-					const mesh* mesh;
+					const rynx::graphics::mesh* mesh;
 					const rynx::components::position* positions;
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
@@ -132,8 +132,8 @@ namespace rynx {
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
 				std::vector<buffer> m_bufs;
 
-				MeshRenderer* m_meshRenderer;
-				mesh* m_circleMesh;
+				rynx::graphics::renderer* m_meshRenderer;
+				rynx::graphics::mesh* m_circleMesh;
 			};
 		}
 	}

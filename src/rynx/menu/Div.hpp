@@ -11,7 +11,7 @@ namespace rynx {
 
 		private:
 			virtual void onInput(rynx::mapped_input&) override {}
-			virtual void draw(MeshRenderer&, TextRenderer&) const override {}
+			virtual void draw(rynx::graphics::renderer&, rynx::graphics::text_renderer&) const override {}
 			virtual void update(float) override {}
 		};
 	}

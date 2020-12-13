@@ -4,7 +4,7 @@
 #include <rynx/graphics/mesh/mesh.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>
 
-rynx::application::visualization::scrolling_background_2d::scrolling_background_2d(rynx::MeshRenderer& mesh_renderer, std::shared_ptr<rynx::camera> camera, rynx::mesh* m) : m_bg_mesh(m), m_camera(camera), m_mesh_renderer(mesh_renderer) {}
+rynx::application::visualization::scrolling_background_2d::scrolling_background_2d(rynx::graphics::renderer& mesh_renderer, std::shared_ptr<rynx::camera> camera, rynx::graphics::mesh* m) : m_bg_mesh(m), m_camera(camera), m_mesh_renderer(mesh_renderer) {}
 
 void rynx::application::visualization::scrolling_background_2d::execute() {
 	rynx::matrix4 model;

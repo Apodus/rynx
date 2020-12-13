@@ -20,7 +20,7 @@ namespace rynx {
 			private:
 				struct buffer {
 					size_t num;
-					const mesh* mesh;
+					const rynx::graphics::mesh* mesh;
 					const rynx::components::position* positions;
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
@@ -29,7 +29,7 @@ namespace rynx {
 
 			public:
 
-				mesh_renderer(MeshRenderer* meshRenderer) {
+				mesh_renderer(rynx::graphics::renderer* meshRenderer) {
 					m_meshRenderer = meshRenderer;
 				}
 				virtual ~mesh_renderer() {}
@@ -89,7 +89,7 @@ namespace rynx {
 
 			private:
 				std::vector<buffer> m_bufs;
-				MeshRenderer* m_meshRenderer;
+				rynx::graphics::renderer* m_meshRenderer;
 			};
 		}
 	}

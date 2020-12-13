@@ -32,7 +32,7 @@ void rynx::menu::List::onInput(rynx::mapped_input& input) {
 	}
 }
 
-void rynx::menu::List::draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const {
+void rynx::menu::List::draw(rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const {
 	m_frame.draw(meshRenderer, textRenderer);
 }
 

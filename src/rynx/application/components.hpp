@@ -12,7 +12,9 @@
 #include <string>
 
 namespace rynx {
-	class mesh;
+	namespace graphics {
+		class mesh;
+	}
 
 	namespace components {
 		
@@ -206,10 +208,10 @@ namespace rynx {
 
 		struct mesh : public rynx::ecs::value_segregated_component {
 			mesh() = default;
-			mesh(rynx::mesh* p) : m(p) {}
+			mesh(rynx::graphics::mesh* p) : m(p) {}
 			size_t hash() const { return size_t(uintptr_t(m)); }
 			bool operator == (const mesh& other) const { return m == other.m; }
-			rynx::mesh* m;
+			rynx::graphics::mesh* m;
 		};
 	}
 }

@@ -4,14 +4,17 @@
 
 namespace rynx {
 	class camera;
-	class mesh;
-	class MeshRenderer;
+
+	namespace graphics {
+		class mesh;
+		class renderer;
+	}
 
 	namespace application {
 		namespace visualization {
 			class scrolling_background_2d : public rynx::application::igraphics_step {
 			public:
-				scrolling_background_2d(rynx::MeshRenderer& mesh_renderer, std::shared_ptr<rynx::camera> camera, rynx::mesh* m);
+				scrolling_background_2d(rynx::graphics::renderer& mesh_renderer, std::shared_ptr<rynx::camera> camera, rynx::graphics::mesh* m);
 				virtual ~scrolling_background_2d() {}
 				virtual void execute() override;
 				virtual void prepare(rynx::scheduler::context* ctx);
@@ -19,9 +22,9 @@ namespace rynx {
 				void set_motion_scale(float x, float y) { horizontal_motion_scale = x; vertical_motion_scale = y; }
 
 			private:
-				rynx::mesh* m_bg_mesh = nullptr;
+				rynx::graphics::mesh* m_bg_mesh = nullptr;
 				std::shared_ptr<rynx::camera> m_camera;
-				rynx::MeshRenderer& m_mesh_renderer;
+				rynx::graphics::renderer& m_mesh_renderer;
 				rynx::vec3f m_pos;
 				float m_scale = 1.0f;
 				float m_aspect_ratio = 1.0f;

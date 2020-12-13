@@ -20,7 +20,7 @@ rynx::menu::Text::Text(
 	m_text_color = Color::WHITE;
 	m_textline.align_center();
 
-	on_hover([this](rynx::vec3f mousePos, bool inRect) {
+	on_hover([this]([[maybe_unused]] rynx::vec3f mousePos, bool inRect) {
 		m_color = m_text_color - m_text_color * m_text_dimming_when_not_hovering * inRect * config.dim_when_not_hover;
 		return inRect;
 	});
@@ -32,7 +32,7 @@ rynx::menu::Text::Text(
 	});
 }
 
-void rynx::menu::Text::onInput(rynx::mapped_input& input) {
+void rynx::menu::Text::onInput([[maybe_unused]] rynx::mapped_input& input) {
 }
 
 void rynx::menu::Text::onDedicatedInput(rynx::mapped_input& input) {
@@ -85,14 +85,14 @@ void rynx::menu::Text::onDedicatedInputLost() {
 	m_hasDedicatedInput = false;
 }
 
-void rynx::menu::Text::draw(MeshRenderer& meshRenderer, TextRenderer& textRenderer) const {
+void rynx::menu::Text::draw([[maybe_unused]] rynx::graphics::renderer& meshRenderer, rynx::graphics::text_renderer& textRenderer) const {
 	if (m_textline) {
 		textRenderer.drawText(m_textline);
 		
 		if (m_hasDedicatedInput) {
 			vec3f cursorPos = m_textline.position(m_cursor_pos);
 			
-			rynx::renderable_text blob;
+			rynx::graphics::renderable_text blob;
 			blob.text() = "|";
 			blob.font(m_textline.font());
 			blob.font_size(m_textline.font_size());

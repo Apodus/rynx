@@ -12,7 +12,7 @@
 #include <rynx/graphics/mesh/shape.hpp>
 #include <memory>
 
-std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_geometry_pass(MeshRenderer* pRenderer) {
+std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_geometry_pass(rynx::graphics::renderer* pRenderer) {
 	auto* tube_mesh = pRenderer->meshes()->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
 	tube_mesh->normals.clear();
 	tube_mesh->putNormal(0, +1, 0);

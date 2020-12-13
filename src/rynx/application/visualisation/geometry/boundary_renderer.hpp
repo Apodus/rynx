@@ -16,7 +16,7 @@ namespace rynx {
 
 				std::shared_ptr<rynx::binary_config::id> m_enabled;
 
-				boundary_renderer(mesh* boxMesh, MeshRenderer* meshRenderer) {
+				boundary_renderer(rynx::graphics::mesh* boxMesh, rynx::graphics::renderer* meshRenderer) {
 					m_boxMesh = boxMesh;
 					m_meshRenderer = meshRenderer;
 					m_edges = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
@@ -81,8 +81,8 @@ namespace rynx {
 
 				float m_line_width = 5.5f;
 				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_edges;
-				MeshRenderer* m_meshRenderer;
-				mesh* m_boxMesh;
+				rynx::graphics::renderer* m_meshRenderer;
+				rynx::graphics::mesh* m_boxMesh;
 			};
 		}
 	}
