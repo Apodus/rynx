@@ -10,6 +10,7 @@ class Font {
 
 public:
 
+	Font() = default;
 	Font(const FontData& fontData) {
 		this->fontData = fontData;
 		this->fontData.fillTextureCoordinates();

@@ -111,10 +111,10 @@ void rynx::menu::Component::updatePosition() {
 
 void rynx::menu::Component::updateScale() {
 	if (m_dynamic_scale) {
-		float min_x = +1.0f;
-		float max_x = -1.0f;
-		float min_y = +1.0f;
-		float max_y = -1.0f;
+		float min_x = std::numeric_limits<float>::max();
+		float max_x = std::numeric_limits<float>::lowest();
+		float min_y = std::numeric_limits<float>::max();
+		float max_y = std::numeric_limits<float>::lowest();
 		for (auto&& child : m_children) {
 			auto pos = child->position_world();
 			auto scale = child->scale_world();

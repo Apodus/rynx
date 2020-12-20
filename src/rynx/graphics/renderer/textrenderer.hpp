@@ -32,6 +32,11 @@ namespace rynx {
 				Center
 			};
 
+			struct orientation_t {
+				rynx::vec3f up = {0.0f, 1.0f, 0.0f};
+				rynx::vec3f forward = {0.0f, 0.0f, -1.0f};
+			};
+
 			renderable_text& text(std::string s) { m_str = std::move(s); return *this; }
 			std::string& text() { return m_str; }
 			renderable_text& align_left() { m_align = align::Left; return *this; }
@@ -44,17 +49,20 @@ namespace rynx {
 			renderable_text& color(rynx::floats4 color) { m_color = color; return *this; }
 			rynx::floats4& color() { return m_color; }
 
-			renderable_text& font(const Font& font) { m_font = &font; return *this; }
+			renderable_text& font(const Font* font) { m_font = font; return *this; }
 			renderable_text& font_size(float v) { m_textHeight = v; return *this; }
+
+			orientation_t& orientation() { return m_orientation; }
+			const orientation_t& orientation() const { return m_orientation; }
 
 			std::string_view text() const { return m_str; }
 			rynx::vec3f pos() const { return m_pos; }
 			rynx::floats4 color() const { return m_color; }
 			float font_size() const { return m_textHeight; }
-			const Font& font() const { return *m_font; }
+			const Font* font() const { return m_font; }
 
-			float alignmentOffset() const;
-			rynx::vec3f position(int32_t cursor_pos) const;
+			float alignmentOffset(const Font& font) const;
+			rynx::vec3f position(const Font& font, int32_t cursor_pos) const;
 
 			bool is_align_left() const { return m_align == align::Left; }
 			bool is_align_right() const { return m_align == align::Right; }
@@ -65,10 +73,11 @@ namespace rynx {
 		private:
 			std::string m_str;
 			rynx::vec3f m_pos;
-			rynx::floats4 m_color;
-			renderable_text::align m_align;
+			rynx::floats4 m_color = {1,1,1,1};
+			renderable_text::align m_align = align::Center;
 			const Font* m_font = nullptr;
 			float m_textHeight = 0.1f;
+			orientation_t m_orientation;
 		};
 
 		class text_renderer {
@@ -89,16 +98,19 @@ namespace rynx {
 			GLuint vao;
 			GLuint vbo, cbo, tbo;
 
+			Font m_defaultFont;
+
 			// private implementation.
-			int fillTextBuffers(const renderable_text& text);
+			int fillTextBuffers(const renderable_text& text, const Font& font);
 			void drawTextBuffers(int textLength);
 			void fillColorBuffer(const floats4& activeColor_);
-			void fillCoordinates(float x, float y, float charWidth, float charHeight);
+			void fillCoordinates(rynx::vec3f pos, rynx::vec3f left, rynx::vec3f up, float charWidth, float charHeight);
 			void fillTextureCoordinates(const Font& font, char c);
 
 		public:
 			text_renderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
 
+			void setDefaultFont(const Font& font) { m_defaultFont = font; }
 			void setCamera(std::shared_ptr<camera> pCamera) { m_pCamera = std::move(pCamera); }
 			void drawText(const renderable_text& text);
 		};

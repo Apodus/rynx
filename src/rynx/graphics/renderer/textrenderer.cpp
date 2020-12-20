@@ -30,8 +30,8 @@ void getColorByCode(char c, rynx::floats4& color) {
 	color = getColorByCode(c);
 }
 
-float rynx::graphics::renderable_text::alignmentOffset() const {
-	float textWidth = m_font->getLength(m_str, m_textHeight);
+float rynx::graphics::renderable_text::alignmentOffset(const Font& font) const {
+	float textWidth = font.getLength(m_str, m_textHeight);
 	switch (m_align) {
 	case align::Center: return -textWidth * 0.5f;
 	case align::Left: return 0;
@@ -40,9 +40,9 @@ float rynx::graphics::renderable_text::alignmentOffset() const {
 	rynx_assert(false, "unreachable code");
 }
 
-rynx::vec3f rynx::graphics::renderable_text::position(int32_t cursor_pos) const {
-	float dx = m_font->getLength(std::string_view(m_str.data(), cursor_pos), m_textHeight);
-	return m_pos + rynx::vec3f{ alignmentOffset() + dx, 0, 0 };
+rynx::vec3f rynx::graphics::renderable_text::position(const Font& font, int32_t cursor_pos) const {
+	float dx = font.getLength(std::string_view(m_str.data(), cursor_pos), m_textHeight);
+	return m_pos + rynx::vec3f{ alignmentOffset(font) + dx, 0, 0 };
 }
 
 
@@ -62,8 +62,8 @@ rynx::graphics::text_renderer::text_renderer(std::shared_ptr<rynx::graphics::GPU
 
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, 6 * 2 * MAX_TEXT_LENGTH * sizeof(float), NULL, GL_STREAM_DRAW);
-	glVertexAttribPointer(vposIndex, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glBufferData(GL_ARRAY_BUFFER, 6 * 3 * MAX_TEXT_LENGTH * sizeof(float), NULL, GL_STREAM_DRAW);
+	glVertexAttribPointer(vposIndex, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(vposIndex);
 
 	glGenBuffers(1, &cbo);
@@ -89,8 +89,10 @@ void rynx::graphics::text_renderer::drawText(const rynx::graphics::renderable_te
 		return;
 	}
 
-	m_textures->bindTexture(0, text_line.font().getTextureID());
-	int length = fillTextBuffers(text_line);
+	const Font* usedFont = text_line.font() ? text_line.font() : &m_defaultFont;
+
+	m_textures->bindTexture(0, usedFont->getTextureID());
+	int length = fillTextBuffers(text_line, *usedFont);
 	drawTextBuffers(length);
 }
 
@@ -123,22 +125,24 @@ void rynx::graphics::text_renderer::drawTextBuffers(int textLength) {
 	m_colorBuffer.clear();
 }
 
-int rynx::graphics::text_renderer::fillTextBuffers(const rynx::graphics::renderable_text& line) {
+int rynx::graphics::text_renderer::fillTextBuffers(const rynx::graphics::renderable_text& line, const Font& font) {
 	std::string_view text = line.text();
 	float scaleY = line.font_size();
 	float scaleX = line.font_size();
-
-	const Font& font = line.font();
 	
 	int skippedCharacters = 0;
 	int length = int(text.length());
 	float textHeight = scaleY;
 	
-	float x = line.pos().x;
-	float y = line.pos().y;
+	rynx::vec3f initialPos = line.pos();
+	rynx::vec3f forward = line.orientation().forward;
+	rynx::vec3f up = line.orientation().up;
+	rynx::vec3f left = forward.cross(up);
 
-	x += line.alignmentOffset();
-	y -= textHeight * 0.5f;
+	rynx::vec3f pos = initialPos;
+	
+	pos += left * line.alignmentOffset(font);
+	pos -= up * textHeight * 0.5f;
 
 	for (int i = 0; i < length; ++i) {
 		char c = text[i];
@@ -156,13 +160,13 @@ int rynx::graphics::text_renderer::fillTextBuffers(const rynx::graphics::rendera
 		float offsetX = font.offsetX(c, scaleX);
 		float offsetY = font.offsetY(c, scaleY);
 
-		fillCoordinates(x + offsetX, y + offsetY, width, height);
+		fillCoordinates(pos + offsetX * left + offsetY * up, left, up, width, height);
 		fillColorBuffer(activeColor);
 		fillTextureCoordinates(font, c);
 
 		// TODO: Add kerning to advance here.
 
-		x += advance;
+		pos += left * advance;
 	}
 
 	return length - skippedCharacters;
@@ -190,12 +194,18 @@ void rynx::graphics::text_renderer::fillColorBuffer(const rynx::floats4& activeC
 	}
 }
 
-void rynx::graphics::text_renderer::fillCoordinates(float x, float y, float charWidth, float charHeight) {
-	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
-	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y);
-	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
+void rynx::graphics::text_renderer::fillCoordinates(rynx::vec3f pos, rynx::vec3f left, rynx::vec3f up, float charWidth, float charHeight) {
+	auto push_vertex = [this](rynx::vec3f v) {
+		m_vertexBuffer.emplace_back(v.x);
+		m_vertexBuffer.emplace_back(v.y);
+		m_vertexBuffer.emplace_back(v.z);
+	};
 
-	m_vertexBuffer.push_back(x + charWidth); m_vertexBuffer.push_back(y + charHeight);
-	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y + charHeight);
-	m_vertexBuffer.push_back(x); m_vertexBuffer.push_back(y);
+	push_vertex(pos);
+	push_vertex(pos + charWidth * left);
+	push_vertex(pos + charWidth * left + charHeight * up);
+
+	push_vertex(pos + charWidth * left + charHeight * up);
+	push_vertex(pos + charHeight * up);
+	push_vertex(pos);
 }

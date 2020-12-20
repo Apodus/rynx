@@ -10,9 +10,7 @@ rynx::camera::camera() {
 	m_up = vec3f(0, 1, 0);
 }
 
-rynx::camera::~camera() {
-
-}
+rynx::camera::~camera() {}
 
 void rynx::camera::setProjection(float zNear, float zFar, float aspect) {
 	float w = zNear;
@@ -24,8 +22,7 @@ void rynx::camera::setProjection(float zNear, float zFar, float aspect) {
 	);
 }
 
-void rynx::camera::setOrtho(float width, float height, float zNear, float zFar)
-{
+void rynx::camera::setOrtho(float width, float height, float zNear, float zFar) {
 	projection.discardSetOrtho(
 		-width * 0.5f, +width * 0.5f,
 		-height * 0.5f, +height * 0.5f,

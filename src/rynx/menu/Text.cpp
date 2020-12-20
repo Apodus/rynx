@@ -90,7 +90,7 @@ void rynx::menu::Text::draw(rynx::graphics::renderer& renderer) const {
 		renderer.drawText(m_textline);
 		
 		if (m_hasDedicatedInput) {
-			vec3f cursorPos = m_textline.position(m_cursor_pos);
+			vec3f cursorPos = m_textline.position(*m_textline.font(), m_cursor_pos);
 			
 			rynx::graphics::renderable_text blob;
 			blob.text() = "|";

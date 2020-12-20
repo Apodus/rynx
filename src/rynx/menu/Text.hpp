@@ -50,7 +50,7 @@ namespace rynx {
 			Text& text_align_right() { m_textline.align_right(); return *this; }
 			Text& text_align_center() { m_textline.align_center(); return *this; }
 			
-			Text& font(Font* font) { m_textline.font(*font); return *this; }
+			Text& font(Font* font) { m_textline.font(font); return *this; }
 			Text& text(std::string t) { m_textline.text() = std::move(t); return *this; }
 			Text& on_value_changed(std::function<void(const std::string&)> op) { m_commit = std::move(op); return *this; }
 			Text& color(floats4 c) { m_text_color = c; return *this; }

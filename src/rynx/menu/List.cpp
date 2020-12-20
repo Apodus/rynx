@@ -46,8 +46,9 @@ void rynx::menu::List::update(float dt) {
 			total_children_height += child->scale_world().y;
 		}
 
-		float min_scroll_value = parent()->scale_world().y * 0.5f - m_list_endpoint_margin;
-		float max_scroll_value = total_children_height - parent()->scale_world().y * 0.5f + m_list_endpoint_margin * 2.0f;
+		float min_scroll_value = scale_world().y * 0.5f - m_list_endpoint_margin; // top edge value
+		float max_scroll_value = total_children_height - scale_world().y * 0.5f + m_list_endpoint_margin; // bot edge value
+
 		if (min_scroll_value > max_scroll_value) {
 			max_scroll_value = min_scroll_value;
 		}
@@ -65,7 +66,7 @@ void rynx::menu::List::update(float dt) {
 			for (size_t i = 1; i < m_children.size(); ++i) {
 				m_children[i]->align()
 					.target(m_children[i - 1].get())
-					.offset_kind_relative_to_parent()
+					.offset_kind_absolute()
 					.offset_y(m_list_element_margin)
 					.bottom_outside()
 					.left_inside();
@@ -76,7 +77,7 @@ void rynx::menu::List::update(float dt) {
 			for (size_t i = 1; i < m_children.size(); ++i) {
 				m_children[i]->align()
 					.target(m_children[i - 1].get())
-					.offset_kind_relative_to_parent()
+					.offset_kind_absolute()
 					.offset_y(m_list_element_margin)
 					.bottom_outside()
 					.right_inside();
@@ -87,7 +88,7 @@ void rynx::menu::List::update(float dt) {
 			for (size_t i = 1; i < m_children.size(); ++i) {
 				m_children[i]->align()
 					.target(m_children[i - 1].get())
-					.offset_kind_relative_to_parent()
+					.offset_kind_absolute()
 					.offset_y(m_list_element_margin)
 					.bottom_outside()
 					.center_x();
