@@ -18,8 +18,12 @@
 #include <typeinfo>
 
 namespace rynx {
-	
 	namespace reflection {
+
+		class reflections;
+
+		void register_generated_reflections(rynx::reflection::reflections& type_reflections);
+
 		class field {
 		public:
 			std::string m_field_name;
@@ -63,7 +67,9 @@ namespace rynx {
 
 		class reflections {
 		public:
-			reflections(rynx::type_index& index) : m_type_index(index) {}
+			reflections(rynx::type_index& index) : m_type_index(index) {
+				rynx::reflection::register_generated_reflections(*this);
+			}
 
 			template<typename T>
 			rynx::reflection::type& create() {
@@ -94,6 +100,9 @@ namespace rynx {
 				}
 				return *it->second;
 			}
+
+			bool has(const std::string& s) { return m_reflections.find(s) != m_reflections.end(); }
+			template<typename T> bool has() { return has(typeid(T).name()); }
 
 		private:
 			rynx::type_index& m_type_index;
