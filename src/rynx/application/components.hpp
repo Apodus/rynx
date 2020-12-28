@@ -8,6 +8,7 @@
 #include <rynx/math/random.hpp>
 #include <rynx/tech/collision_detection.hpp>
 #include <rynx/tech/components.hpp>
+#include <rynx/system/annotate.hpp>
 
 #include <string>
 
@@ -19,19 +20,19 @@ namespace rynx {
 	namespace components {
 		
 		struct particle_emitter {
-			rynx::math::value_range<rynx::floats4> start_color;
-			rynx::math::value_range<rynx::floats4> end_color;
-			rynx::math::value_range<float> start_radius;
-			rynx::math::value_range<float> end_radius;
+			rynx::math::value_range<rynx::floats4> ANNOTATE("range 0 1") start_color;
+			rynx::math::value_range<rynx::floats4> ANNOTATE("range 0 1") end_color;
+			rynx::math::value_range<float> ANNOTATE(">=0") start_radius;
+			rynx::math::value_range<float> ANNOTATE(">=0") end_radius;
 
-			rynx::math::value_range<float> lifetime_range;
-			rynx::math::value_range<float> linear_dampening;
+			rynx::math::value_range<float> ANNOTATE(">=0") lifetime_range;
+			rynx::math::value_range<float> ANNOTATE(">=0") linear_dampening;
 
-			rynx::math::value_range<float> initial_velocity;
+			rynx::math::value_range<float> ANNOTATE(">=0") initial_velocity;
 			rynx::math::value_range<float> initial_angle;
 			rynx::math::value_range<rynx::vec3f> constant_force;
 
-			rynx::math::value_range<float> spawn_rate;
+			rynx::math::value_range<float> ANNOTATE(">=0") spawn_rate;
 
 			bool rotate_with_host = false;
 			vec3f position_offset;
@@ -124,8 +125,8 @@ namespace rynx {
 		};
 
 		struct particle_info {
-			rynx::math::value_range<floats4> color_range;
-			rynx::math::value_range<float> radius_range;
+			rynx::math::value_range<floats4> ANNOTATE("range 0 1") color_range;
+			rynx::math::value_range<float> ANNOTATE(">=0") radius_range;
 		};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
@@ -180,10 +181,10 @@ namespace rynx {
 				vec3<float> point_a;
 				vec3<float> point_b;
 
-				float length;
-				float strength;
-				float softness = 1.0f;
-				float response_time = 0.016f;
+				float ANNOTATE(">=0") length;
+				float ANNOTATE(">=0") strength;
+				float ANNOTATE(">=0") softness = 1.0f;
+				float ANNOTATE(">=0") response_time = 0.016f;
 
 				float cumulative_stress = 0;
 

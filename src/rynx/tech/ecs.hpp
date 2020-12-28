@@ -30,14 +30,16 @@ namespace rynx {
 			std::string m_type_name;
 			int32_t m_memory_offset = 0;
 			int32_t m_memory_size = 0;
+			std::vector<std::string> m_annotations;
 
 			template<typename MemberType, typename ObjectType>
-			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr) {
+			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations = {}) {
 				rynx::reflection::field f;
 				f.m_memory_offset = static_cast<int32_t>(reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr)));
 				f.m_memory_size = sizeof(MemberType);
 				f.m_type_name = typeid(MemberType).name();
 				f.m_field_name = fieldName;
+				f.m_annotations = std::move(fieldAnnotations);
 				return f;
 			}
 		};
@@ -51,6 +53,12 @@ namespace rynx {
 			template<typename MemberType, typename ObjectType>
 			type& add_field(std::string fieldName, MemberType ObjectType::* ptr) {
 				m_members.emplace_back(rynx::reflection::field::construct(fieldName, ptr));
+				return *this;
+			}
+
+			template<typename MemberType, typename ObjectType>
+			type& add_field(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations) {
+				m_members.emplace_back(rynx::reflection::field::construct(fieldName, ptr, fieldAnnotations));
 				return *this;
 			}
 		};
