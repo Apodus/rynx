@@ -28,7 +28,7 @@ namespace rynx {
 			rynx::graphics::renderable_text m_textline;
 
 			struct Config {
-				bool allow_input = true;
+				bool allow_input = false;
 				bool input_type_numeric = true;
 				bool input_type_alhabet = true;
 				bool dim_when_not_hover = true;
@@ -46,6 +46,8 @@ namespace rynx {
 				vec3<float> position = vec3<float>()
 			);
 
+			Text& input_enable() { config.allow_input = true; return *this; }
+			Text& input_disable() { config.allow_input = false; return *this; }
 			Text& text_align_left() { m_textline.align_left(); return *this; }
 			Text& text_align_right() { m_textline.align_right(); return *this; }
 			Text& text_align_center() { m_textline.align_center(); return *this; }

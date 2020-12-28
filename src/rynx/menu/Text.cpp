@@ -22,7 +22,7 @@ rynx::menu::Text::Text(
 
 	on_hover([this]([[maybe_unused]] rynx::vec3f mousePos, bool inRect) {
 		m_color = m_text_color - m_text_color * m_text_dimming_when_not_hovering * inRect * config.dim_when_not_hover;
-		return inRect;
+		return inRect && config.allow_input;
 	});
 
 	on_click([this]() {

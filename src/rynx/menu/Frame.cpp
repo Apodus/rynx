@@ -10,15 +10,16 @@
 rynx::menu::Frame::Frame(
 	rynx::graphics::GPUTextures& textures,
 	const std::string& textureID,
-	float edgeSize) : Component(vec3<float>(), vec3<float>()) {
+	float textureEdgeSize,
+	float meshEdgeSize) : Component(vec3<float>(), vec3<float>()) {
 	m_backgroundMesh = std::make_unique<rynx::graphics::mesh>();
 	m_color = Color::WHITE;
-	m_edgeSize = edgeSize;
+	m_edgeSize = textureEdgeSize;
 
 	position_local({ 0, 0, 0 });
 	scale_local({ 1, 1, 0 });
 
-	buildMesh(0.5f, 0.5f);
+	buildMesh(meshEdgeSize, meshEdgeSize);
 	initMesh(textures.textureLimits(textureID));
 	m_backgroundMesh->build();
 	m_backgroundMesh->texture_name = textureID;

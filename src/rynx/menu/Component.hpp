@@ -209,7 +209,7 @@ namespace rynx {
 				AlignConfig& bottom_right_inside() { private_do_align(rynx::menu::Align::BOTTOM_RIGHT, -1); return *this; }
 				AlignConfig& bottom_left_inside() { private_do_align(rynx::menu::Align::BOTTOM_LEFT, -1); return *this; }
 
-				AlignConfig& left_outide() { private_do_align(rynx::menu::Align::LEFT, +1); return *this; }
+				AlignConfig& left_outside() { private_do_align(rynx::menu::Align::LEFT, +1); return *this; }
 				AlignConfig& right_outside() { private_do_align(rynx::menu::Align::RIGHT, +1); return *this; }
 				AlignConfig& bottom_outside() { private_do_align(rynx::menu::Align::BOTTOM, +1); return *this; }
 				AlignConfig& top_outside() { private_do_align(rynx::menu::Align::TOP, +1); return *this; }
@@ -225,6 +225,7 @@ namespace rynx {
 			void clear_children() { m_children.clear(); }
 			void addChild(std::shared_ptr<Component> child);
 			std::shared_ptr<Component> detachChild(const Component* ptr);
+			rynx::menu::Component* last_child() { rynx_assert(!m_children.empty(), "component has no children"); return m_children.back().get(); }
 			
 			void set_parent(Component* other);
 			void reparent(Component& other);
@@ -237,6 +238,7 @@ namespace rynx {
 			vec3<float> position_local() const;
 			const vec3<float>& position_world() const;
 			
+
 			vec3<float> scale_local() const;
 			const vec3<float>& scale_world() const;
 			

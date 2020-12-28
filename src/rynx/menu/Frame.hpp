@@ -30,7 +30,8 @@ namespace rynx {
 			Frame(
 				rynx::graphics::GPUTextures& textures,
 				const std::string& textureID,
-				float edgeSize = 0.20f);
+				float textureEdgeSize = 0.20f,
+				float meshEdgeSize = 0.5f);
 			
 			void buildMesh(float size_x, float size_y);
 			Frame& edge_size(float v) { m_edgeSize = v; return *this; }
