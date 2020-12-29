@@ -63,7 +63,8 @@ namespace rynx {
 
 			float alignmentOffset(const Font& font) const;
 			rynx::vec3f position(const Font& font, int32_t cursor_pos) const;
-
+			rynx::vec3f position(int32_t cursor_pos) const { return position(*m_font, cursor_pos); }
+			
 			bool is_align_left() const { return m_align == align::Left; }
 			bool is_align_right() const { return m_align == align::Right; }
 			bool is_align_center() const { return m_align == align::Center; }
@@ -111,6 +112,8 @@ namespace rynx {
 			text_renderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
 
 			void setDefaultFont(const Font& font) { m_defaultFont = font; }
+			const Font& getDefaultFont() const { return m_defaultFont; }
+
 			void setCamera(std::shared_ptr<camera> pCamera) { m_pCamera = std::move(pCamera); }
 			void drawText(const renderable_text& text);
 		};

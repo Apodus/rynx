@@ -96,7 +96,8 @@ namespace rynx {
 			void cameraToGPU();
 			void setCamera(std::shared_ptr<camera> camera);
 			void setDefaultFont(const Font& font) { m_pTextRenderer->setDefaultFont(font); }
-			
+			const Font& getDefaultFont() const { return m_pTextRenderer->getDefaultFont(); }
+
 			void drawLine(const vec3<float>& p1, const vec3<float>& p2, float width, const floats4& color);
 			void drawLine(const vec3<float>& p1, const vec3<float>& p2, const matrix4& model, float width, const floats4& color);
 			void drawRectangle(const matrix4& model, const std::string& texture_name, const floats4& color = floats4(1, 1, 1, 1));

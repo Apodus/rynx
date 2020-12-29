@@ -247,20 +247,40 @@ void rynx::menu::Component::input(rynx::mapped_input& input) {
 void rynx::menu::Component::tick(float dt, float aspectRatio) {
 	m_aspectRatio = aspectRatio;
 
-	m_position.tick(std::min(0.666f, dt * 5 * m_position_update_velocity));
-	m_scale.tick(std::min(0.666f, dt * 8 * m_scale_update_velocity));
-	m_color.tick(std::min(1.0f, dt * 5));
-
 	if (m_background) {
 		m_background->tick(dt, aspectRatio);
 		m_background->color(m_color);
 	}
 
-	updateAttachment();
-	updatePosition();
-	updateScale();
+	if (!m_dynamic_scale) {
+		updateAttachment();
+		updatePosition();
+		updateScale();
+
+		m_position.tick(std::min(1.0f, dt * 5 * m_position_update_velocity));
+		m_scale.tick(std::min(1.0f, dt * 8 * m_scale_update_velocity));
+	}
+	else {
+		for (int i = 0; i < 15; ++i) {
+			updateAttachment();
+			updatePosition();
+			updateScale();
+
+			m_position.tick(0.33f);
+			m_scale.tick(0.33f);
+
+			for (auto child : m_children) {
+				child->updateAttachment();
+				child->updatePosition();
+				child->updateScale();
+				child->m_position.tick(0.33f);
+				child->m_scale.tick(0.33f);
+			}
+		}
+	}
 
 	update(dt);
+	m_color.tick(std::min(1.0f, dt * 5));
 	for (auto child : m_children) {
 		child->tick(dt, aspectRatio);
 	}
