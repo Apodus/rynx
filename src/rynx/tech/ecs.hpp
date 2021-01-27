@@ -42,6 +42,10 @@ namespace rynx {
 				f.m_annotations = std::move(fieldAnnotations);
 				return f;
 			}
+
+			bool operator < (const field& other) const {
+				return m_memory_offset < other.m_memory_offset;
+			}
 		};
 
 		class type {
@@ -77,6 +81,9 @@ namespace rynx {
 		public:
 			reflections(rynx::type_index& index) : m_type_index(index) {
 				rynx::reflection::register_generated_reflections(*this);
+				for (auto&& t : m_reflections) {
+					std::sort(t.second->m_members.begin(), t.second->m_members.end());
+				}
 			}
 
 			template<typename T>

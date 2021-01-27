@@ -6,6 +6,7 @@
 #include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/geometry/triangle.hpp>
+#include <rynx/system/annotate.hpp>
 
 namespace rynx {
 	namespace components {
@@ -27,7 +28,7 @@ namespace rynx {
 			}
 
 			scale(float v) : value(v) {}
-			float value;
+			float ANNOTATE(">=0") value;
 		};
 
 		struct radius {
@@ -39,7 +40,7 @@ namespace rynx {
 		struct color {
 			color() {}
 			color(floats4 value) : value(value) {}
-			floats4 value = { 1, 1, 1, 1 };
+			floats4 ANNOTATE("range 0 1") value = { 1, 1, 1, 1 };
 		};
 
 		struct lifetime {
@@ -85,13 +86,13 @@ namespace rynx {
 				return 1.0f - f * f;
 			}
 
-			float value;
-			float max_value;
+			float ANNOTATE(">=0") value;
+			float ANNOTATE(">=0") max_value;
 		};
 
 		struct dampening {
-			float linearDampening = 0.0f;
-			float angularDampening = 0.0f;
+			float ANNOTATE(">=0") linearDampening = 0.0f;
+			float ANNOTATE(">=0") angularDampening = 0.0f;
 		};
 
 		struct constant_force {
@@ -193,11 +194,11 @@ namespace rynx {
 				}
 			}
 
-			float bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
-			float inv_mass = 1.0f;
-			float inv_moment_of_inertia = 1.0f;
-			float collision_elasticity = 0.5f; // [0, 1[
-			float friction_multiplier = 1.0f; // [0, 1]
+			float ANNOTATE(">=0") bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
+			float ANNOTATE(">=0") inv_mass = 1.0f;
+			float ANNOTATE(">=0") inv_moment_of_inertia = 1.0f;
+			float ANNOTATE("range 0 1") collision_elasticity = 0.5f; // [0, 1[
+			float ANNOTATE(">=0") friction_multiplier = 1.0f; // [0, 1]
 			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
 		};
 
@@ -242,21 +243,29 @@ namespace rynx {
 
 		struct light_omni {
 			// fourth value in color encodes light intensity.
-			floats4 color;
+			floats4
+				ANNOTATE("rename x red")
+				ANNOTATE("rename y green")
+				ANNOTATE("rename z blue")
+				ANNOTATE("rename w luminance")
+				ANNOTATE("applies_to x y z")
+				ANNOTATE("range 0 1")
+				ANNOTATE("applies_to w")
+				ANNOTATE(">=0") color;
 
 			// light strength at point is clamp(0, 1, object normal dot light direction + ambient) / sqr(dist)
 			// when ambient value = 0, the backside of objects are not illuminated.
 			// when ambient value = 1, objects are evenly illuminated.
-			float ambient = 0;
+			float ANNOTATE("range 0 1") ambient = 0;
 
-			float attenuation_linear = 0.0f; // no linear attenuation.
-			float attenuation_quadratic = 1.0f; // 100% quadratic attenuation.
+			float ANNOTATE(">=0") attenuation_linear = 0.0f; // no linear attenuation.
+			float ANNOTATE(">=0") attenuation_quadratic = 1.0f; // 100% quadratic attenuation.
 		};
 
 		struct light_directed : public light_omni {
-			rynx::vec3f direction;
-			float angle = math::pi;
-			float edge_softness = 0.1f;
+			rynx::vec3f ANNOTATE("len=1") direction;
+			float ANNOTATE("range 0 6.28318530718") angle = math::pi;
+			float ANNOTATE("range 0 1") edge_softness = 0.1f;
 		};
 
 		struct collisions {
