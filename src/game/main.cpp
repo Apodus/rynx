@@ -313,7 +313,7 @@ int main(int argc, char** argv) {
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()).bias(1000.0f),
+				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()).bias(100.0f),
 				rynx::components::ignore_gravity(),
 				rynx::components::dampening{0.1f, 0.0f}
 			);
@@ -435,7 +435,7 @@ int main(int argc, char** argv) {
 
 	// setup sound system
 	rynx::sound::audio_system audio;
-	uint32_t soundIndex = audio.load("test.ogg");
+	// uint32_t soundIndex = audio.load("test.ogg");
 	rynx::sound::configuration config;
 	audio.open_output_device(64, 256);
 
