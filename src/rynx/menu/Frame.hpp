@@ -5,6 +5,7 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/graphics/color.hpp>
+#include <rynx/graphics/mesh/mesh.hpp>
 
 #include <memory>
 

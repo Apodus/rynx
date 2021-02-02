@@ -3,6 +3,7 @@
 
 #include <utility>
 #include <cstdint>
+#include <cuchar>
 
 namespace rynx {
 	namespace key {
@@ -11,13 +12,13 @@ namespace rynx {
 		// this means that the logical key can stay constant in the application even when rebinding keys. the action stays the same,
 		// just the physical key that is bound to that logical action changes - and that happens under the hood. you do not need to keep track.
 		struct logical {
-			struct hash { size_t operator()(const rynx::key::logical& key) const { return std::hash<int32_t>()(key.action_id); } };
+			struct hash { size_t operator()(const rynx::key::logical& key) const { return key.action_id; } };
 			bool operator == (const rynx::key::logical&) const = default;
 			int32_t action_id = -1;
 		};
 
 		struct physical {
-			struct hash { size_t operator()(const rynx::key::physical& key) const { return std::hash<int32_t>()(key.id); } };
+			struct hash { size_t operator()(const rynx::key::physical& key) const { return key.id; } };
 			bool operator == (const rynx::key::physical&) const = default;
 			operator bool() const { return id > 0; }
 			int32_t id = -1;

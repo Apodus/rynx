@@ -2,16 +2,10 @@
 
 #include <atomic>
 #include <thread>
-#include <concepts>
 
 #include <rynx/tech/profiling.hpp>
 
 namespace rynx {
-
-	template <typename T>
-	concept tick_counter = requires(T& t) {
-		{ t.tick_counter() };
-	};
 
 	namespace scheduler {
 		struct dead_lock_detector {
@@ -23,7 +17,7 @@ namespace rynx {
 				detector_thread.join();
 			}
 
-			template<tick_counter T>
+			template<typename T>
 			dead_lock_detector(T* host) {
 				detector_thread = std::thread([this, host]() {
 					uint64_t prev_tick = 994839589;
