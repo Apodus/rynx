@@ -89,7 +89,7 @@ namespace rynx {
 			std::atomic<int32_t> m_tasks_per_frame = 0;
 
 			std::vector<task> m_tasks;
-			rynx::parallel::queue<task, 1024, 9> m_tasks_parallel_for;
+			rynx::parallel::queue<task, 1024> m_tasks_parallel_for;
 
 			std::vector<barrier> m_activeTaskBarriers; // barriers that depend on any task that is created while they are here.
 			std::vector<barrier> m_activeTaskBarriers_Dependencies; // new tasks are not allowed to run until these barriers are complete.
@@ -136,10 +136,7 @@ namespace rynx {
 
 			[[nodiscard]] bool resourcesAvailableFor(const task& t) const;
 
-			context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler) {
-				m_resource_counters.resize(1024);
-				set_resource<context>(this);
-			}
+			context(context_id id, task_scheduler* scheduler);
 
 			[[nodiscard]] bool isFinished() const {
 				// return m_tasks.empty() & m_tasks_parallel_for.empty();

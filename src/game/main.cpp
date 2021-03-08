@@ -48,6 +48,10 @@
 
 #include <rynx/audio/audio.hpp>
 
+
+
+#include <rynx/tech/collision_detection.hpp>
+
 struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 	std::shared_ptr<rynx::graphics::mesh_collection> m_meshes;
 	rynx::collision_detection::category_id dynamic;
@@ -122,7 +126,7 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 
 							for (int k = 1; k < 30; ++k) {
 								float v = m_random();
-								float edge_width = 2.0f;
+								float edge_width = 2.0f + m_random() * 5.0f;
 								float mass = edge_width * edge_width * 1.25f;
 
 								x += 2.2f * edge_width;
@@ -213,6 +217,10 @@ int main(int argc, char** argv) {
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
 	rynx::ecs& ecs = base_simulation.m_ecs;
+
+	rynx::reflection::reflections r(ecs.get_type_index());
+	r.load_generated_reflections();
+	rynx_assert(r.find(typeid(rynx::components::color).name()) != nullptr, "yup");
 
 	std::shared_ptr<rynx::camera> camera = std::make_shared<rynx::camera>();
 	camera->setProjection(0.02f, 20000.0f, application.aspectRatio());
@@ -591,12 +599,16 @@ int main(int argc, char** argv) {
 			scheduler.start_frame();
 		}
 
+		application.swapBuffers();
+		auto swap_time_us = timer.time_since_last_access_us();
+		swap_time.observe_value(swap_time_us / 1000.0f);
+
 		{
 			rynx_profile("Main", "Wait for frame end");
 			scheduler.wait_until_complete();
 		}
 
-		auto logic_time_us = timer.time_since_last_access_us();
+		auto logic_time_us = swap_time_us + timer.time_since_last_access_us();
 		logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
 		
 		// menu input is part of logic, not visualization. must tick every frame.
@@ -741,11 +753,7 @@ int main(int argc, char** argv) {
 				}
 
 				timer.reset();
-				application.swapBuffers();
-				auto swap_time_us = timer.time_since_last_access_us();
-				swap_time.observe_value(swap_time_us / 1000.0f);
-
-				total_time.observe_value((logic_time_us + render_time_us + swap_time_us) / 1000.0f);
+				total_time.observe_value((logic_time_us + render_time_us /* + swap_time_us */) / 1000.0f);
 			}
 		}
 

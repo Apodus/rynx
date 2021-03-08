@@ -20,7 +20,7 @@ class Game : RynxProject
 		conf.AddPublicDependency<RuleSets>(target);
 		conf.AddPublicDependency<Input>(target);
 		conf.AddPublicDependency<Menu>(target);
-        conf.AddPublicDependency<Graphics>(target);
+		conf.AddPublicDependency<Graphics>(target);
 		conf.AddPublicDependency<Tech>(target);
 		conf.AddPublicDependency<Scheduler>(target);
 		
@@ -30,7 +30,7 @@ class Game : RynxProject
 		conf.Output = Project.Configuration.OutputType.Exe;
 		
 		conf.VcxprojUserFile = new Configuration.VcxprojUserFileSettings()
-            { LocalDebuggerWorkingDirectory = conf.TargetPath };
+			{ LocalDebuggerWorkingDirectory = conf.TargetPath };
     }
 }
 

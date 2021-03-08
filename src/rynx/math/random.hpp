@@ -4,6 +4,10 @@
 #include <cstdint>
 
 namespace rynx {
+	namespace serialization {
+		template<typename T> struct Serialize;
+	}
+
 	namespace math {
 		// xorshift32 - feed the result as the next parameter to get next random number.
 		//              must start with nonzero value.
@@ -38,6 +42,34 @@ namespace rynx {
 
 			T operator()(float v) const {
 				return static_cast<T>(begin * (1.0f - v) + end * v);
+			}
+		};
+	}
+
+	namespace serialization {
+		template<> struct Serialize<rynx::math::rand64> {
+			template<typename IOStream>
+			void serialize(const rynx::math::rand64& s, IOStream& writer) {
+				writer(s.m_state);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::math::rand64& s, IOStream& reader) {
+				reader(s.m_state);
+			}
+		};
+		
+		template<typename T> struct Serialize<rynx::math::value_range<T>> {
+			template<typename IOStream>
+			void serialize(const rynx::math::value_range<T>& s, IOStream& writer) {
+				writer(s.begin);
+				writer(s.end);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::math::value_range<T>& s, IOStream& reader) {
+				reader(s.begin);
+				reader(s.end);
 			}
 		};
 	}

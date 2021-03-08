@@ -348,7 +348,7 @@ namespace {
 				entA,
 				entB,
 				normal,
-				(a_pos + b_pos) * 0.5f + normal * (a_radius - b_radius),
+				(a_pos + b_pos) * 0.5f + normal * (b_radius - a_radius),
 				a_pos,
 				b_pos,
 				penetration

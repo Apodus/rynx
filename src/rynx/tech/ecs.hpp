@@ -8,123 +8,15 @@
 
 #include <rynx/system/assert.hpp>
 
+#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/reflection.hpp>
+#include <rynx/tech/ecs/table.hpp>
+
 #include <vector>
 #include <type_traits>
 #include <tuple>
 #include <algorithm>
 #include <numeric>
-
-// for reflection stuff
-#include <typeinfo>
-
-namespace rynx {
-	namespace reflection {
-
-		class reflections;
-
-		void register_generated_reflections(rynx::reflection::reflections& type_reflections);
-
-		class field {
-		public:
-			std::string m_field_name;
-			std::string m_type_name;
-			int32_t m_memory_offset = 0;
-			int32_t m_memory_size = 0;
-			std::vector<std::string> m_annotations;
-
-			template<typename MemberType, typename ObjectType>
-			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations = {}) {
-				rynx::reflection::field f;
-				f.m_memory_offset = static_cast<int32_t>(reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr)));
-				f.m_memory_size = sizeof(MemberType);
-				f.m_type_name = typeid(MemberType).name();
-				f.m_field_name = fieldName;
-				f.m_annotations = std::move(fieldAnnotations);
-				return f;
-			}
-
-			bool operator < (const field& other) const {
-				return m_memory_offset < other.m_memory_offset;
-			}
-		};
-
-		class type {
-		public:
-			std::string m_type_name;
-			std::vector<field> m_members;
-			int32_t m_type_index_value = -1;
-
-			template<typename MemberType, typename ObjectType>
-			type& add_field(std::string fieldName, MemberType ObjectType::* ptr) {
-				m_members.emplace_back(rynx::reflection::field::construct(fieldName, ptr));
-				return *this;
-			}
-
-			template<typename MemberType, typename ObjectType>
-			type& add_field(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations) {
-				m_members.emplace_back(rynx::reflection::field::construct(fieldName, ptr, fieldAnnotations));
-				return *this;
-			}
-		};
-
-		template <typename T>
-		class make_reflect {
-		public:
-			rynx::reflection::type operator()(rynx::type_index& typeIndex) {
-				rynx::reflection::type result{ std::string(typeid(T).name()) };
-				result.m_type_index_value = static_cast<int32_t>(typeIndex.id<T>());
-				return result;
-			}
-		};
-
-		class reflections {
-		public:
-			reflections(rynx::type_index& index) : m_type_index(index) {
-				rynx::reflection::register_generated_reflections(*this);
-				for (auto&& t : m_reflections) {
-					std::sort(t.second->m_members.begin(), t.second->m_members.end());
-				}
-			}
-
-			template<typename T>
-			rynx::reflection::type& create() {
-				auto result = std::make_unique<rynx::reflection::type>();
-				result->m_type_name = std::string(typeid(T).name());
-				result->m_type_index_value = static_cast<int32_t>(m_type_index.id<T>());
-				m_reflections.emplace(std::string(typeid(T).name()), std::move(result));
-				return get<T>();
-			}
-
-			template<typename T>
-			rynx::reflection::type& get() {
-				auto it = m_reflections.find(typeid(T).name());
-				if (it == m_reflections.end()) {
-					rynx::reflection::type& reflection = create<T>();
-					reflection.m_type_name = "!!" + reflection.m_type_name;
-					return reflection;
-				}
-				return *it->second;
-			}
-
-			rynx::reflection::type& get(const rynx::reflection::field& f) {
-				auto it = m_reflections.find(f.m_type_name);
-				if (it == m_reflections.end()) {
-					auto t = std::make_unique<rynx::reflection::type>();
-					t->m_type_name = "!!" + f.m_type_name;
-					it = m_reflections.emplace(f.m_type_name, std::move(t)).first;
-				}
-				return *it->second;
-			}
-
-			bool has(const std::string& s) { return m_reflections.find(s) != m_reflections.end(); }
-			template<typename T> bool has() { return has(typeid(T).name()); }
-
-		private:
-			rynx::type_index& m_type_index;
-			rynx::unordered_map<std::string, std::unique_ptr<rynx::reflection::type>> m_reflections;
-		};
-	}
-}
 
 namespace rynx {
 
@@ -144,47 +36,18 @@ namespace rynx {
 
 	class ecs {
 	public:
-		using type_id_t = uint64_t;
-		using entity_id_t = uint64_t;
-		using index_t = uint32_t;
-
 		struct range {
 			index_t begin = 0;
 			index_t step = 0;
 		};
 
 		struct value_segregated_component {};
-
 		class entity_category;
-
-		static constexpr uint32_t bits_id = 42; // 2^42 - 1 entity ids (zero not included).
-		static constexpr uint64_t mask_max_id = (uint64_t(1) << bits_id) - 1;
 
 	private:
 		enum class DataAccess {
 			Mutable,
 			Const
-		};
-
-		// NOTE: Since we are using categories now, it really doesn't matter how far apart the entity ids are.
-		//       Reusing ids is thus very much not important, unless we get to the point of overflow.
-		//       But still it would be easier to "reset" entity_index between levels or something.
-		class entity_index {
-		public:
-			entity_id_t generateOne() {
-				rynx_assert(m_nextId + 1 <= mask_max_id, "id space out of bounds");
-				return ++m_nextId;
-			} // zero is never generated. we can use that as InvalidId.
-
-			void clear() {
-				m_nextId = 0; // reset id space.
-			}
-
-			static constexpr entity_id_t InvalidId = 0;
-		private:
-			
-			// does not need to be atomic. creating new entities is not thread-safe anyway, only one thread is allowed to do so at a time.
-			entity_id_t m_nextId = 0;
 		};
 
 		// TODO: Use some actual hash that works better.
@@ -209,7 +72,7 @@ namespace rynx {
 		};
 
 		type_index m_types;
-		entity_index m_entities;
+		rynx::ecs_internal::entity_index m_entities;
 
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
@@ -240,150 +103,7 @@ namespace rynx {
 			return m_types;
 		}
 
-		struct id {
-			id() : value(entity_index::InvalidId) {}
-			id(entity_id_t v) : value(v) {}
-			bool operator == (const id& other) const { return value == other.value; }
-
-			// TODO: make value private, give const access only via member functions.
-			entity_id_t value;
-		};
-
-		class itable {
-		public:
-			virtual ~itable() {}
-			virtual void erase(entity_id_t entityId) = 0;
-			
-			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) = 0;
-			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) = 0;
-
-			virtual rynx::reflection::type reflection(rynx::reflection::reflections& reflections) = 0;
-			virtual void* get(index_t) = 0;
-
-			// virtual itable* deepCopy() const = 0;
-			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
-			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
-		};
-
-		template<typename T>
-		class tag_table : public itable {
-		public:
-			tag_table() { rynx_assert(false, "should never create?"); }
-			virtual ~tag_table() {}
-
-			virtual void erase(entity_id_t) override {};
-
-			virtual void swap_adjacent_indices_for(const std::vector<index_t>&) override {}
-			virtual void swap_to_given_order(const std::vector<index_t>&) override {}
-			
-			virtual rynx::reflection::type reflection(rynx::reflection::reflections&) override { return {}; }
-			virtual void* get(index_t) override { return nullptr; }
-
-			virtual void copyTableTypeTo(type_id_t, std::vector<std::unique_ptr<itable>>&) override {}
-			virtual void moveFromIndexTo(index_t, itable*) override {}
-
-			void insert(T&&) {}
-			void emplace_back(T) {}
-			void insert_default(size_t) {}
-
-			T& back() { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return value; }
-			const T& back() const { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return value; }
-			void pop_back() {}
-
-			T* data() { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return &value; }
-			const T* data() const { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return &value; }
-
-			size_t size() const { return 1; }
-
-			T& operator[](index_t) { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return value; }
-			const T& operator[](index_t) const { rynx_assert(false, "accessing tag table is never useful. consider using query().in<tagtype>()"); return value; }
-
-		private:
-			T value;
-		};
-
-		template<typename T>
-		class component_table : public itable {
-		public:
-			virtual ~component_table() {}
-
-			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) override {
-				for (auto index : index_points) {
-					std::swap(m_data[index], m_data[index + 1]);
-				}
-			}
-
-			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) override {
-				// TODO: No need to alloc these separately for each table. Reuse buffers and memcpy contents.
-				std::vector<index_t> current_index_to_original_index(m_data.size());
-				std::vector<index_t> original_index_to_current_index(m_data.size());
-
-				std::iota(current_index_to_original_index.begin(), current_index_to_original_index.end(), 0);
-				std::iota(original_index_to_current_index.begin(), original_index_to_current_index.end(), 0);
-
-				for (index_t i = 0, size = index_t(m_data.size()); i < size; ++i) {
-					index_t mapped_location = original_index_to_current_index[relative_sort_order[i]];
-					if (mapped_location != i) {
-						std::swap(m_data[i], m_data[mapped_location]);
-						
-						std::swap(current_index_to_original_index[i], current_index_to_original_index[mapped_location]);
-						std::swap(
-							original_index_to_current_index[current_index_to_original_index[i]],
-							original_index_to_current_index[current_index_to_original_index[mapped_location]]
-						);
-					}
-				}
-			}
-
-			virtual rynx::reflection::type reflection(rynx::reflection::reflections& reflections) override {
-				return reflections.get<T>();
-			}
-
-			virtual void* get(index_t i) override { return &m_data[i]; }
-
-			virtual void erase(entity_id_t id) override {
-				m_data[id] = std::move(m_data.back());
-				m_data.pop_back();
-			}
-
-			// NOTE: This is required for moving entities between categories reliably.
-			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) override {
-				if (typeId >= targetTables.size()) {
-					targetTables.resize(((3 * typeId) >> 1) + 1);
-				}
-				targetTables[typeId] = std::make_unique<component_table>();
-			}
-
-			virtual void moveFromIndexTo(index_t index, itable* dst) override {
-				T moved(std::move(m_data[index]));
-				m_data[index] = std::move(m_data.back());
-				static_cast<component_table*>(dst)->emplace_back(std::move(moved));
-				m_data.pop_back();
-			}
-
-			void insert(T&& t) { m_data.emplace_back(std::forward<T>(t)); }
-			void insert(std::vector<T>& v) { m_data.insert(m_data.end(), v.begin(), v.end()); }
-			template<typename...Ts> void emplace_back(Ts&& ... ts) { m_data.emplace_back(std::forward<Ts>(ts)...); }
-
-			void insert_default(size_t n) {
-				m_data.resize(m_data.size() + n);
-			}
-
-			T& back() { return m_data.back(); }
-			const T& back() const { return m_data.back(); }
-			void pop_back() { m_data.pop_back(); }
-			
-			T* data() { return m_data.data(); }
-			const T* data() const { return m_data.data(); }
-
-			size_t size() const { return m_data.size(); }
-
-			T& operator[](index_t index) { return m_data[index]; }
-			const T& operator[](index_t index) const { return m_data[index]; }
-
-		private:
-			std::vector<std::remove_reference_t<T>> m_data;
-		};
+		using id = rynx::id;
 
 		class entity_category {
 		public:
@@ -391,6 +111,14 @@ namespace rynx {
 
 			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
 			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
+
+			void createNewTable(uint64_t typeId, std::unique_ptr<rynx::ecs_internal::itable> tablePtr) {
+				if (typeId >= m_tables.size()) {
+					m_tables.resize(((3 * typeId) >> 1) + 1);
+				}
+				rynx_assert(m_tables[typeId] == nullptr, "should never replace existing tables");
+				m_tables[typeId] = std::move(tablePtr);
+			}
 
 			void erase(index_t index, rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
 				for (auto&& table : m_tables) {
@@ -599,21 +327,21 @@ namespace rynx {
 				if (!m_tables[typeIndex]) {
 					if constexpr (std::is_empty_v<U>) {
 						rynx_assert(false, "never create tag tables");
-						m_tables[typeIndex] = std::make_unique<tag_table<U>>();
 					}
 					else {
-						m_tables[typeIndex] = std::make_unique<component_table<U>>();
+						m_tables[typeIndex] = std::make_unique<rynx::ecs_internal::component_table<U>>(typeIndex);
 					}
 				}
 				
 				if constexpr (std::is_empty_v<U>) {
 					rynx_assert(false, "never create tag tables");
-					return *static_cast<tag_table<U>*>(m_tables[typeIndex].get());
+					return *static_cast<rynx::ecs_internal::component_table<U>*>(nullptr);
 				}
 				else {
-					return *static_cast<component_table<U>*>(m_tables[typeIndex].get());
+					return *static_cast<rynx::ecs_internal::component_table<U>*>(m_tables[typeIndex].get());
 				}
 			}
+
 			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> auto& table() {
 				type_id_t typeIndex = m_typeIndex->id<U>();
 				return table<U>(typeIndex);
@@ -631,7 +359,7 @@ namespace rynx {
 			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 			template<typename T> const auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) const { return const_cast<entity_category*>(this)->table<T>(typeAliases); }
-			itable& table(int32_t type_index_value) { return *m_tables[type_index_value]; }
+			rynx::ecs_internal::itable& table(int32_t type_index_value) { return *m_tables[type_index_value]; }
 
 			// this is not particularly fast - but required for some editor related things for example.
 			template<typename Func> void forEachTable(Func&& func) {
@@ -678,8 +406,10 @@ namespace rynx {
 				}
 			};
 
+			friend class rynx::ecs; // TODO: Remove
+
 			dynamic_bitset m_types;
-			std::vector<std::unique_ptr<itable>> m_tables;
+			std::vector<std::unique_ptr<rynx::ecs_internal::itable>> m_tables;
 			std::vector<id> m_ids;
 			type_index* m_typeIndex;
 		};
@@ -1054,7 +784,7 @@ namespace rynx {
 				}
 				else {
 					parallel_ops_container.for_each(0, ids.size()).for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
-						std::apply([op, index](auto... ptrs) mutable {
+						std::apply([op, index](auto*... ptrs) mutable {
 							op(ptrs[index]...);
 						}, args);
 					});
@@ -1091,8 +821,8 @@ namespace rynx {
 
 			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
 				std::vector<rynx::reflection::type> result;
-				m_entity_category->forEachTable([&result, &reflections](itable* tbl) {
-					result.emplace_back(tbl->reflection(reflections));
+				m_entity_category->forEachTable([&result, &reflections](rynx::ecs_internal::itable* tbl) {
+					result.emplace_back(*reflections.find(tbl->m_type_id));
 				});
 				return result;
 			}
@@ -1199,7 +929,7 @@ namespace rynx {
 
 			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
 				std::vector<rynx::reflection::type> result;
-				m_entity_category->forEachTable([&result, &reflections](itable* tbl) {
+				m_entity_category->forEachTable([&result, &reflections](rynx::ecs_internal::itable* tbl) {
 					result.emplace_back(tbl->reflection(reflections));
 				});
 				return result;
@@ -1394,22 +1124,131 @@ namespace rynx {
 			return m_idCategoryMap.size();
 		}
 
-		// should call once per frame. this is not thread safe.
-		// if the type index is using local type indexing AND you don't call this,
-		//   you will see performance go down the toilet.
-		void sync_type_index() {
-			m_types.sync();
+		void serialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_writer& out) {
+			// first construct mapping from ecs ids to serialized ids.
+			rynx::unordered_map<uint64_t, uint64_t> idToSerializedId;
+			rynx::unordered_map<uint64_t, uint64_t> serializedIdToId;
+			uint64_t next = 1;
+			for (auto&& id : m_idCategoryMap) {
+				idToSerializedId[id.first] = next;
+				serializedIdToId[next] = id.first;
+				++next;
+			}
+
+			// replace id fields with serialized id values.
+			for (auto&& category : m_categories) {
+				category.second->forEachTable([&idToSerializedId](rynx::ecs_internal::itable* table) {
+					table->for_each_id_field([&idToSerializedId](rynx::id& id) { id.value = idToSerializedId.find(id.value)->second; });
+				});
+			}
+
+			// serialize everything as-is.
+			rynx::serialize(reflections, out); // include reflection of written data
+			rynx::serialize(m_idCategoryMap.size(), out);
+			rynx::serialize(m_categories.size(), out);
+			for (auto&& category : m_categories) {
+				std::vector<std::string> category_typenames;
+				category.first.forEachOne([&reflections, &category_typenames](uint64_t type_id) {
+					auto* typeReflection = reflections.find(type_id);
+					rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
+					category_typenames.emplace_back(typeReflection->m_type_name);
+				});
+
+				rynx::serialize(category_typenames, out);
+
+				// for each table in category - serialize table type name, serialize table data
+				category.second->forEachTable([&reflections, &out](rynx::ecs_internal::itable* table) {
+					// rynx::serialize(table->reflection(reflections).m_type_name);
+					table->serialize(out);
+				});
+
+				// replace category id vector contents with serialized ids
+				std::vector<rynx::ecs::id> idListCopy = category.second->ids();
+				for (auto& id : idListCopy) {
+					id.value = idToSerializedId[id.value];
+				}
+
+				// serialize category id vector
+				rynx::serialize(idListCopy, out);
+			}
+
+
+			// restore serialized id values back to original run-time id values.
+			for (auto&& category : m_categories) {
+				category.second->forEachTable([&serializedIdToId](rynx::ecs_internal::itable* table) {
+					table->for_each_id_field([&serializedIdToId](rynx::id& id) { id.value = serializedIdToId.find(id.value)->second; });
+				});
+			}
 		}
 
-		// used to tell the type index block which types we are going to use before using them.
-		// calling this is not required. but types which are not synced to the type index will work slower, if the
-		// type index is using local type indexing.
-		// you can also call sync_type_index() manually once per frame or at convenient times. when sync is called,
-		// no other operation is allowed to hit the type index.
-		template<typename...Ts>
-		void type_index_using() {
-			(m_types.id<Ts>(), ...);
-			sync_type_index();
+		rynx::serialization::vector_writer serialize(rynx::reflection::reflections& reflections) {
+			rynx::serialization::vector_writer out;
+			serialize(reflections, out);
+			return out;
+		}
+
+		void deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
+			
+			size_t numEntities;
+			size_t numCategories;
+
+			rynx::reflection::reflections format(m_types);
+			rynx::deserialize(format, in); // reflection of loaded data
+			rynx::deserialize(numEntities, in);
+			rynx::deserialize(numCategories, in);
+
+			// construct mapping from serialized ids to ecs ids.
+			rynx::unordered_map<uint64_t, uint64_t> serializedIdToEcsId;
+			for (size_t i = 1; i <= numEntities; ++i) {
+				serializedIdToEcsId[i] = this->m_entities.generateOne();
+			}
+
+			for (size_t i = 0; i < numCategories; ++i) {
+				auto category_typenames = rynx::deserialize<std::vector<std::string>>(in);
+				
+				rynx::dynamic_bitset category_id;
+				for (auto&& name : category_typenames) {
+					auto* typeReflection = reflections.find(name);
+					rynx_assert(typeReflection != nullptr, "deserializing unknown type %s", name.c_str());
+					category_id.set(typeReflection->m_type_index_value);
+				}
+
+				// if category already does not exist - create category.
+				if (m_categories.find(category_id) == m_categories.end()) {
+					auto res = m_categories.emplace(category_id, std::make_unique<entity_category>(category_id, &m_types));
+					category_id.forEachOne([&](uint64_t typeId) {
+						auto* typeReflection = reflections.find(typeId);
+						res.first->second->createNewTable(typeId, typeReflection->m_create_table_func());
+					});
+				}
+				auto category_it = m_categories.find(category_id);
+
+				// source category typenames is the correct order to deserialize in.
+				for (auto&& name : category_typenames) {
+					auto type_index_value = reflections.find(name)->m_type_index_value;
+					category_it->second->table(type_index_value).deserialize(in);
+				}
+
+				// deserialize category ids and insert them to the category.
+				auto categoryIds = rynx::deserialize<std::vector<rynx::ecs::id>>(in);
+				for (auto& id : categoryIds) {
+					id.value = serializedIdToEcsId[id.value];
+				}
+
+				auto idCount = category_it->second->m_ids.size();
+				category_it->second->m_ids.insert(category_it->second->m_ids.end(), categoryIds.begin(), categoryIds.end());
+				
+				// restore correct runtime ids to deserialized entities id fields.
+				category_it->second->forEachTable([idCount, &serializedIdToEcsId](rynx::ecs_internal::itable* table) {
+					table->for_each_id_field_from_index(idCount, [&serializedIdToEcsId](rynx::id& id) {
+						id.value = serializedIdToEcsId.find(id.value)->second;
+					});
+				});
+
+				for (auto& id : categoryIds) {
+					m_idCategoryMap[id.value] = { category_it->second.get(), index_t(idCount++) };
+				}
+			}
 		}
 
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }

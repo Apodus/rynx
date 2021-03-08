@@ -566,3 +566,31 @@ namespace rynx {
 		uint32_t m_size = 0;
 	};
 }
+
+
+#include <rynx/tech/serialization.hpp>
+
+namespace rynx {
+	namespace serialization {
+		template<typename T, typename U> struct Serialize<rynx::unordered_map<T, U>> {
+			template<typename IOStream>
+			void serialize(const rynx::unordered_map<T, U>& map_t, IOStream& writer) {
+				writer(map_t.size());
+				for (auto&& t : map_t) {
+					rynx::serialize(t.first, writer);
+					rynx::serialize(t.second, writer);
+				}
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::unordered_map<T, U>& map, IOStream& reader) {
+				size_t numElements = rynx::deserialize<size_t>(reader);
+				for (size_t i = 0; i < numElements; ++i) {
+					T t = rynx::deserialize<T>(reader);
+					U u = rynx::deserialize<U>(reader);
+					map.emplace(std::move(t), std::move(u));
+				}
+			}
+		};
+	}
+}

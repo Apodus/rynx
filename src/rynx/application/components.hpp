@@ -6,9 +6,12 @@
 #include <rynx/math/geometry/polygon.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/math/random.hpp>
-#include <rynx/tech/collision_detection.hpp>
-#include <rynx/tech/components.hpp>
+// #include <rynx/tech/collision_detection.hpp>
 #include <rynx/system/annotate.hpp>
+
+#ifndef RYNX_CODEGEN
+#include <rynx/tech/components.hpp>
+#endif
 
 #include <string>
 
@@ -53,60 +56,61 @@ namespace rynx {
 
 			struct editor {
 			private:
-				particle_emitter& host;
+				particle_emitter* host = nullptr;
 
 			public:
-				editor(particle_emitter& host) : host(host) {}
+				editor() { rynx_assert(false, "you should not instantiate this"); };
+				editor(particle_emitter& host) : host(&host) {}
 
 				editor& color_ranges(rynx::math::value_range<rynx::floats4> start_color_, rynx::math::value_range<rynx::floats4> end_color_) {
-					host.start_color = start_color_;
-					host.end_color = end_color_;
+					host->start_color = start_color_;
+					host->end_color = end_color_;
 					return *this;
 				}
 
 				editor& radius_ranges(rynx::math::value_range<float> start_radius_, rynx::math::value_range<float> end_radius_) {
-					host.start_radius = start_radius_;
-					host.end_radius = end_radius_;
+					host->start_radius = start_radius_;
+					host->end_radius = end_radius_;
 					return *this;
 				}
 
 				editor& spawn_rate_range(rynx::math::value_range<float> spawn_rate_) {
-					host.spawn_rate = spawn_rate_;
+					host->spawn_rate = spawn_rate_;
 					return *this;
 				}
 
 				editor& linear_dampening_range(rynx::math::value_range<float> damp) {
-					host.linear_dampening = damp;
+					host->linear_dampening = damp;
 					return *this;
 				}
 
 				editor& lifetime_range(rynx::math::value_range<float> lifetime) {
-					host.lifetime_range = lifetime;
+					host->lifetime_range = lifetime;
 					return *this;
 				}
 
 				editor& initial_velocity_range(rynx::math::value_range<float> initial_vel) {
-					host.initial_velocity = initial_vel;
+					host->initial_velocity = initial_vel;
 					return *this;
 				}
 
 				editor& initial_angle_range(rynx::math::value_range<float> initial_angle_) {
-					host.initial_angle = initial_angle_;
+					host->initial_angle = initial_angle_;
 					return *this;
 				}
 
 				editor& constant_force_range(rynx::math::value_range<rynx::vec3f> constant_force_) {
-					host.constant_force = constant_force_;
+					host->constant_force = constant_force_;
 					return *this;
 				}
 
 				editor& rotate_with_host(bool value) {
-					host.rotate_with_host = value;
+					host->rotate_with_host = value;
 					return *this;
 				}
 
 				editor& position_offset(vec3f offset) {
-					host.position_offset = offset;
+					host->position_offset = offset;
 					return *this;
 				}
 			};
@@ -130,7 +134,7 @@ namespace rynx {
 		};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
-		struct frustum_culled {}; // object is not visible due to frustum culling.
+		struct ANNOTATE("transient") frustum_culled {}; // object is not visible due to frustum culling.
 		struct invisible {}; // tag to prevent rendering of object.
 
 		namespace phys {
@@ -192,6 +196,7 @@ namespace rynx {
 				joint_type m_joint;
 			};
 
+#ifndef RYNX_CODEGEN
 			inline float compute_current_joint_length(const joint& rope, rynx::ecs::view<const rynx::components::position> ecs) {
 				auto entity_a = ecs[rope.id_a];
 				auto entity_b = ecs[rope.id_b];
@@ -205,6 +210,7 @@ namespace rynx {
 				auto world_pos_b = pos_b.value + relative_pos_b;
 				return (world_pos_a - world_pos_b).length();
 			}
+#endif
 		}
 
 		struct mesh : public rynx::ecs::value_segregated_component {
@@ -215,4 +221,17 @@ namespace rynx {
 			rynx::graphics::mesh* m;
 		};
 	}
+
+	namespace serialization {
+		template<> struct Serialize<rynx::components::particle_emitter::editor> {
+			template<typename IOStream> void serialize(const rynx::components::particle_emitter::editor&, IOStream&) {}
+			template<typename IOStream> void deserialize(rynx::components::particle_emitter::editor&, IOStream&) {}
+		};
+	}
 }
+
+
+#ifndef RYNX_CODEGEN
+#include <rynx/application/components_reflection.hpp>
+#include <rynx/application/components_serialization.hpp>
+#endif

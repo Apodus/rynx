@@ -69,7 +69,7 @@ namespace rynx {
 			float penetration;
 		};
 
-		static constexpr uint32_t bits_id = rynx::ecs::bits_id;
+		static constexpr uint32_t bits_id = rynx::ecs_id_bits;
 		static constexpr uint32_t bits_part = 20;
 		static constexpr uint32_t bits_kind = 2;
 
@@ -84,7 +84,7 @@ namespace rynx {
 		static constexpr uint64_t mask_kind_projectile = kind::projectile << bitshift_kind;
 
 		static_assert(bits_id + bits_part + bits_kind <= sizeof(mask_id) * 8);
-
+		
 		category_id add_category();
 		collision_detection& enable_collisions_between(category_id category1, category_id category2);
 		

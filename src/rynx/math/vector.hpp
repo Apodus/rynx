@@ -7,6 +7,8 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/math/math.hpp>
+#include <rynx/tech/serialization.hpp>
+
 #include <cinttypes>
 #include <cmath>
 #include <limits>
@@ -17,7 +19,7 @@
 
 namespace rynx {
 
-	// generic 3d vector template. has vectorized specialization for type float for windows due to bad optimizer.
+	// generic 3d vector template.
 	template <class T>
 	struct alignas(16) vec3 {
 		vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
@@ -70,6 +72,24 @@ namespace rynx {
 		T y;
 		T z;
 	};
+
+	namespace serialization {
+		template<typename T> struct Serialize<rynx::vec3<T>> {
+			template<typename IOStream>
+			void serialize(const rynx::vec3<T>& s, IOStream& writer) {
+				writer(s.x);
+				writer(s.y);
+				writer(s.z);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::vec3<T>& s, IOStream& reader) {
+				reader(s.x);
+				reader(s.y);
+				reader(s.z);
+			}
+		};
+	}
 
 #if defined(_WIN32) && RYNX_VECTOR_SIMD
 
@@ -203,6 +223,27 @@ namespace rynx {
 		*/
 	};
 
+	namespace serialization {
+		template<> struct Serialize<rynx::floats4> {
+			template<typename IOStream>
+			void serialize(const rynx::floats4& s, IOStream& writer) {
+				writer(s.x);
+				writer(s.y);
+				writer(s.z);
+				writer(s.w);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::floats4& s, IOStream& reader) {
+				reader(s.x);
+				reader(s.y);
+				reader(s.z);
+				reader(s.w);
+			}
+		};
+	}
+
+
 	template <class T>
 	struct alignas(16) vec4 {
 		vec4(const vec4 & other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
@@ -242,27 +283,36 @@ namespace rynx {
 
 		const T& operator [](int index) const {
 			rynx_assert(index >= 0 && index < 4, "index out of bounds");
-			return data[index];
+			return *((&x) + index);
 		}
 
 		T& operator [](int index) {
 			rynx_assert(index >= 0 && index < 4, "index out of bounds");
-			return data[index];
+			return *((&x) + index);
 		}
 
-		union {
-			struct {
-				T x, y, z, w;
-			};
-			struct {
-				T r, g, b, a;
-			};
-			struct {
-				T left, right, top, bottom;
-			};
-			T data[4];
-		};
+		T x, y, z, w;
 	};
+
+	namespace serialization {
+		template<typename T> struct Serialize<rynx::vec4<T>> {
+			template<typename IOStream>
+			void serialize(const rynx::vec4<T>& s, IOStream& writer) {
+				writer(s.x);
+				writer(s.y);
+				writer(s.z);
+				writer(s.w);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::vec4<T>& s, IOStream& reader) {
+				reader(s.x);
+				reader(s.y);
+				reader(s.z);
+				reader(s.w);
+			}
+		};
+	}
 
 #if defined(_WIN32) && RYNX_VECTOR_SIMD
 

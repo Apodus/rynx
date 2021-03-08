@@ -10,6 +10,219 @@ namespace rynx {
 	}
 }
 
+#include <rynx/tech/serialization.hpp>
+// #include <rynx/generated/serialization.hpp>
+
+TEST_CASE("serialization", "strings & vectors")
+{
+	std::vector<std::string> strings{"abba", "yks", "kaks"};
+	std::vector<std::vector<std::string>> moreStrings{ {"yks"}, {"kaks"}, {"kolme", "kolme ja puol"} };
+	rynx::serialization::vector_writer out;
+	rynx::serialize(strings, out);
+	rynx::serialize(moreStrings, out);
+
+	rynx::serialization::vector_reader reader(out.data());
+	auto result = rynx::deserialize<std::vector<std::string>>(reader);
+	REQUIRE(strings == result);
+
+	auto result2 = rynx::deserialize<std::vector<std::vector<std::string>>>(reader);
+	REQUIRE(moreStrings == result2);
+}
+
+struct hubbabubba {
+	std::string kekkonen;
+	std::vector<std::string> lol;
+};
+
+struct id_field_t {
+	rynx::id target;
+};
+
+namespace rynx {
+	namespace serialization {
+		template<> struct Serialize<hubbabubba> {
+			template<typename IOStream>
+			void serialize(const hubbabubba& a, IOStream& io) {
+				rynx::serialize(a.kekkonen, io);
+				rynx::serialize(a.lol, io);
+			}
+			
+			template<typename IOStream>
+			void deserialize(hubbabubba& a, IOStream& io) {
+				rynx::deserialize(a.kekkonen, io);
+				rynx::deserialize(a.lol, io);
+			}
+		};
+
+		template<> struct Serialize<id_field_t> {
+			template<typename IOStream>
+			void serialize(const id_field_t& a, IOStream& io) {
+				rynx::serialize(a.target, io);
+			}
+
+			template<typename IOStream>
+			void deserialize(id_field_t& a, IOStream& io) {
+				rynx::deserialize(a.target, io);
+			}
+		};
+
+		template<> struct for_each_id_field_t<id_field_t> {
+			template<typename Op>
+			void execute(id_field_t& t, Op&& op) {
+				rynx::for_each_id_field(t.target, op);
+			}
+		};
+	}
+}
+
+TEST_CASE("serialize ecs with id field", "serialization")
+{
+
+	rynx::ecs a;
+	rynx::reflection::reflections reflections(a.get_type_index());
+	reflections.create<int>();
+	reflections.create<id_field_t>();
+
+	{
+		rynx::serialization::vector_writer v;
+		rynx::serialize(reflections, v);
+
+		rynx::reflection::reflections ref_b(a.get_type_index());
+		rynx::serialization::vector_reader reader(v.data());
+		rynx::deserialize(ref_b, reader);
+
+		REQUIRE(ref_b.has<id_field_t>());
+		REQUIRE(ref_b.has<int>());
+		REQUIRE(!ref_b.has<float>());
+	}
+
+
+	a.create(1);
+	a.create(2);
+	auto target_id = a.create(3);
+	a.create(4);
+	a.create(5);
+	a.create(id_field_t{target_id});
+
+	{
+		REQUIRE(a.query().in<int>().count() == 5);
+		REQUIRE(a.query().in<id_field_t>().count() == 1);
+		a.query().for_each([&a](id_field_t f) {
+			REQUIRE(a.exists(f.target));
+			REQUIRE(a[f.target].has<int>());
+			REQUIRE(a[f.target].get<int>() == 3);
+		});
+	}
+
+	rynx::serialization::vector_writer out = a.serialize(reflections);
+
+	rynx::ecs b;
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		REQUIRE(b.query().in<int>().count() == 5);
+		REQUIRE(b.query().in<id_field_t>().count() == 1);
+		b.query().for_each([&b](id_field_t f) {
+			REQUIRE(b.exists(f.target));
+			REQUIRE(b[f.target].has<int>());
+			REQUIRE(b[f.target].get<int>() == 3);
+		});
+	}
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		rynx::id prev_target;
+		REQUIRE(b.query().in<int>().count() == 10);
+		b.query().for_each([&prev_target, &b](id_field_t f) {
+			REQUIRE(prev_target != f.target);
+			REQUIRE(b.exists(f.target));
+			REQUIRE(b[f.target].has<int>());
+			REQUIRE(b[f.target].get<int>() == 3);
+			prev_target = f.target;
+		});
+	}
+}
+
+
+TEST_CASE("serialize ecs with primitives", "serialization")
+{
+
+	rynx::ecs a;
+	rynx::reflection::reflections reflections(a.get_type_index());
+	reflections.create<int>();
+
+	a.create(1);
+
+	rynx::serialization::vector_writer out = a.serialize(reflections);
+
+	rynx::ecs b;
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		REQUIRE(b.query().in<int>().count() == 1);
+		b.query().for_each([](int f) {
+			REQUIRE(f == 1);
+		});
+	}
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		REQUIRE(b.query().in<int>().count() == 2);
+		b.query().for_each([](int f) {
+			REQUIRE(f == 1);
+		});
+	}
+}
+
+TEST_CASE("serialize ecs with structs", "serialization")
+{
+
+	rynx::ecs a;
+	rynx::reflection::reflections reflections(a.get_type_index());
+	reflections.create<hubbabubba>();
+	
+	hubbabubba myHubbaBubba;
+	myHubbaBubba.kekkonen = "kekkonen";
+	myHubbaBubba.lol = { "yks", "kaks" };
+
+	a.create(myHubbaBubba);
+	
+	rynx::serialization::vector_writer out;
+	a.serialize(reflections, out);
+
+	rynx::ecs b;
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		REQUIRE(b.query().in<hubbabubba>().count() == 1);
+		b.query().for_each([](hubbabubba f) {
+			REQUIRE(f.kekkonen == "kekkonen");
+			REQUIRE(f.lol == std::vector<std::string>{"yks", "kaks"});
+			});
+	}
+
+	{
+		rynx::serialization::vector_reader reader(out.data());
+		b.deserialize(reflections, reader);
+
+		REQUIRE(b.query().in<hubbabubba>().count() == 2);
+		b.query().for_each([](hubbabubba f) {
+			REQUIRE(f.kekkonen == "kekkonen");
+			REQUIRE(f.lol == std::vector<std::string>{"yks", "kaks"});
+		});
+	}
+}
+
 TEST_CASE("rynx ecs", "sort")
 {
 	rynx::ecs r;
@@ -46,10 +259,10 @@ TEST_CASE("ecs views usable", "verify compiles")
 	{
 		rynx::ecs ecs;
 		rynx::ecs::view<rynx::components::position> mutable_view = ecs;
-		rynx::ecs::view<const rynx::components::position> view = mutable_view;
+		rynx::ecs::view<const rynx::components::position> view = mutable_view; // more strict view can be constructed from another.
 		view.query().for_each([](const rynx::components::position&) {}); // is ok.
-		// view.for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
-		// view.for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
+		// view.query().for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
+		// view.query().for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
 	}
 }
 
@@ -75,7 +288,7 @@ TEST_CASE("ecs range for_each")
 	REQUIRE(counter == 100 * 99 / 2 - 50 * 49 / 2);
 
 	for (int i = 1; i < 101; ++i) {
-		rynx::ecs::range iter{0, rynx::ecs::index_t(i)};
+		rynx::ecs::range iter{0, rynx::index_t(i)};
 		counter = 0;
 		while (1) {
 			iter = ecs.query().for_each_partial(iter, [&](int a) {
@@ -224,6 +437,16 @@ struct mydata : public rynx::ecs::value_segregated_component {
 	int data = 0;
 };
 
+namespace rynx::serialization {
+	template<> struct Serialize<mydata> {
+		template<typename IOStream>
+		void serialize(const mydata&, IOStream&) {}
+
+		template<typename IOStream>
+		void deserialize(mydata&, IOStream&) {}
+	};
+}
+
 TEST_CASE("kek")
 {
 
@@ -254,7 +477,7 @@ namespace entt {
 
 template<typename...Ts> int64_t ecs_for_each(rynx::ecs& ecs) {
 	int64_t count = 0;
-	ecs.type_index_using<Ts...>();
+	// ecs.type_index_using<Ts...>();
 	ecs.query().for_each([&](Ts ... ts) {
 		count += (static_cast<int64_t>(ts) + ...);
 	});

@@ -23,13 +23,13 @@ namespace rynx {
 		class task;
 
 		class task_scheduler {
+		public:
+			// TODO: fix the number of threads here later if necessary.
+			static constexpr int numThreads = 16;
 
 			friend class scheduler::context;
 			friend class scheduler::task_thread;
 			friend class scheduler::task;
-
-			// TODO: fix the number of threads here later if necessary.
-			static constexpr int numThreads = 4;
 
 		private:
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
@@ -84,7 +84,7 @@ namespace rynx {
 					ctx.second->m_resources.sync();
 					auto* ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
 					if (ecs_resource) {
-						ecs_resource->sync_type_index();
+						// ecs_resource->sync_type_index();
 					}
 				}
 

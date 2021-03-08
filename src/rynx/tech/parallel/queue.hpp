@@ -10,7 +10,7 @@
 namespace rynx {
 	namespace parallel {
 		
-		template<typename T, size_t MaxSize = 1024, size_t MaxThreads = 8>
+		template<typename T, size_t MaxSize = 1024>
 		class queue {
 			static_assert((MaxSize & (MaxSize - 1)) == 0, "must be power of two");
 			
@@ -52,7 +52,7 @@ namespace rynx {
 					}
 				}
 
-				bool deque(T& ans) {
+				[[nodiscard]] bool deque(T& ans) {
 					if (m_bot_reserving >= m_top_actual) [[unlikely]] {
 						// que is empty.
 						return false;
@@ -86,21 +86,27 @@ namespace rynx {
 			};
 
 		public:
+			queue(int32_t numThreads = 8) {
+				m_subques.reset(new per_thread_queue[numThreads]);
+				m_size = numThreads;
+			}
+
 			void enque(T&& t) {
 				auto tid = rynx::this_thread::id();
-				rynx_assert(tid < int64_t(m_subques.size()), "overflow - you need to increase MaxThreads value");
+				rynx_assert(tid < int64_t(m_size), "overflow - you need to increase MaxThreads value");
 				m_subques[tid].enque(std::move(t));
 			}
 
 			void enque(std::vector<T>&& ts) {
 				auto tid = rynx::this_thread::id();
-				rynx_assert(tid < int64_t(m_subques.size()), "overflow - you need to increase MaxThreads value");
+				rynx_assert(tid < int64_t(m_size), "overflow - you need to increase MaxThreads value");
 				m_subques[tid].enque(std::move(ts));
 			}
 			
 			bool deque(T& t) {
 				auto current = rynx::this_thread::id();
-				for (int i = 1; i <= MaxThreads; ++i) {
+				uint32_t MaxThreads = m_size;
+				for (uint32_t i = 1; i <= MaxThreads; ++i) {
 					if (m_subques[(current + i) % MaxThreads].deque(t)) {
 						return true;
 					}
@@ -110,14 +116,17 @@ namespace rynx {
 
 			bool empty() const {
 				bool empty = true;
-				for (auto&& que : m_subques) {
-					empty &= que.empty();
+				const auto* end = m_subques.get() + m_size;
+				const auto* begin = m_subques.get();
+				for (; begin != end; ++begin) {
+					empty &= begin->empty();
 				}
 				return empty;
 			}
 
 		private:
-			std::array<per_thread_queue, MaxThreads> m_subques;
+			uint32_t m_size = 0;
+			std::unique_ptr<per_thread_queue[]> m_subques;
 		};
 	}
 }

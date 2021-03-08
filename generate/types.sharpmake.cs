@@ -12,6 +12,10 @@ public class RynxProject : Project
                 Optimization.Debug | Optimization.Release | Optimization.Retail
             )
         );
+
+SourceFilesIncludeRegex.Add(
+                @".ixx"
+            );
 	}
 	
 	[Configure()]
@@ -20,14 +24,15 @@ public class RynxProject : Project
 		// compiler settings
 		{
 			conf.Defines.Add("_ENABLE_EXTENDED_ALIGNED_STORAGE");
-			
-			if(true) {
+			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.v10_0_19041_0);
+
+			if(target.Optimization == Optimization.Retail) {
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Fast);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Disable);
 			}
 			else {
-				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Strict);
-				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Enable);
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Fast);
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Disable);
 			}
 			
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.RTTI.Enable);

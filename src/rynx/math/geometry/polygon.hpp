@@ -5,6 +5,7 @@
 #include <rynx/math/geometry/math.hpp>
 
 #include <rynx/tech/dynamic_buffer.hpp>
+#include <rynx/tech/serialization.hpp>
 
 #include <vector>
 
@@ -89,5 +90,25 @@ namespace rynx {
 		rynx::pod_vector<rynx::vec3f> m_vertices;
 		rynx::pod_vector<rynx::vec3f> m_vertex_normal;
 		rynx::pod_vector<rynx::vec3f> m_segment_normal;
+
+		friend struct rynx::serialization::Serialize<rynx::polygon>;
 	};
+
+	namespace serialization {
+		template<> struct Serialize<rynx::polygon> {
+			template<typename IOStream>
+			void serialize(const rynx::polygon& s, IOStream& writer) {
+				rynx::serialize(s.m_vertices, writer);
+				rynx::serialize(s.m_vertex_normal, writer);
+				rynx::serialize(s.m_segment_normal, writer);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::polygon& s, IOStream& reader) {
+				rynx::deserialize(s.m_vertices, reader);
+				rynx::deserialize(s.m_vertex_normal, reader);
+				rynx::deserialize(s.m_segment_normal, reader);
+			}
+		};
+	}
 }

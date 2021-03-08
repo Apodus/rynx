@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rynx/tech/serialization.hpp>
 #include <rynx/system/assert.hpp>
 #include <type_traits>
 #include <memory>
@@ -146,6 +147,8 @@ namespace rynx {
 	private:
 		std::unique_ptr<T[]> m_data;
 		size_t m_size = 0;
+
+		friend struct rynx::serialization::Serialize<rynx::dynamic_buffer<T>>;
 	};
 
 	template<typename T>
@@ -231,5 +234,39 @@ namespace rynx {
 	private:
 		rynx::dynamic_buffer<T> m_data;
 		size_t m_size = 0;
+
+		friend struct rynx::serialization::Serialize<rynx::pod_vector<T>>;
 	};
+
+	namespace serialization {
+		template<typename T> struct Serialize<rynx::dynamic_buffer<T>> {
+			template<typename IOStream>
+			void serialize(const rynx::dynamic_buffer<T>& s, IOStream& writer) {
+				uint64_t size = s.size();
+				writer(size);
+				writer(s.data(), sizeof(T) * s.size());
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::dynamic_buffer<T>& s, IOStream& reader) {
+				uint64_t size = rynx::deserialize<uint64_t>(reader);
+				s.resize_discard(size);
+				reader(s.data(), sizeof(T) * size);
+			}
+		};
+
+		template<typename T> struct Serialize<rynx::pod_vector<T>> {
+			template<typename IOStream>
+			void serialize(const rynx::pod_vector<T>& s, IOStream& writer) {
+				rynx::serialize(s.m_data, writer);
+				rynx::serialize(s.m_size, writer);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::pod_vector<T>& s, IOStream& reader) {
+				rynx::deserialize(s.m_data, reader);
+				rynx::deserialize(s.m_size, reader);
+			}
+		};
+	}
 }

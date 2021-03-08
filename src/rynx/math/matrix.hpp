@@ -60,4 +60,18 @@ namespace rynx {
 
 		vec3<float> operator *(const vec3<float>& v) const;
 	};
+
+	namespace serialization {
+		template<> struct Serialize<rynx::matrix4> {
+			template<typename IOStream>
+			void serialize(const rynx::matrix4& s, IOStream& writer) {
+				writer(s.m);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::matrix4& s, IOStream& reader) {
+				reader(s.m);
+			}
+		};
+	}
 }

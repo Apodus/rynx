@@ -7,6 +7,7 @@
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/geometry/triangle.hpp>
 #include <rynx/system/annotate.hpp>
+#include <rynx/tech/ecs/id.hpp>
 
 namespace rynx {
 	namespace components {
@@ -27,6 +28,7 @@ namespace rynx {
 				return value;
 			}
 
+			scale() : value(1.0f) {}
 			scale(float v) : value(v) {}
 			float ANNOTATE(">=0") value;
 		};
@@ -203,6 +205,7 @@ namespace rynx {
 		};
 
 		struct boundary {
+			boundary() {}
 			boundary(rynx::polygon b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
 				segments_world = segments_local;
 				update_world_positions(pos, angle);
@@ -274,7 +277,7 @@ namespace rynx {
 
 		struct collision_custom_reaction {
 			struct event {
-				rynx::ecs::id id; // collided with what
+				rynx::id id; // collided with what
 				rynx::components::physical_body body;
 				vec3f relative_velocity;
 				vec3f normal;
@@ -283,3 +286,9 @@ namespace rynx {
 		};
 	}
 }
+
+
+#ifndef RYNX_CODEGEN
+#include <rynx/tech/components_reflection.hpp>
+#include <rynx/tech/components_serialization.hpp>
+#endif
