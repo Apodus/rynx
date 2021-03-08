@@ -1,0 +1,1 @@
+reflection_gen.exe -I ./src/ --std=c++20 -filename-ends-with components.hpp -gen-for-namespace ::rynx::components -filename-contains components.hpp
