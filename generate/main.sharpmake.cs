@@ -34,6 +34,8 @@ class Game : RynxProject
     }
 }
 
+
+
 [Generate]
 class Rynx : Solution
 {
@@ -51,10 +53,12 @@ class Rynx : Solution
         conf.SolutionPath = @"[solution.SharpmakeCsPath]\..";
         conf.AddProject<Game>(target);
 		
-		conf.AddProject<TestTech>(target);
-		conf.AddProject<TestScheduler>(target);
-	}
+        conf.AddProject<TestTech>(target);
+        conf.AddProject<TestScheduler>(target);
+    }
 }
+
+
 
 public class EntryPoint
 {
