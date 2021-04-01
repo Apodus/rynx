@@ -41,7 +41,6 @@ namespace rynx {
 			index_t step = 0;
 		};
 
-		struct value_segregated_component {};
 		class entity_category;
 
 	private:
@@ -63,34 +62,34 @@ namespace rynx {
 			}
 		};
 
-		// used for value hashes in value segregated component types.
-		template<typename T>
-		struct local_hash_function {
-			size_t operator()(const T& t) {
-				return t.hash();
-			}
-		};
-
 		type_index m_types;
 		rynx::ecs_internal::entity_index m_entities;
 
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
-		rynx::unordered_map<type_id_t, opaque_unique_ptr<void>> m_value_segregated_types_maps;
+		rynx::unordered_map<type_id_t, opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>> m_value_segregated_types_maps;
 
 		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
 		auto& categories() { return m_categories; }
 		const auto& categories() const { return m_categories; }
 
+		rynx::ecs_internal::ivalue_segregation_map& value_segregated_types_map(type_id_t type_id, std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func) {
+			auto it = m_value_segregated_types_maps.find(type_id);
+			if (it == m_value_segregated_types_maps.end()) {
+				it = m_value_segregated_types_maps.emplace(type_id, map_create_func()).first;
+			}
+			return *it->second.get();
+		}
+
 		template<typename T>
 		auto& value_segregated_types_map() {
-			using map_type = rynx::unordered_map<T, rynx::type_index::virtual_type, local_hash_function<T>>;
+			using map_type = rynx::ecs_internal::value_segregation_map<T>;
 			
 			auto type_id = m_types.id<T>();
 			auto it = m_value_segregated_types_maps.find(type_id);
 			if (it == m_value_segregated_types_maps.end()) {
-				opaque_unique_ptr<void> map_ptr(new map_type(), [](void* v) {
+				opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map> map_ptr(new map_type(), [](void* v) {
 					delete static_cast<map_type*>(v);
 				});
 				it = m_value_segregated_types_maps.emplace(type_id, std::move(map_ptr)).first;
@@ -231,6 +230,20 @@ namespace rynx {
 				return index;
 			}
 
+			void insertComponent_typeErased(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, type_id_t type_id, rynx::ecs_table_create_func& creator, opaque_unique_ptr<void> data) {
+				auto it = typeAliases.find(type_id);
+				if (it == typeAliases.end()) {
+					auto* table_ptr = table(type_id, creator);
+					if(table_ptr != nullptr)
+						table_ptr->insert(std::move(data));
+				}
+				else {
+					auto* table_ptr = table(it->second, creator);
+					if (table_ptr != nullptr)
+						table_ptr->insert(std::move(data));
+				}
+			}
+
 			template<typename...Components> void insertComponents(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, Components&& ... components) {
 				(insertSingleComponent(typeAliases, std::forward<Components>(components)), ...);
 			}
@@ -243,11 +256,20 @@ namespace rynx {
 			}
 
 			template<typename Component> void eraseComponentFromIndex([[maybe_unused]] const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, [[maybe_unused]] index_t index) {
-				if constexpr (!std::is_empty_v<std::remove_cvref_t<Component>> && !std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<Component>>) {
+				if constexpr (!std::is_empty_v<std::remove_cvref_t<Component>> && !std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<Component>>) {
 					auto& t = table<Component>(typeAliases);
 					t[index] = std::move(t.back());
 					t.pop_back();
 				}
+			}
+
+			void eraseComponentFromIndex([[maybe_unused]] const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, index_t index, type_id_t type_id_v) {
+				auto it = typeAliases.find(type_id_v);
+				if (it != typeAliases.end())
+					type_id_v = it->second;
+				
+				auto& t = table(static_cast<int32_t>(type_id_v));
+				t.replace_with_back_and_pop(index);
 			}
 
 			template<typename...Components> void eraseComponentsFromIndex(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, index_t index) { (eraseComponentFromIndex<Components>(typeAliases, index), ...); }
@@ -359,7 +381,22 @@ namespace rynx {
 			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 			template<typename T> const auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) const { return const_cast<entity_category*>(this)->table<T>(typeAliases); }
-			rynx::ecs_internal::itable& table(int32_t type_index_value) { return *m_tables[type_index_value]; }
+			
+			rynx::ecs_internal::itable& table(type_id_t type_index_value) {
+				rynx_assert(m_tables[type_index_value] != nullptr, "table must exist");
+				return *m_tables[type_index_value];
+			}
+
+			// returning pointer type to highlight the fact that calling this may return nullptr (tag types).
+			rynx::ecs_internal::itable* table(type_id_t type_index_value, rynx::ecs_table_create_func& creator) {
+				if (type_index_value >= m_tables.size()) {
+					m_tables.resize(2 * (type_index_value + 1));
+				}
+				if (m_tables[type_index_value] == nullptr) {
+					m_tables[type_index_value] = creator();
+				}
+				return m_tables[type_index_value].get();
+			}
 
 			// this is not particularly fast - but required for some editor related things for example.
 			template<typename Func> void forEachTable(Func&& func) {
@@ -822,7 +859,13 @@ namespace rynx {
 			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
 				std::vector<rynx::reflection::type> result;
 				m_entity_category->forEachTable([&result, &reflections](rynx::ecs_internal::itable* tbl) {
-					result.emplace_back(*reflections.find(tbl->m_type_id));
+					auto* reflection_entry = reflections.find(tbl->m_type_id);
+					if (reflection_entry) {
+						result.emplace_back(*reflection_entry);
+					}
+					else {
+						logmsg("WARNING: reflections undefined for type: '%s' which is used as an ecs component", tbl->type_name().c_str());
+					}
 				});
 				return result;
 			}
@@ -873,6 +916,11 @@ namespace rynx {
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
 				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
+			}
+
+			bool has(type_id_t t) const noexcept {
+				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
+				return m_entity_category->types().test(t);
 			}
 
 			bool has(rynx::type_index::virtual_type t) const noexcept {
@@ -1225,8 +1273,11 @@ namespace rynx {
 
 				// source category typenames is the correct order to deserialize in.
 				for (auto&& name : category_typenames) {
-					auto type_index_value = reflections.find(name)->m_type_index_value;
-					category_it->second->table(type_index_value).deserialize(in);
+					auto reflection_ptr = reflections.find(name);
+					auto type_index_value = reflection_ptr->m_type_index_value;
+					auto* table_ptr = category_it->second->table(type_index_value, reflection_ptr->m_create_table_func);
+					if(table_ptr != nullptr)
+						table_ptr->deserialize(in);
 				}
 
 				// deserialize category ids and insert them to the category.
@@ -1317,7 +1368,7 @@ namespace rynx {
 		}
 
 		template<typename...Args> void componentTypesAllowed() const {
-			static_assert(true && ((!std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<Args>> || std::is_const_v<std::remove_reference_t<Args>> || !std::is_reference_v<Args>) && ...), "");
+			static_assert(true && ((!std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<Args>> || std::is_const_v<std::remove_reference_t<Args>> || !std::is_reference_v<Args>) && ...), "");
 		}
 
 		template<typename T> type_id_t type_id_for([[maybe_unused]] const T& t) {
@@ -1352,7 +1403,7 @@ namespace rynx {
 			template<typename T>
 			void compute_type_category(rynx::dynamic_bitset& dst, T& component) {
 				dst.set(mapped_type_id(m_ecs.type_id_for(component)));
-				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<T>>) {
+				if constexpr (std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>) {
 					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 					auto it = map.find(component);
 					if (it == map.end()) {
@@ -1366,10 +1417,31 @@ namespace rynx {
 				}
 			}
 
+			void compute_type_category(
+				rynx::dynamic_bitset& dst,
+				type_id_t type_id,
+				bool is_value_segregated,
+				std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
+				void* data)
+			{
+				dst.set(mapped_type_id(type_id));
+				if (is_value_segregated) {
+					auto& map = m_ecs.value_segregated_types_map(type_id, map_create_func);
+					if (!map.contains(data)) {
+						auto v_type = m_ecs.create_virtual_type();
+						map.emplace(data, v_type);
+						dst.set(v_type.type_value);
+					}
+					else {
+						dst.set(map.get_type_id_for(data).type_value);
+					}
+				}
+			}
+
 			template<typename T>
 			void compute_type_category_n(rynx::dynamic_bitset& dst, std::vector<T>& component) {
 				dst.set(mapped_type_id(m_ecs.type_id_for(component.front())));
-				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<T>>) {
+				if constexpr (std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>) {
 					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 					auto it = map.find(component.front());
 					if (it == map.end()) {
@@ -1386,7 +1458,7 @@ namespace rynx {
 			template<typename T>
 			void reset_component(rynx::dynamic_bitset& dst, [[maybe_unused]] entity_id_t id) {
 				dst.reset(mapped_type_id(m_ecs.m_types.id<T>()));
-				if constexpr (std::is_base_of_v<rynx::ecs::value_segregated_component, std::remove_cvref_t<T>>) {
+				if constexpr (std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>) {
 					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 
 					auto it = map.find(m_ecs[id].get<T>());
@@ -1451,6 +1523,46 @@ namespace rynx {
 					}
 					return created_ids;
 				}
+			}
+
+			edit_t& attachToEntity_typeErased(
+				entity_id_t id,
+				type_id_t type_id,
+				bool is_value_segregated,
+				rynx::ecs_table_create_func& table_create_func,
+				std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
+				opaque_unique_ptr<void> component)
+			{
+				auto it = m_ecs.m_idCategoryMap.find(id);
+				auto* source_category = it->second.first;
+				index_t source_index = it->second.second;
+
+				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "attachToEntity called for entity that does not exist.");
+				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
+
+				const dynamic_bitset& initialTypes = source_category->types();
+				dynamic_bitset resultTypes = initialTypes;
+				compute_type_category(resultTypes, type_id, is_value_segregated, map_create_func, component.get());
+
+				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
+				if (destinationCategoryIt == m_ecs.m_categories.end()) {
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
+				}
+
+				rynx_assert(destinationCategoryIt->second->types() != source_category->types(), "attaching component to entity, but entity already has that component!");
+
+				// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
+				destinationCategoryIt->second->migrateEntityFrom(
+					initialTypes, // types moved
+					source_category, // source category
+					source_index, // source index
+					m_ecs.m_idCategoryMap
+				);
+
+				m_ecs.erase_category_if_empty(source_category);
+				destinationCategoryIt->second->insertComponent_typeErased(m_typeAliases, type_id, table_create_func, std::move(component));
+				return *this;
 			}
 
 			template<typename... Components>
@@ -1519,6 +1631,41 @@ namespace rynx {
 				return *this;
 			}
 
+			edit_t& removeFromEntity(entity_id_t id, type_id_t t) {
+				auto it = m_ecs.m_idCategoryMap.find(id);
+				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
+
+				auto* source_category = it->second.first;
+				index_t source_index = it->second.second;
+
+				const dynamic_bitset& initialTypes = source_category->types();
+				dynamic_bitset resultTypes = initialTypes;
+				resultTypes.reset(t);
+
+				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
+				if (destinationCategoryIt == m_ecs.m_categories.end()) {
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
+				}
+
+				if (m_ecs.m_value_segregated_types_maps.find(t) == m_ecs.m_value_segregated_types_maps.end()) {
+					source_category->eraseComponentFromIndex(m_typeAliases, source_index, t);
+				}
+				destinationCategoryIt->second->migrateEntityFrom(
+					resultTypes,
+					source_category,
+					source_index,
+					m_ecs.m_idCategoryMap
+				);
+
+				m_ecs.erase_category_if_empty(source_category);
+				return *this;
+			}
+
+			edit_t& removeFromEntity(rynx::id id, type_id_t t) {
+				return removeFromEntity(id.value, t);
+			}
+
 			edit_t& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
 				auto it = m_ecs.m_idCategoryMap.find(id);
 				rynx_assert(it != m_ecs.m_idCategoryMap.end(), "removeFromEntity called for entity that does not exist.");
@@ -1578,8 +1725,8 @@ namespace rynx {
 			return edit_t(*this).removeFromEntity(id, t);
 		}
 
-		template<typename... Components> ecs& attachToEntity(id id, Components&& ... components) { attachToEntity(id.value, std::forward<Components>(components)...); return *this; }
-		template<typename... Components> ecs& removeFromEntity(id id) { removeFromEntity<Components...>(id.value); return *this; }
+		template<typename... Components> ecs& attachToEntity(rynx::id id, Components&& ... components) { attachToEntity(id.value, std::forward<Components>(components)...); return *this; }
+		template<typename... Components> ecs& removeFromEntity(rynx::id id) { removeFromEntity<Components...>(id.value); return *this; }
 
 		rynx::type_index::virtual_type create_virtual_type() { return m_types.create_virtual_type(); }
 
@@ -1613,7 +1760,7 @@ namespace rynx {
 
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }
 			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<Args>() && ...); }
-			template<typename Arg> static constexpr bool valueSegregatedTypeAccessedOnlyInConstContext() { return !std::is_base_of_v<rynx::ecs::value_segregated_component, Arg> || std::is_const_v<std::remove_reference_t<Arg>> || !std::is_reference_v<Arg>; }
+			template<typename Arg> static constexpr bool valueSegregatedTypeAccessedOnlyInConstContext() { return !std::is_base_of_v<rynx::ecs_value_segregated_component_tag, Arg> || std::is_const_v<std::remove_reference_t<Arg>> || !std::is_reference_v<Arg>; }
 			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
 
 		protected:

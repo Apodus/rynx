@@ -23,7 +23,7 @@ namespace rynx {
 	namespace components {
 		
 		struct particle_emitter {
-			rynx::math::value_range<rynx::floats4> ANNOTATE("range 0 1") start_color;
+			rynx::math::value_range<rynx::floats4> ANNOTATE("range 0 1") start_color = { rynx::floats4{1, 1, 1, 1}, rynx::floats4{1, 1, 1, 1} };
 			rynx::math::value_range<rynx::floats4> ANNOTATE("range 0 1") end_color;
 			rynx::math::value_range<float> ANNOTATE(">=0") start_radius;
 			rynx::math::value_range<float> ANNOTATE(">=0") end_radius;
@@ -35,7 +35,7 @@ namespace rynx {
 			rynx::math::value_range<float> initial_angle;
 			rynx::math::value_range<rynx::vec3f> constant_force;
 
-			rynx::math::value_range<float> ANNOTATE(">=0") spawn_rate;
+			rynx::math::value_range<float> ANNOTATE(">=0") spawn_rate = {1.0f, 1.0f};
 
 			bool rotate_with_host = false;
 			vec3f position_offset;
@@ -182,8 +182,8 @@ namespace rynx {
 				rynx::ecs::id id_a;
 				rynx::ecs::id id_b;
 
-				vec3<float> point_a;
-				vec3<float> point_b;
+				rynx::vec3<float> point_a;
+				rynx::vec3<float> point_b;
 
 				float ANNOTATE(">=0") length;
 				float ANNOTATE(">=0") strength;
@@ -213,7 +213,7 @@ namespace rynx {
 #endif
 		}
 
-		struct mesh : public rynx::ecs::value_segregated_component {
+		struct mesh : public rynx::ecs_value_segregated_component_tag {
 			mesh() = default;
 			mesh(rynx::graphics::mesh* p) : m(p) {}
 			size_t hash() const { return size_t(uintptr_t(m)); }

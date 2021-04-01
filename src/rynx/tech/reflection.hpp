@@ -83,11 +83,22 @@ namespace rynx {
 			std::string m_type_name;
 			std::vector<field> m_fields;
 			int32_t m_type_index_value = -1;
-			std::function<std::unique_ptr<rynx::ecs_internal::itable>()> m_create_table_func;
+			bool m_is_type_segregated = false;
+
+			rynx::ecs_table_create_func m_create_table_func;
+			std::function<opaque_unique_ptr<void>()> m_create_instance_func;
+			std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> m_create_map_func;
 
 			template<typename MemberType, typename ObjectType>
 			type& add_field(std::string fieldName, MemberType ObjectType::* ptr) {
-				m_fields.emplace_back(rynx::reflection::field::construct(fieldName, ptr));
+				auto field = rynx::reflection::field::construct(fieldName, ptr);
+				bool exists_already = false;
+				for (auto&& f : m_fields) {
+					exists_already |= (field.m_memory_offset == f.m_memory_offset);
+				}
+				if (!exists_already) {
+					m_fields.emplace_back(field);
+				}
 				return *this;
 			}
 
@@ -202,14 +213,24 @@ namespace rynx {
 				rynx::reflection::type result;
 				result.m_type_name = std::string(typeid(T).name());
 				result.m_type_index_value = static_cast<int32_t>(m_type_index.id<T>());
-				result.m_create_table_func = [this]() {
-					if constexpr (std::is_empty_v<T>) {
-						return std::unique_ptr<rynx::ecs_internal::component_table<T>>(nullptr); // don't create tables for empty types (tag types)
-					}
-					else {
-						return std::make_unique<rynx::ecs_internal::component_table<T>>(m_type_index.id<T>());
-					}
+				
+				// TODO: Ecs utils should be tightly knit somewhere under ecs. It is wrong for reflection to make these assumptions.
+				result.m_is_type_segregated = std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>;
+				result.m_create_table_func = rynx::make_ecs_table_create_func<T>(result.m_type_index_value);
+				result.m_create_instance_func = []() {
+					return opaque_unique_ptr<void>(new T(), [](void* t) { if(t) delete static_cast<T*>(t); });
 				};
+
+				result.m_create_map_func = []() {
+					using tag_t = rynx::ecs_value_segregated_component_tag;
+					using type_t = std::remove_cvref_t<T>;
+					if constexpr (std::is_base_of_v<tag_t, type_t> && !std::is_same_v<tag_t, type_t>) {
+						return std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(new rynx::ecs_internal::value_segregation_map<T>());
+					}
+					rynx_assert(false, "calling map create for a type that has no map type");
+					return std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
+				};
+
 				m_reflections.emplace(std::string(typeid(T).name()), std::move(result));
 				return get<T>();
 			}
@@ -251,6 +272,14 @@ namespace rynx {
 					}
 				}
 				return nullptr;
+			}
+
+			std::vector<std::pair<std::string, rynx::reflection::type>> get_reflection_data() const {
+				std::vector<std::pair<std::string, rynx::reflection::type>> result;
+				for (const auto& entry : m_reflections) {
+					result.emplace_back(entry.first, entry.second);
+				}
+				return result;
 			}
 
 			bool has(const std::string& s) { return m_reflections.find(s) != m_reflections.end(); }

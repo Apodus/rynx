@@ -84,6 +84,11 @@ void rynx::menu::SlideBarVertical::onDedicatedInput(rynx::mapped_input& input) {
 }
 
 void rynx::menu::SlideBarVertical::update(float dt) {
+	m_knobDiv->color().w = m_color->w;
+	if(m_background)
+		m_background->color().w = m_color->w;
+	set_input_enabled(m_color->w > 0.01f);
+
 	m_knobDiv->position_local(scale_world().x * (m_currentValue - 0.5f));
 	m_knobDiv->position_approach(dt * 10);
 

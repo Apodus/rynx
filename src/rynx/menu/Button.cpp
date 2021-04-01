@@ -34,4 +34,6 @@ void rynx::menu::Button::onInput(rynx::mapped_input&) {}
 void rynx::menu::Button::draw(rynx::graphics::renderer&) const {}
 void rynx::menu::Button::update(float dt) {
 	m_background->color(m_color);
+	m_textField->color().w = m_color->w;
+	set_input_enabled(m_color->w > 0.01f);
 }

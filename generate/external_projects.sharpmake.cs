@@ -8,7 +8,7 @@ class stb : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\stb\";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
@@ -23,7 +23,7 @@ class GLEW : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\glew-2.1.0\src";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
@@ -43,11 +43,11 @@ class GLFW : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\glfw-3.3\src";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
-		if(target.Platform == Platform.win64)
+		if (target.Platform == Platform.win64)
 		{
 			conf.SourceFilesFiltersRegex.Add("[/\\\\]win32.*c");
 			conf.SourceFilesFiltersRegex.Add("[/\\\\]context.c");
@@ -59,12 +59,12 @@ class GLFW : ExternalProject
 			conf.SourceFilesFiltersRegex.Add("[/\\\\]wgl_context.c");
 			conf.SourceFilesFiltersRegex.Add("[/\\\\]window.c");
 			conf.SourceFilesFiltersRegex.Add("[/\\\\]vulkan.c");
-			
+
 			conf.Defines.Add("WIN32");
 			conf.Defines.Add("_WINDOWS");
 			conf.Defines.Add("_CRT_SECURE_NO_WARNINGS");
 		}
-		
+
 		conf.Defines.Add("_GLFW_USE_CONFIG_H");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\glfw-3.3\include");
 	}
@@ -77,11 +77,11 @@ class portaudio : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\portaudio\src";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
-		if(target.Platform == Platform.win64)
+		if (target.Platform == Platform.win64)
 		{
 			// conf.SourceFilesFiltersRegex.Add(".*win.*");
 			conf.SourceFilesBuildExcludeRegex.Add(".*mac_.*");
@@ -92,12 +92,12 @@ class portaudio : ExternalProject
 			conf.SourceFilesBuildExcludeRegex.Add(".*pa_asio.*");
 			conf.SourceFilesBuildExcludeRegex.Add(".*recplay.*");
 		}
-		
+
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\common");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\hostapi");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\os");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\os\win");
-		
+
 		conf.Defines.Add("PA_USE_WASAPI=1");
 		// conf.Defines.Add("PA_USE_ASIO=0");
 		// conf.Defines.Add("PA_USE_DS=0");
@@ -114,7 +114,7 @@ class libogg : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\libogg-1.3.4\src";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
@@ -129,7 +129,7 @@ class libvorbis : ExternalProject
 	{
 		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\libvorbis-1.3.6\lib";
 	}
-	
+
 	[Configure]
 	public void ConfigureAll(Project.Configuration conf, Target target)
 	{
@@ -137,7 +137,7 @@ class libvorbis : ExternalProject
 		conf.Defines.Add("LIBVORBIS_EXPORTS");
 		conf.AddPublicDependency<libogg>(target);
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\libvorbis-1.3.6\include");
-		
+
 		conf.SourceFilesBuildExcludeRegex.Add(".*tone.c");
 		conf.SourceFilesBuildExcludeRegex.Add(".*psytune.c");
 	}

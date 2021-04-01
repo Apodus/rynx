@@ -48,6 +48,7 @@
 
 #include <rynx/audio/audio.hpp>
 
+#include <rynx/editor/editor.hpp>
 
 
 #include <rynx/tech/collision_detection.hpp>
@@ -205,6 +206,8 @@ int main(int argc, char** argv) {
 	application.loadTextures("../textures/textures.txt");
 	application.renderer().loadDefaultMesh("Empty");
 
+	application.renderer().setDefaultFont(fontConsola);
+
 	auto meshes = application.renderer().meshes();
 	{
 		meshes->create("ball", rynx::Shape::makeCircle(1.0f, 32), "Hero");
@@ -212,15 +215,31 @@ int main(int argc, char** argv) {
 		meshes->create("square_empty", rynx::Shape::makeBox(1.0f), "Empty");
 		meshes->create("particle_smoke", rynx::Shape::makeBox(1.0f), "Smoke");
 		meshes->create("square_rope", rynx::Shape::makeBox(1.0f), "Rope");
+		meshes->create(
+			"circle_border",
+			rynx::polygon_triangulation().make_boundary_mesh(
+				rynx::Shape::makeSphere(0.5f, 64),
+				application.textures()->textureLimits("Empty"),
+				0.01f),
+			"Empty"
+		);
+		meshes->create(
+			"box_border",
+			rynx::polygon_triangulation().make_boundary_mesh(
+				rynx::Shape::makeBox(1.0f),
+				application.textures()->textureLimits("Empty"),
+				0.01f),
+			"Empty"
+		);
 	}
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
 	rynx::ecs& ecs = base_simulation.m_ecs;
 
-	rynx::reflection::reflections r(ecs.get_type_index());
-	r.load_generated_reflections();
-	rynx_assert(r.find(typeid(rynx::components::color).name()) != nullptr, "yup");
+	rynx::reflection::reflections reflections(ecs.get_type_index());
+	reflections.load_generated_reflections();
+	rynx_assert(reflections.find(typeid(rynx::components::color).name()) != nullptr, "yup");
 
 	std::shared_ptr<rynx::camera> camera = std::make_shared<rynx::camera>();
 	camera->setProjection(0.02f, 20000.0f, application.aspectRatio());
@@ -246,20 +265,40 @@ int main(int argc, char** argv) {
 	// set additional resources your simulation wants to use.
 	{
 		base_simulation.set_resource(&collisionDetection);
+		base_simulation.set_resource(application.textures().get());
+		base_simulation.set_resource(&gameInput);
+		base_simulation.set_resource(camera.get());
 	}
 
 	// TODO: use std::observer_ptr
 	ball_spawner_ruleset* spawner = nullptr;
 
+	rynx::menu::System menuSystem;
+	rynx::menu::Component& root = *menuSystem.root();
+
+	auto program_state_game_running = base_simulation.m_context->access_state().generate_state_id();
+	auto program_state_editor_running = base_simulation.m_context->access_state().generate_state_id();
+
 	// setup game logic
-	{
-		auto ruleset_collisionDetection = base_simulation.rule_set().create<rynx::ruleset::physics_2d>();
+	{	
+		auto ruleset_collisionDetection = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics_2d>();
 		auto ruleset_particle_update = base_simulation.rule_set().create<rynx::ruleset::particle_system>();
 		auto ruleset_frustum_culling = base_simulation.rule_set().create<rynx::ruleset::frustum_culling>(camera);
-		auto ruleset_motion_updates = base_simulation.rule_set().create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
-		auto ruleset_physical_springs = base_simulation.rule_set().create<rynx::ruleset::physics::springs>();
-		auto ruleset_lifetime_updates = base_simulation.rule_set().create<rynx::ruleset::lifetime_updates>();
-		auto ruleset_minilisk_gen = base_simulation.rule_set().create<ball_spawner_ruleset>(meshes, collisionCategoryDynamic);
+		auto ruleset_motion_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
+		auto ruleset_physical_springs = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics::springs>();
+		auto ruleset_lifetime_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::lifetime_updates>();
+		auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(meshes, collisionCategoryDynamic);
+		auto ruleset_editor = base_simulation.rule_set(program_state_editor_running).create<rynx::editor_rules>(
+			*base_simulation.m_context,
+			reflections,
+			&fontConsola,
+			&root,
+			*application.textures(),
+			gameInput
+		);
+
+		ruleset_editor->add_tool<rynx::editor::tools::polygon_tool>(*base_simulation.m_context);
+
 		spawner = ruleset_minilisk_gen.operator->();
 
 		ruleset_physical_springs->depends_on(ruleset_motion_updates);
@@ -429,10 +468,9 @@ int main(int argc, char** argv) {
 	auto cameraRight = gameInput.generateAndBindGameKey('L', "cameraRight");
 	auto cameraDown = gameInput.generateAndBindGameKey('K', "cameraDown");
 	
-	rynx::menu::System menuSystem;
-
-	rynx::menu::Component& root = *menuSystem.root();
-
+	auto key_toggle_game_simulation = gameInput.generateAndBindGameKey('P', "simulation enabled");
+	auto key_toggle_editor_enabled = gameInput.generateAndBindGameKey('O', "editor enabled");
+	
 	struct debug_conf {
 		bool visualize_dynamic_collisions = false;
 		bool visualize_static_collisions = false;
@@ -516,9 +554,8 @@ int main(int argc, char** argv) {
 	rynx::graphics::screenspace_draws(); // initialize gpu buffers for screenspace ops.
 	rynx::application::renderer render(application, camera);
 
-	auto editorstate = base_simulation.m_context->access_state().generate_state_id();
-	editorstate.disable();
-	render.debug_draw_binary_config(editorstate);
+	program_state_editor_running.disable();
+	render.debug_draw_binary_config(program_state_editor_running);
 
 	auto camera_orientation_key = gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(1), "camera_orientation");
 
@@ -586,9 +623,17 @@ int main(int argc, char** argv) {
 			if (gameInput.isKeyDown(cameraDown)) { cameraPosition -= camera->local_forward() * camera_translate_multiplier; }
 			// if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
 			// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
+
+			if (gameInput.isKeyClicked(key_toggle_editor_enabled)) { program_state_editor_running.toggle(); }
+			if (gameInput.isKeyClicked(key_toggle_game_simulation)) { program_state_game_running.toggle(); }
 		}
 
 		timer.reset();
+
+		// menu input must happen first before tick. in case menu components
+		// reserve some input as private.
+		menuSystem.input(gameInput);
+
 		{
 			rynx_profile("Main", "Construct frame tasks");
 			base_simulation.generate_tasks(dt);
@@ -611,8 +656,7 @@ int main(int argc, char** argv) {
 		auto logic_time_us = swap_time_us + timer.time_since_last_access_us();
 		logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
 		
-		// menu input is part of logic, not visualization. must tick every frame.
-		menuSystem.input(gameInput);
+		// menu updates are part of logic, not visualization. must tick every frame.
 		menuSystem.update(dt, application.aspectRatio());
 
 		// should we render or not.
@@ -709,7 +753,7 @@ int main(int argc, char** argv) {
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.debugVis()->addDebugVisual(meshes->get("circle_empty"), m, node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugVisual(meshes->get("circle_border"), m, node_colors[depth % node_colors.size()]);
 						});
 					}
 
@@ -721,7 +765,7 @@ int main(int argc, char** argv) {
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.debugVis()->addDebugVisual(meshes->get("circle_empty"), m, node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugVisual(meshes->get("circle_border"), m, node_colors[depth % node_colors.size()]);
 						});
 					}
 				}

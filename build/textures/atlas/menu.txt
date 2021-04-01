@@ -1,5 +1,6 @@
 - 8 8
 3 2 Frame
+3 2 Editor_Frame
 
 - 16 16
 6 1 ButtonBase
@@ -16,6 +17,7 @@
 2 2 Retry
 1 2 Show
 7 4 Selection
+7 4 Editor_SliderMarker
 
 - 4 8
 2 3 Shoulders

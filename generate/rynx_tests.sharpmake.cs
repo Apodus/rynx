@@ -8,11 +8,11 @@ public class TestScheduler : TestProject
     {
         SourceRootPath = @"[project.SharpmakeCsPath]\..\src\test\scheduler\";
     }
-	
-	[Configure]
+
+    [Configure]
     public void conf_test(Project.Configuration conf, Target target)
     {
-		conf.AddPublicDependency<Scheduler>(target);
+        conf.AddPublicDependency<Scheduler>(target);
     }
 }
 
@@ -23,10 +23,10 @@ public class TestTech : TestProject
     {
         SourceRootPath = @"[project.SharpmakeCsPath]\..\src\test\tech\";
     }
-	
-	[Configure]
+
+    [Configure]
     public void conf_test(Project.Configuration conf, Target target)
     {
-		conf.AddPublicDependency<Tech>(target);
-	}
+        conf.AddPublicDependency<Tech>(target);
+    }
 }

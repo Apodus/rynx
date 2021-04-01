@@ -113,6 +113,28 @@ namespace rynx {
 				vec3<float> position = vec3<float>(0, 0, 0)
 			);
 
+			void disable_input() { m_active = false; }
+			void enable_input() { m_active = true; }
+			void set_input_enabled(bool enableInput) {
+				m_active = enableInput;
+			}
+
+			void recursive_call(std::function<void(rynx::menu::Component*)> func) {
+				func(this);
+				for (auto& child : m_children)
+					child->recursive_call(func);
+			}
+
+			// TODO:
+			void die() {
+				parent()->detachChild(this);
+			}
+
+			void capture_dedicated_mouse_input();
+			void capture_dedicated_keyboard_input();
+			void release_dedicated_mouse_input();
+			void release_dedicated_keyboard_input();
+
 			virtual ~Component() {}
 
 			void on_hover(std::function<bool(rynx::vec3f, bool)> hover_func) { m_on_hover.emplace_back(std::move(hover_func)); }
@@ -132,7 +154,7 @@ namespace rynx {
 
 			void input(rynx::mapped_input& input);
 			
-			virtual void onDedicatedInput(rynx::mapped_input&) {}
+			virtual void onDedicatedInput(rynx::mapped_input& input) { for (auto&& child : m_children) child->input(input); }
 			virtual void onDedicatedInputLost() {}
 			virtual void onDedicatedInputGained() {}
 

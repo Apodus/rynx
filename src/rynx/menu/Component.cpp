@@ -154,6 +154,19 @@ rynx::menu::Component::Component(
 	m_color.tick(1.0f);
 }
 
+void rynx::menu::Component::capture_dedicated_mouse_input() {
+	m_menuSystem->capture_mouse_input(this);
+}
+void rynx::menu::Component::capture_dedicated_keyboard_input() {
+	m_menuSystem->capture_keyboard_input(this);
+}
+void rynx::menu::Component::release_dedicated_mouse_input() {
+	m_menuSystem->release_mouse_input();
+}
+void rynx::menu::Component::release_dedicated_keyboard_input() {
+	m_menuSystem->release_keyboard_input();
+}
+
 void rynx::menu::Component::set_parent(Component* other) {
 	m_pParent = other;
 }
@@ -196,14 +209,14 @@ void rynx::menu::Component::reparent(Component& other) {
 
 
 void rynx::menu::Component::input(rynx::mapped_input& input) {
-	if (m_active) {
-		// input is handled in reverse order. the last thing drawn on the screen is the first to
-		// handle input. in case multiple buttons are drawn on top of each other (for example some menu layer + popup dialog)
-		// the top most (last drawn) menu element should be the one to consume any mouse clicks.
-		for (auto it = m_children.rbegin(); it != m_children.rend(); ++it) {
-			(*it)->input(input);
-		}
+	// input is handled in reverse order. the last thing drawn on the screen is the first to
+	// handle input. in case multiple buttons are drawn on top of each other (for example some menu layer + popup dialog)
+	// the top most (last drawn) menu element should be the one to consume any mouse clicks.
+	for (auto it = m_children.rbegin(); it != m_children.rend(); ++it) {
+		(*it)->input(input);
+	}
 
+	if (m_active) {
 		rynx::vec3f mousePos = input.mouseMenuPosition(m_aspectRatio);
 		if (!m_on_hover.empty()) {
 			bool inRect = inRectComponent(mousePos);

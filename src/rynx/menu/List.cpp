@@ -100,25 +100,28 @@ void rynx::menu::List::update(float dt) {
 		
 		for (auto&& child : m_children) {
 			child->velocity_position(m_list_elements_velocity);
-			float dst_alpha = 1.0f;
+			
+			child->recursive_call([this, container_top_edge, container_bot_edge](rynx::menu::Component* child) {
+				float dst_alpha = 1.0f;
 
-			float child_top_edge = child->position_world().y + child->scale_world().y * 0.33f;
-			float child_bot_edge = child->position_world().y - child->scale_world().y * 0.33f;
+				float child_top_edge = child->position_world().y + child->scale_world().y * 0.33f;
+				float child_bot_edge = child->position_world().y - child->scale_world().y * 0.33f;
 
-			if (child_top_edge > container_top_edge) {
-				float outside = (child_top_edge - container_top_edge) / (m_list_endpoint_margin + 0.01f);
-				outside *= outside;
-				outside *= outside;
-				dst_alpha = std::clamp(1.0f - outside, 0.0f, 1.0f);
-				child->color().w *= dst_alpha;
-			}
-			if (child_bot_edge < container_bot_edge) {
-				float outside = (container_bot_edge - child_bot_edge) / (m_list_endpoint_margin + 0.01f);
-				outside *= outside;
-				outside *= outside;
-				dst_alpha = std::clamp(1.0f - outside, 0.0f, 1.0f);
-				child->color().w *= dst_alpha;
-			}
+				if (child_top_edge > container_top_edge) {
+					float outside = (child_top_edge - container_top_edge) / (m_list_endpoint_margin + 0.01f);
+					outside *= outside;
+					outside *= outside;
+					dst_alpha = std::clamp(1.0f - outside, 0.0f, 1.0f);
+					child->color().w *= dst_alpha;
+				}
+				if (child_bot_edge < container_bot_edge) {
+					float outside = (container_bot_edge - child_bot_edge) / (m_list_endpoint_margin + 0.01f);
+					outside *= outside;
+					outside *= outside;
+					dst_alpha = std::clamp(1.0f - outside, 0.0f, 1.0f);
+					child->color().w *= dst_alpha;
+				}
+			});
 		}
 	}
 }

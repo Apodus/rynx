@@ -4,60 +4,61 @@ using Sharpmake;
 
 public class RynxProject : Project
 {
-	public RynxProject() {
+	public RynxProject()
+	{
 		AddTargets(
-            new Target(
-                Platform.win64,
-                DevEnv.vs2019,
-                Optimization.Debug | Optimization.Release | Optimization.Retail
-            )
-        );
+			new Target(
+				Platform.win64,
+				DevEnv.vs2019,
+				Optimization.Debug | Optimization.Release | Optimization.Retail
+			)
+		);
 
-SourceFilesIncludeRegex.Add(
-                @".ixx"
-            );
+		SourceFilesIncludeRegex.Add(@".ixx");
 	}
-	
+
 	[Configure()]
-    public virtual void conf_rynx_project(Project.Configuration conf, Target target)
-    {
+	public virtual void conf_rynx_project(Project.Configuration conf, Target target)
+	{
 		// compiler settings
 		{
 			conf.Defines.Add("_ENABLE_EXTENDED_ALIGNED_STORAGE");
 			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.v10_0_19041_0);
 
-			if(target.Optimization == Optimization.Retail) {
+			if (target.Optimization == Optimization.Retail)
+			{
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Fast);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Disable);
 			}
-			else {
+			else
+			{
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointModel.Fast);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.FloatingPointExceptions.Disable);
 			}
-			
+
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.RTTI.Enable);
 			conf.Options.Add(Sharpmake.Options.Vc.General.CharacterSet.Unicode);
-			
-			conf.Options.Add(Sharpmake.Options.Vc.Compiler.Exceptions.Enable);			
+
+			conf.Options.Add(Sharpmake.Options.Vc.Compiler.Exceptions.Enable);
 			conf.Options.Add(Sharpmake.Options.Makefile.Compiler.Exceptions.Enable);
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.CppLanguageStandard.Latest);
-			
+
 			conf.Options.Add(new Sharpmake.Options.Vc.Compiler.DisableSpecificWarnings("4324")); // 'struct_name' : structure was padded due to __declspec(align())
-			
+
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.MultiProcessorCompilation.Enable);
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.FiberSafe.Enable);
-			
+
 			if (target.Optimization == Optimization.Release)
 			{
 				conf.Defines.Add("RYNX_PROFILING_ENABLED_");
 			}
-			
+
 			if (target.Platform == Sharpmake.Platform.win64)
 			{
 				// conf.Options.Add(Sharpmake.Options.Vc.Compiler.EnhancedInstructionSet.SIMD2);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.EnhancedInstructionSet.AdvancedVectorExtensions2);
 			}
-			
+
 			if (target.Optimization != Optimization.Debug)
 			{
 				conf.Defines.Add("NDEBUG");
@@ -74,9 +75,9 @@ SourceFilesIncludeRegex.Add(
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.RuntimeChecks.Both);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.Optimization.Disable);
-				conf.Options.Add(Sharpmake.Options.Vc.Compiler.BufferSecurityCheck.Enable);			
+				conf.Options.Add(Sharpmake.Options.Vc.Compiler.BufferSecurityCheck.Enable);
 			}
-			
+
 			if (target.Optimization == Optimization.Retail)
 			{
 				conf.Options.Add(Sharpmake.Options.Vc.Linker.EnableCOMDATFolding.RemoveRedundantCOMDATs);
@@ -97,49 +98,49 @@ SourceFilesIncludeRegex.Add(
 				conf.Defines.Add("RYNX_ASSERTS_ENABLED_");
 			}
 		}
-		
+
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\src\");
-		
+
 		conf.Output = Project.Configuration.OutputType.Lib;
-        conf.ProjectPath = @"[project.SharpmakeCsPath]/../generate/build/projects/";
-		
+		conf.ProjectPath = @"[project.SharpmakeCsPath]/../generate/build/projects/";
+
 		conf.IntermediatePath = @"[conf.ProjectPath]/intermediate/[project.Name]_[target.Name]";
 		conf.TargetLibraryPath = @"[project.SharpmakeCsPath]\..\build_temp\lib_[target.Optimization]";
 		conf.SolutionFolder = "Rynx";
-		
+
 		conf.TargetFileName = Name;
 		conf.ProjectFileName = "[project.Name]_[target.DevEnv]";
 		conf.TargetPath = @"[conf.ProjectPath]/output/[project.Name]_[target.Name]";
-    }
+	}
 }
 
 public class TestProject : RynxProject
 {
-	public TestProject() {}
-	
+	public TestProject() { }
+
 	[Configure()]
 	public void ConfigureRynxProject(Configuration conf, Target target)
 	{
 		conf.SolutionFolder = "Rynx\\Tests";
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\catch2\");
 		conf.Output = Configuration.OutputType.Exe;
-		
+
 		conf.TargetFileName = Name;
 		conf.TargetPath = @"[project.SharpmakeCsPath]\..\build\tests\";
 		conf.VcxprojUserFile = new Configuration.VcxprojUserFileSettings()
-            { LocalDebuggerWorkingDirectory = conf.TargetPath };
+		{ LocalDebuggerWorkingDirectory = conf.TargetPath };
 	}
 }
 
 class ExternalProject : RynxProject
 {
-	public ExternalProject() {}
-	
+	public ExternalProject() { }
+
 	[Configure()]
 	public void conf_external(Project.Configuration conf, Target target)
-    {
-		if(target.Platform == Platform.win64)
+	{
+		if (target.Platform == Platform.win64)
 			conf.Options.Add(Options.Vc.General.WarningLevel.Level0); // don't care about external warnings
 		conf.SolutionFolder = "External";
-    }
+	}
 }

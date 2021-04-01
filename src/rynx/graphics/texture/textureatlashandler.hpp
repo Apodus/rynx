@@ -48,7 +48,7 @@ public:
 	rynx::floats4 getTextureCoordinateLimits(const std::string& subTextureID) const {
 		auto it = subTextures.find(subTextureID);
 		if(it == subTextures.end()) {
-			logmsg("Could not find %s", subTextureID.c_str());
+			logmsg("WARNING: Could not find texture %s", subTextureID.c_str());
 			return DEFAULT_TEXTURE_COORDINATES;
 		}
 		return it->second.subTextureCoordinates;
