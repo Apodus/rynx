@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <rynx/graphics/texture/id.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/tech/smooth_value.hpp>
 
@@ -141,7 +142,7 @@ namespace rynx {
 			void on_click(std::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
 			void on_input(std::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
 
-			void set_background(rynx::graphics::GPUTextures& textures, std::string texture, float edge_size = 0.2f);
+			void set_background(rynx::graphics::GPUTextures& textures, rynx::graphics::texture_id, float edge_size = 0.2f);
 
 			Component* parent() const { return m_pParent; }
 			float velocity_position() const { return m_position_update_velocity; }

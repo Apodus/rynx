@@ -1,5 +1,6 @@
 
 #include <rynx/application/visualisation/renderer.hpp>
+#include <rynx/graphics/texture/id.hpp>
 #include <rynx/math/vector.hpp>
 
 namespace rynx {
@@ -18,11 +19,15 @@ namespace rynx {
 				virtual ~scrolling_background_2d() {}
 				virtual void execute() override;
 				virtual void prepare(rynx::scheduler::context* ctx);
+				
 				void set_aspect_ratio(float aspect_ratio);
 				void set_motion_scale(float x, float y) { horizontal_motion_scale = x; vertical_motion_scale = y; }
+				void set_texture(rynx::graphics::texture_id tex) { m_bg_texture = tex; }
 
 			private:
 				rynx::graphics::mesh* m_bg_mesh = nullptr;
+				rynx::graphics::texture_id m_bg_texture;
+
 				std::shared_ptr<rynx::camera> m_camera;
 				rynx::graphics::renderer& m_mesh_renderer;
 				rynx::vec3f m_pos;

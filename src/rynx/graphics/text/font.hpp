@@ -59,7 +59,7 @@ public:
 		return offsetY * 1.0f / fontData.lineHeight * lineHeight;
 	}
 
-	const std::string& getTextureID() const {
-		return fontData.textureID;
+	rynx::graphics::texture_id getTextureID() const {
+		return fontData.texture_id;
 	}
 };

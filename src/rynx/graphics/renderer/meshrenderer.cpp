@@ -38,12 +38,17 @@ void rynx::graphics::renderer::init() {
 
 		shader_single->activate();
 		shader_single->uniform("tex", 0);
-		
+		shader_single->uniform("uvIndirect", 1);
+		shader_single->uniform("atlasBlocksPerRow", m_textures->getAtlasBlocksPerRow());
+
 		shader_instanced->activate();
 		shader_instanced->uniform("tex", 0);
-		
+		// shader_instanced_deferred->uniform("uvIndirect", 0);
+
 		shader_instanced_deferred->activate();
 		shader_instanced_deferred->uniform("tex", 0);
+		shader_instanced_deferred->uniform("uvIndirect", 1);
+		shader_instanced_deferred->uniform("atlasBlocksPerRow", m_textures->getAtlasBlocksPerRow());
 	}
 
 	{
@@ -58,13 +63,17 @@ void rynx::graphics::renderer::init() {
 		glGenBuffers(1, &normals_buffer);
 		glBindBuffer(GL_ARRAY_BUFFER, normals_buffer);
 		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+
+		glGenBuffers(1, &tex_id_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, tex_id_buffer);
+		glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 1 * sizeof(GLint), NULL, GL_STREAM_DRAW);
 	}
 
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
 
-void rynx::graphics::renderer::loadDefaultMesh(const std::string& textureName) {
-	m_rectangle = m_meshes->create("empty_box", Shape::makeBox(2.f), textureName);
+void rynx::graphics::renderer::loadDefaultMesh() {
+	m_rectangle = m_meshes->create(Shape::makeBox(2.f));
 }
 
 void rynx::graphics::renderer::setDepthTest(bool depthTestEnabled)
@@ -96,50 +105,11 @@ void rynx::graphics::renderer::drawLine(const vec3<float>& p1, const vec3<float>
 	// model_.rotate(math::atan_approx((p1.y - p2.y) / (p1.x - p2.x)), 0, 0, 1);
 	model_.scale((p1 - p2).length() * 0.5f, width * 0.5f, 1.0f);
 	model_ *= model;
-
-	if (m_rectangle->texture_name != "Empty") {
-		floats4 limits = m_textures->textureLimits("Empty");
-		m_rectangle->texture_name = "Empty";
-
-		float botCoordX = limits.x;
-		float botCoordY = limits.y;
-		float topCoordX = limits.z;
-		float topCoordY = limits.w;
-
-		m_rectangle->texCoords.clear();
-		m_rectangle->putUVCoord(topCoordX, botCoordY);
-		m_rectangle->putUVCoord(topCoordX, topCoordY);
-		m_rectangle->putUVCoord(botCoordX, topCoordY);
-		m_rectangle->putUVCoord(botCoordX, botCoordY);
-
-		m_rectangle->bind();
-		m_rectangle->rebuildTextureBuffer();
-	}
-
-	drawMesh(*m_rectangle, model_, color);
+	drawMesh(m_rectangle, rynx::graphics::texture_id(), model_, color);
 }
 
-void rynx::graphics::renderer::drawRectangle(const matrix4& model, const std::string& texture_name, const floats4& color) {
-	
-	if (m_rectangle->texture_name != texture_name) {
-		floats4 limits = m_textures->textureLimits(texture_name);
-		float botCoordX = limits.x;
-		float botCoordY = limits.y;
-		float topCoordX = limits.z;
-		float topCoordY = limits.w;
-
-		m_rectangle->texCoords.clear();
-		m_rectangle->putUVCoord(topCoordX, botCoordY);
-		m_rectangle->putUVCoord(topCoordX, topCoordY);
-		m_rectangle->putUVCoord(botCoordX, topCoordY);
-		m_rectangle->putUVCoord(botCoordX, botCoordY);
-
-		m_rectangle->bind();
-		m_rectangle->rebuildTextureBuffer();
-		m_rectangle->texture_name = texture_name;
-	}
-
-	drawMesh(*m_rectangle, model, color);
+void rynx::graphics::renderer::drawRectangle(const matrix4& model, rynx::graphics::texture_id tex_id, const floats4& color) {
+	drawMesh(m_rectangle, tex_id, model, color);
 }
 
 void rynx::graphics::renderer::cameraToGPU() {
@@ -154,14 +124,20 @@ void rynx::graphics::renderer::cameraToGPU() {
 	set_camera_to_shader(*shader_instanced_deferred);
 }
 
-void rynx::graphics::renderer::drawMesh(const rynx::graphics::mesh& mesh, const matrix4& model, const floats4& color) {
+void rynx::graphics::renderer::drawMesh(
+	const rynx::graphics::mesh& mesh,
+	rynx::graphics::texture_id texture_id,
+	const matrix4& model,
+	const floats4& color)
+{
 	shader_single->activate();
 	mesh.bind();
-
-	m_textures->bindTexture(0, mesh.texture_name);
+	m_textures->bindAtlas();
+	
 	shader_single->uniform("model", model);
 	shader_single->uniform("color", color);
-	
+	shader_single->uniform("tex_id", texture_id.value);
+
 	glDrawElements(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0);
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 }
@@ -175,6 +151,7 @@ void rynx::graphics::renderer::instanced_draw_impl(
 	size_t num_instances,
 	const matrix4* models,
 	const floats4* colors,
+	const rynx::graphics::texture_id* tex_ids,
 	DrawType type) {
 	
 	rynx::graphics::shader* shader = nullptr;
@@ -190,7 +167,8 @@ void rynx::graphics::renderer::instanced_draw_impl(
 	}
 
 	mesh.bind();
-	m_textures->bindTexture(0, mesh.texture_name);
+	
+	m_textures->bindAtlas();
 
 	{
 		const GLuint model_matrix_slot = shader->attribute("model");
@@ -200,6 +178,14 @@ void rynx::graphics::renderer::instanced_draw_impl(
 			glEnableVertexAttribArray(model_matrix_slot + i);
 			glVertexAttribDivisor(model_matrix_slot + i, 1); // model matrices, one per entity -> 1
 		}
+	}
+
+	{
+		const GLuint tex_id_slot = shader->attribute("tex_id");
+		glBindBuffer(GL_ARRAY_BUFFER, tex_id_buffer);
+		glVertexAttribIPointer(tex_id_slot, 1, GL_INT, sizeof(GLint), 0);
+		glEnableVertexAttribArray(tex_id_slot);
+		glVertexAttribDivisor(tex_id_slot, 1); // tex_ids, use one per entity -> 1
 	}
 
 	{
@@ -229,6 +215,13 @@ void rynx::graphics::renderer::instanced_draw_impl(
 			glBindBuffer(GL_ARRAY_BUFFER, colors_buffer);
 			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 4 * sizeof(GLfloat), colors + currentIteration * InstancesPerDrawCall);
+		}
+
+		{
+			static_assert(sizeof(rynx::graphics::texture_id) == sizeof(int32_t));
+			glBindBuffer(GL_ARRAY_BUFFER, tex_id_buffer);
+			glBufferData(GL_ARRAY_BUFFER, InstancesPerDrawCall * 1 * sizeof(GLint), NULL, GL_STREAM_DRAW);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 1 * sizeof(GLint), tex_ids + currentIteration * InstancesPerDrawCall);
 		}
 
 		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);

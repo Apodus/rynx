@@ -22,7 +22,7 @@ std::string humanize(std::string s) {
 
 void rynx::editor::field_float(
 	const rynx::reflection::field& member,
-	struct rynx_common_info info,
+	rynx_common_info info,
 	rynx::menu::Component* component_sheet,
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
@@ -34,7 +34,7 @@ void rynx::editor::field_float(
 	variable_name_label->text(std::string(info.indent, '-') + member.m_field_name);
 	variable_name_label->text_align_left();
 
-	auto variable_value_field = std::make_shared<rynx::menu::Button>(*info.textures, "Frame", rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto variable_value_field = std::make_shared<rynx::menu::Button>(*info.textures, info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
 
 	struct field_config {
 		float min_value = std::numeric_limits<float>::lowest();
@@ -126,7 +126,7 @@ void rynx::editor::field_float(
 	std::shared_ptr<rynx::menu::SlideBarVertical> value_slider;
 
 	if (config.slider_dynamic) {
-		value_slider = std::make_shared<rynx::menu::SlideBarVertical>(*info.textures, "Editor_Frame", "Editor_Frame", rynx::vec3f(0.2f, 1.0f, 0.0f), -1.0f, +1.0f);
+		value_slider = std::make_shared<rynx::menu::SlideBarVertical>(*info.textures, info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 1.0f, 0.0f), -1.0f, +1.0f);
 		value_slider->setValue(0);
 		value_slider->on_active_tick([info, mem_offset, config, self = value_slider.get(), text_element = variable_value_field.get()](float /* input_v */, float dt) {
 			float& v = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
@@ -150,8 +150,8 @@ void rynx::editor::field_float(
 	else {
 		value_slider = std::make_shared<rynx::menu::SlideBarVertical>(
 			*info.textures,
-			"Editor_Frame",
-			"Editor_SliderMarker",
+			info.frame_tex,
+			info.frame_tex,
 			rynx::vec3f(0.2f, 1.0f, 0.0f),
 			config.min_value,
 			config.max_value);
@@ -210,7 +210,7 @@ void rynx::editor::field_bool(
 	variable_name_label->text(std::string(info.indent, '-') + member.m_field_name);
 	variable_name_label->text_align_left();
 
-	auto variable_value_field = std::make_shared<rynx::menu::Button>(*info.textures, "Frame", rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto variable_value_field = std::make_shared<rynx::menu::Button>(*info.textures, info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
 
 	variable_value_field->text()
 		.text(value ? "^gYes" : "^rNo")
@@ -259,7 +259,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			field_bool(member, field_info, component_sheet_, reflection_stack);
 		}
 		else if (reflections_.has(member.m_type_name)) {
-			auto label = std::make_shared<rynx::menu::Button>(*info.textures, "Frame", rynx::vec3f(0.6f, 0.03f, 0.0f));
+			auto label = std::make_shared<rynx::menu::Button>(*info.textures, info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 			label->text()
 				.text(std::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
 				.text_align_left();
@@ -274,7 +274,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(member.m_type_name)) {
-					auto edit_button = std::make_shared<rynx::menu::Button>(*info.textures, "Frame", rynx::vec3f(0.6f, 0.03f, 0.0f));
+					auto edit_button = std::make_shared<rynx::menu::Button>(*info.textures, info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 					edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
 					edit_button->text().text(tool->get_tool_name());
 					edit_button->on_click([this, tool_ptr = tool.get()]() {
@@ -294,7 +294,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			reflection_stack.pop_back();
 		}
 		else {
-			auto label = std::make_shared<rynx::menu::Button>(*info.textures, "Frame", rynx::vec3f(0.6f, 0.03f, 0.0f));
+			auto label = std::make_shared<rynx::menu::Button>(*info.textures, info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 			label->text()
 				.text(std::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
 				.text_align_left();
@@ -324,12 +324,12 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 	for (auto&& reflection_entry : reflections_vec) {
 		auto component_sheet = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.0f, 0.0f, 0.0f));
-		component_sheet->set_background(textures, "Frame");
+		component_sheet->set_background(textures, frame_tex);
 		component_sheet->set_dynamic_position_and_scale();
 		m_components_list->addChild(component_sheet);
 
 		{
-			auto component_name = std::make_shared<rynx::menu::Button>(textures, "Frame", rynx::vec3f(0.6f - 0.10f, 0.025f, 0.0f));
+			auto component_name = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(0.6f - 0.10f, 0.025f, 0.0f));
 			component_name->text()
 				.text(reflection_entry.m_type_name)
 				.text_align_left()
@@ -344,7 +344,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 			component_name->velocity_position(100.0f);
 
 
-			auto delete_component = std::make_shared<rynx::menu::Button>(textures, "Frame", rynx::vec3f(0.10f, 0.025f, 0.0f));
+			auto delete_component = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(0.10f, 0.025f, 0.0f));
 			delete_component->text()
 				.text("^yRemove")
 				.text_align_center()
@@ -370,7 +370,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(reflection_entry.m_type_name)) {
-					auto edit_button = std::make_shared<rynx::menu::Button>(textures, "Frame", rynx::vec3f(0.6f, 0.03f, 0.0f));
+					auto edit_button = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 					edit_button->align().target(component_name.get()).bottom_outside().left_inside();
 					edit_button->text().text(tool->get_tool_name());
 					edit_button->on_click([this, tool_ptr = tool.get()]() {
@@ -387,6 +387,8 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 		component_common_info.ecs = &ecs;
 		component_common_info.entity_id = id;
 		component_common_info.textures = &textures;
+		component_common_info.frame_tex = frame_tex;
+		component_common_info.knob_tex = knob_tex;
 
 		generate_menu_for_reflection(m_reflections, reflection_entry, component_common_info, component_sheet.get());
 	}
@@ -395,7 +397,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 void rynx::editor_rules::add_tool(std::unique_ptr<rynx::editor::itool> tool, rynx::graphics::GPUTextures& textures) {
 
-	auto selection_tool_button = std::make_shared<rynx::menu::Button>(textures, tool->get_button_texture(), rynx::vec3f(0.15f, 0.15f * 0.3f, 0.0f));
+	auto selection_tool_button = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(0.15f, 0.15f * 0.3f, 0.0f));
 	selection_tool_button->respect_aspect_ratio();
 
 	if (m_tools.empty()) {
@@ -429,11 +431,14 @@ rynx::editor_rules::editor_rules(
 	m_editor_menu = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1, 1, 0 });
 	editor_menu_host->addChild(m_editor_menu);
 
+	this->frame_tex = textures.findTextureByName("frame");
+	this->knob_tex = textures.findTextureByName("frame");
+
 	// create editor menus
 	{
 		m_tools_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.3f, 1.0f, 0.0f });
 		m_tools_bar->align().right_inside().offset(+0.9f);
-		m_tools_bar->on_hover([ptr = m_tools_bar.get()](rynx::vec3f mousePos, bool inRect) {
+		m_tools_bar->on_hover([ptr = m_tools_bar.get()](rynx::vec3f /* mousePos */ , bool inRect) {
 			if (inRect) {
 				ptr->align().offset(0.0f);
 			}
@@ -445,7 +450,7 @@ rynx::editor_rules::editor_rules(
 
 		m_entity_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 1.0f, 0.0f));
 		m_entity_bar->align().left_inside().offset(+0.9f);
-		m_entity_bar->on_hover([ptr = m_entity_bar.get()](rynx::vec3f mousePos, bool inRect) {
+		m_entity_bar->on_hover([ptr = m_entity_bar.get()](rynx::vec3f /* mousePos */, bool inRect) {
 			if (inRect) {
 				ptr->align().offset(0.0f);
 			}
@@ -458,18 +463,18 @@ rynx::editor_rules::editor_rules(
 		m_editor_menu->addChild(m_tools_bar);
 		m_editor_menu->addChild(m_entity_bar);
 
-		m_tools_bar->set_background(textures, "Frame");
-		m_entity_bar->set_background(textures, "Frame");
+		m_tools_bar->set_background(textures, frame_tex);
+		m_entity_bar->set_background(textures, frame_tex);
 
 		// editor entity view menu
 		{
-			m_components_list = std::make_shared<rynx::menu::List>(textures, "Frame", rynx::vec3f(1.0f, 0.95f, 0.0f));
+			m_components_list = std::make_shared<rynx::menu::List>(textures, frame_tex, rynx::vec3f(1.0f, 0.95f, 0.0f));
 			m_components_list->list_endpoint_margin(0.05f);
 			m_components_list->list_element_margin(0.05f);
 			m_components_list->list_element_velocity(2500.0f);
 			m_components_list->align().bottom_inside().left_inside();
 
-			auto add_component_button = std::make_shared<rynx::menu::Button>(textures, "Frame", rynx::vec3f(1.0f, 0.05f, 0.0f));
+			auto add_component_button = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(1.0f, 0.05f, 0.0f));
 			add_component_button->align().top_inside().left_inside();
 			add_component_button->text().text("Add component");
 			add_component_button->on_click([this, &textures]() {
@@ -479,7 +484,7 @@ rynx::editor_rules::editor_rules(
 						if (ecs.exists(m_state.m_selected_ids.front())) {
 							auto reflection_data = m_reflections.get_reflection_data();
 							std::ranges::sort(reflection_data, [](auto& a, auto& b) {return a.first < b.first; });
-							auto menu_list = std::make_shared<rynx::menu::List>(textures, "Frame", rynx::vec3f(0.3f, 0.7f, 0.0f));
+							auto menu_list = std::make_shared<rynx::menu::List>(textures, frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
 							m_editor_menu->addChild(menu_list);
 							push_popup(menu_list);
 							disable_tools();
@@ -495,7 +500,7 @@ rynx::editor_rules::editor_rules(
 									continue;
 								}
 
-								auto button = std::make_shared<rynx::menu::Button>(textures, "Frame", rynx::vec3f(1.f, 0.05f, 0.0f));
+								auto button = std::make_shared<rynx::menu::Button>(textures, frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 								menu_list->addChild(button);
 								button->align().center_x();
 								button->text().text(type_reflection.m_type_name);

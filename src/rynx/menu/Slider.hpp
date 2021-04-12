@@ -32,7 +32,15 @@ namespace rynx {
 			void onActivate(float x, float /* y */);
 
 		public:
-			SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string baseTexture, std::string knobTexture, vec3<float> scale, float minValue = 0, float maxValue = 1, float initialValue = 0.5f);
+			SlideBarVertical(
+				rynx::graphics::GPUTextures& textures,
+				rynx::graphics::texture_id baseTexture,
+				rynx::graphics::texture_id knobTexture,
+				vec3<float> scale,
+				float minValue = 0,
+				float maxValue = 1,
+				float initialValue = 0.5f
+			);
 
 			SlideBarVertical& on_value_changed(std::function<void(float)> t);
 			SlideBarVertical& on_drag_end(std::function<void(float)> t);

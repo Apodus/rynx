@@ -74,9 +74,11 @@ namespace rynx {
 					}
 
 					rynx_profile("visualisation", "debug poly boundaries");
+					/*
 					m_edges->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 						m_meshRenderer->drawMeshInstancedDeferred(*m_boxMesh, matrices, colors);
 					});
+					*/
 				}
 
 				float m_line_width = 5.5f;

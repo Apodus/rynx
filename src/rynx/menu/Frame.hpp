@@ -6,6 +6,7 @@
 #include <rynx/math/vector.hpp>
 #include <rynx/graphics/color.hpp>
 #include <rynx/graphics/mesh/mesh.hpp>
+#include <rynx/graphics/texture/id.hpp>
 
 #include <memory>
 
@@ -23,6 +24,7 @@ namespace rynx {
 			vec3<float> m_prevScale;
 			matrix4 m_modelMatrix;
 			std::unique_ptr<rynx::graphics::mesh> m_backgroundMesh;
+			rynx::graphics::texture_id m_backgroundMeshTexture;
 			float m_edgeSize;
 
 			void initMesh(floats4 uv_limits);
@@ -30,7 +32,7 @@ namespace rynx {
 		public:
 			Frame(
 				rynx::graphics::GPUTextures& textures,
-				const std::string& textureID,
+				rynx::graphics::texture_id id,
 				float textureEdgeSize = 0.20f,
 				float meshEdgeSize = 0.5f);
 			

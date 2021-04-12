@@ -1,0 +1,21 @@
+# ignore visual studio user files and built items
+.vs/
+generate/build/
+build_temp/
+build/tests/
+build/bin/
+
+# ignore code generated cpp/hpp files
+*_reflection.cpp
+*_reflection.hpp
+*_serialization.hpp
+
+# ignore some build target items
+*.sln
+*.exe
+*.map
+*.pdb
+*.ilk
+
+# ignore the clang dll dependency
+tools/rynx-codegen/libclang.dll

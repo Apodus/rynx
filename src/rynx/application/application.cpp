@@ -18,7 +18,7 @@
 
 void rynx::application::Application::openWindow(int width, int height, std::string name) {
 	m_window = std::make_shared<Window>();
-	m_window->on_resize([this](size_t width, size_t height) {
+	m_window->on_resize([this](size_t /* width */, size_t /* height */) {
 		m_window_resized = true;
 	});
 	
@@ -33,7 +33,7 @@ void rynx::application::Application::openWindow(int width, int height, std::stri
 }
 
 void rynx::application::Application::loadTextures(std::string path) {
-	m_textures->createTextures(path);
+	m_textures->loadTexturesFromPath(path);
 }
 
 std::pair<size_t, size_t> rynx::application::Application::current_window_size() const {

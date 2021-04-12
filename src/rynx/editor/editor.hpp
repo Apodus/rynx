@@ -34,6 +34,9 @@ namespace rynx {
 			rynx::ecs* ecs = nullptr;
 			rynx::ecs::id entity_id = 0;
 			rynx::graphics::GPUTextures* textures = nullptr;
+			rynx::graphics::texture_id frame_tex;
+			rynx::graphics::texture_id knob_tex;
+
 			int32_t component_type_id = 0;
 			int32_t cumulative_offset = 0;
 			int32_t indent = 0;
@@ -63,6 +66,9 @@ namespace rynx {
 
 		rynx::key::logical key_selection_tool;
 		rynx::key::logical key_polygon_tool;
+
+		rynx::graphics::texture_id frame_tex;
+		rynx::graphics::texture_id knob_tex;
 
 		std::shared_ptr<rynx::menu::Div> m_editor_menu; // editor root level menu container.
 		std::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
@@ -170,7 +176,7 @@ namespace rynx {
 		}
 
 	private:
-		virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override {
+		virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override {
 
 			if (m_tools_enabled) {
 				m_active_tool->update(context);
@@ -197,6 +203,7 @@ namespace rynx {
 				}
 			}
 
+			/*
 			context.add_task("editor tick", [this, dt](
 				rynx::ecs& game_ecs,
 				rynx::mapped_input& gameInput,
@@ -204,6 +211,7 @@ namespace rynx {
 				{
 				}
 			);
+			*/
 		}
 	};
 }

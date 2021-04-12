@@ -1,10 +1,12 @@
 
 #include "lenka.hpp"
 #include <rynx/graphics/text/fontdata.hpp>
+#include <rynx/graphics/texture/id.hpp>
 
-FontData& Fonts::setFontLenka(FontData& fontdata) {
-    fontdata.textureID = "FONT_LENKA";
-    fontdata.totalWidth = 1024;
+FontData Fonts::setFontLenka(rynx::graphics::texture_id textureId) {
+	FontData fontdata;
+	fontdata.texture_id = textureId;
+	fontdata.totalWidth = 1024;
     fontdata.totalHeight = 1024;
     fontdata.baseLine = 121;
     fontdata.lineHeight = 190;
@@ -112,10 +114,4 @@ FontData& Fonts::setFontLenka(FontData& fontdata) {
 	fontdata[253] = Glyph(253, 0    , 0    , 83   , 178 , -6  , 19  , 63    );
 
 	return fontdata;
-}
-
-FontData Fonts::setFontLenka() {
-	FontData data;
-	setFontLenka(data);
-	return data;
 }

@@ -26,6 +26,7 @@ namespace rynx {
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
 					const rynx::matrix4* models;
+					const rynx::graphics::texture_id* tex_ids;
 				};
 
 				virtual ~ball_renderer() {}
@@ -118,14 +119,16 @@ namespace rynx {
 
 					{
 						for (auto&& buf : m_bufs)
-							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors));
+							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), buf.tex_ids);
 					}
 
 					{
 						rynx_profile("visualisation", "ball draw ropes");
+						/*
 						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
 							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices, colors);
 						});
+						*/
 					}
 				}
 

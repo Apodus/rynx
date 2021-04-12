@@ -34,6 +34,7 @@ namespace rynx {
 				std::vector<rynx::matrix4> matrices;
 				std::vector<floats4> colors;
 				std::vector<float> lifetimes;
+				std::vector<rynx::graphics::texture_id> textures;
 			};
 
 			rynx::unordered_map<rynx::graphics::mesh*, buffer_obj> m_data;

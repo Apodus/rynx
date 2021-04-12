@@ -27,14 +27,14 @@ namespace rynx {
 		public:
 			Button(
 				rynx::graphics::GPUTextures& textures,
-				std::string texture,
+				rynx::graphics::texture_id texture,
 				vec3<float> scale,
 				vec3<float> position = vec3<float>(),
 				float frame_edge_percentage = 0.2f
 			) : Component(scale, position)
 			{
 				m_textField = std::make_shared<rynx::menu::Text>(rynx::vec3f(1.0f, 1.0f, 0.0f));
-				set_background(textures, std::move(texture), frame_edge_percentage);
+				set_background(textures, texture, frame_edge_percentage);
 				m_defaultScale = scale;
 				this->addChild(m_textField);
 				initialize();

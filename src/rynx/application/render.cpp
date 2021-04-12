@@ -48,7 +48,8 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 	}
 
 	{
-		auto* tube_mesh = application.renderer().meshes()->create("square_tube_normals", rynx::Shape::makeBox(1.0f), "Empty");
+		rynx::graphics::mesh_id tube_mesh_id = application.renderer().meshes()->create(rynx::Shape::makeBox(1.0f));
+		auto* tube_mesh = application.renderer().meshes()->get(tube_mesh_id);
 		tube_mesh->normals.clear();
 		tube_mesh->putNormal(0, +1, 0);
 		tube_mesh->putNormal(0, -1, 0);
@@ -61,17 +62,21 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 
 		auto& renderer = application.renderer();
 		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(
-			renderer.meshes()->get("square_tube_normals"),
+			renderer.meshes()->get(tube_mesh_id),
 			&renderer
 		);
 		boundary_rendering->m_enabled = m_debug_draw_config;
+
+
 
 		geometry_pass = std::make_unique<graphics_step>();
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
+		
+		rynx::graphics::mesh_id circle_mesh_id = application.renderer().meshes()->create(rynx::Shape::makeCircle(0.5f, 64));
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(
-			renderer.meshes()->get("circle_empty"),
+			renderer.meshes()->get(circle_mesh_id),
 			&renderer
 		));
 	}
@@ -153,6 +158,41 @@ void rynx::application::renderer::execute() {
 }
 
 void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
+	
+	{
+		auto& ecs = ctx->get_resource<rynx::ecs>();
+		
+		// add missing texture components
+		{
+			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::mesh>().notIn<rynx::components::texture>().ids();
+			for (auto&& id : ids)
+				ecs[id].add(rynx::components::texture{""});
+		}
+
+		// add missing matrix4 components
+		{
+			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::mesh>().notIn<rynx::matrix4>().ids();
+			for (auto&& id : ids)
+				ecs[id].add(rynx::matrix4());
+		}
+
+		// convert human readable and storable texture info to runtime tex info.
+		{
+			struct unhandled_entity_tex {
+				rynx::ecs::id entity_id;
+				rynx::graphics::texture_id tex_id;
+			};
+
+			std::vector<unhandled_entity_tex> found;
+			ecs.query().notIn<rynx::graphics::texture_id>().for_each([this, &found](rynx::ecs::id id, rynx::components::texture tex) {
+				found.emplace_back(id, m_application.textures()->findTextureByName(tex.textureName));
+				});
+			for (auto&& missingEntityTex : found) {
+				ecs[missingEntityTex.entity_id].add(rynx::graphics::texture_id(missingEntityTex.tex_id));
+			}
+		}
+	}
+
 	geometry_pass->prepare(ctx);
 	lighting_pass->prepare(ctx);
 }

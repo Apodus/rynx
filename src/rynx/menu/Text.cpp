@@ -106,7 +106,7 @@ void rynx::menu::Text::draw(rynx::graphics::renderer& renderer) const {
 	}
 }
 
-void rynx::menu::Text::update(float dt) {
+void rynx::menu::Text::update(float /* dt */) {
 	m_textline.pos() = position_world();
 	if (m_textline.is_align_left())
 		m_textline.pos() += rynx::vec3f(-scale_world().x * 0.47f, 0, 0);

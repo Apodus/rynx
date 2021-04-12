@@ -5,6 +5,7 @@ typedef int GLint;
 typedef unsigned GLuint;
 
 #include <rynx/tech/unordered_map.hpp>
+#include <rynx/graphics/texture/id.hpp>
 #include <string>
 #include <vector>
 #include <memory>
@@ -56,8 +57,8 @@ namespace rynx {
 				render_target m_depth_target;
 			};
 
-			const std::string& operator [](const std::string& name);
-			const std::string& get_texture_name_of_render_target(const std::string& name) { return this->operator[](name); }
+			rynx::graphics::texture_id operator [](const std::string& name);
+			rynx::graphics::texture_id get_texture_name_of_render_target(const std::string& name) { return this->operator[](name); }
 			void destroy();
 			void clear() const;
 
@@ -65,8 +66,8 @@ namespace rynx {
 			void bind_as_input(int32_t starting_at_texture_unit = 0) const;
 			void bind_for_readback() const;
 			
-			std::string depth_texture() const;
-			std::string texture(size_t target) const;
+			rynx::graphics::texture_id depth_texture() const;
+			rynx::graphics::texture_id texture(size_t target) const;
 
 			size_t width() const;
 			size_t height() const;
@@ -77,15 +78,21 @@ namespace rynx {
 		private:
 			std::string fbo_name;
 
-			rynx::unordered_map<std::string, std::string> m_tex_map; // map from render target name to texture name.
+			rynx::unordered_map<std::string, rynx::graphics::texture_id> m_tex_map; // map from render target name to texture id.
 
 			int32_t resolution_x = 0;
 			int32_t resolution_y = 0;
 
+			struct fbo_tex {
+				std::string name;
+				rynx::graphics::texture_id id;
+			};
+
 			GLuint location;
 			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::string depthtexture;
-			std::vector<std::string> targets;
+			rynx::graphics::texture_id depthtexture_id;
+			std::vector<fbo_tex> targets;
 		};
 	}
 }

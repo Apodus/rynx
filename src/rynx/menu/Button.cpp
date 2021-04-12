@@ -14,7 +14,7 @@ void rynx::menu::Button::initialize() {
 	m_color = Color::WHITE;
 	m_color.tick(1.0f);
 
-	on_hover([this](rynx::vec3f mousePos, bool inRect) {
+	on_hover([this](rynx::vec3f /*mousePos*/, bool inRect) {
 		if (inRect) {
 			m_color.target_value().w = 1.0f;
 		}
@@ -32,7 +32,7 @@ void rynx::menu::Button::initialize() {
 
 void rynx::menu::Button::onInput(rynx::mapped_input&) {}
 void rynx::menu::Button::draw(rynx::graphics::renderer&) const {}
-void rynx::menu::Button::update(float dt) {
+void rynx::menu::Button::update(float /* dt */) {
 	m_background->color(m_color);
 	m_textField->color().w = m_color->w;
 	set_input_enabled(m_color->w > 0.01f);

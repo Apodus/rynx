@@ -1,10 +1,12 @@
 
 #include "consolamono.hpp"
 #include <rynx/graphics/text/fontdata.hpp>
+#include <rynx/graphics/texture/id.hpp>
 
-FontData& Fonts::setFontConsolaMono(FontData& fontdata) {
-	fontdata.textureID = "FONT_CONSOLA_MONO";
-    fontdata.totalWidth = 1024;
+FontData Fonts::setFontConsolaMono(rynx::graphics::texture_id textureId) {
+	FontData fontdata;
+	fontdata.texture_id = textureId;
+	fontdata.totalWidth = 1024;
     fontdata.totalHeight = 1024;
     fontdata.baseLine = 108;
     fontdata.lineHeight = 130;
@@ -207,10 +209,4 @@ FontData& Fonts::setFontConsolaMono(FontData& fontdata) {
 	}
 
 	return fontdata;
-}
-
-FontData Fonts::setFontConsolaMono() {
-	FontData data;
-	setFontConsolaMono(data);
-	return data;
 }

@@ -2,13 +2,12 @@
 #pragma once
 
 #include <rynx/graphics/text/glyph.hpp>
+#include <rynx/graphics/texture/id.hpp>
 #include <rynx/math/vector.hpp>
-#include <string>
-
 
 class FontData {
 public:
-	std::string textureID;
+	rynx::graphics::texture_id texture_id;
 	int totalWidth;
 	int totalHeight;
 	int lineHeight;

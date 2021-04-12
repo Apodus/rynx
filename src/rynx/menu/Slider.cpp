@@ -13,13 +13,13 @@
 
 #include <algorithm>
 
-rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& textures, std::string baseTexture, std::string knobTexture, vec3<float> scale, float minValue, float maxValue, float initialValue)
+rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& textures, rynx::graphics::texture_id baseTexture, rynx::graphics::texture_id knobTexture, vec3<float> scale, float minValue, float maxValue, float initialValue)
 	: Component(scale) {
 	rynx_assert(minValue < maxValue, "wut");
 
 	{
 		auto slideBarDiv = std::make_shared<Div>(vec3<float>(1.0f, 0.25f, 0));
-		auto slideBarFrame = std::make_shared<Frame>(textures, std::move(baseTexture), 0.15f);
+		auto slideBarFrame = std::make_shared<Frame>(textures, baseTexture, 0.15f);
 		slideBarDiv->addChild(std::move(slideBarFrame));
 		addChild(slideBarDiv);
 	}

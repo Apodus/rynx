@@ -3,7 +3,8 @@
 
 class FontData;
 
+#include <rynx/graphics/texture/id.hpp>
+
 namespace Fonts {
-	FontData& setFontLenka(FontData& fontdata);
-	FontData setFontLenka();
+	FontData setFontLenka(rynx::graphics::texture_id);
 }

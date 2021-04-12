@@ -30,7 +30,7 @@ namespace rynx {
 					return "editor_selection_tool";
 				}
 
-				virtual bool operates_on(const std::string& type_name) override {
+				virtual bool operates_on(const std::string& /* type_name */) override {
 					return false;
 				}
 

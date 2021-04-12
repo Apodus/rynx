@@ -38,6 +38,7 @@ float rynx::graphics::renderable_text::alignmentOffset(const Font& font) const {
 	case align::Right: return -textWidth;
 	}
 	rynx_assert(false, "unreachable code");
+	return 0.0f;
 }
 
 rynx::vec3f rynx::graphics::renderable_text::position(const Font& font, int32_t cursor_pos) const {
@@ -50,7 +51,7 @@ rynx::graphics::text_renderer::text_renderer(std::shared_ptr<rynx::graphics::GPU
 	m_textures(textures),
 	m_shaders(shaders)
 {
-	auto fontShader = m_shaders->load_shader("font", "../shaders/font_130.vs.glsl", "../shaders/font_130.fs.glsl");
+	auto fontShader = m_shaders->load_shader("font", "../shaders/font.vs.glsl", "../shaders/font.fs.glsl");
 	m_shaders->activate_shader("font");
 
 	glGenVertexArrays(1, &vao);
@@ -59,6 +60,9 @@ rynx::graphics::text_renderer::text_renderer(std::shared_ptr<rynx::graphics::GPU
 	int vposIndex = fontShader->attribute("vertexPosition");
 	int vcolIndex = fontShader->attribute("vertexColor");
 	int vtexIndex = fontShader->attribute("textureCoordinate");
+	fontShader->uniform("uvIndirect", 1);
+	fontShader->uniform("tex", 0);
+	fontShader->uniform("atlasBlocksPerRow", textures->getAtlasBlocksPerRow());
 
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -90,13 +94,12 @@ void rynx::graphics::text_renderer::drawText(const rynx::graphics::renderable_te
 	}
 
 	const Font* usedFont = text_line.font() ? text_line.font() : &m_defaultFont;
-
 	m_textures->bindTexture(0, usedFont->getTextureID());
 	int length = fillTextBuffers(text_line, *usedFont);
-	drawTextBuffers(length);
+	drawTextBuffers(length, usedFont->getTextureID());
 }
 
-void rynx::graphics::text_renderer::drawTextBuffers(int textLength) {
+void rynx::graphics::text_renderer::drawTextBuffers(int textLength, rynx::graphics::texture_id tex_id) {
 	if (textLength == 0)
 		return;
 
@@ -106,7 +109,8 @@ void rynx::graphics::text_renderer::drawTextBuffers(int textLength) {
 
 	projectionViewMatrix.storeMultiply(projectionMatrix, viewMatrix);
 	textShader->uniform("MVPMatrix", projectionViewMatrix);
-	
+	textShader->uniform("tex_id", tex_id.value);
+
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * m_vertexBuffer.size(), m_vertexBuffer.data());
 

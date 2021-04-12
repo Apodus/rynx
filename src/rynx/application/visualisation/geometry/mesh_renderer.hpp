@@ -25,12 +25,14 @@ namespace rynx {
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
 					const rynx::matrix4* models;
+					const rynx::graphics::texture_id* tex_ids;
 				};
 
 			public:
 
 				mesh_renderer(rynx::graphics::renderer* meshRenderer) {
 					m_meshRenderer = meshRenderer;
+					m_meshes = m_meshRenderer->meshes().get();
 				}
 				virtual ~mesh_renderer() {}
 				
@@ -47,15 +49,17 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models)
+								const rynx::matrix4* models,
+								const rynx::graphics::texture_id* tex_ids)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
-										meshes[0].m,
+										m_meshes->get(meshes[0].m),
 										positions,
 										radii,
 										colors,
-										models
+										models,
+										tex_ids
 									});
 								});
 
@@ -68,15 +72,17 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models)
+								const rynx::matrix4* models,
+								const rynx::graphics::texture_id* tex_ids)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
-										meshes[0].m,
+										m_meshes->get(meshes[0].m),
 										positions,
 										radii,
 										colors,
-										models
+										models,
+										tex_ids
 									});
 								});
 					});
@@ -84,12 +90,13 @@ namespace rynx {
 				
 				virtual void execute() override {
 					for(auto&& buf : m_bufs)
-						m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors));
+						m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), buf.tex_ids);
 				}
 
 			private:
 				std::vector<buffer> m_bufs;
 				rynx::graphics::renderer* m_meshRenderer;
+				rynx::graphics::mesh_collection* m_meshes;
 			};
 		}
 	}

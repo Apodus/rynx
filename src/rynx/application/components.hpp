@@ -215,10 +215,14 @@ namespace rynx {
 
 		struct mesh : public rynx::ecs_value_segregated_component_tag {
 			mesh() = default;
-			mesh(rynx::graphics::mesh* p) : m(p) {}
-			size_t hash() const { return size_t(uintptr_t(m)); }
+			mesh(rynx::graphics::mesh_id p) : m(p) {}
+			size_t hash() const { return m.value; }
 			bool operator == (const mesh& other) const { return m == other.m; }
-			rynx::graphics::mesh* m;
+			rynx::graphics::mesh_id m;
+		};
+
+		struct texture {
+			std::string textureName;
 		};
 	}
 

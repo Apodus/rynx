@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <rynx/math/vector.hpp>
 #include <string>
 #include <memory>
 
@@ -11,12 +12,22 @@ struct Image {
 			unload();
 	}
 	
+	Image(int width, int height) { createEmptyRGBA(width, height); }
+	Image(const Image& other);
+	Image& operator = (const Image& other);
+
 	void loadImage(const std::string& filename);
 	void unload();
-	
+	void rescale(int newX, int newY);
+
+	void loadByteBufferRGBA(unsigned char* in_data, int width, int height);
+	void loadFloatBufferRGBA(rynx::floats4* data, int width, int height);
+	void createEmptyRGBA(int width, int height);
+	void fill(rynx::floats4 color);
+
 	unsigned sizeX = 0;
 	unsigned sizeY = 0;
-	char* data = nullptr;
+	unsigned char* data = nullptr;
 	bool hasAlpha = false;
 };
 

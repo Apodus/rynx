@@ -16,7 +16,7 @@ void rynx::application::visualization::scrolling_background_2d::execute() {
 	rynx::floats4 color{ 1, 1, 1, 1 };
 	m_bg_mesh->bind();
 	m_bg_mesh->rebuildTextureBuffer();
-	m_mesh_renderer.drawMeshInstancedDeferred(*m_bg_mesh, 1, &model, &color);
+	m_mesh_renderer.drawMeshInstancedDeferred(*m_bg_mesh, 1, &model, &color, &m_bg_texture);
 }
 
 void rynx::application::visualization::scrolling_background_2d::prepare(rynx::scheduler::context*) {

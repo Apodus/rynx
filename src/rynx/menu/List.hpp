@@ -33,12 +33,12 @@ namespace rynx {
 		public:
 			List(
 				rynx::graphics::GPUTextures& textures,
-				std::string texture,
+				rynx::graphics::texture_id texture,
 				vec3<float> scale,
 				vec3<float> position = vec3<float>(),
 				float frame_edge_percentage = 0.2f
 			) : Component(scale, position)
-				, m_frame(textures, std::move(texture), frame_edge_percentage)
+				, m_frame(textures, texture, frame_edge_percentage)
 				, m_scrolling_content_panel({0, 0, 0})
 			{
 				m_frame.set_parent(this);

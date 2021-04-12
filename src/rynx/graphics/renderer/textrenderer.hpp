@@ -103,7 +103,7 @@ namespace rynx {
 
 			// private implementation.
 			int fillTextBuffers(const renderable_text& text, const Font& font);
-			void drawTextBuffers(int textLength);
+			void drawTextBuffers(int textLength, rynx::graphics::texture_id tex_id);
 			void fillColorBuffer(const floats4& activeColor_);
 			void fillCoordinates(rynx::vec3f pos, rynx::vec3f left, rynx::vec3f up, float charWidth, float charHeight);
 			void fillTextureCoordinates(const Font& font, char c);

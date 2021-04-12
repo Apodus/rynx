@@ -37,7 +37,7 @@ namespace rynx {
 				}
 
 				virtual std::string get_button_texture() override {
-					return "Frame";
+					return "frame";
 				}
 
 			private:

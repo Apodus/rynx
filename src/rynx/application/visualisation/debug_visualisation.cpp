@@ -31,6 +31,6 @@ void rynx::application::DebugVisualization::prepare(rynx::scheduler::context*) {
 
 void rynx::application::DebugVisualization::execute() {
 	for (auto&& entry : m_data) {
-		m_meshRenderer->drawMeshInstanced(*entry.first, entry.second.matrices, entry.second.colors);
+		m_meshRenderer->drawMeshInstanced(*entry.first, entry.second.matrices, entry.second.colors, entry.second.textures);
 	}
 }

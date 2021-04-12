@@ -9,6 +9,13 @@ typedef unsigned GLuint;
 
 namespace rynx {
 	namespace graphics {
+
+		struct mesh_id {
+			bool operator == (const mesh_id& other) const = default;
+
+			int64_t value;
+		};
+
 		class mesh {
 		public:
 			mesh();
@@ -26,13 +33,6 @@ namespace rynx {
 
 			static_assert(sizeof(short) == 2, "oh crap");
 
-			std::vector<float> vertices;
-			std::vector<float> texCoords;
-			std::vector<float> normals;
-			std::vector<short> indices;
-
-			std::string texture_name;
-
 			int getVertexCount() const;
 			int getIndexCount() const;
 
@@ -42,8 +42,17 @@ namespace rynx {
 			void rebuildNormalBuffer();
 			void bind() const;
 
+			// TODO: Move to some kind of material settings or something.
 			float lighting_direction_bias = 0.0f; // light vs. geometry hit angle affects how strongly the light is applied. this is a constant offset to that value.
 			float lighting_global_multiplier = 1.0f;
+
+			std::vector<float> vertices;
+			std::vector<float> texCoords;
+			std::vector<float> normals;
+			std::vector<short> indices;
+
+			mesh_id id;
+			std::string humanReadableId;
 
 		private:
 			/*
@@ -62,4 +71,13 @@ namespace rynx {
 			GLuint ibo = ~0u;
 		};
 	}
+}
+
+namespace std {
+	template<>
+	struct hash<rynx::graphics::mesh_id> {
+		size_t operator()(const rynx::graphics::mesh_id& id) const {
+			return id.value;
+		}
+	};
 }
