@@ -171,8 +171,8 @@ void rynx::menu::Component::set_parent(Component* other) {
 	m_pParent = other;
 }
 
-void rynx::menu::Component::set_background(rynx::graphics::GPUTextures& textures, rynx::graphics::texture_id id, float edge_size) {
-	m_background = std::make_unique<rynx::menu::Frame>(textures, id, edge_size);
+void rynx::menu::Component::set_background(rynx::graphics::texture_id id, float edge_size) {
+	m_background = std::make_unique<rynx::menu::Frame>(id, edge_size);
 	m_background->set_parent(this);
 }
 

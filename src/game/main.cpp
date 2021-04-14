@@ -482,11 +482,11 @@ int main(int argc, char** argv) {
 	// construct menus
 	{
 		rynx::graphics::texture_id frame_tex = application.textures()->findTextureByName("frame");
-		auto sampleButton = std::make_shared<rynx::menu::Button>(*application.textures(), frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(*application.textures(), frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(*application.textures(), frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
-		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(*application.textures(), frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
+		auto sampleButton = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
+		auto sampleButton2 = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
+		auto sampleButton3 = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
+		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
+		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
 
 		sampleButton->text().text("Dynamics").font(&fontConsola);
 		sampleButton->align().bottom_left_inside();

@@ -13,13 +13,13 @@
 
 #include <algorithm>
 
-rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& textures, rynx::graphics::texture_id baseTexture, rynx::graphics::texture_id knobTexture, vec3<float> scale, float minValue, float maxValue, float initialValue)
+rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::texture_id baseTexture, rynx::graphics::texture_id knobTexture, vec3<float> scale, float minValue, float maxValue, float initialValue)
 	: Component(scale) {
 	rynx_assert(minValue < maxValue, "wut");
 
 	{
 		auto slideBarDiv = std::make_shared<Div>(vec3<float>(1.0f, 0.25f, 0));
-		auto slideBarFrame = std::make_shared<Frame>(textures, baseTexture, 0.15f);
+		auto slideBarFrame = std::make_shared<Frame>(baseTexture, 0.15f);
 		slideBarDiv->addChild(std::move(slideBarFrame));
 		addChild(slideBarDiv);
 	}
@@ -27,7 +27,7 @@ rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::GPUTextures& text
 	{
 		// todo: better formulation for slider knob dimensions
 		auto knobDiv = std::make_shared<Div>(vec3<float>(0.2f, 0.5f, 0));
-		auto knobFrame = std::make_shared<Frame>(textures, std::move(knobTexture));
+		auto knobFrame = std::make_shared<Frame>(std::move(knobTexture));
 		knobDiv->addChild(std::move(knobFrame));
 		addChild(knobDiv);
 		m_knobDiv = knobDiv.get();

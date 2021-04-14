@@ -31,7 +31,6 @@ namespace rynx {
 
 		public:
 			Frame(
-				rynx::graphics::GPUTextures& textures,
 				rynx::graphics::texture_id id,
 				float textureEdgeSize = 0.20f,
 				float meshEdgeSize = 0.5f);

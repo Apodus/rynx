@@ -8,7 +8,6 @@
 
 
 rynx::menu::Frame::Frame(
-	rynx::graphics::GPUTextures& textures,
 	rynx::graphics::texture_id id,
 	float textureEdgeSize,
 	float meshEdgeSize) : Component(vec3<float>(), vec3<float>()) {

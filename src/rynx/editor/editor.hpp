@@ -128,7 +128,7 @@ namespace rynx {
 		}
 
 	public:
-		void add_tool(std::unique_ptr<rynx::editor::itool> tool, rynx::graphics::GPUTextures& textures);
+		void add_tool(std::unique_ptr<rynx::editor::itool> tool);
 
 		template<typename ToolType, typename... ArgTypes>
 		void add_tool(ArgTypes&&... args) {
@@ -136,7 +136,7 @@ namespace rynx {
 			auto& textures = m_context->get_resource<rynx::graphics::GPUTextures>();
 			auto tool = std::make_unique<ToolType>(std::forward<ArgTypes>(args)...);
 			tool->m_editor_state = &m_state;
-			return add_tool(std::move(tool), textures);
+			return add_tool(std::move(tool));
 		}
 
 		void create_empty_entity(rynx::vec3f pos) {

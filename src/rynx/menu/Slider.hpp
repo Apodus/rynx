@@ -33,7 +33,6 @@ namespace rynx {
 
 		public:
 			SlideBarVertical(
-				rynx::graphics::GPUTextures& textures,
 				rynx::graphics::texture_id baseTexture,
 				rynx::graphics::texture_id knobTexture,
 				vec3<float> scale,
