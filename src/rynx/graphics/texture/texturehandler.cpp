@@ -327,6 +327,14 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::createDepthTexture(const
 	return id;
 }
 
+std::vector<rynx::graphics::GPUTextures::texture_entry> rynx::graphics::GPUTextures::getListOfTextures() const {
+	std::vector<texture_entry> result;
+	for (auto&& tex : m_textures) {
+		result.emplace_back(tex.second, tex.first);
+	}
+	return result;
+}
+
 rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const std::string& name, Image& img) {
 	rynx_assert(!name.empty(), "create texture called with an empty name.");
 	rynx_assert(img.data, "createTexture called with nullptr img data.");

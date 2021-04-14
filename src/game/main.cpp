@@ -49,7 +49,7 @@
 #include <rynx/audio/audio.hpp>
 
 #include <rynx/editor/editor.hpp>
-
+#include <rynx/editor/tools/texture_selection_tool.hpp>
 
 #include <rynx/tech/collision_detection.hpp>
 
@@ -291,6 +291,7 @@ int main(int argc, char** argv) {
 			gameInput
 		);
 
+		ruleset_editor->add_tool<rynx::editor::tools::texture_selection>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::polygon_tool>(*base_simulation.m_context);
 
 		spawner = ruleset_minilisk_gen.operator->();

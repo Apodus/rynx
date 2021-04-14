@@ -276,7 +276,12 @@ void rynx::editor_rules::generate_menu_for_reflection(
 					auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 					edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
 					edit_button->text().text(tool->get_tool_name());
-					edit_button->on_click([this, tool_ptr = tool.get()]() {
+					edit_button->on_click([this, info, member, tool_ptr = tool.get()]() {
+						tool_ptr->source_data([=]() {
+							int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
+							void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+							return value_ptr;
+						});
 						this->switch_to_tool(*tool_ptr);
 					});
 				}
@@ -372,7 +377,13 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 					auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 					edit_button->align().target(component_name.get()).bottom_outside().left_inside();
 					edit_button->text().text(tool->get_tool_name());
-					edit_button->on_click([this, tool_ptr = tool.get()]() {
+					
+					auto component_type_id = reflection_entry.m_type_index_value;
+					edit_button->on_click([this, &ecs, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
+						tool_ptr->source_data([component_type_id, entity_id, ecs_ptr = &ecs]() {
+							void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*ecs_ptr, entity_id, component_type_id, 0);
+							return value_ptr;
+						});
 						this->switch_to_tool(*tool_ptr);
 					});
 
@@ -426,6 +437,41 @@ rynx::editor_rules::editor_rules(
 {
 	m_context = &ctx;
 	m_font = font;
+
+	struct tool_api_impl : public rynx::editor::editor_shared_state::tool_api {
+	private:
+		editor_rules* m_host;
+		
+	public:
+		tool_api_impl(editor_rules* host) : m_host(host) {}
+
+		virtual void push_popup(std::shared_ptr<rynx::menu::Component> popup) override {
+			m_host->push_popup(popup);
+		}
+		
+		virtual void pop_popup() override {
+			m_host->pop_popup();
+		}
+		
+		virtual void enable_tools() override {
+			m_host->enable_tools();
+		}
+		
+		virtual void disable_tools() override {
+			m_host->disable_tools();
+		}
+
+		virtual void activate_default_tool() override {
+			auto& default_tool = m_host->get_default_tool();
+			m_host->switch_to_tool(default_tool);
+		}
+		
+		virtual void execute(std::function<void()> execute_in_main_thread) override {
+			m_host->execute(std::move(execute_in_main_thread));
+		}
+	};
+
+	m_state.m_editor = new tool_api_impl(this);
 
 	m_editor_menu = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1, 1, 0 });
 	editor_menu_host->addChild(m_editor_menu);
@@ -484,7 +530,6 @@ rynx::editor_rules::editor_rules(
 							auto reflection_data = m_reflections.get_reflection_data();
 							std::ranges::sort(reflection_data, [](auto& a, auto& b) {return a.first < b.first; });
 							auto menu_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
-							m_editor_menu->addChild(menu_list);
 							push_popup(menu_list);
 							disable_tools();
 
@@ -501,6 +546,7 @@ rynx::editor_rules::editor_rules(
 
 								auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 								menu_list->addChild(button);
+								menu_list->list_element_velocity(100.0f);
 								button->align().center_x();
 								button->text().text(type_reflection.m_type_name);
 								button->text().text_align_left();

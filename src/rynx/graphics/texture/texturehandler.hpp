@@ -97,7 +97,14 @@ namespace rynx {
 				bindTexture(0, m_texture_atlas.getAtlasTexture());
 				bindTexture(1, m_texture_atlas.getUVIndirectionTexture());
 			}
+
+			struct texture_entry {
+				tex_info info;
+				rynx::graphics::texture_id tex_id;
+			};
 			
+			std::vector<texture_entry> getListOfTextures() const;
+
 			texture_id createTexture(const std::string&, Image& img);
 			texture_id createTexture(const std::string&, int width, int height);
 			texture_id createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel = 16);

@@ -28,6 +28,11 @@ namespace rynx {
 				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
 				return *reinterpret_cast<T*>(component_ptr + memoffset);
 			}
+
+			void* compute_address(rynx::ecs& ecs, rynx::ecs::id id, int32_t component_type_id, int32_t memoffset) {
+				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
+				return reinterpret_cast<void*>(component_ptr + memoffset);
+			}
 		};
 
 		struct rynx_common_info {
@@ -94,6 +99,9 @@ namespace rynx {
 		bool m_tools_enabled = true;
 
 		void push_popup(std::shared_ptr<rynx::menu::Component> popup) {
+			if (!popup->parent()) {
+				m_editor_menu->addChild(popup);
+			}
 			popup->capture_dedicated_mouse_input();
 			popup->capture_dedicated_keyboard_input();
 			m_popups.emplace_back(popup);
@@ -133,7 +141,6 @@ namespace rynx {
 		template<typename ToolType, typename... ArgTypes>
 		void add_tool(ArgTypes&&... args) {
 			static_assert(std::is_base_of_v<rynx::editor::itool, ToolType>, "only tools derived from editor::itool are allowed");
-			auto& textures = m_context->get_resource<rynx::graphics::GPUTextures>();
 			auto tool = std::make_unique<ToolType>(std::forward<ArgTypes>(args)...);
 			tool->m_editor_state = &m_state;
 			return add_tool(std::move(tool));
@@ -168,6 +175,10 @@ namespace rynx {
 			rynx::menu::Component* editor_menu_host,
 			rynx::graphics::GPUTextures& textures,
 			rynx::mapped_input& gameInput);
+
+		rynx::editor::itool& get_default_tool() {
+			return *m_tools[0];
+		}
 
 		void switch_to_tool(rynx::editor::itool& tool) {
 			m_active_tool->on_tool_unselected();
