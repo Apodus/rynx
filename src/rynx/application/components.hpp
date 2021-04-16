@@ -134,7 +134,7 @@ namespace rynx {
 		};
 
 		struct translucent {}; // tag for partially see-through objects. graphics needs to know.
-		struct ANNOTATE("transient") frustum_culled {}; // object is not visible due to frustum culling.
+		struct frustum_culled : public rynx::ecs_no_serialize_tag {}; // object is not visible due to frustum culling.
 		struct invisible {}; // tag to prevent rendering of object.
 
 		namespace phys {

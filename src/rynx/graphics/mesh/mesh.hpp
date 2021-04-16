@@ -4,6 +4,7 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
+#include <rynx/tech/serialization.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
 
@@ -12,7 +13,6 @@ namespace rynx {
 
 		struct mesh_id {
 			bool operator == (const mesh_id& other) const = default;
-
 			int64_t value;
 		};
 
@@ -69,6 +69,50 @@ namespace rynx {
 			GLuint tbo = ~0u;
 			GLuint nbo = ~0u;
 			GLuint ibo = ~0u;
+		};
+	}
+
+	namespace serialization {
+		template<> struct Serialize<rynx::graphics::mesh_id> {
+			template<typename IOStream>
+			void serialize(const rynx::graphics::mesh_id& meshId, IOStream& writer) {
+				writer(meshId.value);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::graphics::mesh_id& meshId, IOStream& reader) {
+				reader(meshId.value);
+			}
+		};
+	}
+
+	namespace serialization {
+		template<> struct Serialize<rynx::graphics::mesh> {
+			template<typename IOStream>
+			void serialize(const rynx::graphics::mesh& mesh, IOStream& writer) {
+				writer(mesh.humanReadableId);
+				writer(mesh.id);
+				writer(mesh.lighting_direction_bias);
+				writer(mesh.lighting_global_multiplier);
+				writer(mesh.vertices);
+				writer(mesh.normals);
+				writer(mesh.texCoords);
+				writer(mesh.indices);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::graphics::mesh& mesh, IOStream& reader) {
+				reader(mesh.humanReadableId);
+				reader(mesh.id);
+				reader(mesh.lighting_direction_bias);
+				reader(mesh.lighting_global_multiplier);
+				reader(mesh.vertices);
+				reader(mesh.normals);
+				reader(mesh.texCoords);
+				reader(mesh.indices);
+				mesh.bind();
+				mesh.build();
+			}
 		};
 	}
 }

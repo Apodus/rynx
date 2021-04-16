@@ -234,7 +234,7 @@ void buildDebugMipmaps(size_t x, size_t y) {
 }
 
 rynx::graphics::texture_id rynx::graphics::GPUTextures::generate_tex_id() {
-	rynx::graphics::texture_id id = {++m_next_id};
+	rynx::graphics::texture_id id(++m_next_id);
 	m_textures.emplace(id, tex_info());
 	return id;
 }

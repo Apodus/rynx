@@ -84,6 +84,7 @@ namespace rynx {
 			std::vector<field> m_fields;
 			int32_t m_type_index_value = -1;
 			bool m_is_type_segregated = false;
+			bool m_serialization_allowed = true;
 
 			rynx::ecs_table_create_func m_create_table_func;
 			std::function<opaque_unique_ptr<void>()> m_create_instance_func;
@@ -213,7 +214,8 @@ namespace rynx {
 				rynx::reflection::type result;
 				result.m_type_name = std::string(typeid(T).name());
 				result.m_type_index_value = static_cast<int32_t>(m_type_index.id<T>());
-				
+				result.m_serialization_allowed = !std::is_base_of_v<rynx::ecs_no_serialize_tag, T>;
+
 				// TODO: Ecs utils should be tightly knit somewhere under ecs. It is wrong for reflection to make these assumptions.
 				result.m_is_type_segregated = std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>;
 				result.m_create_table_func = rynx::make_ecs_table_create_func<T>(result.m_type_index_value);

@@ -2,6 +2,7 @@
 #include <rynx/editor/editor.hpp>
 
 #include <sstream>
+#include <fstream>
 
 std::string humanize(std::string s) {
 	auto replace_all = [&s](std::string what, std::string with) {
@@ -481,35 +482,94 @@ rynx::editor_rules::editor_rules(
 
 	// create editor menus
 	{
+		// create tools bar
 		m_tools_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.3f, 1.0f, 0.0f });
 		m_tools_bar->align().right_inside().offset(+0.9f);
-		m_tools_bar->on_hover([ptr = m_tools_bar.get()](rynx::vec3f /* mousePos */ , bool inRect) {
+		m_tools_bar->on_hover([this, ptr = m_tools_bar.get()](rynx::vec3f /* mousePos */ , bool inRect) {
 			if (inRect) {
 				ptr->align().offset(0.0f);
 			}
 			else {
-				ptr->align().offset(+0.9f);
+				ptr->align().offset(+0.9f + !state_id().is_enabled() * 2.0f);
 			}
 			return inRect;
 		});
 
+		// create entity components bar
 		m_entity_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 1.0f, 0.0f));
 		m_entity_bar->align().left_inside().offset(+0.9f);
-		m_entity_bar->on_hover([ptr = m_entity_bar.get()](rynx::vec3f /* mousePos */, bool inRect) {
+		m_entity_bar->on_hover([this, ptr = m_entity_bar.get()](rynx::vec3f /* mousePos */, bool inRect) {
 			if (inRect) {
 				ptr->align().offset(0.0f);
 			}
 			else {
-				ptr->align().offset(+0.9f);
+				ptr->align().offset(+0.9f + !state_id().is_enabled() * 2.0f);
 			}
 			return inRect;
 		});
+
+		// create file actions bar
+		m_file_actions_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.2f, 0.0f));
+		m_file_actions_bar->align().center_x().bottom_inside();
+		m_file_actions_bar->on_hover([this, ptr = m_file_actions_bar.get()](rynx::vec3f /* mousePos */, bool inRect) {
+			if (inRect) {
+				ptr->align().offset_y(0.0f);
+			}
+			else {
+				ptr->align().offset_y(+0.17f + !state_id().is_enabled() * 2.0f);
+			}
+			return inRect;
+		});
+
+		auto& ecs = ctx.get_resource<rynx::ecs>();
+
+		auto save_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.3f, 0.5f, 0.0f));
+		save_scene->text().text("Save");
+		save_scene->align().bottom_inside().left_inside();
+		save_scene->on_click([this, &ecs]() {
+			execute([this, &ecs]() {
+				auto vector_writer = ecs.serialize(m_reflections);
+				std::ofstream out("hehe.kek", std::ios::binary);
+				rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
+				rynx::serialize(system_writer.data(), vector_writer);
+				out.write(vector_writer.data().data(), vector_writer.data().size());
+			});
+		});
+		auto load_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.3f, 0.5f, 0.0f));
+		load_scene->text().text("Load");
+		load_scene->align().bottom_inside().right_inside();
+		load_scene->on_click([this, &ecs]() {
+			execute([this, &ecs]() {
+				std::ifstream in("hehe.kek", std::ios::binary);
+				in.seekg(0, std::ios::end);
+				auto size = in.tellg();
+				in.seekg(0, std::ios::beg);
+				std::vector<char> data(size, 0);
+				in.read(data.data(), size);
+				rynx::serialization::vector_reader reader(data);
+
+				ecs.clear();
+				all_rulesets().clear(*m_context);
+
+				ecs.deserialize(m_reflections, reader);
+
+				auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
+				rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
+				all_rulesets().deserialize(*m_context, rulesets_reader);
+			});
+		});
+		
+		m_file_actions_bar->addChild(save_scene);
+		m_file_actions_bar->addChild(load_scene);
 
 		m_editor_menu->addChild(m_tools_bar);
 		m_editor_menu->addChild(m_entity_bar);
+		m_editor_menu->addChild(m_file_actions_bar);
+		// m_editor_menu->addChild(m_scene_bar);
 
 		m_tools_bar->set_background(frame_tex);
 		m_entity_bar->set_background(frame_tex);
+		m_file_actions_bar->set_background(frame_tex);
 
 		// editor entity view menu
 		{
@@ -568,9 +628,6 @@ rynx::editor_rules::editor_rules(
 										});
 									});
 							}
-
-							// create menu list of reflections
-							// list must get exclusive input
 						}
 					}
 					});
@@ -586,8 +643,6 @@ rynx::editor_rules::editor_rules(
 	};
 
 	add_tool<rynx::editor::tools::selection_tool>(ctx);
-	// TODO: Tool construction can't require these inputs.
-	// TODO: Move tool initialization inside the add_tool function.
 
 	m_active_tool = m_tools[0].get();
 	m_active_tool->on_tool_selected();

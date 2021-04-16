@@ -72,6 +72,16 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 		rynx::collision_detection::category_id dynamic
 	) : ball_id(ball_id), square_id(square_id), tex_id(tex_id), dynamic(dynamic) {}
 
+	virtual void serialize(rynx::scheduler::context& ctx, rynx::serialization::vector_writer& writer) {
+		logmsg("serializing ball spawner: frameCount: %llu", frameCount);
+		writer(frameCount);
+	}
+
+	virtual void deserialize(rynx::scheduler::context& ctx, rynx::serialization::vector_reader& reader) {
+		reader(frameCount);
+		logmsg("deserializing ball spawner: frameCount: %llu", frameCount);
+	}
+
 	virtual void onFrameProcess(rynx::scheduler::context& scheduler, float /* dt */) override {
 		if ((++frameCount % how_often_to_spawn) == 0) {
 			scheduler.add_task("spawn balls", [this](
@@ -233,6 +243,13 @@ int main(int argc, char** argv) {
 
 	rynx::reflection::reflections reflections(ecs.get_type_index());
 	reflections.load_generated_reflections();
+	{
+		auto refl = reflections.create<rynx::matrix4>(); // TODO: this should not be necessary
+		refl.add_field("m", &rynx::matrix4::m);
+
+		auto tex_ref = reflections.create<rynx::graphics::texture_id>();
+		tex_ref.add_field("value", &rynx::graphics::texture_id::value);
+	}
 	rynx_assert(reflections.find(typeid(rynx::components::color).name()) != nullptr, "yup");
 
 	std::shared_ptr<rynx::camera> camera = std::make_shared<rynx::camera>();
@@ -351,7 +368,6 @@ int main(int argc, char** argv) {
 				rynx::components::collisions{ collisionCategoryStatic.value },
 				rynx::components::boundary(polygon, pos, angle),
 				rynx::components::mesh(mesh_p),
-				rynx::matrix4(),
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
@@ -480,6 +496,7 @@ int main(int argc, char** argv) {
 	rynx::sound::configuration config;
 	audio.open_output_device(64, 256);
 
+	/*
 	// construct menus
 	{
 		rynx::graphics::texture_id frame_tex = application.textures()->findTextureByName("frame");
@@ -541,6 +558,7 @@ int main(int argc, char** argv) {
 		root.addChild(sampleSlider);
 		root.addChild(megaSlider);
 	}
+	*/
 
 	auto fbo_menu = rynx::graphics::framebuffer::config()
 		.set_default_resolution(1920, 1080)
@@ -698,33 +716,34 @@ int main(int argc, char** argv) {
 					rynx::graphics::renderable_text logic_fps_text;
 					logic_fps_text
 						.text("logic:  " + get_min_avg_max(logic_time))
-						.pos({ -0.9f, 0.40f + info_text_pos_y, 0.0f })
-						.font_size(0.05f)
+						.pos({ 0.0f, 0.28f + info_text_pos_y, 0.0f })
+						.font_size(0.025f)
 						.color(Color::DARK_GREEN)
 						.align_left()
 						.font(&fontConsola);
 
 					rynx::graphics::renderable_text render_fps_text = logic_fps_text;
 					render_fps_text.text(std::string("draw:   ") + get_min_avg_max(render_time))
-						.pos({ -0.9f, 0.35f + info_text_pos_y });
+						.pos({ -0.0f, 0.37f + info_text_pos_y });
 
 					rynx::graphics::renderable_text body_count_text = logic_fps_text;
 					body_count_text.text(std::string("bodies: ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()))
-						.pos({ -0.9f, 0.30f + info_text_pos_y });
+						.pos({ -0.0f, 0.34f + info_text_pos_y });
 
 					rynx::graphics::renderable_text frustum_culler_text = logic_fps_text;
 					frustum_culler_text.text(std::string("visible/culled: ") + std::to_string(ecs.query().notIn<rynx::components::frustum_culled>().count()) + "/" + std::to_string(ecs.query().in<rynx::components::frustum_culled>().count()))
-						.pos({ -0.9f, 0.25f + info_text_pos_y });
+						.pos({ -0.0f, 0.31f + info_text_pos_y });
 
 					rynx::graphics::renderable_text fps_text = logic_fps_text;
 					fps_text.text(std::string("fps: ") + std::to_string(1000.0f / total_time.avg()))
-						.pos({ -0.9f, 0.20f + info_text_pos_y });
+						.pos({ -0.0f, 0.40f + info_text_pos_y });
 
-
-					application.renderer().drawText(logic_fps_text);
-					application.renderer().drawText(render_fps_text);
-					application.renderer().drawText(body_count_text);
-					application.renderer().drawText(frustum_culler_text);
+					if (false) {
+						application.renderer().drawText(logic_fps_text);
+						application.renderer().drawText(render_fps_text);
+						application.renderer().drawText(body_count_text);
+						application.renderer().drawText(frustum_culler_text);
+					}
 					application.renderer().drawText(fps_text);
 				}
 

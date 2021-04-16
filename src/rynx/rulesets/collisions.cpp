@@ -358,6 +358,10 @@ namespace {
 
 }
 
+void rynx::ruleset::physics_2d::clear(rynx::scheduler::context& ctx) {
+	auto& detection = ctx.get_resource<rynx::collision_detection>();
+	detection.clear();
+}
 
 void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context, float dt) {
 	rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");

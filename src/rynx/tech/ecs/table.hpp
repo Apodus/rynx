@@ -12,13 +12,6 @@
 
 
 namespace rynx {
-
-	using type_id_t = uint64_t;
-	using entity_id_t = uint64_t;
-	using index_t = uint32_t;
-
-	struct ecs_value_segregated_component_tag {};
-	
 	namespace ecs_internal {
 		class itable {
 		public:
@@ -42,6 +35,7 @@ namespace rynx {
 
 			virtual void* get(index_t) = 0;
 			virtual std::string type_name() const = 0;
+			virtual bool is_type_segregated() const = 0;
 
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
@@ -89,10 +83,11 @@ namespace rynx {
 			}
 
 			virtual void serialize(rynx::serialization::vector_writer& writer) {
-				rynx::serialize(m_data, writer);
+				if constexpr (!std::is_base_of_v<ecs_no_serialize_tag, T>)
+					rynx::serialize(m_data, writer);
 			}
 
-			virtual void deserialize(rynx::serialization::vector_reader& reader) {
+			void deserialize(rynx::serialization::vector_reader& reader) {
 				rynx::deserialize(m_data, reader);
 			}
 
@@ -118,6 +113,9 @@ namespace rynx {
 			virtual void* get(index_t i) override { return &m_data[i]; }
 			virtual std::string type_name() const {
 				return typeid(T).name();
+			}
+			virtual bool is_type_segregated() const {
+				return std::is_base_of_v<rynx::ecs_value_segregated_component_tag, T>;
 			}
 
 			virtual void erase(entity_id_t id) override {
@@ -174,6 +172,7 @@ namespace rynx {
 
 		struct ivalue_segregation_map {
 			virtual ~ivalue_segregation_map() {}
+			virtual std::vector<rynx::type_index::virtual_type> get_virtual_types() const = 0;
 			virtual bool contains(void*) = 0;
 			virtual void emplace(void* data, rynx::type_index::virtual_type type) = 0;
 			virtual rynx::type_index::virtual_type get_type_id_for(void* data) = 0;
@@ -181,6 +180,13 @@ namespace rynx {
 
 		template<typename T>
 		struct value_segregation_map : public ivalue_segregation_map {
+			virtual std::vector<rynx::type_index::virtual_type> get_virtual_types() const override {
+				std::vector<rynx::type_index::virtual_type> result;
+				for (auto&& entry : m_map)
+					result.emplace_back(entry.second);
+				return result;
+			}
+			
 			virtual bool contains(void* data) override {
 				return m_map.find(*static_cast<T*>(data)) != m_map.end();
 			}

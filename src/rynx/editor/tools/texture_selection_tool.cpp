@@ -38,6 +38,9 @@ void rynx::editor::tools::texture_selection::on_tool_selected() {
 				m_editor_state->m_editor->execute([this, ptr_tex, tex_name, tex_id]() {
 					ptr_tex->textureName = tex_name;
 					
+					// have to check if the texture component we are changing is a direct component
+					// before changing the texture id component, because texture could be a member field
+					// in some other component.
 					auto entity_id = selected_id();
 					if (m_ecs[entity_id].try_get<rynx::components::texture>() == ptr_tex) {
 						auto* tex_id_ptr = m_ecs[entity_id].try_get<rynx::graphics::texture_id>();

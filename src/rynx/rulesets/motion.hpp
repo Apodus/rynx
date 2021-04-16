@@ -10,7 +10,6 @@ namespace rynx {
 		public:
 			motion_updates(vec3<float> gravity = vec3<float>(0, 0, 0)) : m_gravity(gravity) {}
 			virtual ~motion_updates() {}
-
 			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override;
 		};
 	}

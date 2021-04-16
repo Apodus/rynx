@@ -63,8 +63,21 @@ namespace rynx {
 			template<typename IOStream>
 			void serialize(const std::vector<T>& vec_t, IOStream& writer) {
 				writer(vec_t.size());
-				for(auto&& t : vec_t)
-					rynx::serialize(t, writer);
+				if constexpr (
+					(sizeof(T) >= alignof(T)) &&
+					(sizeof(T) % alignof(T) == 0) &&
+					(std::is_integral_v<T> || std::is_floating_point_v<T>))
+				{
+					// fast path for clear cases
+					// NOTE: Do not serialize non-pods with fast-path, because
+					//       if for some reason T is changed later to not follow alignment rules,
+					//       loading previously written data will fail.
+					writer(vec_t.data(), sizeof(T) * vec_t.size());
+				}
+				else {
+					for (auto&& t : vec_t)
+						rynx::serialize(t, writer);
+				}
 			}
 
 			template<typename IOStream>
@@ -72,11 +85,27 @@ namespace rynx {
 				size_t numElements = 0;
 				reader(numElements);
 				size_t originalSize = vec_t.size();
-				vec_t.reserve(originalSize + numElements);
-				for (size_t i = 0; i < numElements; ++i) {
-					T t;
-					rynx::deserialize(t, reader);
-					vec_t.emplace_back(std::move(t));
+
+				if constexpr (
+					(sizeof(T) >= alignof(T)) &&
+					(sizeof(T) % alignof(T) == 0) &&
+					(std::is_integral_v<T> || std::is_floating_point_v<T>))
+				{
+					// fast path for clear cases
+					// NOTE: Do not serialize non-pods with fast-path, because
+					//       if for some reason T is changed later to not follow alignment rules,
+					//       loading previously written data will fail.
+					vec_t.resize(originalSize + numElements);
+					reader(vec_t.data() + originalSize, sizeof(T) * numElements);
+				}
+				else
+				{
+					vec_t.reserve(originalSize + numElements);
+					for (size_t i = 0; i < numElements; ++i) {
+						T t;
+						rynx::deserialize(t, reader);
+						vec_t.emplace_back(std::move(t));
+					}
 				}
 			}
 		};
@@ -103,7 +132,7 @@ namespace rynx {
 		class vector_writer {
 		public:
 			vector_writer() {}
-			vector_writer(std::vector<char> data) : m_data(std::move(data)) { m_head = m_data.size(); }
+			// vector_writer(std::vector<char> data) : m_data(std::move(data)) { m_head = m_data.size(); }
 			vector_writer(std::vector<char>&& data) : m_data(std::move(data)) { m_head = m_data.size(); }
 
 			void operator()(const void* src, size_t size) {

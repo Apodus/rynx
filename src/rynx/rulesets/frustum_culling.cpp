@@ -12,7 +12,7 @@
 #include <rynx/math/geometry/frustum.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
-void rynx::ruleset::frustum_culling::clear() {
+void rynx::ruleset::frustum_culling::clear(rynx::scheduler::context&) {
 	m_in_frustum.clear();
 	m_out_frustum.clear();
 }

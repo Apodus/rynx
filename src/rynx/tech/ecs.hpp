@@ -68,6 +68,7 @@ namespace rynx {
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
 		rynx::unordered_map<type_id_t, opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>> m_value_segregated_types_maps;
+		std::vector<type_id_t> m_virtual_types_released;
 
 		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
@@ -381,7 +382,14 @@ namespace rynx {
 			template<typename T> const auto& table(type_id_t typeIndex) const { return const_cast<entity_category*>(this)->table<T>(typeIndex); }
 			template<typename T> const auto& table() const { return const_cast<entity_category*>(this)->table<T>(); }
 			template<typename T> const auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) const { return const_cast<entity_category*>(this)->table<T>(typeAliases); }
-			
+
+			rynx::ecs_internal::itable* table_ptr(type_id_t type_index_value) {
+				if (type_index_value < m_tables.size()) {
+					return m_tables[type_index_value].get();
+				}
+				return nullptr;
+			}
+
 			rynx::ecs_internal::itable& table(type_id_t type_index_value) {
 				rynx_assert(m_tables[type_index_value] != nullptr, "table must exist");
 				return *m_tables[type_index_value];
@@ -1193,13 +1201,36 @@ namespace rynx {
 			// serialize everything as-is.
 			rynx::serialize(reflections, out); // include reflection of written data
 			rynx::serialize(m_idCategoryMap.size(), out);
-			rynx::serialize(m_categories.size(), out);
+			
+			size_t numNonEmptyCategories = 0;
 			for (auto&& category : m_categories) {
+				if (!category.second->ids().empty())
+					++numNonEmptyCategories;
+			}
+			rynx::serialize(numNonEmptyCategories, out);
+			// rynx::serialize(m_categories.size(), out);
+			for (auto&& category : m_categories) {
+				if (category.second->ids().empty())
+					continue;
+
 				std::vector<std::string> category_typenames;
-				category.first.forEachOne([&reflections, &category_typenames](uint64_t type_id) {
+				category.first.forEachOne([&category, &reflections, &category_typenames](uint64_t type_id) {
 					auto* typeReflection = reflections.find(type_id);
-					rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
-					category_typenames.emplace_back(typeReflection->m_type_name);
+					auto* tablePtr = category.second->table_ptr(type_id);
+					if (tablePtr) {
+						logmsg("%s", tablePtr->type_name().c_str());
+					}
+					else {
+						if (typeReflection) {
+							logmsg("no table for type: %s", typeReflection->m_type_name.c_str());
+						}
+						else {
+							logmsg("no table for type %lld", type_id);
+						}
+					}
+					// rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
+					if(typeReflection && typeReflection->m_serialization_allowed)
+						category_typenames.emplace_back(typeReflection->m_type_name);
 				});
 
 				rynx::serialize(category_typenames, out);
@@ -1207,6 +1238,7 @@ namespace rynx {
 				// for each table in category - serialize table type name, serialize table data
 				category.second->forEachTable([&reflections, &out](rynx::ecs_internal::itable* table) {
 					// rynx::serialize(table->reflection(reflections).m_type_name);
+					logmsg("serializing table %s", table->type_name().c_str());
 					table->serialize(out);
 				});
 
@@ -1272,12 +1304,27 @@ namespace rynx {
 				auto category_it = m_categories.find(category_id);
 
 				// source category typenames is the correct order to deserialize in.
+				std::vector<type_id_t> additional_types;
 				for (auto&& name : category_typenames) {
 					auto reflection_ptr = reflections.find(name);
 					auto type_index_value = reflection_ptr->m_type_index_value;
 					auto* table_ptr = category_it->second->table(type_index_value, reflection_ptr->m_create_table_func);
-					if(table_ptr != nullptr)
+					if (table_ptr != nullptr) {
+						logmsg("deserializing table %s", name.c_str());
 						table_ptr->deserialize(in);
+						if (table_ptr->is_type_segregated()) {
+							auto& segregation_map = value_segregated_types_map(type_index_value, reflection_ptr->m_create_map_func);
+							void* segregated_data_ptr = table_ptr->get(0);
+							if (!segregation_map.contains(segregated_data_ptr)) {
+								segregation_map.emplace(segregated_data_ptr, create_virtual_type());
+							}
+							auto segregation_virtual_type = segregation_map.get_type_id_for(segregated_data_ptr);
+							additional_types.emplace_back(segregation_virtual_type.type_value);
+						}
+					}
+					else {
+						logmsg("deser skipping table %s", name.c_str());
+					}
 				}
 
 				// deserialize category ids and insert them to the category.
@@ -1298,6 +1345,35 @@ namespace rynx {
 
 				for (auto& id : categoryIds) {
 					m_idCategoryMap[id.value] = { category_it->second.get(), index_t(idCount++) };
+				}
+
+				// add missing segregation types.
+				if (!additional_types.empty()) {
+					for (auto&& segregation_virtual_type : additional_types) {
+						category_id.set(segregation_virtual_type);
+					}
+
+					// if category already does not exist - create category.
+					if (m_categories.find(category_id) == m_categories.end()) {
+						// if dst category does not previously exist, we can just move the current category in it's place.
+						rynx::dynamic_bitset prev_category_id = std::move(category_it->second->m_types);
+						category_it->second->m_types = category_id;
+						auto res = m_categories.emplace(category_id, std::move(category_it->second));
+						m_categories.erase(prev_category_id);
+					}
+					else {
+						// TODO: Increase perf by migrating all entities from category at once.
+						auto dst_category_it = m_categories.find(category_id);
+						while (!category_it->second->ids().empty()) {
+							dst_category_it->second->migrateEntityFrom(
+								category_id,
+								category_it->second.get(),
+								0,
+								this->m_idCategoryMap
+							);
+						}
+						m_categories.erase(category_it);
+					}
 				}
 			}
 		}
@@ -1361,6 +1437,11 @@ namespace rynx {
 		void erase(id entityId) { erase(entityId.value); }
 
 		void clear() {
+			for (auto&& entry : m_value_segregated_types_maps) {
+				for (auto&& virtual_type_value : entry.second->get_virtual_types()) {
+					this->m_virtual_types_released.emplace_back(virtual_type_value.type_value);
+				}
+			}
 			this->m_categories.clear();
 			this->m_idCategoryMap.clear();
 			this->m_value_segregated_types_maps.clear();
@@ -1728,7 +1809,14 @@ namespace rynx {
 		template<typename... Components> ecs& attachToEntity(rynx::id id, Components&& ... components) { attachToEntity(id.value, std::forward<Components>(components)...); return *this; }
 		template<typename... Components> ecs& removeFromEntity(rynx::id id) { removeFromEntity<Components...>(id.value); return *this; }
 
-		rynx::type_index::virtual_type create_virtual_type() { return m_types.create_virtual_type(); }
+		rynx::type_index::virtual_type create_virtual_type() {
+			if (!m_virtual_types_released.empty()) {
+				auto virtual_type = m_virtual_types_released.back();
+				m_virtual_types_released.pop_back();
+				return { virtual_type };
+			}
+			return m_types.create_virtual_type();
+		}
 
 	public:
 		// ecs view that operates on Args types only. generates compile errors if trying to access any other data.

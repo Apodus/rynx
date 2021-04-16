@@ -65,9 +65,6 @@ namespace rynx {
 	class editor_rules : public rynx::application::logic::iruleset {
 	private:
 		rynx::editor::editor_shared_state m_state;
-		
-		rynx::binary_config::id m_editor_state;
-		rynx::binary_config::id m_game_state;
 
 		rynx::key::logical key_selection_tool;
 		rynx::key::logical key_polygon_tool;

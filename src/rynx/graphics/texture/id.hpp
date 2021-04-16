@@ -8,8 +8,10 @@
 
 namespace rynx {
 	namespace graphics {
-		struct ANNOTATE("transient") texture_id {
-			bool operator == (const texture_id& other) const = default;
+		struct texture_id : public rynx::ecs_no_serialize_tag {
+			texture_id() = default;
+			texture_id(int32_t v) : value(v) {}
+			bool operator == (const texture_id& other) const { return value == other.value; }
 			int32_t value = 0;
 		};
 	}

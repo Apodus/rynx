@@ -9,7 +9,6 @@ namespace rynx {
 			public:
 				springs() = default;
 				virtual ~springs() {}
-
 				virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override;
 			};
 		}

@@ -6,6 +6,8 @@
 #include <cstdint>
 
 namespace rynx {
+	struct ecs_value_segregated_component_tag {};
+	struct ecs_no_serialize_tag {};
 
 	using type_id_t = uint64_t;
 	using entity_id_t = uint64_t;

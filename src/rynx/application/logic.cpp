@@ -26,6 +26,7 @@ void rynx::application::logic::iruleset::required_for(iruleset& other) {
 
 rynx::application::logic& rynx::application::logic::add_ruleset(std::unique_ptr<iruleset> ruleset) {
 	m_rules.emplace_back(std::move(ruleset));
+	m_rules.back()->m_parent = this;
 	return *this;
 }
 
@@ -43,8 +44,8 @@ void rynx::application::logic::entities_erased(rynx::scheduler::context& context
 	}
 }
 
-void rynx::application::logic::clear() {
+void rynx::application::logic::clear(rynx::scheduler::context& context) {
 	for (auto& ruleset : m_rules) {
-		ruleset->clear();
+		ruleset->clear(context);
 	}
 }

@@ -23,7 +23,8 @@ namespace rynx {
 			}
 
 			void clear() {
-				m_logic.clear();
+				m_ecs.clear();
+				m_logic.clear(*m_context);
 			}
 
 			template<typename T>
@@ -62,6 +63,8 @@ namespace rynx {
 
 			template<typename T>
 			void add_rule_set(std::unique_ptr<T>&& t) {
+				static_assert(std::is_base_of_v<rynx::application::logic::iruleset, T>, "must be an iruleset");
+				rynx::application::logic::iruleset::unique_name_setter()(*t, typeid(T).name());
 				m_logic.add_ruleset(std::move(t));
 			}
 

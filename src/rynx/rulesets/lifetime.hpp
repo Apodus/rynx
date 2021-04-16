@@ -10,7 +10,6 @@ namespace rynx {
 		public:
 			lifetime_updates() = default;
 			virtual ~lifetime_updates() = default;
-
 			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override;
 		};
 	}
