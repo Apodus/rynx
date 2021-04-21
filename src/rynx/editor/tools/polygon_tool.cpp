@@ -11,19 +11,19 @@ rynx::editor::tools::polygon_tool::polygon_tool(rynx::scheduler::context& ctx) {
 	m_secondary_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(1), "polygon tool activate");
 	m_key_smooth = input.generateAndBindGameKey(',', "polygon smooth op");
 
-	define_action("edit", [this](rynx::scheduler::context* ctx) {
+	define_action("vertices edit", [this](rynx::scheduler::context* ctx) {
 		// no action required, just a shorthand to activate the tool.
 	});
 
-	define_action("smooth", [this](rynx::scheduler::context* ctx) {
+	define_action("vertices smooth", [this](rynx::scheduler::context* ctx) {
 		action_smooth(ctx->get_resource<rynx::ecs>());
 	});
 
-	define_action("rebuild mesh", [this](rynx::scheduler::context* ctx) {
+	define_action("mesh rebuild", [this](rynx::scheduler::context* ctx) {
 		action_rebuild_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
 	});
 	
-	define_action("rebuild boundary mesh", [this](rynx::scheduler::context* ctx) {
+	define_action("mesh rebuild boundary", [this](rynx::scheduler::context* ctx) {
 		action_rebuild_boundary_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
 	});
 }

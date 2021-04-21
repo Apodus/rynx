@@ -281,6 +281,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 							auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 							edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
 							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
+							edit_button->text().text_align_left();
 							edit_button->on_click([this, info, member, actionName, tool_ptr = tool.get()]() {
 								tool_ptr->source_data([=]() {
 									int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
@@ -300,6 +301,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 						auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 						edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
 						edit_button->text().text("^g" + tool->get_tool_name());
+						edit_button->text().text_align_left();
 						edit_button->on_click([this, info, member, tool_ptr = tool.get()]() {
 							tool_ptr->source_data([=]() {
 								int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
@@ -408,7 +410,8 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 							auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 							edit_button->align().target(component_sheet->last_child()).bottom_outside().left_inside();
 							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
-							
+							edit_button->text().text_align_left();
+
 							auto component_type_id = reflection_entry.m_type_index_value;
 							edit_button->on_click([this, &ecs, actionName, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
 								tool_ptr->source_data([component_type_id, entity_id, ecs_ptr = &ecs]() {
@@ -428,6 +431,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 						auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 						edit_button->align().target(component_name.get()).bottom_outside().left_inside();
 						edit_button->text().text("^g" + tool->get_tool_name());
+						edit_button->text().text_align_left();
 
 						auto component_type_id = reflection_entry.m_type_index_value;
 						edit_button->on_click([this, &ecs, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
