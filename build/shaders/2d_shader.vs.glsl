@@ -13,6 +13,8 @@ uniform isamplerBuffer uvIndirect;
 
 out vec2 uv_pass;
 
+
+
 void main()
 {
     gl_Position = projection * view * model * vec4(position, 1.0);

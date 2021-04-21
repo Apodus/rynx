@@ -1,13 +1,14 @@
 #pragma once
 
 #include <rynx/graphics/shader/shaders.hpp>
+#include <rynx/graphics/renderer/textrenderer.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/graphics/camera/camera.hpp>
-#include <rynx/graphics/texture/texturehandler.hpp>
-#include <rynx/graphics/renderer/textrenderer.hpp>
+#include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/matrix.hpp>
+
 
 #include <memory>
 #include <chrono>
@@ -19,41 +20,6 @@ namespace rynx {
 		class mesh;
 		class text_renderer;
 		class renderable_text;
-
-		class mesh_collection {
-		public:
-			mesh_collection(std::shared_ptr<rynx::graphics::GPUTextures> gpuTextures) : m_pGpuTextures(gpuTextures) {}
-
-			mesh* get(mesh_id id) {
-				auto it = m_storage.find(id);
-				rynx_assert(it != m_storage.end(), "mesh not found");
-				return it->second.get();
-			}
-
-			mesh_id create(std::unique_ptr<mesh> mesh) {
-				mesh_id id = generate_mesh_id();
-				auto it = m_storage.emplace(id, std::move(mesh));
-				it.first->second->build();
-				it.first->second->id = id;
-				return id;
-			}
-
-			void erase(mesh_id id) {
-				m_storage.erase(id);
-			}
-
-			mesh_id create(polygon shape) {
-				return create(rynx::polygon_triangulation().make_mesh(shape, { 0, 0, 1, 1 }));
-			}
-
-		private:
-			mesh_id generate_mesh_id() {
-				return { std::chrono::high_resolution_clock::now().time_since_epoch().count() };
-			}
-			
-			std::shared_ptr<rynx::graphics::GPUTextures> m_pGpuTextures;
-			rynx::unordered_map<mesh_id, std::unique_ptr<mesh>> m_storage;
-		};
 
 		class renderer {
 			mesh_id m_rectangle;
@@ -95,7 +61,6 @@ namespace rynx {
 			void setDepthTest(bool depthTestEnabled);
 			std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
-			void loadDefaultMesh();
 			void cameraToGPU();
 			void setCamera(std::shared_ptr<camera> camera);
 			void setDefaultFont(const Font& font) { m_pTextRenderer->setDefaultFont(font); }

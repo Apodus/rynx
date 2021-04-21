@@ -7,18 +7,16 @@
 namespace rynx {
 	class collision_detection;
 	
+	namespace graphics {
+		class mesh_collection;
+	}
+
 	namespace editor {
 		namespace tools {
 
 			class polygon_tool : public itool {
 			public:
-				polygon_tool(rynx::scheduler::context& ctx) {
-					auto& input = ctx.get_resource<rynx::mapped_input>();
-					m_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(0), "polygon tool activate");
-					m_secondary_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(1), "polygon tool activate");
-					m_key_smooth = input.generateAndBindGameKey(',', "polygon smooth op");
-				}
-
+				polygon_tool(rynx::scheduler::context& ctx);
 				virtual void update(rynx::scheduler::context& ctx) override;
 
 				virtual void on_tool_selected() override {}
@@ -37,7 +35,7 @@ namespace rynx {
 				}
 
 				virtual std::string get_button_texture() override {
-					return "frame";
+					return "polygon_tool";
 				}
 
 			private:
@@ -46,6 +44,10 @@ namespace rynx {
 				void drag_operation_start(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
 				void drag_operation_update(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
 				void drag_operation_end(rynx::ecs& game_ecs, rynx::collision_detection& detection);
+
+				void action_smooth(rynx::ecs& ecs);
+				void action_rebuild_mesh(rynx::ecs& ecs, rynx::graphics::mesh_collection& meshes);
+				void action_rebuild_boundary_mesh(rynx::ecs& ecs, rynx::graphics::mesh_collection& meshes);
 
 				int32_t m_selected_vertex = -1; // -1 is none, otherwise this is an index to polygon vertex array.
 				rynx::key::logical m_activation_key;

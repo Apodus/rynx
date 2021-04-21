@@ -248,7 +248,10 @@ namespace rynx {
 			void clear_children() { m_children.clear(); }
 			void addChild(std::shared_ptr<Component> child);
 			std::shared_ptr<Component> detachChild(const Component* ptr);
-			rynx::menu::Component* last_child() { rynx_assert(!m_children.empty(), "component has no children"); return m_children.back().get(); }
+			rynx::menu::Component* last_child(int32_t n=0) {
+				rynx_assert(n < m_children.size(), "nth child from back not available");
+				return (m_children.end()-(n+1))->get();
+			}
 			
 			void set_parent(Component* other);
 			void reparent(Component& other);

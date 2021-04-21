@@ -28,8 +28,8 @@ namespace rynx {
 								rynx::matrix4& model)
 								{
 									model.discardSetTranslate(pos.value);
-									model.scale(r.r);
 									model.rotate_2d(pos.angle);
+									model.scale(r.r);
 								}
 						);
 					});

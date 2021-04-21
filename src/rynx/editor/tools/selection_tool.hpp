@@ -27,7 +27,7 @@ namespace rynx {
 				}
 
 				virtual std::string get_button_texture() override {
-					return "editor_selection_tool";
+					return "selection_tool";
 				}
 
 				virtual bool operates_on(const std::string& /* type_name */) override {

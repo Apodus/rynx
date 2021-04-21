@@ -13,7 +13,7 @@
 #include <memory>
 
 std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_geometry_pass(rynx::graphics::renderer* pRenderer) {
-	rynx::graphics::mesh_id tube_mesh_id = pRenderer->meshes()->create(rynx::Shape::makeBox(1.0f));
+	rynx::graphics::mesh_id tube_mesh_id = pRenderer->meshes()->create_transient(rynx::Shape::makeBox(1.0f));
 	auto* tube_mesh = pRenderer->meshes()->get(tube_mesh_id);
 	tube_mesh->normals.clear();
 	tube_mesh->putNormal(0, +1, 0);
@@ -26,8 +26,10 @@ std::unique_ptr<rynx::application::graphics_step> rynx::application::visualisati
 	auto geometry_pass = std::make_unique<graphics_step>();
 	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
 	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(pRenderer));
-	// geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(pRenderer->meshes()->get(), pRenderer));
-	// geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(pRenderer->meshes()->get(), pRenderer));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::boundary_renderer>(tube_mesh_id, pRenderer));
+	
+	rynx::graphics::mesh_id circle_mesh_id = pRenderer->meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
+	geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(pRenderer->meshes()->get(circle_mesh_id), pRenderer));
 	return geometry_pass;
 }
 

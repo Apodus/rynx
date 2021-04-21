@@ -178,6 +178,9 @@ namespace rynx {
 		}
 
 		void switch_to_tool(rynx::editor::itool& tool) {
+			if (&tool == m_active_tool)
+				return;
+			
 			m_active_tool->on_tool_unselected();
 			tool.on_tool_selected();
 			m_active_tool = &tool;

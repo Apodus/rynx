@@ -1042,7 +1042,7 @@ namespace rynx {
 		public:
 			query_t(category_source& ecs) : m_ecs(ecs) {}
 			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
-			~query_t() { rynx_assert(m_consumed, "did you forget to execute query object?"); }
+			~query_t() {}
 			
 			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
 			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
@@ -1448,8 +1448,20 @@ namespace rynx {
 			this->m_entities.clear();
 		}
 
+		// ecs allow check. everything is allowed except editing values of value segregated types.
+		// so value-segregated + mutable == error
 		template<typename...Args> void componentTypesAllowed() const {
-			static_assert(true && ((!std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<Args>> || std::is_const_v<std::remove_reference_t<Args>> || !std::is_reference_v<Args>) && ...), "");
+			static_assert(
+				true &&
+				(
+					(
+						!(std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<Args>> &&
+						(!std::is_const_v<std::remove_reference_t<Args>> && std::is_reference_v<Args>))
+					)
+					&& ...
+				)
+				, "you cannot edit value segregated types' values. erase the component and add again with different value."
+			);
 		}
 
 		template<typename T> type_id_t type_id_for([[maybe_unused]] const T& t) {
@@ -1542,7 +1554,7 @@ namespace rynx {
 				if constexpr (std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>) {
 					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 
-					auto it = map.find(m_ecs[id].get<T>());
+					auto it = map.find(m_ecs[id].get<const T>());
 					rynx_assert(it != map.end(), "entity has component T with some value. corresponding virtual type must exist.");
 					dst.reset(it->second.type_value);
 				}
@@ -1848,10 +1860,18 @@ namespace rynx {
 
 			template<typename...Args> static constexpr bool typesAllowed() { return true && (typeAllowed<std::remove_reference_t<Args>>() && ...); }
 			template<typename...Args> static constexpr bool typesConstCorrect() { return true && (typeConstCorrect<Args>() && ...); }
-			template<typename Arg> static constexpr bool valueSegregatedTypeAccessedOnlyInConstContext() { return !std::is_base_of_v<rynx::ecs_value_segregated_component_tag, Arg> || std::is_const_v<std::remove_reference_t<Arg>> || !std::is_reference_v<Arg>; }
+			template<typename Arg> static constexpr bool valueSegregatedTypeAccessedOnlyInConstContext() {
+				return 	!(std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<Arg>> &&
+					(!std::is_const_v<std::remove_reference_t<Arg>> && std::is_reference_v<Arg>));
+			}
 			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
 
 		protected:
+			template<typename...Args> void componentTypesAllowedForRemove() const {
+				static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
+				static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
+			}
+			
 			template<typename...Args> void componentTypesAllowed() const {
 				static_assert(typesAllowed<Args...>(), "Your ecs view does not have access to one of requested types.");
 				static_assert(typesConstCorrect<Args...>(), "You promised to access type in only const context.");
@@ -1940,7 +1960,7 @@ namespace rynx {
 
 			template<typename... Components>
 			edit_view& removeFromEntity(entity_id_t id) {
-				this->template componentTypesAllowed<Components...>();
+				this->template componentTypesAllowedForRemove<Components...>();
 				this->m_ecs->template removeFromEntity<Components...>(id);
 				return *this;
 			}

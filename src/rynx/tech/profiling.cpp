@@ -1,12 +1,13 @@
 
 #include <rynx/tech/profiling.hpp>
 #include <rynx/tech/unordered_map.hpp>
+#include <rynx/tech/filesystem/filesystem.hpp>
 #include <rynx/thread/this_thread.hpp>
 
 #include <array>
 #include <atomic>
 #include <mutex>
-#include <fstream>
+#include <sstream>
 
 namespace rynx {
 	namespace profiling {
@@ -94,7 +95,7 @@ namespace rynx {
 				return;
 
 			if constexpr (enabled) {
-				std::ofstream out("profile.json");
+				std::stringstream out;
 				out << "{" << "\"traceEvents\": [";
 
 				size_t first = (g_event_counter.load() + 1) % g_profiling_storage->size();
@@ -115,6 +116,8 @@ namespace rynx {
 				}
 
 				out << "]}";
+
+				rynx::filesystem::write_file("profile.json", out.str());
 			}
 		}
 	}

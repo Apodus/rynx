@@ -2,6 +2,93 @@
 #include <rynx/editor/tools/polygon_tool.hpp>
 #include <rynx/math/geometry/ray.hpp>
 #include <rynx/tech/collision_detection.hpp>
+#include <rynx/graphics/mesh/collection.hpp>
+#include <rynx/application/components.hpp>
+
+rynx::editor::tools::polygon_tool::polygon_tool(rynx::scheduler::context& ctx) {
+	auto& input = ctx.get_resource<rynx::mapped_input>();
+	m_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(0), "polygon tool activate");
+	m_secondary_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(1), "polygon tool activate");
+	m_key_smooth = input.generateAndBindGameKey(',', "polygon smooth op");
+
+	define_action("edit", [this](rynx::scheduler::context* ctx) {
+		// no action required, just a shorthand to activate the tool.
+	});
+
+	define_action("smooth", [this](rynx::scheduler::context* ctx) {
+		action_smooth(ctx->get_resource<rynx::ecs>());
+	});
+
+	define_action("rebuild mesh", [this](rynx::scheduler::context* ctx) {
+		action_rebuild_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
+	});
+	
+	define_action("rebuild boundary mesh", [this](rynx::scheduler::context* ctx) {
+		action_rebuild_boundary_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
+	});
+}
+
+void rynx::editor::tools::polygon_tool::action_smooth(rynx::ecs& ecs) {
+	if (ecs.exists(selected_id())) {
+		auto entity = ecs[selected_id()];
+
+		if (entity.has<rynx::components::boundary, rynx::components::position>()) {
+			auto& boundary = entity.get<rynx::components::boundary>();
+			boundary.segments_local.edit().smooth(3);
+			boundary.segments_local.recompute_normals();
+			boundary.segments_world = boundary.segments_local;
+
+			auto pos = entity.get<rynx::components::position>();
+			boundary.update_world_positions(pos.value, pos.angle);
+		}
+	}
+	
+	// TODO: should really also update radius.
+}
+
+void rynx::editor::tools::polygon_tool::action_rebuild_mesh(rynx::ecs& ecs, rynx::graphics::mesh_collection& meshes) {
+	if (ecs.exists(selected_id())) {
+		auto entity = ecs[selected_id()];
+		
+		if (entity.has<rynx::components::boundary, rynx::components::position>()) {
+			auto& boundary = entity.get<rynx::components::boundary>();
+			
+			// TODO: Mesh name should be selected much better
+			auto id = meshes.create("user_polymesh", rynx::polygon_triangulation().make_mesh(boundary.segments_local));
+			if (entity.has<rynx::components::mesh>()) {
+				entity.remove<rynx::components::mesh>();
+			}
+			entity.add(rynx::components::mesh(id));
+			
+			if (!entity.has<rynx::components::texture>()) {
+				entity.add(rynx::components::texture());
+			}
+		}
+	}
+}
+
+void rynx::editor::tools::polygon_tool::action_rebuild_boundary_mesh(rynx::ecs& ecs, rynx::graphics::mesh_collection& meshes) {
+	if (ecs.exists(selected_id())) {
+		auto entity = ecs[selected_id()];
+
+		if (entity.has<rynx::components::boundary, rynx::components::position>()) {
+			auto& boundary = entity.get<rynx::components::boundary>();
+
+			// TODO: Mesh name should be selected much better
+			auto id = meshes.create("user_polymesh", rynx::polygon_triangulation().make_boundary_mesh(boundary.segments_local));
+			if (entity.has<rynx::components::mesh>()) {
+				entity.remove<rynx::components::mesh>();
+			}
+			entity.add(rynx::components::mesh(id));
+		}
+
+		if (!entity.has<rynx::components::texture>()) {
+			entity.add(rynx::components::texture());
+		}
+	}
+
+	// TODO: should really also update radius.
+}
 
 void rynx::editor::tools::polygon_tool::update(rynx::scheduler::context& ctx) {
 	ctx.add_task("polygon tool tick", [this](
@@ -20,8 +107,11 @@ void rynx::editor::tools::polygon_tool::update(rynx::scheduler::context& ctx) {
 
 					if (gameInput.isKeyPressed(m_activation_key)) {
 						if (hit) {
-							if (!vertex_create(game_ecs, mouse_z_plane)) {
-								m_selected_vertex = vertex_select(game_ecs, mouse_z_plane);
+							m_selected_vertex = vertex_select(game_ecs, mouse_z_plane);
+							if (m_selected_vertex == -1) {
+								if (!vertex_create(game_ecs, mouse_z_plane)) {
+									// maybe drag the entire polygon then.
+								}
 							}
 							drag_operation_start(game_ecs, mouse_z_plane);
 						}
@@ -50,15 +140,7 @@ void rynx::editor::tools::polygon_tool::update(rynx::scheduler::context& ctx) {
 
 					// smooth selected polygon
 					if (gameInput.isKeyClicked(m_key_smooth)) {
-						auto& boundary = entity.get<rynx::components::boundary>();
-						boundary.segments_local.edit().smooth(3);
-						boundary.segments_local.recompute_normals();
-						boundary.segments_world = boundary.segments_local;
-
-						auto pos = entity.get<rynx::components::position>();
-						boundary.update_world_positions(pos.value, pos.angle);
-
-						// TODO: should really also update radius.
+						action_smooth(game_ecs);
 					}
 				}
 			}
@@ -68,7 +150,6 @@ void rynx::editor::tools::polygon_tool::update(rynx::scheduler::context& ctx) {
 
 
 bool rynx::editor::tools::polygon_tool::vertex_create(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos) {
-	float best_distance = 1e30f;
 	int best_vertex = -1;
 	bool should_create = false;
 
@@ -78,26 +159,24 @@ bool rynx::editor::tools::polygon_tool::vertex_create(rynx::ecs& game_ecs, rynx:
 	auto pos = entity.get<rynx::components::position>();
 	auto& boundary = entity.get<rynx::components::boundary>();
 
+	float best_distance = (pos.value - cursorWorldPos).length_squared(); 
 	for (size_t i = 0; i < boundary.segments_world.size(); ++i) {
 		// some threshold for vertex picking
 		const auto vertex = boundary.segments_world.segment(i);
 
-		if ((vertex.p1 - cursorWorldPos).length_squared() < best_distance) {
-			best_distance = (vertex.p1 - cursorWorldPos).length_squared();
-			best_vertex = int(i);
-			should_create = false;
-		}
-
-		float segment_mid_dist = ((vertex.p1 + vertex.p2) * 0.5f - cursorWorldPos).length_squared();
-		if (segment_mid_dist < best_distance) {
-			best_distance = segment_mid_dist;
+		auto [distSqr, closestPoint] = rynx::math::pointDistanceLineSegmentSquared(vertex.p1, vertex.p2, cursorWorldPos);
+		if (distSqr < best_distance) {
+			best_distance = distSqr;
 			best_vertex = int(i);
 			should_create = true;
 		}
 	}
 
 	if (should_create) {
-		boundary.segments_local.edit().insert(best_vertex, cursorWorldPos - pos.value);
+		rynx::vec3f local_position = cursorWorldPos - pos.value;
+		local_position = rynx::math::rotatedXY(local_position, -pos.angle);
+
+		boundary.segments_local.edit().insert(best_vertex, local_position);
 		boundary.segments_world = boundary.segments_local;
 		boundary.update_world_positions(pos.value, pos.angle);
 		m_selected_vertex = best_vertex + 1;

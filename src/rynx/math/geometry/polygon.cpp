@@ -51,12 +51,18 @@ rynx::vec3<std::pair<float, float>> rynx::polygon::extents() const {
 	return { {min_v.x, max_v.x}, {min_v.y, max_v.y}, {min_v.z, max_v.z} };
 }
 
+std::vector<rynx::vec3f> rynx::polygon::as_vertex_vector() const {
+	return m_vertices.as_vector();
+}
+
 rynx::math::spline rynx::polygon::as_spline(float alpha) const {
-	return rynx::math::spline(m_vertices.as_vector(), alpha);
+	auto vertices = m_vertices.as_vector();
+	vertices.pop_back();
+	return rynx::math::spline(std::move(vertices), alpha);
 }
 
 float rynx::polygon::normalize() {
-	float r = max_component_value();
+	float r = radius();
 	scale(1.0f / r);
 	return r;
 }

@@ -33,6 +33,7 @@ namespace rynx {
 		polygon& operator = (const polygon& other) = default;
 		polygon& operator = (polygon&& other) = default;
 
+		std::vector<rynx::vec3f> as_vertex_vector() const;
 		rynx::math::spline as_spline(float alpha = 1.0f) const;
 
 		bool isConvex(int vertex) const;

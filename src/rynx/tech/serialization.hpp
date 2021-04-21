@@ -113,8 +113,7 @@ namespace rynx {
 		class vector_reader {
 		public:
 			vector_reader(std::vector<char> data) : m_data(std::move(data)) {}
-			vector_reader(std::vector<char>&& data) : m_data(std::move(data)) {}
-
+			
 			void operator()(void* dst, size_t size) {
 				rynx_assert(m_head + size <= m_data.size(), "reading out of bounds");
 				std::memcpy(dst, m_data.data() + m_head, size);

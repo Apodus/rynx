@@ -54,7 +54,7 @@
 #include <rynx/tech/collision_detection.hpp>
 
 struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
-	rynx::graphics::mesh_id ball_id;
+	rynx::graphics::mesh_id circle_id;
 	rynx::graphics::mesh_id square_id;
 	rynx::graphics::texture_id tex_id;
 
@@ -70,7 +70,7 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 		rynx::graphics::mesh_id square_id,
 		rynx::graphics::texture_id tex_id,
 		rynx::collision_detection::category_id dynamic
-	) : ball_id(ball_id), square_id(square_id), tex_id(tex_id), dynamic(dynamic) {}
+	) : circle_id(ball_id), square_id(square_id), tex_id(tex_id), dynamic(dynamic) {}
 
 	virtual void serialize(rynx::scheduler::context& ctx, rynx::serialization::vector_writer& writer) {
 		logmsg("serializing ball spawner: frameCount: %llu", frameCount);
@@ -112,7 +112,7 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 								rynx::components::collisions{ dynamic.value },
 								rynx::components::color({ m_random(), m_random(), m_random(), 1.0f}),
 								rynx::components::dampening({ 0.10f, 0.10f }),
-								rynx::components::mesh{ ball_id },
+								rynx::components::mesh{ circle_id },
 								rynx::components::texture{"frame"}
 							);
 
@@ -161,7 +161,7 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 									rynx::components::collisions{ dynamic.value },
 									rynx::components::color({ m_random(), m_random(), m_random(), 1.0f}),
 									rynx::components::dampening({ 0.10f, 0.10f }),
-									rynx::components::mesh{ ball_id },
+									rynx::components::mesh{ circle_id },
 									rynx::components::texture{ "hero" }
 								);
 
@@ -213,29 +213,45 @@ int main(int argc, char** argv) {
 
 	rynx::application::Application application;
 	application.openWindow(1920, 1080);
+
+	auto meshes = application.renderer().meshes();
+
 	application.loadTextures("../textures/");
 	Font fontLenka(Fonts::setFontLenka(application.textures()->findTextureByName("lenka1024")));
 	Font fontConsola(Fonts::setFontConsolaMono(application.textures()->findTextureByName("consola1024")));
 
-	application.renderer().loadDefaultMesh();
 	application.renderer().setDefaultFont(fontConsola);
 
-	auto meshes = application.renderer().meshes();
-	auto ball_id = meshes->create(rynx::Shape::makeCircle(1.0f, 32));
-	auto circle_id = meshes->create(rynx::Shape::makeCircle(1.0f, 32));
-	auto square_id = meshes->create(rynx::Shape::makeBox(1.0f));
-	auto circle_border_id = meshes->create(
-		rynx::polygon_triangulation().make_boundary_mesh(
-			rynx::Shape::makeSphere(0.5f, 64),
-			{0, 0, 1, 1},
-			0.01f)
-	);
-	auto box_border_id = meshes->create(
-		rynx::polygon_triangulation().make_boundary_mesh(
-			rynx::Shape::makeBox(1.0f),
-			{0, 0, 1, 1},
-			0.01f)
-	);
+	meshes->load_all_meshes_from_disk("../meshes");
+	auto circle_id = meshes->findByName("circle32");
+	auto square_id = meshes->findByName("box_1x1");
+	auto circle_border_id = meshes->findByName("circle_border64");
+	auto box_border_id = meshes->findByName("box_boundary1x1");
+
+	if (!circle_id) {
+		circle_id = meshes->create("circle32", rynx::Shape::makeCircle(1.0f, 32));
+	}
+	if (!square_id) {
+		square_id = meshes->create("box_1x1", rynx::Shape::makeBox(1.0f));
+	}
+	if (!circle_border_id) {
+		circle_border_id = meshes->create("circle_border64",
+			rynx::polygon_triangulation().make_boundary_mesh(
+				rynx::Shape::makeSphere(0.5f, 64),
+				0.01f
+			)
+		);
+	}
+	if (!box_border_id) {
+		box_border_id = meshes->create("box_boundary1x1",
+			rynx::polygon_triangulation().make_boundary_mesh(
+				rynx::Shape::makeBox(1.0f),
+				0.01f
+			)
+		);
+	}
+
+	meshes->save_all_meshes_to_disk("../meshes");
 
 	rynx::scheduler::task_scheduler scheduler;
 	rynx::application::simulation base_simulation(scheduler);
@@ -279,6 +295,8 @@ int main(int argc, char** argv) {
 		base_simulation.set_resource(application.textures().get());
 		base_simulation.set_resource(&gameInput);
 		base_simulation.set_resource(camera.get());
+		base_simulation.set_resource(meshes.get());
+		base_simulation.set_resource(application.debugVis().get());
 	}
 
 	// TODO: use std::observer_ptr
@@ -291,14 +309,14 @@ int main(int argc, char** argv) {
 	auto program_state_editor_running = base_simulation.m_context->access_state().generate_state_id();
 
 	// setup game logic
-	{	
+	{
 		auto ruleset_collisionDetection = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics_2d>();
 		auto ruleset_particle_update = base_simulation.rule_set().create<rynx::ruleset::particle_system>();
 		auto ruleset_frustum_culling = base_simulation.rule_set().create<rynx::ruleset::frustum_culling>(camera);
 		auto ruleset_motion_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
 		auto ruleset_physical_springs = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics::springs>();
 		auto ruleset_lifetime_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::lifetime_updates>();
-		auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(ball_id, square_id, application.textures()->findTextureByName("hero"), collisionCategoryDynamic);
+		auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(circle_id, square_id, application.textures()->findTextureByName("hero"), collisionCategoryDynamic);
 		auto ruleset_editor = base_simulation.rule_set(program_state_editor_running).create<rynx::editor_rules>(
 			*base_simulation.m_context,
 			reflections,
@@ -343,12 +361,12 @@ int main(int argc, char** argv) {
 			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
 			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
 			polygon.invert();
-			auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, {0, 0, 1, 1}));
+			// auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, 1.0f));
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
 				rynx::components::boundary({ polygon }),
-				rynx::components::mesh(mesh_p),
+				// rynx::components::mesh(mesh_p),
 				rynx::matrix4(),
 				rynx::components::radius(polygon.radius()),
 				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
@@ -361,13 +379,13 @@ int main(int argc, char** argv) {
 		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
 			auto mesh_name = std::to_string(pos.y * pos.x);
 			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
-			auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, {0, 0, 1, 1}));
+			// auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, 1.0f));
 			float radius = polygon.radius();
 			return base_simulation.m_ecs.create(
 				rynx::components::position(pos, angle),
 				rynx::components::collisions{ collisionCategoryStatic.value },
 				rynx::components::boundary(polygon, pos, angle),
-				rynx::components::mesh(mesh_p),
+				// rynx::components::mesh(mesh_p),
 				rynx::components::radius(radius),
 				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
 				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
@@ -387,7 +405,7 @@ int main(int argc, char** argv) {
 				rynx::components::radius(2.0f),
 				rynx::components::collisions{ collisionCategoryDynamic.value },
 				rynx::components::color({1.0f, 1.0f, 1.0f, 1.0f}),
-				rynx::components::mesh{ ball_id },
+				rynx::components::mesh{ circle_id },
 				rynx::components::dampening({ 0.50f, 0.30f }),
 				rynx::matrix4()
 			);
@@ -408,7 +426,7 @@ int main(int argc, char** argv) {
 			numJoints = length / (rope_segment_length - rope_width);
 
 			auto p = rynx::Shape::makeRectangle(rope_segment_length, rope_width);
-			auto m = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(p, {0, 0, 1, 1}));
+			// auto m = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(p));
 			float piece_radius = sqrtf((rope_width * rope_width + rope_segment_length * rope_segment_length) * 0.25f);
 			float mass = 5.0f;
 			
@@ -483,7 +501,7 @@ int main(int argc, char** argv) {
 	auto key_toggle_editor_enabled = gameInput.generateAndBindGameKey('O', "editor enabled");
 	
 	struct debug_conf {
-		bool visualize_dynamic_collisions = false;
+		bool visualize_dynamic_collisions = true;
 		bool visualize_static_collisions = false;
 		bool visualize_projectile_collisions = false;
 	};
@@ -768,7 +786,7 @@ int main(int argc, char** argv) {
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.debugVis()->addDebugVisual(meshes->get(circle_border_id), m, node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugCircle(m, node_colors[depth % node_colors.size()]);
 						});
 					}
 
@@ -780,7 +798,7 @@ int main(int argc, char** argv) {
 							m.discardSetTranslate(pos);
 							m.scale(radius);
 							float sign[2] = { -1.0f, +1.0f };
-							application.debugVis()->addDebugVisual(meshes->get(circle_border_id), m, node_colors[depth % node_colors.size()]);
+							application.debugVis()->addDebugCircle(m, node_colors[depth % node_colors.size()]);
 						});
 					}
 				}

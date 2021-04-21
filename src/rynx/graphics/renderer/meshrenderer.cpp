@@ -15,6 +15,7 @@ rynx::graphics::renderer::renderer(
 	init();
 
 	m_pTextRenderer = std::make_unique<rynx::graphics::text_renderer>(textures, shaders);
+	m_rectangle = m_meshes->create_transient(rynx::Shape::makeBox(2.0f));
 }
 
 static constexpr int32_t InstancesPerDrawCall = 1024 * 10;
@@ -43,7 +44,8 @@ void rynx::graphics::renderer::init() {
 
 		shader_instanced->activate();
 		shader_instanced->uniform("tex", 0);
-		// shader_instanced_deferred->uniform("uvIndirect", 0);
+		shader_instanced->uniform("uvIndirect", 1);
+		shader_instanced->uniform("atlasBlocksPerRow", m_textures->getAtlasBlocksPerRow());
 
 		shader_instanced_deferred->activate();
 		shader_instanced_deferred->uniform("tex", 0);
@@ -70,10 +72,6 @@ void rynx::graphics::renderer::init() {
 	}
 
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
-}
-
-void rynx::graphics::renderer::loadDefaultMesh() {
-	m_rectangle = m_meshes->create(Shape::makeBox(2.f));
 }
 
 void rynx::graphics::renderer::setDepthTest(bool depthTestEnabled)
@@ -224,7 +222,16 @@ void rynx::graphics::renderer::instanced_draw_impl(
 			glBufferSubData(GL_ARRAY_BUFFER, 0, instances_for_current_iteration * 1 * sizeof(GLint), tex_ids + currentIteration * InstancesPerDrawCall);
 		}
 
-		glDrawElementsInstanced(GL_TRIANGLES, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);
+		int mode = GL_TRIANGLES;
+		if (mesh.isModeTriangles()) {
+			mode = GL_TRIANGLES;
+		}
+		else if (mesh.isModeLineStrip()) {
+			mode = GL_LINE_STRIP;
+			glLineWidth(mesh.lineWidth);
+		}
+
+		glDrawElementsInstanced(mode, mesh.getIndexCount(), GL_UNSIGNED_SHORT, 0, instances_for_current_iteration);
 		++currentIteration;
 	}
 

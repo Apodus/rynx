@@ -1,6 +1,7 @@
 
 #include <rynx/editor/tools/selection_tool.hpp>
 #include <rynx/math/geometry/ray.hpp>
+#include <rynx/application/visualisation/debug_visualisation.hpp>
 
 void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) {
 	if (m_run_on_main_thread) {
@@ -11,8 +12,20 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 	ctx.add_task("editor tick", [this](
 		rynx::ecs& game_ecs,
 		rynx::mapped_input& gameInput,
-		rynx::camera& gameCamera)
+		rynx::camera& gameCamera,
+		rynx::application::DebugVisualization& debugVis)
 		{
+			if (game_ecs.exists(selected_id())) {
+				auto* pos = game_ecs[selected_id()].try_get<rynx::components::position>();
+				auto* r = game_ecs[selected_id()].try_get<rynx::components::radius>();
+				if (r && pos) {
+					rynx::matrix4 m;
+					m.discardSetTranslate(pos->value);
+					m.scale(r->r * 1.01f);
+					debugVis.addDebugCircle(m, {1, 1 ,1 ,1}, 0.17f);
+				}
+			}
+
 			if (gameInput.isKeyPressed(m_activation_key) && !gameInput.isKeyConsumed(m_activation_key)) {
 				auto mouseRay = gameInput.mouseRay(gameCamera);
 				auto [mouse_z_plane, hit] = mouseRay.intersect(rynx::plane(0, 0, 1, 0));
@@ -51,28 +64,10 @@ void rynx::editor::tools::selection_tool::on_key_press(rynx::ecs& game_ecs, rynx
 				}
 			}
 		}
-		});
-
-	// unselect previous selection
-	/*
-	if (game_ecs.exists(selected_id())) {
-		auto* color_ptr = game_ecs[selected_id()].try_get<rynx::components::color>();
-		if (color_ptr) {
-			color_ptr->value = m_selected_entity_original_color;
-		}
-	}
-	*/
-
+	});
+	
 	// select new selection
 	{
-		/*
-		auto* color_ptr = game_ecs[best_id].try_get<rynx::components::color>();
-		if (color_ptr) {
-			m_selected_entity_original_color = color_ptr->value;
-			color_ptr->value = rynx::floats4{ 1.0f, 0.0f, 0.0f, 1.0f };
-		}
-		*/
-
 		if (m_editor_state->m_on_entity_selected) {
 			m_run_on_main_thread = [this, selected_entity = best_id]() {
 				m_editor_state->m_on_entity_selected(selected_entity);

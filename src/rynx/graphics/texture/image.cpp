@@ -3,10 +3,10 @@
 #include "image.hpp"
 
 #include <rynx/math/vector.hpp>
+#include <rynx/tech/filesystem/filesystem.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include <fstream>
 #include <algorithm>
 #include <cstdint>
 
@@ -23,17 +23,12 @@ Image& Image::operator = (const Image& other)
 
 void Image::loadImage(const std::string& filename)
 {
-	std::ifstream in(filename, std::ios::binary);
-	in.seekg(0, std::ios::end);
-	auto size = in.tellg();
-	in.seekg(0, std::ios::beg);
-	std::unique_ptr<uint8_t[]> sourcedata(new uint8_t[size]);
-	in.read(reinterpret_cast<char*>(sourcedata.get()), size);
-
+	auto file_data = rynx::filesystem::read_file(filename);
+	
 	int x = 0;
 	int y = 0;
 	int comp = 0;
-	data = (unsigned char*)stbi_load_from_memory(sourcedata.get(), int(size), &x, &y, &comp, 0);
+	data = (unsigned char*)stbi_load_from_memory(reinterpret_cast<stbi_uc const*>(file_data.data()), file_data.size(), &x, &y, &comp, 0);
 	sizeX = x;
 	sizeY = y;
 	hasAlpha = (comp == 4);

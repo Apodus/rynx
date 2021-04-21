@@ -4,9 +4,8 @@
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/system/assert.hpp>
 #include <rynx/math/matrix.hpp>
+#include <rynx/tech/filesystem/filesystem.hpp>
 
-#include <iostream>
-#include <fstream>
 #include <algorithm>
 #include <stdexcept>
 #include <sstream>
@@ -15,13 +14,12 @@
 namespace {
 	std::string readFile(const std::string& path)
 	{
-		std::stringstream ss;
-		std::ifstream file(path);
-		ss << file.rdbuf();
-		file.close();
-		rynx_assert(ss.str().length() > 0, "Shader source code length zero!");
-
-		return ss.str();
+		std::vector<char> data = rynx::filesystem::read_file(path);
+		rynx_assert(data.size() > 0, "Shader source code length zero!");
+		std::string s;
+		s.resize(data.size());
+		memcpy(s.data(), data.data(), data.size());
+		return s;
 	}
 
 	void printlogmsg(GLuint obj)

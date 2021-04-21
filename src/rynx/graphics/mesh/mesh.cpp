@@ -89,27 +89,35 @@ void rynx::graphics::mesh::build() {
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	rynx_assert(!vertices.empty(), "building an empty mesh");
+
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(POSITION, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(POSITION);
 
-	glGenBuffers(1, &tbo);
-	glBindBuffer(GL_ARRAY_BUFFER, tbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * texCoords.size(), &texCoords[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(TEXCOORD);
+	if (!texCoords.empty()) {
+		glGenBuffers(1, &tbo);
+		glBindBuffer(GL_ARRAY_BUFFER, tbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * texCoords.size(), &texCoords[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(TEXCOORD);
+	}
 
-	glGenBuffers(1, &nbo);
-	glBindBuffer(GL_ARRAY_BUFFER, nbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * normals.size(), &normals[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(NORMAL, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(NORMAL);
+	if (!normals.empty()) {
+		glGenBuffers(1, &nbo);
+		glBindBuffer(GL_ARRAY_BUFFER, nbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * normals.size(), &normals[0], GL_STATIC_DRAW);
+		glVertexAttribPointer(NORMAL, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(NORMAL);
+	}
 
-	glGenBuffers(1, &ibo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * indices.size(), &indices[0], GL_STATIC_DRAW);
+	if (!indices.empty()) {
+		glGenBuffers(1, &ibo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(short) * indices.size(), &indices[0], GL_STATIC_DRAW);
+	}
 
 	verifyNoGlErrors();
 }

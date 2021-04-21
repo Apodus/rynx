@@ -1,8 +1,10 @@
 
 #include <rynx/editor/editor.hpp>
+#include <rynx/graphics/mesh/collection.hpp>
+#include <rynx/tech/filesystem/filesystem.hpp>
 
+#include <filesystem>
 #include <sstream>
-#include <fstream>
 
 std::string humanize(std::string s) {
 	auto replace_all = [&s](std::string what, std::string with) {
@@ -194,7 +196,6 @@ void rynx::editor::field_float(
 	component_sheet->addChild(field_container);
 }
 
-
 void rynx::editor::field_bool(
 	const rynx::reflection::field& member,
 	struct rynx_common_info info,
@@ -274,17 +275,43 @@ void rynx::editor_rules::generate_menu_for_reflection(
 
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(member.m_type_name)) {
-					auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
-					edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
-					edit_button->text().text(tool->get_tool_name());
-					edit_button->on_click([this, info, member, tool_ptr = tool.get()]() {
-						tool_ptr->source_data([=]() {
-							int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
-							void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
-							return value_ptr;
+					std::vector<std::string> actionNames = tool->get_editor_actions_list();
+					if (!actionNames.empty()) {
+						for (auto&& actionName : actionNames) {
+							auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+							edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
+							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
+							edit_button->on_click([this, info, member, actionName, tool_ptr = tool.get()]() {
+								tool_ptr->source_data([=]() {
+									int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
+									void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+									return value_ptr;
+									});
+
+								if (tool_ptr->editor_action_execute(actionName, m_context)) {
+									this->switch_to_tool(*tool_ptr);
+								}
+							});
+
+							component_sheet_->addChild(edit_button);
+						}
+					}
+					else {
+						auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+						edit_button->align().target(component_sheet_->last_child()).bottom_outside().left_inside();
+						edit_button->text().text("^g" + tool->get_tool_name());
+						edit_button->on_click([this, info, member, tool_ptr = tool.get()]() {
+							tool_ptr->source_data([=]() {
+								int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
+								void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+								return value_ptr;
+							});
+
+							this->switch_to_tool(*tool_ptr);
 						});
-						this->switch_to_tool(*tool_ptr);
-					});
+
+						component_sheet_->addChild(edit_button);
+					}
 				}
 			}
 
@@ -375,20 +402,44 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(reflection_entry.m_type_name)) {
-					auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
-					edit_button->align().target(component_name.get()).bottom_outside().left_inside();
-					edit_button->text().text(tool->get_tool_name());
-					
-					auto component_type_id = reflection_entry.m_type_index_value;
-					edit_button->on_click([this, &ecs, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
-						tool_ptr->source_data([component_type_id, entity_id, ecs_ptr = &ecs]() {
-							void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*ecs_ptr, entity_id, component_type_id, 0);
-							return value_ptr;
-						});
-						this->switch_to_tool(*tool_ptr);
-					});
+					std::vector<std::string> actionNames = tool->get_editor_actions_list();
+					if (!actionNames.empty()) {
+						for (auto&& actionName : actionNames) {
+							auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+							edit_button->align().target(component_sheet->last_child()).bottom_outside().left_inside();
+							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
+							
+							auto component_type_id = reflection_entry.m_type_index_value;
+							edit_button->on_click([this, &ecs, actionName, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
+								tool_ptr->source_data([component_type_id, entity_id, ecs_ptr = &ecs]() {
+									void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*ecs_ptr, entity_id, component_type_id, 0);
+									return value_ptr;
+								});
+								
+								if (tool_ptr->editor_action_execute(actionName, m_context)) {
+									this->switch_to_tool(*tool_ptr);
+								}
+							});
 
-					component_sheet->addChild(edit_button);
+							component_sheet->addChild(edit_button);
+						}
+					}
+					else {
+						auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+						edit_button->align().target(component_name.get()).bottom_outside().left_inside();
+						edit_button->text().text("^g" + tool->get_tool_name());
+
+						auto component_type_id = reflection_entry.m_type_index_value;
+						edit_button->on_click([this, &ecs, entity_id = id, component_type_id, tool_ptr = tool.get()]() {
+							tool_ptr->source_data([component_type_id, entity_id, ecs_ptr = &ecs]() {
+								void* value_ptr = rynx::editor::ecs_value_editor().compute_address(*ecs_ptr, entity_id, component_type_id, 0);
+								return value_ptr;
+								});
+							this->switch_to_tool(*tool_ptr);
+						});
+						
+						component_sheet->addChild(edit_button);
+					}
 				}
 			}
 		}
@@ -407,16 +458,23 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 
 void rynx::editor_rules::add_tool(std::unique_ptr<rynx::editor::itool> tool) {
-
-	auto selection_tool_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.15f, 0.15f * 0.3f, 0.0f));
+	auto icon_tex_id = m_context->get_resource<rynx::graphics::GPUTextures>().findTextureByName(tool->get_button_texture());
+	auto selection_tool_button = std::make_shared<rynx::menu::Button>(icon_tex_id, rynx::vec3f(0.15f, 0.15f * 0.3f, 0.0f));
 	selection_tool_button->respect_aspect_ratio();
 
 	if (m_tools.empty()) {
 		selection_tool_button->align().target(m_tools_bar.get()).top_left_inside().offset(-0.3f);
 	}
 	else {
-		auto* lastComponent = m_tools_bar->last_child();
-		selection_tool_button->align().target(lastComponent).top_inside().left_outside().offset_x(-0.3f);
+		constexpr int toolsPerRow = 3;
+		if (m_tools.size() % toolsPerRow != 0) {
+			auto* lastComponent = m_tools_bar->last_child();
+			selection_tool_button->align().target(lastComponent).top_inside().right_outside().offset_x(+0.1f);
+		}
+		else {
+			auto* lineFirst = m_tools_bar->last_child(toolsPerRow -1);
+			selection_tool_button->align().target(lineFirst).bottom_outside().left_inside().offset_y(+0.1f);
+		}
 	}
 
 	selection_tool_button->velocity_position(100.0f);
@@ -529,10 +587,10 @@ rynx::editor_rules::editor_rules(
 		save_scene->on_click([this, &ecs]() {
 			execute([this, &ecs]() {
 				auto vector_writer = ecs.serialize(m_reflections);
-				std::ofstream out("hehe.kek", std::ios::binary);
 				rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
 				rynx::serialize(system_writer.data(), vector_writer);
-				out.write(vector_writer.data().data(), vector_writer.data().size());
+				rynx::filesystem::write_file("hehe.kek", vector_writer.data());
+				m_context->get_resource<rynx::graphics::mesh_collection>().save_all_meshes_to_disk("../meshes");
 			});
 		});
 		auto load_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.3f, 0.5f, 0.0f));
@@ -540,13 +598,8 @@ rynx::editor_rules::editor_rules(
 		load_scene->align().bottom_inside().right_inside();
 		load_scene->on_click([this, &ecs]() {
 			execute([this, &ecs]() {
-				std::ifstream in("hehe.kek", std::ios::binary);
-				in.seekg(0, std::ios::end);
-				auto size = in.tellg();
-				in.seekg(0, std::ios::beg);
-				std::vector<char> data(size, 0);
-				in.read(data.data(), size);
-				rynx::serialization::vector_reader reader(data);
+				std::error_code ec;
+				rynx::serialization::vector_reader reader(rynx::filesystem::read_file("hehe.kek"));
 
 				ecs.clear();
 				all_rulesets().clear(*m_context);
@@ -625,8 +678,8 @@ rynx::editor_rules::editor_rules(
 										pop_popup();
 										on_entity_selected(selected_entity);
 										enable_tools();
-										});
 									});
+								});
 							}
 						}
 					}

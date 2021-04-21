@@ -5,6 +5,7 @@
 #include <rynx/tech/unordered_map.hpp>
 
 #include <rynx/application/render.hpp>
+#include <rynx/graphics/mesh/id.hpp>
 
 #include <memory>
 #include <vector>
@@ -22,10 +23,13 @@ namespace rynx {
 	namespace application {
 		class DebugVisualization : public igraphics_step {
 		public:
-			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer) : m_meshRenderer(meshRenderer) {}
+			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer);
 
-			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 m, floats4 color, float lifetime = 0.0f);
-			
+			void addDebugCircle(matrix4 model, floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 model, floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::graphics::mesh_id mesh_id, rynx::matrix4 model, floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(std::string meshName, rynx::matrix4 model, floats4 color, float lifetime = 0.0f);
+
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 			virtual void execute() override;
 
@@ -39,6 +43,8 @@ namespace rynx {
 
 			rynx::unordered_map<rynx::graphics::mesh*, buffer_obj> m_data;
 			std::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
+
+			rynx::graphics::mesh_id m_circle_mesh;
 		};
 	}
 }

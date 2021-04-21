@@ -48,8 +48,12 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 	}
 
 	{
-		rynx::graphics::mesh_id tube_mesh_id = application.renderer().meshes()->create(rynx::Shape::makeBox(1.0f));
-		auto* tube_mesh = application.renderer().meshes()->get(tube_mesh_id);
+		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
+
+		auto& renderer = application.renderer();
+		rynx::graphics::mesh_id tube_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeBox(1.0f));
+		auto* tube_mesh = renderer.meshes()->get(tube_mesh_id);
+		tube_mesh->scale(sqrt(2));
 		tube_mesh->normals.clear();
 		tube_mesh->putNormal(0, +1, 0);
 		tube_mesh->putNormal(0, -1, 0);
@@ -58,11 +62,8 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 		tube_mesh->bind();
 		tube_mesh->rebuildNormalBuffer();
 
-		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
-
-		auto& renderer = application.renderer();
 		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(
-			renderer.meshes()->get(tube_mesh_id),
+			tube_mesh_id,
 			&renderer
 		);
 		boundary_rendering->m_enabled = m_debug_draw_config;
@@ -74,7 +75,7 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
 		
-		rynx::graphics::mesh_id circle_mesh_id = application.renderer().meshes()->create(rynx::Shape::makeCircle(0.5f, 64));
+		rynx::graphics::mesh_id circle_mesh_id = application.renderer().meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(
 			renderer.meshes()->get(circle_mesh_id),
 			&renderer
@@ -186,7 +187,7 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 			std::vector<unhandled_entity_tex> found;
 			ecs.query().notIn<rynx::graphics::texture_id>().for_each([this, &found](rynx::ecs::id id, rynx::components::texture tex) {
 				found.emplace_back(id, m_application.textures()->findTextureByName(tex.textureName));
-				});
+			});
 			for (auto&& missingEntityTex : found) {
 				ecs[missingEntityTex.entity_id].add(rynx::graphics::texture_id(missingEntityTex.tex_id));
 			}

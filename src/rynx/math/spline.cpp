@@ -33,7 +33,7 @@ std::vector<rynx::vec3f> rynx::math::spline::generate(int32_t num_segments) cons
 		float t3 = compute_t(t2, p2, p3);
 
 		const float step = (t2 - t1) / num_segments;
-		for (float t = t1; t < t2; t += step) {
+		for (float t = t1; t < t2 * 0.999f; t += step) {
 			vec3f a1 =
 				((t1 - t) / (t1 - t0)) * p0.position +
 				((t - t0) / (t1 - t0)) * p1.position;

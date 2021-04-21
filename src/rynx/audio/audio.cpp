@@ -5,8 +5,8 @@
 #include <vorbis/codec.h>
 #include <rynx/math/vector.hpp>
 #include <rynx/audio/audio.hpp>
-
 #include <rynx/audio/dsp/signal.hpp>
+#include <rynx/tech/filesystem/filesystem.hpp>
 
 #include <atomic>
 #include <array>
@@ -14,8 +14,6 @@
 
 #include <thread>
 #include <chrono>
-
-#include <fstream>
 
 #pragma optimize("s", on)
 #pragma optimize("g", on)
@@ -122,13 +120,8 @@ void rynx::sound::buffer::resample(float multiplier) {
 }
 
 rynx::sound::buffer loadOggVorbis(std::string path, int target_sample_rate = 44100) {
-    std::ifstream in(path, std::ios::binary);
-    in.seekg(0, std::ios::ios_base::end);
-    auto size = in.tellg();
-    in.seekg(0, std::ios::ios_base::beg);
-    std::vector<char> buf(size);
-    in.read(buf.data(), size);
-
+    std::vector<char> buf = rynx::filesystem::read_file(path);
+    
     ogg_file t;
     t.curPtr = t.filePtr = buf.data();
     t.fileSize = buf.size();

@@ -4,17 +4,13 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
+#include <rynx/graphics/mesh/id.hpp>
 #include <rynx/tech/serialization.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
 
 namespace rynx {
 	namespace graphics {
-
-		struct mesh_id {
-			bool operator == (const mesh_id& other) const = default;
-			int64_t value;
-		};
 
 		class mesh {
 		public:
@@ -37,10 +33,22 @@ namespace rynx {
 			int getIndexCount() const;
 
 			void build();
+			void scale(float v) {
+				for (auto& vertexfloat : vertices) {
+					vertexfloat *= v;
+				}
+				rebuildVertexBuffer();
+			}
 			void rebuildTextureBuffer();
 			void rebuildVertexBuffer();
 			void rebuildNormalBuffer();
 			void bind() const;
+
+			void set_transient() { m_is_transient = true; }
+			bool is_transient() { return m_is_transient; }
+
+			void set_category(std::string category) { m_category = category; }
+			const std::string& get_category() const { return m_category; }
 
 			// TODO: Move to some kind of material settings or something.
 			float lighting_direction_bias = 0.0f; // light vs. geometry hit angle affects how strongly the light is applied. this is a constant offset to that value.
@@ -53,6 +61,21 @@ namespace rynx {
 
 			mesh_id id;
 			std::string humanReadableId;
+			std::string m_category;
+
+			enum Mode {
+				Triangles,
+				LineStrip
+			};
+
+			Mode mode;
+			float lineWidth = 2.0f;
+
+			bool isModeLineStrip() const { return mode == Mode::LineStrip; }
+			bool isModeTriangles() const { return mode == Mode::Triangles; }
+
+			// transient meshes do not get serialized by mesh collection.
+			bool m_is_transient = false;
 
 		private:
 			/*
@@ -73,55 +96,35 @@ namespace rynx {
 	}
 
 	namespace serialization {
-		template<> struct Serialize<rynx::graphics::mesh_id> {
-			template<typename IOStream>
-			void serialize(const rynx::graphics::mesh_id& meshId, IOStream& writer) {
-				writer(meshId.value);
-			}
-
-			template<typename IOStream>
-			void deserialize(rynx::graphics::mesh_id& meshId, IOStream& reader) {
-				reader(meshId.value);
-			}
-		};
-	}
-
-	namespace serialization {
 		template<> struct Serialize<rynx::graphics::mesh> {
 			template<typename IOStream>
 			void serialize(const rynx::graphics::mesh& mesh, IOStream& writer) {
-				writer(mesh.humanReadableId);
-				writer(mesh.id);
-				writer(mesh.lighting_direction_bias);
-				writer(mesh.lighting_global_multiplier);
-				writer(mesh.vertices);
-				writer(mesh.normals);
-				writer(mesh.texCoords);
-				writer(mesh.indices);
+				rynx::serialize(mesh.humanReadableId, writer);
+				rynx::serialize(mesh.id, writer);
+				rynx::serialize(mesh.lighting_direction_bias, writer);
+				rynx::serialize(mesh.lighting_global_multiplier, writer);
+				rynx::serialize(mesh.vertices, writer);
+				rynx::serialize(mesh.normals, writer);
+				rynx::serialize(mesh.texCoords, writer);
+				rynx::serialize(mesh.indices, writer);
+				rynx::serialize(mesh.mode, writer);
+				rynx::serialize(mesh.lineWidth, writer);
 			}
 
 			template<typename IOStream>
 			void deserialize(rynx::graphics::mesh& mesh, IOStream& reader) {
-				reader(mesh.humanReadableId);
-				reader(mesh.id);
-				reader(mesh.lighting_direction_bias);
-				reader(mesh.lighting_global_multiplier);
-				reader(mesh.vertices);
-				reader(mesh.normals);
-				reader(mesh.texCoords);
-				reader(mesh.indices);
-				mesh.bind();
+				rynx::deserialize(mesh.humanReadableId, reader);
+				rynx::deserialize(mesh.id, reader);
+				rynx::deserialize(mesh.lighting_direction_bias, reader);
+				rynx::deserialize(mesh.lighting_global_multiplier, reader);
+				rynx::deserialize(mesh.vertices, reader);
+				rynx::deserialize(mesh.normals, reader);
+				rynx::deserialize(mesh.texCoords, reader);
+				rynx::deserialize(mesh.indices, reader);
+				rynx::deserialize(mesh.mode, reader);
+				rynx::deserialize(mesh.lineWidth, reader);
 				mesh.build();
 			}
 		};
 	}
-}
-
-namespace std {
-	template<>
-	struct hash<rynx::graphics::mesh_id> {
-		size_t operator()(const rynx::graphics::mesh_id& id) const {
-			return id.value;
-		}
-	};
 }
