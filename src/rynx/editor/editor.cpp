@@ -2,6 +2,7 @@
 #include <rynx/editor/editor.hpp>
 #include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/tech/filesystem/filesystem.hpp>
+#include <rynx/menu/FileSelector.hpp>
 
 #include <filesystem>
 #include <sstream>
@@ -124,7 +125,7 @@ void rynx::editor::field_float(
 	variable_value_field->text()
 		.text(std::to_string(value))
 		.text_align_right()
-		.input_enable();
+		.text_input_enable();
 
 	std::shared_ptr<rynx::menu::SlideBarVertical> value_slider;
 
@@ -216,7 +217,7 @@ void rynx::editor::field_bool(
 	variable_value_field->text()
 		.text(value ? "^gYes" : "^rNo")
 		.text_align_center()
-		.input_disable();
+		.text_input_disable();
 
 	variable_value_field->on_click([info, mem_offset, self = variable_value_field.get()]() {
 		bool& value = ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
@@ -273,6 +274,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			label->velocity_position(100.0f);
 			component_sheet_->addChild(label);
 
+			// Create tools buttons
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(member.m_type_name)) {
 					std::vector<std::string> actionNames = tool->get_editor_actions_list();
@@ -364,8 +366,10 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 		{
 			auto component_name = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f - 0.10f, 0.025f, 0.0f));
+			component_name->no_focus_alpha(1.0f);
 			component_name->text()
 				.text(reflection_entry.m_type_name)
+				.color({1.0f, 1.0f, 0.0f, 1.0f})
 				.text_align_left()
 				.font(m_font);
 
@@ -379,8 +383,10 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 
 			auto delete_component = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.10f, 0.025f, 0.0f));
+			delete_component->no_focus_alpha(0.7f);
 			delete_component->text()
-				.text("^yRemove")
+				.text("Remove")
+				.color({1.0f, 0.2f, 0.8f, 1.0f})
 				.text_align_center()
 				.font(m_font);
 
@@ -399,7 +405,13 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 				});
 			});
 
-			component_sheet->addChild(delete_component);
+			bool allowComponentRemove = true;
+			for (auto& tool : m_tools) {
+				allowComponentRemove &= tool->allow_component_remove(reflection_entry.m_type_name);
+			}
+			if (allowComponentRemove) {
+				component_sheet->addChild(delete_component);
+			}
 			component_sheet->addChild(component_name);
 
 			for (auto&& tool : m_tools) {
@@ -487,7 +499,35 @@ void rynx::editor_rules::add_tool(std::unique_ptr<rynx::editor::itool> tool) {
 	m_tools.emplace_back(std::move(tool));
 }
 
+void rynx::editor_rules::display_list_dialog(
+	std::vector<std::string> entries,
+	std::function<rynx::floats4(std::string)> entryColor,
+	std::function<void(std::string)> on_selection)
+{
+	disable_tools();
+	execute([this, entries, entryColor, on_selection]() {
+		auto options_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+		options_list->list_element_velocity(150.0f);
+		
+		for (auto&& entry : entries) {
+			auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
+			button->text().text(entry);
+			button->text().text_align_left();
+			button->text().color() = entryColor(entry);
+			button->on_click([this, entry, on_selection]() {
+				execute([this, entry, on_selection]() {
+					pop_popup();
+					enable_tools();
+					on_selection(entry);
+				});
+			});
 
+			options_list->addChild(button);
+		}
+
+		push_popup(options_list);
+	});
+}
 
 rynx::editor_rules::editor_rules(
 	rynx::scheduler::context& ctx,
@@ -587,33 +627,75 @@ rynx::editor_rules::editor_rules(
 
 		auto save_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.3f, 0.5f, 0.0f));
 		save_scene->text().text("Save");
-		save_scene->align().bottom_inside().left_inside();
-		save_scene->on_click([this, &ecs]() {
-			execute([this, &ecs]() {
-				auto vector_writer = ecs.serialize(m_reflections);
-				rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
-				rynx::serialize(system_writer.data(), vector_writer);
-				rynx::filesystem::write_file("hehe.kek", vector_writer.data());
-				m_context->get_resource<rynx::graphics::mesh_collection>().save_all_meshes_to_disk("../meshes");
-			});
+		save_scene->align().top_left_inside();
+		
+		std::function<void(std::string)> save_everything = [this, &ecs](std::string path) {
+			logmsg("saving active scene to '%s'", path.c_str());
+			auto vector_writer = ecs.serialize(m_reflections);
+			rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
+			rynx::serialize(system_writer.data(), vector_writer);
+			rynx::filesystem::write_file(path, vector_writer.data());
+			m_context->get_resource<rynx::graphics::mesh_collection>().save_all_meshes_to_disk("../meshes");
+		};
+		
+		save_scene->on_click([this, save_everything]() {
+			disable_tools();
+			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			fileSelectDialog->configure().m_allowNewFile = true;
+			fileSelectDialog->configure().m_allowNewDir = true;
+			fileSelectDialog->file_type(".rynxscene");
+			fileSelectDialog->display("../scenes/",
+				// on file selected
+				[this, save_everything](std::string fileName) {
+					save_everything(fileName);
+					execute([this] {
+						enable_tools();
+						pop_popup();
+					});
+				},
+				// on directory selected
+				[](std::string) {}
+			);
+
+			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
 		});
+
+
+		auto load_everything = [this, &ecs](std::string scene_path) {
+			rynx::serialization::vector_reader reader(rynx::filesystem::read_file(scene_path));
+			ecs.clear();
+			all_rulesets().clear(*m_context);
+
+			ecs.deserialize(m_reflections, reader);
+
+			auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
+			rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
+			all_rulesets().deserialize(*m_context, rulesets_reader);
+		};
+
 		auto load_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.3f, 0.5f, 0.0f));
 		load_scene->text().text("Load");
-		load_scene->align().bottom_inside().right_inside();
-		load_scene->on_click([this, &ecs]() {
-			execute([this, &ecs]() {
-				std::error_code ec;
-				rynx::serialization::vector_reader reader(rynx::filesystem::read_file("hehe.kek"));
+		load_scene->align().target(save_scene.get()).top_inside().right_outside().offset_x(0.1f);
+		load_scene->on_click([this, load_everything]() {
+			disable_tools();
+			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			fileSelectDialog->configure().m_allowNewFile = false;
+			fileSelectDialog->configure().m_allowNewDir = false;
+			fileSelectDialog->file_type(".rynxscene");
+			fileSelectDialog->display("../scenes/",
+				// on file selected
+				[this, load_everything](std::string fileName) {
+					load_everything(fileName);
+					execute([this] {
+						enable_tools();
+						pop_popup();
+					});
+				},
+				// on directory selected
+				[](std::string) {}
+			);
 
-				ecs.clear();
-				all_rulesets().clear(*m_context);
-
-				ecs.deserialize(m_reflections, reader);
-
-				auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
-				rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
-				all_rulesets().deserialize(*m_context, rulesets_reader);
-			});
+			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
 		});
 		
 		m_file_actions_bar->addChild(save_scene);
@@ -653,7 +735,6 @@ rynx::editor_rules::editor_rules(
 							auto selected_entity = m_state.m_selected_ids.front().value;
 
 							for (auto&& reflect : reflection_data) {
-								printf("%s\n", reflect.first.c_str());
 								auto& type_reflection = reflect.second;
 
 								// only suggest components entity does not already have.
@@ -687,8 +768,8 @@ rynx::editor_rules::editor_rules(
 							}
 						}
 					}
-					});
 				});
+			});
 
 			m_entity_bar->addChild(m_components_list);
 			m_entity_bar->addChild(add_component_button);

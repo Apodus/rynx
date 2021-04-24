@@ -53,7 +53,8 @@ namespace rynx {
 			virtual std::string get_button_texture() = 0;
 
 			virtual bool operates_on(const std::string& type_name) = 0;
-			
+			virtual bool allow_component_remove(const std::string& type_name) { return true; }
+
 			void source_data(std::function<void* ()> func);
 			void* address_of_operand();
 

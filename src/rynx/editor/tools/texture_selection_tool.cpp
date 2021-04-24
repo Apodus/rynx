@@ -3,6 +3,7 @@
 #include <rynx/menu/Button.hpp>
 #include <rynx/menu/List.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
+#include <rynx/scheduler/context.hpp>
 
 rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::context& ctx)
 	: m_ecs(ctx.get_resource<rynx::ecs>())

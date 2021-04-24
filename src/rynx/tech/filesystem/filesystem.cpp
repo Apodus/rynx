@@ -21,12 +21,27 @@ namespace rynx {
 			return result;
 		}
 
+		std::string resolve(std::string path) {
+			return rynx::filesystem::path_normalize(std::filesystem::relative(path).string());
+		}
+
+		void create_directory(std::string path) {
+			std::filesystem::create_directory(path);
+		}
+
+		bool is_directory(std::string path) {
+			return std::filesystem::is_directory(path);
+		}
+
 		std::string path_normalize(std::string path) {
-			for (auto& c : path) {
-				if (c == '\\') {
+			for (auto& c : path)
+				if (c == '\\')
 					c = '/';
-				}
-			}
+			
+			if (rynx::filesystem::is_directory(path))
+				if (path.back() != '/')
+					path.push_back('/');
+
 			return path;
 		}
 
@@ -46,6 +61,43 @@ namespace rynx {
 			std::string file_folder = file_relative_path.substr(0, pos + 1);
 			std::string file_name = file_relative_path.substr(pos + 1);
 			return { file_folder, file_name };
+		}
+
+		std::vector<std::string> list_recursive(std::string path) {
+			std::vector<std::string> result;
+			for (auto entry : std::filesystem::recursive_directory_iterator(path)) {
+				if (entry.is_directory()) {
+					auto [directorypath, directoryname] = path_relative_folder(entry.path().relative_path().string());
+					result.emplace_back(directorypath + directoryname);
+				}
+				if (entry.is_regular_file()) {
+					auto [filepath, filename] = path_relative_folder(entry.path().relative_path().string());
+					result.emplace_back(filepath + filename);
+				}
+			}
+			return result;
+		}
+
+		std::vector<std::string> list_files(std::string path) {
+			std::vector<std::string> result;
+			for (auto entry : std::filesystem::directory_iterator(path)) {
+				if (entry.is_regular_file()) {
+					auto [filepath, filename] = path_relative_folder(entry.path().relative_path().string());
+					result.emplace_back(rynx::filesystem::path_normalize(filepath + filename));
+				}
+			}
+			return result;
+		}
+
+		std::vector<std::string> list_directories(std::string path) {
+			std::vector<std::string> result;
+			for (auto entry : std::filesystem::directory_iterator(path)) {
+				if (entry.is_directory()) {
+					auto [directorypath, directoryname] = path_relative_folder(entry.path().relative_path().string());
+					result.emplace_back(rynx::filesystem::path_normalize(directorypath + directoryname));
+				}
+			}
+			return result;
 		}
 	}
 }

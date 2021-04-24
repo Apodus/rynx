@@ -41,7 +41,19 @@ void rynx::menu::Text::onDedicatedInput(rynx::mapped_input& input) {
 		const bool alhabetic_accept = config.input_type_alhabet && (key.id >= 'A' && key.id <= 'Z');
 		const bool numeric_accept = config.input_type_numeric && (key.id >= '0' && key.id <= '9');
 		if (alhabetic_accept || numeric_accept) {
-			m_textline.text().insert(m_textline.text().begin() + m_cursor_pos, static_cast<char8_t>(key.id));
+			char8_t character = static_cast<char8_t>(key.id);
+			if (alhabetic_accept) {
+				bool left_shift = input.isKeyDown(rynx::key::codes::shift_left());
+				bool right_shift = input.isKeyDown(rynx::key::codes::shift_right()); 
+				if (left_shift || right_shift) {
+
+				}
+				else {
+					character -= 'A' - 'a';
+				}
+			}
+
+			m_textline.text().insert(m_textline.text().begin() + m_cursor_pos, character);
 			++m_cursor_pos;
 		}
 		else if (key == rynx::key::codes::backspace()) {

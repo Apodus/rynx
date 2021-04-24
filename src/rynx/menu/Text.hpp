@@ -46,8 +46,8 @@ namespace rynx {
 				vec3<float> position = vec3<float>()
 			);
 
-			Text& input_enable() { config.allow_input = true; return *this; }
-			Text& input_disable() { config.allow_input = false; return *this; }
+			Text& text_input_enable() { config.allow_input = true; return *this; }
+			Text& text_input_disable() { config.allow_input = false; return *this; }
 			Text& text_align_left() { m_textline.align_left(); return *this; }
 			Text& text_align_right() { m_textline.align_right(); return *this; }
 			Text& text_align_center() { m_textline.align_center(); return *this; }

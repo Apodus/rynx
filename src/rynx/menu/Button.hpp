@@ -1,29 +1,20 @@
 
 #pragma once
 
-#include <rynx/menu/Frame.hpp>
 #include <rynx/menu/Text.hpp>
 #include <rynx/menu/Component.hpp>
-
-#include <rynx/math/matrix.hpp>
 #include <rynx/math/vector.hpp>
-
-#include <rynx/graphics/renderer/textrenderer.hpp> // annoying but have to include to get vision to TextRenderer::Align
-
 #include <functional>
-
-class Font;
 
 namespace rynx {
 	class mapped_input;
 	
 	namespace menu {
-
 		class Button : public Component {
 		protected:
 			vec3<float> m_defaultScale;
 			std::shared_ptr<rynx::menu::Text> m_textField;
-
+			float m_no_focus_alpha = 0.3f;
 		public:
 			Button(
 				rynx::graphics::texture_id texture,
@@ -37,6 +28,11 @@ namespace rynx {
 				m_defaultScale = scale;
 				this->addChild(m_textField);
 				initialize();
+			}
+
+			Button& no_focus_alpha(float v) {
+				m_no_focus_alpha = v;
+				return *this;
 			}
 
 			Text& text() { return *m_textField; } 

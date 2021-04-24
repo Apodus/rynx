@@ -260,7 +260,7 @@ void rynx::editor::tools::polygon_tool::drag_operation_end(rynx::ecs& game_ecs, 
 
 		entity.get<rynx::components::radius>().r = boundary.segments_local.radius();
 		boundary.update_world_positions(entity_pos.value, entity_pos.angle);
-		detection.update_entity_forced(game_ecs, entity.id());
+		detection.editor_api().update_entity_forced(game_ecs, entity.id());
 	}
 
 	m_drag_action_active = false;

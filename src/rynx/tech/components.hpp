@@ -211,8 +211,13 @@ namespace rynx {
 				update_world_positions(pos, angle);
 			}
 
-			boundary(boundary&& other) = default;
-			boundary& operator=(boundary&& other) = default;
+			boundary(boundary&& other) {
+				this->operator=(std::move(other));
+			}
+			boundary& operator=(boundary&& other) {
+				segments_local = std::move(other.segments_local);
+				segments_world = std::move(other.segments_world);
+			}
 
 			boundary(const boundary& other) = delete;
 			boundary& operator=(const boundary& other) = delete;

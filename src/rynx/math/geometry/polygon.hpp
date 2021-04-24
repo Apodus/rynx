@@ -22,7 +22,9 @@ namespace rynx {
 
 		polygon() = default;
 		polygon(const polygon& other) = default;
-		polygon(polygon&& other) = default;
+		polygon(polygon&& other) {
+			this->operator=(std::move(other));
+		}
 
 		polygon(std::vector<rynx::vec3f> verts) : m_vertices(std::move(verts)) { recompute_normals(); }
 		polygon(std::vector<rynx::vec3f>&& verts) : m_vertices(std::move(verts)) { recompute_normals(); }
@@ -31,7 +33,12 @@ namespace rynx {
 		polygon& operator = (std::vector<rynx::vec3f>&& verts) { m_vertices = std::move(verts); recompute_normals(); return *this; }
 
 		polygon& operator = (const polygon& other) = default;
-		polygon& operator = (polygon&& other) = default;
+		polygon& operator = (polygon&& other) {
+			m_vertices = std::move(other.m_vertices);
+			m_vertex_normal = std::move(other.m_vertex_normal);
+			m_segment_normal = std::move(other.m_segment_normal);
+			return *this;
+		}
 
 		std::vector<rynx::vec3f> as_vertex_vector() const;
 		rynx::math::spline as_spline(float alpha = 1.0f) const;
@@ -47,9 +54,9 @@ namespace rynx {
 		float max_component_value() const;
 		std::pair<rynx::vec3f, float> bounding_sphere() const;
 
-		rynx::vec3f vertex_position(size_t i) const { return m_vertices[i]; }
-		rynx::vec3f segment_normal(size_t i) const { return m_segment_normal[i]; }
-		rynx::vec3f vertex_normal(size_t i) const { return m_vertex_normal[i]; }
+		rynx::vec3f vertex_position(size_t i) const { return m_vertices[i % m_vertices.size()]; }
+		rynx::vec3f segment_normal(size_t i) const { return m_segment_normal[i % m_segment_normal.size()]; }
+		rynx::vec3f vertex_normal(size_t i) const { return m_vertex_normal[i % m_vertex_normal.size()]; }
 
 		rynx::line_segment segment(size_t i) const {
 			return rynx::line_segment(vertex_position(i), vertex_position(i + 1), segment_normal(i));

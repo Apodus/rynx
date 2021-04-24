@@ -44,7 +44,6 @@ void rynx::collision_detection::update_sphere_trees_parallel(rynx::scheduler::ta
 	}
 }
 
-struct tracked_by_collisions {};
 void rynx::collision_detection::track_entities(rynx::scheduler::task& task_context) {
 	task_context.extend_task_independent([](
 		rynx::collision_detection& detection,
@@ -55,6 +54,17 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 			const rynx::components::position,
 			const rynx::components::radius> ecs) {
 		{
+			// cleanup removed collisions components
+			auto collisions_erased_ids = ecs.query()
+				.in<tracked_by_collisions>()
+				.notIn<rynx::components::collisions>()
+				.ids();
+			
+			// this should probably not happen outside editor context?
+			for (auto id : collisions_erased_ids) {
+				detection.editor_api().remove_collision_from_entity(ecs, id);
+			}
+
 			auto spheres = ecs.query()
 				.in<rynx::components::physical_body, rynx::components::motion>()
 				.notIn<rynx::components::projectile, rynx::components::boundary, tracked_by_collisions>()
@@ -109,7 +119,7 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 	});
 }
 
-void rynx::collision_detection::update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id) {
+void rynx::collision_detection::editor_api_t::update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id) {
 	auto entity = ecs[id];
 	auto collisions = entity.get<const rynx::components::collisions>();
 	auto radius = entity.get<const rynx::components::radius>();
@@ -125,9 +135,67 @@ void rynx::collision_detection::update_entity_forced(rynx::ecs& ecs, rynx::ecs::
 	// before running an iteration of collision detection updates, where this entity will become tracked.
 	// if this is the case, then just don't do anything - let the normal path pick the entity up.
 	// otherwise update immediately.
-	if(m_sphere_trees[collisions.category]->contains(part_id))
-		m_sphere_trees[collisions.category]->update_entity(part_id, pos.value, radius.r);
+	if(m_host->m_sphere_trees[collisions.category]->contains(part_id))
+		m_host->m_sphere_trees[collisions.category]->update_entity(part_id, pos.value, radius.r);
 }
+
+void rynx::collision_detection::editor_api_t::remove_collision_from_entity(
+	rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::collisions> ecs,
+	rynx::ecs::id id)
+{
+	for (auto& tree : m_host->m_sphere_trees) {
+		auto try_erase = [&tree](auto id) {
+			if (tree->contains(id)) {
+				tree->eraseEntity(id);
+			}
+		};
+
+		try_erase(id.value | mask_kind_sphere);
+		try_erase(id.value | mask_kind_boundary);
+		try_erase(id.value | mask_kind_projectile);
+	}
+	if (ecs[id].has<tracked_by_collisions, rynx::components::collisions>())
+		ecs[id].remove<tracked_by_collisions, rynx::components::collisions>();
+}
+
+void rynx::collision_detection::editor_api_t::set_collision_category_for_entity(rynx::ecs& ecs, rynx::ecs::id id, category_id category) {
+	remove_collision_from_entity(ecs, id);
+	rynx::components::collisions col(category.value);
+	ecs[id].add(col);
+
+	bool prerequirements = ecs[id].has<
+		rynx::components::physical_body,
+		rynx::components::motion,
+		rynx::components::radius,
+		rynx::components::position>();
+
+	if (!prerequirements)
+		return;
+
+	bool projectile = ecs[id].has<rynx::components::projectile>();
+	bool boundary = ecs[id].has<rynx::components::boundary>();
+
+	auto pos = ecs[id].get<const rynx::components::position>();
+	auto r = ecs[id].get<const rynx::components::radius>();
+
+	rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
+	
+	if (prerequirements & projectile & !boundary) {
+		const uint64_t part_id = id.value | mask_kind_projectile;
+		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
+	}
+	else if (prerequirements & boundary) {
+		const uint64_t part_id = id.value | mask_kind_boundary;
+		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
+	}
+	else if (prerequirements) {
+		const uint64_t part_id = id.value | mask_kind_sphere;
+		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
+	}
+	
+	ecs[id].add(tracked_by_collisions());
+}
+
 
 void rynx::collision_detection::update_entities(rynx::scheduler::task& task_context, float dt) {
 	auto update_task = task_context.extend_task_independent([dt](

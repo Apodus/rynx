@@ -50,6 +50,7 @@
 
 #include <rynx/editor/editor.hpp>
 #include <rynx/editor/tools/texture_selection_tool.hpp>
+#include <rynx/editor/tools/collisions_tool.hpp>
 
 #include <rynx/tech/collision_detection.hpp>
 
@@ -328,6 +329,7 @@ int main(int argc, char** argv) {
 
 		ruleset_editor->add_tool<rynx::editor::tools::texture_selection>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::polygon_tool>(*base_simulation.m_context);
+		ruleset_editor->add_tool<rynx::editor::tools::collisions_tool>(*base_simulation.m_context);
 
 		spawner = ruleset_minilisk_gen.operator->();
 
@@ -501,7 +503,7 @@ int main(int argc, char** argv) {
 	auto key_toggle_editor_enabled = gameInput.generateAndBindGameKey('O', "editor enabled");
 	
 	struct debug_conf {
-		bool visualize_dynamic_collisions = true;
+		bool visualize_dynamic_collisions = false;
 		bool visualize_static_collisions = false;
 		bool visualize_projectile_collisions = false;
 	};
@@ -513,70 +515,6 @@ int main(int argc, char** argv) {
 	// uint32_t soundIndex = audio.load("test.ogg");
 	rynx::sound::configuration config;
 	audio.open_output_device(64, 256);
-
-	/*
-	// construct menus
-	{
-		rynx::graphics::texture_id frame_tex = application.textures()->findTextureByName("frame");
-		auto sampleButton = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.14f);
-		auto sampleButton2 = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.16f);
-		auto sampleButton3 = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0), rynx::vec3<float>(), 0.18f);
-		auto sampleSlider = std::make_shared<rynx::menu::SlideBarVertical>(frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
-		auto megaSlider = std::make_shared<rynx::menu::SlideBarVertical>(frame_tex, frame_tex, rynx::vec3<float>(0.4f, 0.1f, 0));
-
-		sampleButton->text().text("Dynamics").font(&fontConsola);
-		sampleButton->align().bottom_left_inside();
-		sampleButton->color({1.0f, 0.0f, 0.0f, 1.0f});
-		sampleButton->on_click([&conf, self = sampleButton.get()]() {
-			bool new_value = !conf.visualize_dynamic_collisions;
-			conf.visualize_dynamic_collisions = new_value;
-			if (new_value) {
-				self->color(Color::GREEN);
-			}
-			else {
-				self->color(Color::RED);
-			}
-		});
-
-		sampleButton2->text().text("Log Profile").font(&fontConsola);
-		sampleButton2->align().target(sampleButton.get()).right_outside().top_inside();
-		sampleButton2->on_click([]() {
-			rynx::profiling::write_profile_log();
-		});
-
-		sampleButton3->text().text("Statics").font(&fontConsola);
-		sampleButton3->align().target(sampleButton2.get()).top_outside().left_inside();
-		sampleButton3->on_click([&conf, self = sampleButton3.get(), &root]() {
-			bool new_value = !conf.visualize_static_collisions;
-			conf.visualize_static_collisions = new_value;
-			if (new_value) {
-				self->color(Color::GREEN);
-			}
-			else {
-				self->color(Color::RED);
-			}
-		});
-
-		sampleSlider->align().top_right_inside();
-		sampleSlider->on_value_changed([spawner, &config](float f) {
-			float pitch_shift_octaves = f * 2 - 1;
-			config.set_pitch_shift(pitch_shift_octaves);
-			
-			spawner->how_often_to_spawn = uint64_t(1 + int(f * 300.0f));
-		});
-
-		megaSlider->align().target(sampleSlider.get()).bottom_outside().left_inside();
-		megaSlider->on_value_changed([spawner](float f) {
-			spawner->x_spawn = f * 200.0f - 100.0f;
-		});
-
-		root.addChild(sampleButton);
-		root.addChild(sampleButton2);
-		root.addChild(sampleButton3);
-		root.addChild(sampleSlider);
-		root.addChild(megaSlider);
-	}
-	*/
 
 	auto fbo_menu = rynx::graphics::framebuffer::config()
 		.set_default_resolution(1920, 1080)
@@ -646,20 +584,6 @@ int main(int argc, char** argv) {
 			// config = audio.play_sound(soundIndex, rynx::vec3f(), rynx::vec3f());
 		}
 
-		{
-			const float camera_translate_multiplier = 400.4f * dt;
-			const float camera_zoom_multiplier = (1.0f - dt * 3.0f);
-			if (gameInput.isKeyDown(cameraUp)) { cameraPosition += camera->local_forward() * camera_translate_multiplier; }
-			if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += camera->local_left() * camera_translate_multiplier; }
-			if (gameInput.isKeyDown(cameraRight)) { cameraPosition -= camera->local_left() * camera_translate_multiplier; }
-			if (gameInput.isKeyDown(cameraDown)) { cameraPosition -= camera->local_forward() * camera_translate_multiplier; }
-			// if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
-			// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
-
-			if (gameInput.isKeyClicked(key_toggle_editor_enabled)) { program_state_editor_running.toggle(); }
-			if (gameInput.isKeyClicked(key_toggle_game_simulation)) { program_state_game_running.toggle(); }
-		}
-
 		timer.reset();
 
 		// menu input must happen first before tick. in case menu components
@@ -667,26 +591,46 @@ int main(int argc, char** argv) {
 		menuSystem.input(gameInput);
 
 		{
-			rynx_profile("Main", "Construct frame tasks");
-			base_simulation.generate_tasks(dt);
+			auto scoped_inhibitor = menuSystem.inhibit_dedicated_inputs(gameInput);
+		
+			// TODO: Input handling should probably not be here.
+			{
+				const float camera_translate_multiplier = 400.4f * dt;
+				const float camera_zoom_multiplier = (1.0f - dt * 3.0f);
+				if (gameInput.isKeyDown(cameraUp)) { cameraPosition += camera->local_forward() * camera_translate_multiplier; }
+				if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += camera->local_left() * camera_translate_multiplier; }
+				if (gameInput.isKeyDown(cameraRight)) { cameraPosition -= camera->local_left() * camera_translate_multiplier; }
+				if (gameInput.isKeyDown(cameraDown)) { cameraPosition -= camera->local_forward() * camera_translate_multiplier; }
+				// if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
+				// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
+
+				if (gameInput.isKeyClicked(key_toggle_editor_enabled)) { program_state_editor_running.toggle(); }
+				if (gameInput.isKeyClicked(key_toggle_game_simulation)) { program_state_game_running.toggle(); }
+			}
+
+			{
+				rynx_profile("Main", "Construct frame tasks");
+				base_simulation.generate_tasks(dt);
+			}
+
+			{
+				rynx_profile("Main", "Start scheduler");
+				scheduler.start_frame();
+			}
+
+			application.swapBuffers();
+			auto swap_time_us = timer.time_since_last_access_us();
+			swap_time.observe_value(swap_time_us / 1000.0f);
+
+			{
+				rynx_profile("Main", "Wait for frame end");
+				scheduler.wait_until_complete();
+			}
+		
+
+			auto logic_time_us = swap_time_us + timer.time_since_last_access_us();
+			logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
 		}
-
-		{
-			rynx_profile("Main", "Start scheduler");
-			scheduler.start_frame();
-		}
-
-		application.swapBuffers();
-		auto swap_time_us = timer.time_since_last_access_us();
-		swap_time.observe_value(swap_time_us / 1000.0f);
-
-		{
-			rynx_profile("Main", "Wait for frame end");
-			scheduler.wait_until_complete();
-		}
-
-		auto logic_time_us = swap_time_us + timer.time_since_last_access_us();
-		logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
 		
 		// menu updates are part of logic, not visualization. must tick every frame.
 		menuSystem.update(dt, application.aspectRatio());
@@ -830,7 +774,6 @@ int main(int argc, char** argv) {
 				}
 
 				timer.reset();
-				total_time.observe_value((logic_time_us + render_time_us /* + swap_time_us */) / 1000.0f);
 			}
 		}
 

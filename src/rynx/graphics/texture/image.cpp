@@ -28,7 +28,10 @@ void Image::loadImage(const std::string& filename)
 	int x = 0;
 	int y = 0;
 	int comp = 0;
-	data = (unsigned char*)stbi_load_from_memory(reinterpret_cast<stbi_uc const*>(file_data.data()), file_data.size(), &x, &y, &comp, 0);
+	data = (unsigned char*)stbi_load_from_memory(
+		reinterpret_cast<stbi_uc const*>(file_data.data()),
+		static_cast<int>(file_data.size()),
+		&x, &y, &comp, 0);
 	sizeX = x;
 	sizeY = y;
 	hasAlpha = (comp == 4);

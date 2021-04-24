@@ -423,7 +423,7 @@ TEST_CASE("ecs for_each iterates correct amount of entities")
 	}
 }
 
-struct mydata : public rynx::ecs::value_segregated_component {
+struct mydata : public rynx::ecs_value_segregated_component_tag {
 	mydata() {}
 	mydata(int v) : data(v) {}
 	bool operator == (const mydata& other) const {

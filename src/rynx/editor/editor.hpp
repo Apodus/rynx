@@ -125,6 +125,11 @@ namespace rynx {
 			m_tools_enabled = true;
 		}
 
+		void display_list_dialog(
+			std::vector<std::string> entries,
+			std::function<rynx::floats4(std::string)> entryColor,
+			std::function<void(std::string)> on_selection);
+
 		std::vector<std::function<void()>> m_execute_in_main_stack;
 
 		template<typename Func>

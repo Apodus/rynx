@@ -2,12 +2,12 @@
 #pragma once
 
 #include <rynx/editor/tools/tool.hpp>
-#include <rynx/editor/tools/selection_tool.hpp>
 
 namespace rynx {
 	namespace graphics {
 		class GPUTextures;
 	}
+	class ecs;
 
 	namespace editor {
 		namespace tools {

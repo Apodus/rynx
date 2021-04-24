@@ -171,7 +171,12 @@ namespace rynx {
 		}
 
 		pod_vector& operator = (const pod_vector&) = default;
-		pod_vector& operator = (pod_vector&&) = default;
+		pod_vector& operator = (pod_vector&& other) {
+			m_data = std::move(other.m_data);
+			m_size = other.m_size;
+			other.m_size = 0;
+			return *this;
+		}
 
 		T& front() { return m_data.front(); }
 		T& back() { return m_data[m_size  - 1]; }

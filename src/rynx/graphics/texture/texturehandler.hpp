@@ -17,7 +17,7 @@ namespace rynx {
 				rynx::vec4<int32_t> textureSize;
 				unsigned textureGL_ID = ~0u;
 				unsigned bufferGL_ID = ~0u;
-				unsigned buffer_gl_format;
+				unsigned buffer_gl_format = 0;
 				std::string name;
 				std::string filepath;
 				bool in_atlas = false;
@@ -39,7 +39,7 @@ namespace rynx {
 				std::vector<atlas_tex_info> m_slots;
 				rynx::dynamic_bitset m_tex_presence;
 				
-				rynx::graphics::GPUTextures* m_textures;
+				rynx::graphics::GPUTextures* m_textures = nullptr;
 
 				int32_t m_slots_per_row = 0;
 				int32_t atlasBlockSize = 512;

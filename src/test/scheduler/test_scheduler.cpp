@@ -231,49 +231,11 @@ TEST_CASE("task parallel for dependencies", "scheduler")
 	rynx::scheduler::task_scheduler scheduler;
 	auto* context = scheduler.make_context();
 	context->add_task("test", [&data, test_state](rynx::scheduler::task& task_context) {
-		auto parfor_barrier = task_context.parallel().for_each(0, data.size()).deferred_work().for_each([&data, test_state](int64_t index) mutable {
+		task_context.parallel().for_each(0, data.size()).deferred_work().for_each([&data, test_state](int64_t index) mutable {
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			*test_state += 1;
 		});
 	});
-}
-
-TEST_CASE("ecs parallel for dependencies", "scheduler")
-{
-	rynx::this_thread::rynx_thread_raii obj;
-	
-	struct component {
-		int a;
-	};
-
-	rynx::ecs ecs;
-	ecs.create(component{ 1 });
-	ecs.create(component{ 2 });
-	ecs.create(component{ 3 });
-
-	auto test_state = std::make_shared<std::atomic<int>>(0);
-
-	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
-	context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {
-		auto task1 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
-			REQUIRE(test_state->load() >= 3);
-			*test_state += 1;
-		});
-
-		auto task2 = ecs.query().for_each_parallel(task_context, [test_state](component& c) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(5));
-			REQUIRE(test_state->load() < 3);
-			*test_state += 1;
-		});
-
-		task1.depends_on(task2);
-	});
-
-	scheduler.start_frame();
-	scheduler.wait_until_complete();
-
-	REQUIRE(test_state->load() == 6);
 }
 
 TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")

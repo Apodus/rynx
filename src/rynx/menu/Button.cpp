@@ -19,7 +19,7 @@ void rynx::menu::Button::initialize() {
 			m_color.target_value().w = 1.0f;
 		}
 		else {
-			m_color.target_value().w = 0.3f;
+			m_color.target_value().w = m_no_focus_alpha;
 		}
 
 		return inRect;

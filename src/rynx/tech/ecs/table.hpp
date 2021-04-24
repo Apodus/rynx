@@ -132,9 +132,8 @@ namespace rynx {
 			}
 
 			virtual void moveFromIndexTo(index_t index, itable* dst) override {
-				T moved(std::move(m_data[index]));
+				static_cast<component_table*>(dst)->emplace_back(std::move(m_data[index]));
 				m_data[index] = std::move(m_data.back());
-				static_cast<component_table*>(dst)->emplace_back(std::move(moved));
 				m_data.pop_back();
 			}
 

@@ -34,6 +34,8 @@ Window::Window() {
 	m_fullscreen = false;
 	m_userRequestedExit = false;
 	m_pWindow = nullptr;
+	m_width = 0;
+	m_height = 0;
 }
 
 Window::~Window() {
