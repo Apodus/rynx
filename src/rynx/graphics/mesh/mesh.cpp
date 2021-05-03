@@ -128,8 +128,10 @@ void rynx::graphics::mesh::rebuildTextureBuffer() {
 }
 
 void rynx::graphics::mesh::rebuildVertexBuffer() {
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * vertices.size(), &vertices[0]);
+	if (vbo != ~0u) {
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * vertices.size(), &vertices[0]);
+	}
 }
 
 void rynx::graphics::mesh::rebuildNormalBuffer() {

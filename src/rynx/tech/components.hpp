@@ -11,6 +11,20 @@
 
 namespace rynx {
 	namespace components {
+		
+		namespace scene {
+			struct link {
+				// path where scene should be? is this ok or should have some scene_id type?
+				std::string path;
+			};
+
+			// need some way to figure out which entities belong to some scene,
+			// so we don't serialize those entities when saving active scene.
+			struct children : public rynx::ecs_no_serialize_tag {
+				std::vector<rynx::id> entities;
+			};
+		}
+		
 		struct position {
 			position() = default;
 			position(vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
@@ -211,13 +225,8 @@ namespace rynx {
 				update_world_positions(pos, angle);
 			}
 
-			boundary(boundary&& other) {
-				this->operator=(std::move(other));
-			}
-			boundary& operator=(boundary&& other) {
-				segments_local = std::move(other.segments_local);
-				segments_world = std::move(other.segments_world);
-			}
+			boundary(boundary&& other) = default;
+			boundary& operator=(boundary&& other) = default;
 
 			boundary(const boundary& other) = delete;
 			boundary& operator=(const boundary& other) = delete;

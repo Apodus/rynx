@@ -52,9 +52,10 @@ namespace rynx {
 								const rynx::matrix4* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
+									auto* mesh = m_meshes->get(meshes[0].m);
 									m_bufs.emplace_back(buffer{
 										num_entities,
-										m_meshes->get(meshes[0].m),
+										mesh,
 										positions,
 										radii,
 										colors,
@@ -75,9 +76,10 @@ namespace rynx {
 								const rynx::matrix4* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
+									auto* mesh = m_meshes->get(meshes[0].m);
 									m_bufs.emplace_back(buffer{
 										num_entities,
-										m_meshes->get(meshes[0].m),
+										mesh,
 										positions,
 										radii,
 										colors,

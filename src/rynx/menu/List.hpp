@@ -56,7 +56,10 @@ namespace rynx {
 			float list_element_margin() const { return m_list_element_margin; }
 
 
-			void list_element_velocity(float velocity) { m_list_elements_velocity = velocity; }
+			void list_element_velocity(float velocity) {
+				m_list_elements_velocity = velocity;
+				m_scrolling_content_panel.velocity_position(velocity);
+			}
 			float list_endpoint_velocity() const { return m_list_elements_velocity; }
 
 

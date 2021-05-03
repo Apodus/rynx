@@ -1,10 +1,11 @@
 
+#include <rynx/system/typeid.hpp>
 #include <rynx/editor/tools/collisions_tool.hpp>
 #include <rynx/scheduler/context.hpp>
 #include <rynx/tech/collision_detection.hpp>
 
 rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& ctx) : m_ecs(ctx.get_resource<rynx::ecs>()) {
-	define_action_no_tool_activate("remove collisions", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::collisions>(), "remove collisions", [this](rynx::scheduler::context* ctx) {
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto id = selected_id();
@@ -14,7 +15,7 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 		this->m_editor_state->m_on_entity_selected(id);
 	});
 
-	define_action_no_tool_activate("set category dynamic", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::collisions>(), "set category dynamic", [this](rynx::scheduler::context* ctx) {
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto id = selected_id();
@@ -25,7 +26,7 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 		);
 	});
 
-	define_action_no_tool_activate("set category world", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::collisions>(), "set category world", [this](rynx::scheduler::context* ctx) {
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto id = selected_id();

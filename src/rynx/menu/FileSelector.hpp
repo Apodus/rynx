@@ -18,8 +18,7 @@ namespace rynx {
 			FileSelector(
 				rynx::graphics::texture_id texture,
 				vec3<float> scale,
-				vec3<float> position = vec3<float>(),
-				float frame_edge_percentage = 0.2f
+				vec3<float> position = vec3<float>()
 			) : Component(scale, position)
 			{
 				m_frame_tex_id = texture;

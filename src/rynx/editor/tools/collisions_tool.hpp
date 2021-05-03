@@ -30,7 +30,7 @@ namespace rynx {
 				}
 
 				virtual std::string get_button_texture() override {
-					return "texture_collisions";
+					return "collisions_tool";
 				}
 
 			private:

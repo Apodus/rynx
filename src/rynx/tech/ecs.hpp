@@ -1267,10 +1267,29 @@ namespace rynx {
 			return out;
 		}
 
-		void deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
+		struct entity_range_t {
+			struct iterator {
+				rynx::ecs::id current;
+				rynx::ecs::id operator *() const { return current; }
+				iterator operator++() { ++current.value; return *this; }
+				iterator operator++(int) { iterator copy = *this; ++current.value; return copy; }
+				bool operator == (const iterator& other) { return current == other.current; }
+				bool operator != (const iterator& other) { return !(operator==(other)); }
+			};
+
+			iterator begin() { return iterator{ m_begin }; }
+			iterator end() { return iterator{ m_end }; }
+
+			rynx::ecs::id m_begin;
+			rynx::ecs::id m_end;
+		};
+		
+		entity_range_t deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
 			
 			size_t numEntities;
 			size_t numCategories;
+
+			auto id_range_begin = m_entities.peek_next_id();
 
 			rynx::reflection::reflections format(m_types);
 			rynx::deserialize(format, in); // reflection of loaded data
@@ -1376,6 +1395,8 @@ namespace rynx {
 					}
 				}
 			}
+
+			return { id_range_begin, id_range_begin + numEntities };
 		}
 
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }

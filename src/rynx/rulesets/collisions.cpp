@@ -596,8 +596,9 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						// soft_impact_force = linear collision response along the collision normal
 						// "tangent" = friction response along the collision tangent
 						const float inv_dt = 1.0f / dt;
-						motion_a.acceleration += (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
-						motion_b.acceleration -= (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;
+						const vec3f force_mask_xy(1.0f, 1.0f, 0.0f);
+						motion_a.acceleration += force_mask_xy * (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
+						motion_b.acceleration -= force_mask_xy * (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;
 
 						{
 							const float rotation_force_friction = tangent.cross2d(rel_pos_a);

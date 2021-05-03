@@ -85,7 +85,7 @@ namespace rynx {
 			int32_t m_type_index_value = -1;
 			bool m_is_type_segregated = false;
 			bool m_serialization_allowed = true;
-
+			
 			rynx::ecs_table_create_func m_create_table_func;
 			std::function<opaque_unique_ptr<void>()> m_create_instance_func;
 			std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> m_create_map_func;
@@ -242,7 +242,7 @@ namespace rynx {
 				auto it = m_reflections.find(typeid(T).name());
 				if (it == m_reflections.end()) {
 					rynx::reflection::type& reflection = create<T>();
-					reflection.m_type_name = "!!" + reflection.m_type_name;
+					// reflection.m_type_name = "!!" + reflection.m_type_name;
 					return reflection;
 				}
 				return it->second;
@@ -252,10 +252,15 @@ namespace rynx {
 				auto it = m_reflections.find(f.m_type_name);
 				if (it == m_reflections.end()) {
 					rynx::reflection::type t;
-					t.m_type_name = "!!" + f.m_type_name;
+					// t.m_type_name = "!!" + f.m_type_name;
+					t.m_type_name = f.m_type_name;
 					it = m_reflections.emplace(f.m_type_name, std::move(t)).first;
 				}
 				return it->second;
+			}
+
+			const rynx::reflection::type& get(const rynx::reflection::field& f) const {
+				return const_cast<reflections*>(this)->get(f);
 			}
 
 			rynx::reflection::type* find(uint64_t typeId) {
@@ -276,6 +281,14 @@ namespace rynx {
 				return nullptr;
 			}
 
+			const rynx::reflection::type* find(uint64_t typeId) const {
+				return const_cast<reflections*>(this)->find(typeId);
+			}
+
+			const rynx::reflection::type* find(std::string typeName) const {
+				return const_cast<reflections*>(this)->find(typeName);
+			}
+
 			std::vector<std::pair<std::string, rynx::reflection::type>> get_reflection_data() const {
 				std::vector<std::pair<std::string, rynx::reflection::type>> result;
 				for (const auto& entry : m_reflections) {
@@ -284,8 +297,8 @@ namespace rynx {
 				return result;
 			}
 
-			bool has(const std::string& s) { return m_reflections.find(s) != m_reflections.end(); }
-			template<typename T> bool has() { return has(typeid(T).name()); }
+			bool has(const std::string& s) const { return m_reflections.find(s) != m_reflections.end(); }
+			template<typename T> bool has() const { return has(typeid(T).name()); }
 
 		private:
 			rynx::type_index& m_type_index;

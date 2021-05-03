@@ -14,8 +14,7 @@
 #include <rynx/input/key_types.hpp>
 #include <rynx/tech/collision_detection.hpp>
 
-#include <rynx/editor/tools/selection_tool.hpp>
-#include <rynx/editor/tools/polygon_tool.hpp>
+#include <rynx/editor/tools/tool.hpp>
 
 #include <rynx/math/geometry/ray.hpp>
 
@@ -35,29 +34,15 @@ namespace rynx {
 			}
 		};
 
-		struct rynx_common_info {
-			rynx::ecs* ecs = nullptr;
-			rynx::ecs::id entity_id = 0;
-			rynx::graphics::GPUTextures* textures = nullptr;
-			rynx::graphics::texture_id frame_tex;
-			rynx::graphics::texture_id knob_tex;
-
-			int32_t component_type_id = 0;
-			int32_t cumulative_offset = 0;
-			int32_t indent = 0;
-		};
-
 		void field_float(
 			const rynx::reflection::field& member,
-			struct rynx_common_info info,
-			rynx::menu::Component* component_sheet,
+			rynx::editor::component_recursion_info_t info,
 			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
 		);
 
 		void field_bool(
 			const rynx::reflection::field& member,
-			struct rynx_common_info info,
-			rynx::menu::Component* component_sheet,
+			rynx::editor::component_recursion_info_t info,
 			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
 		);
 	}
@@ -73,16 +58,16 @@ namespace rynx {
 		rynx::graphics::texture_id knob_tex;
 
 		std::shared_ptr<rynx::menu::Div> m_editor_menu; // editor root level menu container.
-		std::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
-		
-		// TODO!
-		std::shared_ptr<rynx::menu::Div> m_scene_bar; // top side menu, containing existing scenes, selecting one will instantiate it in current scene.
-		
-		// TODO!
-		std::shared_ptr<rynx::menu::Div> m_file_actions_bar; // bottom side menu, containing global actions (new empty scene, save scene, load scene)
 		
 		std::shared_ptr<rynx::menu::Div> m_entity_bar; // left side menu, containing info of selection
 		std::shared_ptr<rynx::menu::List> m_components_list; // entity bar component list view - showing all components of an entity.
+
+		std::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
+		std::shared_ptr<rynx::menu::Div> m_file_actions_bar; // bottom side menu, containing global actions (new empty scene, save scene, load scene)
+		
+		// TODO!
+		std::shared_ptr<rynx::menu::Div> m_scene_bar; // top side menu, containing existing scenes, selecting one will instantiate it in current scene.
+		std::shared_ptr<rynx::menu::Text> m_info_text;
 
 		std::vector<std::shared_ptr<rynx::menu::Component>> m_popups;
 
@@ -161,10 +146,8 @@ namespace rynx {
 		}
 
 		void generate_menu_for_reflection(
-			rynx::reflection::reflections& reflections_,
 			const rynx::reflection::type& type_reflection,
-			rynx::editor::rynx_common_info info,
-			rynx::menu::Component* component_sheet_,
+			rynx::editor::component_recursion_info_t info,
 			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> = {}
 		);
 
@@ -192,42 +175,6 @@ namespace rynx {
 		}
 
 	private:
-		virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override {
-
-			if (m_tools_enabled) {
-				m_active_tool->update(context);
-			}
-
-			while (!m_execute_in_main_stack.empty()) {
-				m_execute_in_main_stack.front()();
-				m_execute_in_main_stack.erase(m_execute_in_main_stack.begin());
-			}
-
-			{
-				auto& gameInput = context.get_resource<rynx::mapped_input>();
-				auto& gameCamera = context.get_resource<rynx::camera>();
-
-				auto mouseRay = gameInput.mouseRay(gameCamera);
-				auto mouse_z_plane = mouseRay.intersect(rynx::plane(0, 0, 1, 0));
-				mouse_z_plane.first.z = 0;
-
-				if (mouse_z_plane.second) {
-					// mouse input stuff
-					if (gameInput.isKeyClicked(gameInput.getMouseKeyPhysical(1))) {
-						create_empty_entity(mouse_z_plane.first);
-					}
-				}
-			}
-
-			/*
-			context.add_task("editor tick", [this, dt](
-				rynx::ecs& game_ecs,
-				rynx::mapped_input& gameInput,
-				rynx::camera& gameCamera)
-				{
-				}
-			);
-			*/
-		}
+		virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override;
 	};
 }

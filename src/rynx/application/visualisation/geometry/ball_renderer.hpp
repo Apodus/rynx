@@ -84,6 +84,10 @@ namespace rynx {
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
 							ecs.query().notIn<rynx::components::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
+								if (!(ecs.exists(rope.id_a) & ecs.exists(rope.id_b))) {
+									return;
+								}
+
 								auto entity_a = ecs[rope.id_a];
 								auto entity_b = ecs[rope.id_b];
 
@@ -118,17 +122,20 @@ namespace rynx {
 				virtual void execute() override {
 
 					{
-						for (auto&& buf : m_bufs)
-							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), buf.tex_ids);
+						for (auto&& buf : m_bufs) {
+							std::vector<rynx::graphics::texture_id> tex;
+							tex.resize(buf.num);
+							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), tex.data());
+						}
 					}
 
 					{
 						rynx_profile("visualisation", "ball draw ropes");
-						/*
 						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices, colors);
+							std::vector<rynx::graphics::texture_id> tex;
+							tex.resize(colors.size());
+							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices, colors, tex);
 						});
-						*/
 					}
 				}
 

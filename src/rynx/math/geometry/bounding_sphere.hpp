@@ -58,7 +58,13 @@ namespace rynx {
 			return a + o;
 		};
 
-		template<typename T> std::pair<rynx::vec3<float>, float> bounding_sphere(std::vector<T>& points) {
+		template<typename T>
+		concept sphere_like = requires (T t) {
+			{access(t).pos}->std::convertible_to<rynx::vec3f>;
+			{access(t).radius}->std::convertible_to<float>;
+		};
+
+		template<sphere_like T> std::pair<rynx::vec3<float>, float> bounding_sphere(std::vector<T>& points) {
 			std::pair<size_t, float> indexFar1 = farPoint(access(points[0]).pos, points);
 			std::pair<size_t, float> indexFar2 = farPoint(access(points[indexFar1.first]).pos, points);
 			indexFar1 = farPoint(access(points[indexFar2.first]).pos, points);

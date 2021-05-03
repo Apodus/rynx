@@ -108,6 +108,7 @@ namespace rynx {
 			void update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id);
 			void remove_collision_from_entity(rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::collisions> ecs, rynx::ecs::id id);
 			void set_collision_category_for_entity(rynx::ecs& ecs, rynx::ecs::id id, category_id collision_category);
+			void update_collider_kind_for_entity(rynx::ecs& ecs, rynx::ecs::id id);
 
 		private:
 			rynx::collision_detection* m_host;

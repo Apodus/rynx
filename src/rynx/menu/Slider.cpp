@@ -70,6 +70,7 @@ void rynx::menu::SlideBarVertical::onInput(rynx::mapped_input& input) {
 void rynx::menu::SlideBarVertical::onDedicatedInput(rynx::mapped_input& input) {
 	rynx::key::physical mouseKey1 = input.getMouseKeyPhysical(0);
 	if (input.isKeyReleased(mouseKey1)) {
+		input.consume(mouseKey1);
 		m_mouseDragActive = false;
 		if (m_on_drag_end) {
 			m_on_drag_end(getValue());

@@ -164,6 +164,7 @@ namespace rynx {
 			void visualise(rynx::graphics::renderer& renderer) const;
 
 			void set_dynamic_position_and_scale() { m_dynamic_scale = true; }
+			void ignore_parent_scale() { m_ignore_parent_scale = true; }
 
 			class AlignConfig {
 			private:

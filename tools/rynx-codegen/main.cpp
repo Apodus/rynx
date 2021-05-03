@@ -411,7 +411,7 @@ void write_results(std::string source_file) {
 				output << "template<> struct Serialize<" + type.first + "> {\n";
 				output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "& t, IOStream& writer) {\n";
 				for (auto&& field : type.second.m_fields) {
-					if (!compiler_is_forced_to_evaluate_reflection_loader_obj) {
+					if (true || !compiler_is_forced_to_evaluate_reflection_loader_obj) {
 						output << "\t\t++rynx::reflection::generated::" << (functionRandomName + "_i;\n");
 						compiler_is_forced_to_evaluate_reflection_loader_obj = true;
 					}

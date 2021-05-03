@@ -38,11 +38,23 @@ namespace rynx {
 					return "polygon_tool";
 				}
 
+				virtual void on_entity_component_added(
+					rynx::scheduler::context* ctx,
+					std::string componentTypeName,
+					rynx::ecs& ecs,
+					rynx::id id) override;
+				
+				virtual void on_entity_component_value_changed(
+					rynx::scheduler::context* ctx,
+					std::string componentTypeName,
+					rynx::ecs& ecs,
+					rynx::id id) override;
+
 			private:
-				bool vertex_create(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
-				int32_t vertex_select(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
+				bool vertex_create(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos, float allowedDistance);
+				int32_t vertex_select(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos, float allowedDistance);
+				void drag_operation_update(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos, float activationDistance);
 				void drag_operation_start(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
-				void drag_operation_update(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
 				void drag_operation_end(rynx::ecs& game_ecs, rynx::collision_detection& detection);
 
 				void action_smooth(rynx::ecs& ecs);

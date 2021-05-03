@@ -18,7 +18,7 @@ std::pair<rynx::vec3f, bool> rynx::ray::intersect(const rynx::plane& p) const {
 }
 
 std::pair<rynx::vec3f, bool> rynx::ray::intersect(const rynx::sphere& s) const {
-    vec3 relative_origin = m_origin - s.origin;
+    vec3 relative_origin = m_origin - s.pos;
     float a = m_direction.length_squared();
     float b = 2.0f * relative_origin.dot(m_direction);
     float c = relative_origin.length_squared() - s.radius * s.radius;

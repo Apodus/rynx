@@ -6,55 +6,45 @@
 #include <rynx/input/mapped_input.hpp>
 #include <rynx/math/geometry/plane.hpp>
 
+#include <rynx/application/components.hpp>
 #include <rynx/tech/components.hpp>
+#include <rynx/system/typeid.hpp>
 
 namespace rynx {
 	namespace editor {
 		namespace tools {
-			class selection_tool : public itool {
+			class joint_tool : public itool {
 			public:
-				selection_tool(rynx::scheduler::context& ctx);
+				joint_tool(rynx::scheduler::context& ctx);
 
 				virtual void update(rynx::scheduler::context& ctx) override;
 				virtual void on_tool_selected() override {}
 				virtual void on_tool_unselected() override {}
 
 				virtual std::string get_info() override {
-					if (m_mode == Mode::IdField_Pick)
-						return "Pick entity";
-					if (m_mode == Mode::Vec3fDrag)
-						return "Drag vec3f";
 					return {};
 				}
 
 				virtual std::string get_tool_name() {
-					return "selection";
+					return "joint";
 				}
 
 				virtual std::string get_button_texture() override {
-					return "selection_tool";
+					return "joint_tool";
 				}
 
-				virtual bool operates_on(const std::string& type_name) override;
+				virtual bool operates_on(const std::string& type_name) override {
+					return type_name == rynx::traits::type_name<rynx::components::phys::joint>() ||
+						type_name == rynx::traits::type_name<rynx::components::phys::joint::connector_type>();
+				}
+
 				virtual bool try_generate_menu(
 					rynx::reflection::field type,
 					rynx::editor::component_recursion_info_t info,
 					std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack) override;
-
+			
 			private:
-				enum class Mode {
-					Default,
-					IdField_Pick,
-					Vec3fDrag
-				};
-
-				Mode m_mode = Mode::Default;
-
-				std::pair<rynx::ecs::id, float> find_nearest_entity(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
-
-				std::function<void()> m_run_on_main_thread;
-				rynx::key::logical m_activation_key;
-
+				
 				struct drag_op_t {
 					rynx::vec3f start_point;
 					rynx::vec3f prev_point;

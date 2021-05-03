@@ -27,6 +27,10 @@ namespace rynx {
 				return ++m_nextId;
 			} // zero is never generated. we can use that as InvalidId.
 
+			entity_id_t peek_next_id() const {
+				return m_nextId + 1;
+			}
+
 			void clear() {
 				m_nextId = 0; // reset id space.
 			}
@@ -42,6 +46,7 @@ namespace rynx {
 			id() : value(entity_index::InvalidId) {}
 			id(entity_id_t v) : value(v) {}
 			bool operator == (const id& other) const { return value == other.value; }
+			explicit operator bool() const { return value > 0; }
 
 			entity_id_t value;
 		};

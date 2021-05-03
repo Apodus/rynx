@@ -51,6 +51,10 @@
 #include <rynx/editor/editor.hpp>
 #include <rynx/editor/tools/texture_selection_tool.hpp>
 #include <rynx/editor/tools/collisions_tool.hpp>
+#include <rynx/editor/tools/instantiate_tool.hpp>
+#include <rynx/editor/tools/joint_tool.hpp>
+#include <rynx/editor/tools/polygon_tool.hpp>
+
 
 #include <rynx/tech/collision_detection.hpp>
 
@@ -108,13 +112,17 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 							auto id1 = ecs.create(
 								rynx::components::position({ x, y, 0 }),
 								rynx::components::motion(),
-								rynx::components::physical_body().mass(5.0f).elasticity(0.3f).friction(2.0f).moment_of_inertia(15.0f),
-								rynx::components::radius(2.0f),
+								rynx::components::physical_body()
+									.mass(5.0f)
+									.elasticity(0.3f)
+									.friction(2.0f)
+									.moment_of_inertia(10.0f * 10.0f * 5.0f * 0.5f),
+								rynx::components::radius(10.0f),
 								rynx::components::collisions{ dynamic.value },
 								rynx::components::color({ m_random(), m_random(), m_random(), 1.0f}),
 								rynx::components::dampening({ 0.10f, 0.10f }),
 								rynx::components::mesh{ circle_id },
-								rynx::components::texture{"frame"}
+								rynx::components::texture{"hero"}
 							);
 
 							// add lights.
@@ -141,7 +149,7 @@ struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
 								return (width * width + height * height) * mass / 12.0f;
 							};
 
-							for (int k = 1; k < 30; ++k) {
+							for (int k = 1; k < 1; ++k) {
 								float v = m_random();
 								float edge_width = 2.0f + m_random() * 5.0f;
 								float mass = edge_width * edge_width * 1.25f;
@@ -298,10 +306,8 @@ int main(int argc, char** argv) {
 		base_simulation.set_resource(camera.get());
 		base_simulation.set_resource(meshes.get());
 		base_simulation.set_resource(application.debugVis().get());
+		base_simulation.set_resource(&reflections);
 	}
-
-	// TODO: use std::observer_ptr
-	ball_spawner_ruleset* spawner = nullptr;
 
 	rynx::menu::System menuSystem;
 	rynx::menu::Component& root = *menuSystem.root();
@@ -317,7 +323,7 @@ int main(int argc, char** argv) {
 		auto ruleset_motion_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
 		auto ruleset_physical_springs = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics::springs>();
 		auto ruleset_lifetime_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::lifetime_updates>();
-		auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(circle_id, square_id, application.textures()->findTextureByName("hero"), collisionCategoryDynamic);
+		// auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(circle_id, square_id, application.textures()->findTextureByName("hero"), collisionCategoryDynamic);
 		auto ruleset_editor = base_simulation.rule_set(program_state_editor_running).create<rynx::editor_rules>(
 			*base_simulation.m_context,
 			reflections,
@@ -330,8 +336,8 @@ int main(int argc, char** argv) {
 		ruleset_editor->add_tool<rynx::editor::tools::texture_selection>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::polygon_tool>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::collisions_tool>(*base_simulation.m_context);
-
-		spawner = ruleset_minilisk_gen.operator->();
+		ruleset_editor->add_tool<rynx::editor::tools::instantiation_tool>(*base_simulation.m_context);
+		ruleset_editor->add_tool<rynx::editor::tools::joint_tool>(*base_simulation.m_context);
 
 		ruleset_physical_springs->depends_on(ruleset_motion_updates);
 		ruleset_collisionDetection->depends_on(ruleset_motion_updates);
@@ -467,7 +473,7 @@ int main(int argc, char** argv) {
 
 		// makeChain({ -500, +300, 0 }, { +1.0f, 0.0f, 0.0f }, 400.0f, 25);
 
-		makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
+		// makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
 		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
 		// makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
 
@@ -477,9 +483,11 @@ int main(int argc, char** argv) {
 		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.15f);
 		*/
 
+		/*
 		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
 		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);
 		makeBox_outside({ +80, -160, 0 }, +0.3f, 1000.0f, 0.f);
+		*/
 	}
 
 	// setup some debug controls
@@ -603,6 +611,9 @@ int main(int argc, char** argv) {
 				if (gameInput.isKeyDown(cameraDown)) { cameraPosition -= camera->local_forward() * camera_translate_multiplier; }
 				// if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
 				// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
+				if (gameInput.isKeyClicked(rynx::key::physical('X'))) {
+					rynx::profiling::write_profile_log();
+				}
 
 				if (gameInput.isKeyClicked(key_toggle_editor_enabled)) { program_state_editor_running.toggle(); }
 				if (gameInput.isKeyClicked(key_toggle_game_simulation)) { program_state_game_running.toggle(); }
@@ -705,8 +716,8 @@ int main(int argc, char** argv) {
 						application.renderer().drawText(render_fps_text);
 						application.renderer().drawText(body_count_text);
 						application.renderer().drawText(frustum_culler_text);
+						application.renderer().drawText(fps_text);
 					}
-					application.renderer().drawText(fps_text);
 				}
 
 				scheduler.wait_until_complete();
@@ -818,6 +829,5 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	// PROFILE_RECORD(500); // Record last 500 ms profiling to build/bin
 	return 0;
 }

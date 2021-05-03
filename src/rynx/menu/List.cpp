@@ -29,6 +29,29 @@ void rynx::menu::List::align_list_right() {
 void rynx::menu::List::onInput(rynx::mapped_input& input) {
 	if (inRectComponent(input.mouseMenuPosition(m_aspectRatio))) {
 		m_scrolling_content_panel.target_position().y += input.getMouseScroll() * 0.05f;
+
+		// ensure target position is still in bounds
+		if (!m_children.empty()) {
+			float total_children_height = m_list_element_margin * (m_children.size() - 1);
+			for (auto&& child : m_children) {
+				total_children_height += child->scale_world().y;
+			}
+
+			float min_scroll_value = scale_world().y * 0.5f - m_list_endpoint_margin; // top edge value
+			float max_scroll_value = total_children_height - scale_world().y * 0.5f + m_list_endpoint_margin; // bot edge value
+
+			if (min_scroll_value > max_scroll_value) {
+				max_scroll_value = min_scroll_value;
+			}
+
+			float current_scroll_value = m_scrolling_content_panel.target_position().y;
+			if (current_scroll_value > max_scroll_value) {
+				m_scrolling_content_panel.target_position().y = max_scroll_value;
+			}
+			else if (current_scroll_value < min_scroll_value) {
+				m_scrolling_content_panel.target_position().y = min_scroll_value;
+			}
+		}
 	}
 }
 

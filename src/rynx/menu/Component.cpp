@@ -134,11 +134,14 @@ void rynx::menu::Component::updateScale() {
 			m_worldScale = m_scale;
 		}
 		else {
-			m_worldScale = m_scale * m_pParent->scale_world();
-		}
-
-		if (m_respect_aspect_ratio) {
-			m_worldScale.y *= m_aspectRatio;
+			if (m_respect_aspect_ratio) {
+				rynx::vec3f parent_scale = m_pParent->scale_world();
+				float min = parent_scale.x < parent_scale.y ? parent_scale.x : parent_scale.y;
+				m_worldScale = m_scale * min;
+			}
+			else {
+				m_worldScale = m_scale * m_pParent->scale_world();
+			}
 		}
 	}
 }
@@ -271,7 +274,7 @@ void rynx::menu::Component::tick(float dt, float aspectRatio) {
 		updateScale();
 
 		m_position.tick(std::min(1.0f, dt * 5 * m_position_update_velocity));
-		m_scale.tick(std::min(1.0f, dt * 8 * m_scale_update_velocity));
+		m_scale.tick(std::min(1.0f, dt * 10 * m_scale_update_velocity));
 	}
 	else {
 		for (int i = 0; i < 15; ++i) {
@@ -282,7 +285,7 @@ void rynx::menu::Component::tick(float dt, float aspectRatio) {
 			m_position.tick(0.33f);
 			m_scale.tick(0.33f);
 
-			for (auto child : m_children) {
+			for (auto& child : m_children) {
 				child->updateAttachment();
 				child->updatePosition();
 				child->updateScale();

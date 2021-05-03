@@ -6,6 +6,10 @@ void rynx::editor::itool::source_data(std::function<void* ()> func) {
 	m_get_data = std::move(func);
 }
 
+void rynx::editor::itool::source_data_cb(std::function<void(void*)> func) {
+	m_data_changed = std::move(func);
+}
+
 void* rynx::editor::itool::address_of_operand() {
 	if (m_get_data)
 		return m_get_data();
@@ -33,10 +37,14 @@ rynx::id rynx::editor::itool::selected_id() const {
 	return rynx::id{ 0 };
 }
 
-void rynx::editor::itool::define_action(std::string name, std::function<void(rynx::scheduler::context*)> op) {
-	m_actions.emplace(name, action{ true, name, std::move(op) });
+const std::vector<rynx::id>& rynx::editor::itool::selected_id_vector() const {
+	return m_editor_state->m_selected_ids;
 }
 
-void rynx::editor::itool::define_action_no_tool_activate(std::string name, std::function<void(rynx::scheduler::context*)> op) {
-	m_actions.emplace(name, action{ false, name, std::move(op) });
+void rynx::editor::itool::define_action(std::string target_type, std::string name, std::function<void(rynx::scheduler::context*)> op) {
+	m_actions.emplace(name, action{ true, target_type, name, std::move(op) });
+}
+
+void rynx::editor::itool::define_action_no_tool_activate(std::string target_type, std::string name, std::function<void(rynx::scheduler::context*)> op) {
+	m_actions.emplace(name, action{ false, target_type, name, std::move(op) });
 }

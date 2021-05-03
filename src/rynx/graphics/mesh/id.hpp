@@ -10,7 +10,7 @@ namespace rynx {
 		struct mesh_id {
 			bool operator == (const mesh_id& other) const = default;
 			operator bool() const { return value > 0; }
-			int64_t value;
+			int64_t value = 0;
 		};
 	}
 

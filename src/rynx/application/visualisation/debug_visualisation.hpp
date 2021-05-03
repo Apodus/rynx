@@ -25,10 +25,11 @@ namespace rynx {
 		public:
 			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer);
 
-			void addDebugCircle(matrix4 model, floats4 color, float lifetime = 0.0f);
-			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 model, floats4 color, float lifetime = 0.0f);
-			void addDebugVisual(rynx::graphics::mesh_id mesh_id, rynx::matrix4 model, floats4 color, float lifetime = 0.0f);
-			void addDebugVisual(std::string meshName, rynx::matrix4 model, floats4 color, float lifetime = 0.0f);
+			void addDebugLine(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugCircle(rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::graphics::mesh_id mesh_id, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(std::string meshName, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 			virtual void execute() override;
@@ -45,6 +46,7 @@ namespace rynx {
 			std::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
 
 			rynx::graphics::mesh_id m_circle_mesh;
+			rynx::graphics::mesh_id m_line_mesh;
 		};
 	}
 }

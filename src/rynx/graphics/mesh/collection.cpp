@@ -1,9 +1,28 @@
 
 #include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/graphics/mesh/mesh.hpp>
+#include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/tech/filesystem/filesystem.hpp>
+#include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <chrono>
 #include <filesystem>
+
+
+rynx::graphics::mesh_collection::mesh_collection(std::shared_ptr<rynx::graphics::GPUTextures> gpuTextures) : m_pGpuTextures(gpuTextures) {
+	auto default_mesh = rynx::polygon_triangulation().make_mesh(rynx::Shape::makeBox(1.0f));
+	default_mesh->scale(sqrt(2.0f));
+	default_mesh->build();
+	default_mesh->set_transient();
+	m_storage.emplace(mesh_id(), std::move(default_mesh));
+}
+
+rynx::graphics::mesh_id rynx::graphics::mesh_collection::findByName(std::string humanReadableName) {
+	for (auto&& entry : m_storage) {
+		if (entry.second->humanReadableId == humanReadableName)
+			return entry.first;
+	}
+	return {};
+}
 
 void rynx::graphics::mesh_collection::save_all_meshes_to_disk(std::string path) {
 	if (!std::filesystem::exists(path)) {
@@ -23,6 +42,9 @@ void rynx::graphics::mesh_collection::save_mesh_to_disk(mesh_id id, std::string 
 	rynx::serialize(id, mem_out);
 	rynx_assert(mesh_it != m_storage.end(), "trying to save mesh that does not exist");
 	rynx::serialize(*mesh_it->second, mem_out);
+
+	if (path.back() != '/')
+		path.push_back('/');
 
 	std::string filename = mesh_it->second->humanReadableId + "_" + std::to_string(id.value) + ".rynxmesh";
 	std::string filepath = path + mesh_it->second->get_category() + filename;
@@ -104,7 +126,6 @@ rynx::graphics::mesh_id rynx::graphics::mesh_collection::create(std::string huma
 	m_storage.find(id)->second->humanReadableId = human_readable_name;
 	return id;
 }
-
 
 void rynx::graphics::mesh_collection::erase(mesh_id id) {
 	m_storage.erase(id);

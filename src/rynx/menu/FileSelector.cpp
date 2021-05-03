@@ -46,7 +46,7 @@ void rynx::menu::FileSelector::display(
 		createSelection(m_currentPath, "New file", { 1.0f, 1.0f, 0.0f, 1.0f }, [this, on_select_file, on_select_directory](std::string) {
 			clear_children();
 			
-			auto popup_div = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.5f, 0.2f, 0.0f });
+			auto popup_div = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1.0f, 0.2f, 0.0f });
 			addChild(popup_div);
 
 			auto popup_topic = std::make_shared<rynx::menu::Text>(rynx::vec3f{ 0.5f, 0.35f, 0.0f });
@@ -54,7 +54,7 @@ void rynx::menu::FileSelector::display(
 			popup_topic->text("Enter file name:");
 			popup_topic->color({ 1.0f, 0.0f, 1.0f, 1.0f });
 
-			auto fileNameButton = std::make_shared<rynx::menu::Button>(m_frame_tex_id, rynx::vec3f{ 0.5f, 0.4f, 0.0f }, rynx::vec3f(0, 0, 0));
+			auto fileNameButton = std::make_shared<rynx::menu::Button>(m_frame_tex_id, rynx::vec3f{ 0.8f, 0.4f, 0.0f }, rynx::vec3f(0, 0, 0));
 			fileNameButton->no_focus_alpha(1.0f);
 			fileNameButton->align().bottom_inside();
 			fileNameButton->text().text_input_enable();
@@ -76,7 +76,7 @@ void rynx::menu::FileSelector::display(
 		createSelection(m_currentPath, "New directory", { 1.0f, 1.0f, 0.0f, 1.0f }, [this, on_select_file, on_select_directory](std::string) {
 			clear_children();
 
-			auto popup_div = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.5f, 0.2f, 0.0f });
+			auto popup_div = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1.0f, 0.2f, 0.0f });
 			addChild(popup_div);
 
 			auto popup_topic = std::make_shared<rynx::menu::Text>(rynx::vec3f{ 0.5f, 0.35f, 0.0f });
@@ -84,7 +84,7 @@ void rynx::menu::FileSelector::display(
 			popup_topic->text("Enter directory name:");
 			popup_topic->color({ 1.0f, 0.0f, 1.0f, 1.0f });
 
-			auto fileNameButton = std::make_shared<rynx::menu::Button>(m_frame_tex_id, rynx::vec3f{ 0.5f, 0.4f, 0.0f }, rynx::vec3f(0, 0, 0));
+			auto fileNameButton = std::make_shared<rynx::menu::Button>(m_frame_tex_id, rynx::vec3f{ 0.8f, 0.4f, 0.0f }, rynx::vec3f(0, 0, 0));
 			fileNameButton->no_focus_alpha(1.0f);
 			fileNameButton->align().bottom_inside();
 			fileNameButton->text().text_input_enable();

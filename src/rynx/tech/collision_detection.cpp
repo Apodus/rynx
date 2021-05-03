@@ -54,19 +54,8 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 			const rynx::components::position,
 			const rynx::components::radius> ecs) {
 		{
-			// cleanup removed collisions components
-			auto collisions_erased_ids = ecs.query()
-				.in<tracked_by_collisions>()
-				.notIn<rynx::components::collisions>()
-				.ids();
-			
-			// this should probably not happen outside editor context?
-			for (auto id : collisions_erased_ids) {
-				detection.editor_api().remove_collision_from_entity(ecs, id);
-			}
-
 			auto spheres = ecs.query()
-				.in<rynx::components::physical_body, rynx::components::motion>()
+				.in<rynx::components::physical_body>()
 				.notIn<rynx::components::projectile, rynx::components::boundary, tracked_by_collisions>()
 				.for_each([&detection](
 					rynx::ecs::id id,
@@ -121,6 +110,9 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 
 void rynx::collision_detection::editor_api_t::update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id) {
 	auto entity = ecs[id];
+	if (!entity.has<rynx::components::collisions, rynx::components::radius, rynx::components::position>())
+		return;
+
 	auto collisions = entity.get<const rynx::components::collisions>();
 	auto radius = entity.get<const rynx::components::radius>();
 	auto pos = entity.get<const rynx::components::position>();
@@ -139,6 +131,23 @@ void rynx::collision_detection::editor_api_t::update_entity_forced(rynx::ecs& ec
 		m_host->m_sphere_trees[collisions.category]->update_entity(part_id, pos.value, radius.r);
 }
 
+void rynx::collision_detection::editor_api_t::update_collider_kind_for_entity(rynx::ecs& ecs, rynx::ecs::id id) {
+	for (auto& tree : m_host->m_sphere_trees) {
+		auto try_erase = [&tree](auto id) {
+			if (tree->contains(id)) {
+				tree->eraseEntity(id);
+			}
+		};
+
+		try_erase(id.value | mask_kind_sphere);
+		try_erase(id.value | mask_kind_boundary);
+		try_erase(id.value | mask_kind_projectile);
+	}
+	if (ecs[id].has<tracked_by_collisions>())
+		ecs[id].remove<tracked_by_collisions>();
+}
+
+
 void rynx::collision_detection::editor_api_t::remove_collision_from_entity(
 	rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::collisions> ecs,
 	rynx::ecs::id id)
@@ -154,8 +163,10 @@ void rynx::collision_detection::editor_api_t::remove_collision_from_entity(
 		try_erase(id.value | mask_kind_boundary);
 		try_erase(id.value | mask_kind_projectile);
 	}
-	if (ecs[id].has<tracked_by_collisions, rynx::components::collisions>())
-		ecs[id].remove<tracked_by_collisions, rynx::components::collisions>();
+	if (ecs[id].has<tracked_by_collisions>())
+		ecs[id].remove<tracked_by_collisions>();
+	if (ecs[id].has<rynx::components::collisions>())
+		ecs[id].remove<rynx::components::collisions>();
 }
 
 void rynx::collision_detection::editor_api_t::set_collision_category_for_entity(rynx::ecs& ecs, rynx::ecs::id id, category_id category) {
@@ -165,7 +176,6 @@ void rynx::collision_detection::editor_api_t::set_collision_category_for_entity(
 
 	bool prerequirements = ecs[id].has<
 		rynx::components::physical_body,
-		rynx::components::motion,
 		rynx::components::radius,
 		rynx::components::position>();
 
@@ -180,15 +190,15 @@ void rynx::collision_detection::editor_api_t::set_collision_category_for_entity(
 
 	rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 	
-	if (prerequirements & projectile & !boundary) {
+	if (projectile & !boundary) {
 		const uint64_t part_id = id.value | mask_kind_projectile;
 		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 	}
-	else if (prerequirements & boundary) {
+	else if (boundary) {
 		const uint64_t part_id = id.value | mask_kind_boundary;
 		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 	}
-	else if (prerequirements) {
+	else {
 		const uint64_t part_id = id.value | mask_kind_sphere;
 		m_host->m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 	}

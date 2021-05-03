@@ -53,7 +53,7 @@ rynx::application::renderer::renderer(rynx::application::Application& applicatio
 		auto& renderer = application.renderer();
 		rynx::graphics::mesh_id tube_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeBox(1.0f));
 		auto* tube_mesh = renderer.meshes()->get(tube_mesh_id);
-		tube_mesh->scale(sqrt(2));
+		tube_mesh->scale(sqrt(2.0f));
 		tube_mesh->normals.clear();
 		tube_mesh->putNormal(0, +1, 0);
 		tube_mesh->putNormal(0, -1, 0);
