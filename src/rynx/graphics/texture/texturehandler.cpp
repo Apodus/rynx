@@ -16,7 +16,9 @@ void rynx::graphics::GPUTextures::dynamic_texture_atlas::init(rynx::graphics::GP
 	m_atlas_size >>= 1;
 	m_slots_per_row = m_atlas_size / blockSize();
 	m_atlas_tex_id = textures->createTexture("dynamic-atlas", m_atlas_size, m_atlas_size);
-	m_indirection_buffer_tex_id = textures->createBuffer("uv-indirection");
+	
+	// 1 MB indirection buffer for textures
+	m_indirection_buffer_tex_id = textures->createBuffer("uv-indirection", 1024 * 1024);
 	
 	// first index is reserved for blank white.
 	Image blankWhite(1, 1);
@@ -70,6 +72,17 @@ void rynx::graphics::GPUTextures::dynamic_texture_atlas::evictTexture(rynx::grap
 	m_slots[id.value] = atlas_tex_info();
 }
 
+void rynx::graphics::GPUTextures::dynamic_texture_atlas::updateIndirectionBuffer(rynx::graphics::texture_id id) {
+	rynx_assert(m_slots.size() * sizeof(decltype(m_slots)::value_type) <= 1024 * 1024, "increase texture buffer size, and make buffer type size dynamic in general.");
+	auto singleEntrySize = sizeof(decltype(m_slots)::value_type);
+	m_textures->bufferData(
+		m_indirection_buffer_tex_id,
+		1 * singleEntrySize,
+		m_slots.data() + id.value,
+		id.value * singleEntrySize
+	);
+}
+
 void rynx::graphics::GPUTextures::dynamic_texture_atlas::loadImage(rynx::graphics::texture_id id, Image&& img, int slot_x, int slot_y, int slotSize) {
 	this->reserveSlot(id, slot_x, slot_y, slotSize);
 	glTextureSubImage2D(
@@ -84,7 +97,7 @@ void rynx::graphics::GPUTextures::dynamic_texture_atlas::loadImage(rynx::graphic
 		img.data
 	);
 
-	m_textures->bufferData(m_indirection_buffer_tex_id, m_slots.size() * 8, m_slots.data());
+	updateIndirectionBuffer(id);
 
 	auto verifyNoGlErrors = []() {
 		auto error = glGetError();
@@ -123,11 +136,14 @@ void rynx::graphics::GPUTextures::dynamic_texture_atlas::loadImage(rynx::graphic
 	logmsg("Loading texture '%s' from file '%s'", info.name.c_str(), info.filepath.c_str());
 	img.loadImage(info.filepath);
 	loadImage(id, std::move(img));
+	
+	auto tex_conf_it = m_textures->m_tex_configs.find(info.name);
+	if (tex_conf_it != m_textures->m_tex_configs.end()) {
+		this->m_slots[id.value].textureMode = tex_conf_it->second.vertex_positions_as_uv ? 1 : 0;
+		this->m_slots[id.value].textureScale = int32_t(tex_conf_it->second.vertex_position_scale * 1000.0f);
+		updateIndirectionBuffer(id);
+	}
 }
-
-
-
-
 
 
 rynx::graphics::GPUTextures::GPUTextures() {
@@ -278,24 +294,23 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const std:
 	return id;
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createBuffer(const std::string& name) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createBuffer(const std::string& name, size_t bufferSizeBytes) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 	rynx::graphics::texture_id id = generate_tex_id();
 	m_textures[id].name = name;
+	m_textures[id].buffer_gl_format = GL_RGBA32I; // TODO: Some control over this would be great.
 
 	glGenTextures(1, &(m_textures[id].textureGL_ID));
 	glGenBuffers(1, &(m_textures[id].bufferGL_ID));
 	glBindBuffer(GL_TEXTURE_BUFFER, m_textures[id].bufferGL_ID);
-	glBufferData(GL_TEXTURE_BUFFER, 1024 * 1024, nullptr, GL_STATIC_DRAW);
+	glBufferData(GL_TEXTURE_BUFFER, bufferSizeBytes, nullptr, GL_STATIC_DRAW);
 	return id;
 }
 
-void rynx::graphics::GPUTextures::bufferData(rynx::graphics::texture_id id, size_t bytes, void* data) {
+void rynx::graphics::GPUTextures::bufferData(rynx::graphics::texture_id id, size_t bytes, void* data, size_t offset) {
 	rynx_assert(m_textures[id].has_buffer(), "bufferData can only be called for buffer textures");
 	glBindBuffer(GL_TEXTURE_BUFFER, m_textures[id].bufferGL_ID);
-	glBufferSubData(GL_TEXTURE_BUFFER, 0, bytes, data);
-
-	m_textures[id].buffer_gl_format = GL_RG32I; // TODO: Some control over this would be great.
+	glBufferSubData(GL_TEXTURE_BUFFER, offset, bytes, data);
 }
 
 rynx::graphics::texture_id rynx::graphics::GPUTextures::createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel) {

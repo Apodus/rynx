@@ -55,7 +55,7 @@
 #include <rynx/editor/tools/joint_tool.hpp>
 #include <rynx/editor/tools/polygon_tool.hpp>
 
-
+#include <rynx/tech/filesystem/filesystem.hpp>
 #include <rynx/tech/collision_detection.hpp>
 
 struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
@@ -226,6 +226,15 @@ int main(int argc, char** argv) {
 	auto meshes = application.renderer().meshes();
 
 	application.loadTextures("../textures/");
+	
+	{
+		auto src_data = rynx::filesystem::read_file("../configs/textures.dat");
+		if (!src_data.empty()) {
+			rynx::serialization::vector_reader tex_configs(src_data);
+			application.textures()->deserialize(tex_configs);
+		}
+	}
+
 	Font fontLenka(Fonts::setFontLenka(application.textures()->findTextureByName("lenka1024")));
 	Font fontConsola(Fonts::setFontConsolaMono(application.textures()->findTextureByName("consola1024")));
 
@@ -549,9 +558,13 @@ int main(int argc, char** argv) {
 	rynx::numeric_property<float> swap_time;
 	rynx::numeric_property<float> total_time;
 
+	rynx::timer dt_timer;
 	rynx::timer frame_timer_dt;
 	float dt = 1.0f / 120.0f;
 	while (!application.isExitRequested()) {
+		
+		dt = std::min(0.016f, std::max(0.001f, dt_timer.time_since_last_access_ms() * 0.001f));
+
 		rynx_profile("Main", "frame");
 		frame_timer_dt.reset();
 		
@@ -790,9 +803,7 @@ int main(int argc, char** argv) {
 
 		{
 			rynx_profile("Main", "Clean up dead entitites");
-			dt = std::min(0.016f, std::max(0.001f, frame_timer_dt.time_since_last_access_ms() * 0.001f));
-			// ddddt = 0.016f;
-
+			
 			{
 				std::vector<rynx::ecs::id> ids;
 				ecs.query().for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
@@ -817,6 +828,11 @@ int main(int argc, char** argv) {
 			base_simulation.m_logic.entities_erased(*base_simulation.m_context, ids_dead);
 			ecs.erase(ids_dead);
 		}
+
+
+		// lets avoid using all computing power for now.
+		// TODO: Proper time tracking for frames.
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
 		if constexpr(false)
 		{

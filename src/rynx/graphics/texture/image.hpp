@@ -20,6 +20,7 @@ struct Image {
 	void unload();
 	void rescale(int newX, int newY);
 
+	void rgb_to_rgba();
 	void loadByteBufferRGBA(unsigned char* in_data, int width, int height);
 	void loadFloatBufferRGBA(rynx::floats4* data, int width, int height);
 	void createEmptyRGBA(int width, int height);

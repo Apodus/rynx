@@ -13,6 +13,13 @@
 namespace rynx {
 	namespace graphics {
 		class GPUTextures {
+		public:
+			struct tex_conf {
+				bool vertex_positions_as_uv = false;
+				float vertex_position_scale = 1.0f;
+			};
+
+		private:
 			struct tex_info {
 				rynx::vec4<int32_t> textureSize;
 				unsigned textureGL_ID = ~0u;
@@ -21,28 +28,29 @@ namespace rynx {
 				std::string name;
 				std::string filepath;
 				bool in_atlas = false;
-
 				bool has_buffer() const { return bufferGL_ID != ~0u; }
 			};
 
 			class dynamic_texture_atlas {
 
-				int32_t m_atlas_size = 0;
-				rynx::graphics::texture_id m_atlas_tex_id;
-				rynx::graphics::texture_id m_indirection_buffer_tex_id;
+				int32_t m_atlas_size = 0; // physical texture is nxn
+				int32_t m_slots_per_row = 0; // ..
+				int32_t atlasBlockSize = 512; // smallest supported nxn reservation
 
 				struct atlas_tex_info {
 					int32_t slot = 0;
 					int32_t slotSize = 1;
+					int32_t textureMode = 0; // 0=use uv attributes, 1=vertex position as uv
+					int32_t textureScale = 100000; // vertex position -> uv  scaling factor in 1/100000.
 				};
+
+				rynx::graphics::texture_id m_atlas_tex_id;
+				rynx::graphics::texture_id m_indirection_buffer_tex_id;
 
 				std::vector<atlas_tex_info> m_slots;
 				rynx::dynamic_bitset m_tex_presence;
 				
 				rynx::graphics::GPUTextures* m_textures = nullptr;
-
-				int32_t m_slots_per_row = 0;
-				int32_t atlasBlockSize = 512;
 
 				bool is_slot_free(int x, int y) {
 					return !m_tex_presence.test(x + y * m_slots_per_row);
@@ -56,6 +64,8 @@ namespace rynx {
 					return atlasBlockSize;
 				}
 
+				void updateIndirectionBuffer(rynx::graphics::texture_id id);
+
 				void loadImage(
 					rynx::graphics::texture_id id,
 					Image&& img,
@@ -67,6 +77,13 @@ namespace rynx {
 			public:
 				dynamic_texture_atlas() = default;
 				void init(GPUTextures* textures);
+				
+				void texture_config_changed(rynx::graphics::texture_id id, tex_conf conf) {
+					m_slots[id.value].textureMode = conf.vertex_positions_as_uv;
+					m_slots[id.value].textureScale = int32_t(100000.0f * conf.vertex_position_scale);
+					updateIndirectionBuffer(id);
+				}
+				
 				void loadImage(rynx::graphics::texture_id id, Image&& img);
 				void loadImage(rynx::graphics::texture_id id, const tex_info& info);
 
@@ -93,6 +110,17 @@ namespace rynx {
 				return m_texture_atlas.getAtlasBlocksPerRow();;
 			}
 
+			rynx::serialization::vector_writer serialize() {
+				rynx::serialization::vector_writer result;
+				rynx::serialize(m_tex_configs, result);
+				return result;
+			}
+
+			void deserialize(rynx::serialization::vector_reader& reader) {
+				m_tex_configs.clear();
+				rynx::deserialize(m_tex_configs, reader);
+			}
+
 			void bindAtlas() {
 				bindTexture(0, m_texture_atlas.getAtlasTexture());
 				bindTexture(1, m_texture_atlas.getUVIndirectionTexture());
@@ -110,8 +138,8 @@ namespace rynx {
 			texture_id createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel = 16);
 			texture_id createFloatTexture(const std::string& name, int width, int height);
 			
-			texture_id createBuffer(const std::string& name);
-			void bufferData(rynx::graphics::texture_id id, size_t bytes, void* data);
+			texture_id createBuffer(const std::string& name, size_t bufferSizeBytes);
+			void bufferData(rynx::graphics::texture_id id, size_t bytes, void* data, size_t offset = 0);
 
 			int bindTexture(size_t texture_unit, texture_id);
 			void unbindTexture(size_t texture_unit);
@@ -129,15 +157,55 @@ namespace rynx {
 
 			texture_id generate_tex_id();
 
+			tex_conf get_tex_config(texture_id id) {
+				if (id == texture_id())
+					return tex_conf();
+				
+				auto tex_info_it = m_textures.find(id);
+				auto tex_config_it = m_tex_configs.find(tex_info_it->second.name);
+				if (tex_config_it == m_tex_configs.end())
+					return m_tex_configs[tex_info_it->second.name];
+				return tex_config_it->second;
+			}
+
+			void set_tex_config(texture_id id, tex_conf conf) {
+				if (id == texture_id())
+					return;
+
+				auto tex_info_it = m_textures.find(id);
+				m_tex_configs[tex_info_it->second.name] = conf;
+
+				// update atlas also.
+				m_texture_atlas.texture_config_changed(id, conf);
+			}
+
 		private:
 			GPUTextures(const GPUTextures&) = delete;
 			GPUTextures& operator=(const GPUTextures&) = delete;
 
 			dynamic_texture_atlas m_texture_atlas;
 			rynx::unordered_map<texture_id, tex_info> m_textures;
+			rynx::unordered_map<std::string, tex_conf> m_tex_configs;
 			std::vector<texture_id> current_textures;
 			std::vector<texture_id> m_free_ids;
 			int32_t m_next_id = 0;
+		};
+	}
+
+	namespace serialization {
+		template<>
+		struct Serialize<rynx::graphics::GPUTextures::tex_conf> {
+			template<typename IOStream>
+			void serialize(const rynx::graphics::GPUTextures::tex_conf& t, IOStream& writer) {
+				rynx::serialize(t.vertex_positions_as_uv, writer);
+				rynx::serialize(t.vertex_position_scale, writer);
+			}
+
+			template<typename IOStream>
+			void deserialize(rynx::graphics::GPUTextures::tex_conf& t, IOStream& reader) {
+				rynx::deserialize(t.vertex_positions_as_uv, reader);
+				rynx::deserialize(t.vertex_position_scale, reader);
+			}
 		};
 	}
 }

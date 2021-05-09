@@ -64,20 +64,26 @@ namespace rynx {
 			std::string m_category;
 
 			enum Mode {
-				Triangles,
-				LineStrip
+				Triangles = 0,
+				LineStrip = 1
 			};
 
-			Mode mode;
 			float lineWidth = 2.0f;
 
-			bool isModeLineStrip() const { return mode == Mode::LineStrip; }
-			bool isModeTriangles() const { return mode == Mode::Triangles; }
+			void setModeLineStrip() { mode &= ~255; mode |= Mode::LineStrip; }
+			void setModeTriangles() { mode &= ~255; mode |= Mode::Triangles; }
+
+			bool isModeLineStrip() const { return (mode & 15) == Mode::LineStrip; }
+			bool isModeTriangles() const { return (mode & 15) == Mode::Triangles; }
 
 			// transient meshes do not get serialized by mesh collection.
 			bool m_is_transient = false;
 
 		private:
+			int32_t mode = 0;
+
+			template<typename T> friend struct rynx::serialization::Serialize;
+
 			/*
 				Shaders must use following attribute layout for mesh data:
 					layout(location = 0) in vec3 position;

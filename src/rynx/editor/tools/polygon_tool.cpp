@@ -123,6 +123,9 @@ void rynx::editor::tools::polygon_tool::action_rebuild_mesh(rynx::ecs& ecs, rynx
 			if (!entity.has<rynx::components::texture>()) {
 				entity.add(rynx::components::texture());
 			}
+
+			// refresh the components list
+			execute([this]() {m_editor_state->m_on_entity_selected(selected_id()); });
 		}
 	}
 }
@@ -145,9 +148,10 @@ void rynx::editor::tools::polygon_tool::action_rebuild_boundary_mesh(rynx::ecs& 
 		if (!entity.has<rynx::components::texture>()) {
 			entity.add(rynx::components::texture());
 		}
-	}
 
-	// TODO: should really also update radius.
+		// refresh the components list
+		execute([this]() {m_editor_state->m_on_entity_selected(selected_id()); });
+	}
 }
 
 void rynx::editor::tools::polygon_tool::update(rynx::scheduler::context& ctx) {

@@ -27,7 +27,7 @@ namespace rynx {
 			rynx::ecs* ecs = nullptr;
 			const rynx::reflection::reflections* reflections = nullptr;
 			rynx::menu::Component* component_sheet = nullptr;
-			const rynx::graphics::GPUTextures* textures = nullptr;
+			rynx::graphics::GPUTextures* textures = nullptr;
 
 			// constant data per component
 			rynx::id entity_id = 0;

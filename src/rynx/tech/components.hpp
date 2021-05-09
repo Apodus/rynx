@@ -138,11 +138,7 @@ namespace rynx {
 
 		struct physical_body {
 			physical_body(uint64_t collision_id = 0)
-				: inv_mass(1.0f)
-				, inv_moment_of_inertia(1.0f)
-				, collision_elasticity(1.0f)
-				, friction_multiplier(1.0f)
-				, collision_id(collision_id)
+				: collision_id(collision_id)
 			{}
 
 			physical_body& bias(float value) {
@@ -196,8 +192,8 @@ namespace rynx {
 					float cumulative_inertia = 0.0f;
 
 					if (points_in_p.size() > 10000) {
+						float point_mass = obj_mass / points_in_p.size();
 						for (auto point : points_in_p) {
-							float point_mass = obj_mass / points_in_p.size();
 							float point_radius = (point - centre_of_mass).length();
 							cumulative_inertia += point_mass * point_radius * point_radius;
 						}
@@ -211,8 +207,8 @@ namespace rynx {
 			}
 
 			float ANNOTATE(">=0") bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
-			float ANNOTATE(">=0") inv_mass = 1.0f;
-			float ANNOTATE(">=0") inv_moment_of_inertia = 1.0f;
+			float ANNOTATE(">=0") inv_mass = 0.001f; // 1000 grams default
+			float ANNOTATE(">=0") inv_moment_of_inertia = 0.0002f; // ?? random value
 			float ANNOTATE("range 0 1") collision_elasticity = 0.5f; // [0, 1[
 			float ANNOTATE(">=0") friction_multiplier = 1.0f; // [0, 1]
 			uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.

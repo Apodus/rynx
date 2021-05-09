@@ -33,13 +33,19 @@ void main()
 	ivec4 indirectionValues = texelFetch(uvIndirect, tex_id);
 	int vt_slot = indirectionValues.x;
 	int slotSize = indirectionValues.y;
+	int tex_uv_mode = indirectionValues.z;
 	vec2 uv_min_values = vec2(
 					float(vt_slot % atlasBlocksPerRow) / float(atlasBlocksPerRow),
 					float(vt_slot / atlasBlocksPerRow) / float(atlasBlocksPerRow)
 				);
-	uv_width  = float(slotSize) / float(atlasBlocksPerRow);
-	uv_pass = uv;
-	uv_min = uv_min_values;
+	uv_width  = float(slotSize) / float(atlasBlocksPerRow) - 0.0001;
+	uv_min = uv_min_values + 0.00005;
+	if(tex_uv_mode > 0) {
+		uv_pass = world_pos.xy * float(indirectionValues.w) * 0.00001;
+	}
+	else {
+		uv_pass = uv * indirectionValues.w * 0.00001;
+	}
 	
 	color_pass = color;
 	normal_pass = vec4(normalize(normal_rotation * normal), 0.0);

@@ -43,9 +43,37 @@ void Image::unload()
 	data = nullptr;
 }
 
+void Image::rgb_to_rgba() {
+	if (!hasAlpha) {
+		struct color {
+			unsigned char r, g, b, a;
+		};
+		
+		color* color_new = static_cast<color*>(malloc(sizeof(color) * sizeX * sizeY));
+		for (int i = 0; i < sizeX * sizeY; ++i) {
+			color_new[i].a = 255;
+			color_new[i].r = data[i * 3 + 0];
+			color_new[i].g = data[i * 3 + 1];
+			color_new[i].b = data[i * 3 + 2];
+		}
+
+		unload();
+
+		int newX = sizeX;
+		int newY = sizeY;
+
+		sizeX = newX;
+		sizeY = newY;
+		hasAlpha = true;
+		data = reinterpret_cast<unsigned char*>(color_new);
+	}
+}
+
 void Image::rescale(int newX, int newY) {
-	rynx_assert(hasAlpha, "rescale currently only supports rgba, sorry.");
 	
+	if (!hasAlpha)
+		rgb_to_rgba();
+
 	struct color {
 		unsigned char r, g, b, a;
 	};

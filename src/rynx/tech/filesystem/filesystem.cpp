@@ -13,6 +13,8 @@ namespace rynx {
 		}
 
 		std::vector<char> read_file(std::string path) {
+			if (!std::filesystem::exists(path))
+				return {};
 			auto size = std::filesystem::file_size(path);
 			std::vector<char> result;
 			result.resize(size);

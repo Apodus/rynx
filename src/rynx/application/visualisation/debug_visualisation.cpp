@@ -13,7 +13,7 @@ rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::
 	{
 		std::vector<rynx::vec3f> vertices = rynx::Shape::makeCircle(1.0f, 1024).as_vertex_vector();
 		auto m = std::make_unique<rynx::graphics::mesh>();
-		m->mode = rynx::graphics::mesh::Mode::LineStrip;
+		m->setModeLineStrip();
 
 		short i = 0;
 		for (auto v : vertices) {
@@ -29,7 +29,7 @@ rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::
 	// define debug line mesh
 	{
 		auto m = std::make_unique<rynx::graphics::mesh>();
-		m->mode = rynx::graphics::mesh::Mode::LineStrip;
+		m->setModeLineStrip();
 
 		m->putVertex({-0.5f, 0.0f, 0.0f});
 		m->putNormal(0, 1, 0);

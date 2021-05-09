@@ -49,7 +49,7 @@ void rynx::menu::Text::onDedicatedInput(rynx::mapped_input& input) {
 
 				}
 				else {
-					character -= 'A' - 'a';
+					character -= char8_t('A' - 'a');
 				}
 			}
 

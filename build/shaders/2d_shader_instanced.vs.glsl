@@ -22,11 +22,19 @@ void main()
 	ivec4 indirectionValues = texelFetch(uvIndirect, tex_id);
 	int vt_slot = indirectionValues.x;
 	int slotSize = indirectionValues.y;
+	int tex_uv_mode = indirectionValues.z;
 	vec2 uv_min = vec2(
 					float(vt_slot % atlasBlocksPerRow) / float(atlasBlocksPerRow),
 					float(vt_slot / atlasBlocksPerRow) / float(atlasBlocksPerRow)
 					);
 	float width = float(slotSize) / float(atlasBlocksPerRow);
-	uv_pass = uv_min + uv * width;
+	if(tex_uv_mode > 0) {
+		vec3 world_pos = (model * vec4(position, 1.0)).rgb;
+		uv_pass = world_pos.xy * indirectionValues.w * 0.00001;
+	}
+	else {
+		uv_pass = (uv_min + uv * width) * indirectionValues.w * 0.00001;
+	}
+	
 	color_pass = color;
 }

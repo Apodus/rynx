@@ -738,6 +738,9 @@ rynx::editor_rules::editor_rules(
 			);
 
 			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
+			
+			auto tex_conf_data = m_context->get_resource<rynx::graphics::GPUTextures>().serialize();
+			rynx::filesystem::write_file("../configs/textures.dat", tex_conf_data.data());
 		});
 
 
@@ -766,6 +769,7 @@ rynx::editor_rules::editor_rules(
 			fileSelectDialog->display("../scenes/",
 				// on file selected
 				[this, load_everything](std::string fileName) {
+					this->m_state.m_selected_ids.clear();
 					load_everything(fileName);
 					execute([this] {
 						enable_tools();
@@ -786,6 +790,7 @@ rynx::editor_rules::editor_rules(
 			execute([this]() {
 				this->m_context->get_resource<rynx::ecs>().clear();
 				this->all_rulesets().clear(*m_context);
+				this->m_state.m_selected_ids.clear();
 			});
 		});
 		

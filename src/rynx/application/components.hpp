@@ -185,8 +185,8 @@ namespace rynx {
 				rynx::vec3<float> point_a;
 				rynx::vec3<float> point_b;
 
-				float ANNOTATE(">=0") length;
-				float ANNOTATE(">=0") strength;
+				float ANNOTATE(">=0") length = 0.0f;
+				float ANNOTATE(">=0") strength = 1.0f;
 				float ANNOTATE(">=0") softness = 1.0f;
 				float ANNOTATE(">=0") response_time = 0.016f;
 
