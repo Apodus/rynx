@@ -98,6 +98,7 @@ namespace rynx {
 			std::vector<std::function<bool(rynx::vec3f, bool)>> m_on_hover;
 			std::vector<std::function<void(rynx::mapped_input&)>> m_on_input;
 			std::vector<std::function<void()>> m_on_click;
+			std::vector<std::function<void()>> m_on_update;
 
 			std::unique_ptr<Component> m_background;
 			System* m_menuSystem = nullptr;
@@ -135,12 +136,15 @@ namespace rynx {
 			void capture_dedicated_keyboard_input();
 			void release_dedicated_mouse_input();
 			void release_dedicated_keyboard_input();
+			bool has_dedicated_mouse_input() const;
+			bool has_dedicated_keyboard_input() const;
 
 			virtual ~Component() {}
 
 			void on_hover(std::function<bool(rynx::vec3f, bool)> hover_func) { m_on_hover.emplace_back(std::move(hover_func)); }
 			void on_click(std::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
 			void on_input(std::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
+			void on_update(std::function<void()> update_func) { m_on_update.emplace_back(std::move(update_func)); }
 
 			void set_background(rynx::graphics::texture_id, float edge_size = 0.2f);
 
@@ -299,6 +303,9 @@ namespace rynx {
 			void capture_keyboard_input(Component* component);
 			void release_mouse_input();
 			void release_keyboard_input();
+
+			bool has_dedicated_mouse_input(const Component* component) const;
+			bool has_dedicated_keyboard_input(const Component* component) const;
 
 			rynx::scoped_input_inhibitor inhibit_dedicated_inputs(rynx::mapped_input& input);
 

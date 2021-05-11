@@ -51,33 +51,34 @@ namespace rynx {
 	private:
 		rynx::editor::editor_shared_state m_state;
 
-		rynx::key::logical key_selection_tool;
-		rynx::key::logical key_polygon_tool;
-
+		// TODO: Get rid of these
 		rynx::graphics::texture_id frame_tex;
 		rynx::graphics::texture_id knob_tex;
 
 		std::shared_ptr<rynx::menu::Div> m_editor_menu; // editor root level menu container.
 		
+		// TODO: Maybe wrap the editor menus inside a class?
 		std::shared_ptr<rynx::menu::Div> m_entity_bar; // left side menu, containing info of selection
 		std::shared_ptr<rynx::menu::List> m_components_list; // entity bar component list view - showing all components of an entity.
 
 		std::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
 		std::shared_ptr<rynx::menu::Div> m_file_actions_bar; // bottom side menu, containing global actions (new empty scene, save scene, load scene)
 		
-		// TODO!
-		std::shared_ptr<rynx::menu::Div> m_scene_bar; // top side menu, containing existing scenes, selecting one will instantiate it in current scene.
+		std::shared_ptr<rynx::menu::Div> m_top_bar; // top side menu, contains run/pause, editor on/off, ..?
 		std::shared_ptr<rynx::menu::Text> m_info_text;
 
+		rynx::binary_config::id m_game_running_state;
+
 		std::vector<std::shared_ptr<rynx::menu::Component>> m_popups;
+		std::vector<std::function<void()>> m_execute_in_main_stack;
 
 		rynx::editor::itool* m_active_tool = nullptr;
 		std::vector<std::unique_ptr<rynx::editor::itool>> m_tools;
-		
+
 		rynx::reflection::reflections& m_reflections;
 		rynx::scheduler::context* m_context = nullptr;
+		
 		Font* m_font = nullptr;
-
 		bool m_tools_enabled = true;
 
 		void push_popup(std::shared_ptr<rynx::menu::Component> popup) {
@@ -114,8 +115,6 @@ namespace rynx {
 			std::vector<std::string> entries,
 			std::function<rynx::floats4(std::string)> entryColor,
 			std::function<void(std::string)> on_selection);
-
-		std::vector<std::function<void()>> m_execute_in_main_stack;
 
 		template<typename Func>
 		void execute(Func&& f) {
@@ -155,6 +154,7 @@ namespace rynx {
 
 		editor_rules(
 			rynx::scheduler::context& ctx,
+			rynx::binary_config::id game_running,
 			rynx::reflection::reflections& reflections,
 			Font* font,
 			rynx::menu::Component* editor_menu_host,

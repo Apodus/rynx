@@ -323,6 +323,10 @@ int main(int argc, char** argv) {
 
 	auto program_state_game_running = base_simulation.m_context->access_state().generate_state_id();
 	auto program_state_editor_running = base_simulation.m_context->access_state().generate_state_id();
+	
+	// start with editor up and running, game paused.
+	program_state_editor_running.enable();
+	program_state_game_running.disable();
 
 	// setup game logic
 	{
@@ -332,9 +336,9 @@ int main(int argc, char** argv) {
 		auto ruleset_motion_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::motion_updates>(rynx::vec3<float>(0, -160.8f, 0));
 		auto ruleset_physical_springs = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::physics::springs>();
 		auto ruleset_lifetime_updates = base_simulation.rule_set(program_state_game_running).create<rynx::ruleset::lifetime_updates>();
-		// auto ruleset_minilisk_gen = base_simulation.rule_set(program_state_game_running).create<ball_spawner_ruleset>(circle_id, square_id, application.textures()->findTextureByName("hero"), collisionCategoryDynamic);
 		auto ruleset_editor = base_simulation.rule_set(program_state_editor_running).create<rynx::editor_rules>(
 			*base_simulation.m_context,
+			program_state_game_running,
 			reflections,
 			&fontConsola,
 			&root,
@@ -352,172 +356,15 @@ int main(int argc, char** argv) {
 		ruleset_collisionDetection->depends_on(ruleset_motion_updates);
 		ruleset_frustum_culling->depends_on(ruleset_motion_updates);
 	}
-	
-	// setup simulation initial state
-	{
-		rynx::math::rand64 random;
-
-		// create some boxes for testing.
-		if constexpr (false) {
-			for (int i = 0; i < 16; ++i) {
-				rynx::polygon shape = rynx::Shape::makeBox(1.0f + 2.0f * random());
-				ecs.create(
-					rynx::components::position(rynx::vec3<float>(-80.0f + i * 8.0f, 0.0f, 0.0f), i * 2.0f),
-					rynx::components::collisions{ collisionCategoryDynamic.value },
-					rynx::components::boundary({ shape }),
-					rynx::components::radius(rynx::math::sqrt_approx(16 + 16)),
-					rynx::components::color({ 1,1,0,1 }),
-					rynx::components::motion({ 0, 0, 0 }, 0),
-					rynx::components::dampening({ 0.93f, 0.98f }),
-					rynx::components::ignore_gravity()
-				);
-			}
-		}
-		
-		auto makeBox_inside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
-			auto mesh_name = std::to_string(pos.y * pos.x - pos.y - pos.x);
-			auto polygon = rynx::Shape::makeAAOval(0.5f, 40, edgeLength, edgeLength * 0.5f);
-			polygon.invert();
-			// auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, 1.0f));
-			return base_simulation.m_ecs.create(
-				rynx::components::position(pos, angle),
-				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary({ polygon }),
-				// rynx::components::mesh(mesh_p),
-				rynx::matrix4(),
-				rynx::components::radius(polygon.radius()),
-				rynx::components::color({ 0.5f, 0.2f, 1.0f, 1.0f }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()),
-				rynx::components::ignore_gravity()
-			);
-		};
-
-		auto makeBox_outside = [&](rynx::vec3<float> pos, float angle, float edgeLength, float angular_velocity) {
-			auto mesh_name = std::to_string(pos.y * pos.x);
-			auto polygon = rynx::Shape::makeRectangle(edgeLength, 5.0f);
-			// auto mesh_p = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(polygon, 1.0f));
-			float radius = polygon.radius();
-			return base_simulation.m_ecs.create(
-				rynx::components::position(pos, angle),
-				rynx::components::collisions{ collisionCategoryStatic.value },
-				rynx::components::boundary(polygon, pos, angle),
-				// rynx::components::mesh(mesh_p),
-				rynx::components::radius(radius),
-				rynx::components::color({ 0.2f, 1.0f, 0.3f, 1.0f }),
-				rynx::components::motion({ 0, 0, 0 }, angular_velocity),
-				rynx::components::physical_body().mass(std::numeric_limits<float>::max()).elasticity(0.0f).friction(2.0f).moment_of_inertia(std::numeric_limits<float>::max()).bias(100.0f),
-				rynx::components::ignore_gravity(),
-				rynx::components::dampening{0.1f, 0.0f}
-			);
-		};
-
-		auto makeChain = [&](rynx::vec3f pos, rynx::vec3f dir, float length, int numJoints) {
-			float x = pos.x;
-			float y = pos.y;
-			auto id1 = ecs.create(
-				rynx::components::position({ x, y, 0 }),
-				rynx::components::motion(),
-				rynx::components::ignore_gravity(),
-				rynx::components::radius(2.0f),
-				rynx::components::collisions{ collisionCategoryDynamic.value },
-				rynx::components::color({1.0f, 1.0f, 1.0f, 1.0f}),
-				rynx::components::mesh{ circle_id },
-				rynx::components::dampening({ 0.50f, 0.30f }),
-				rynx::matrix4()
-			);
-
-			auto rootId = id1;
-
-			ecs.attachToEntity(id1, rynx::components::physical_body(rootId)
-				.mass(std::numeric_limits<float>::max())
-				.elasticity(0.0f)
-				.friction(2.0f)
-				.moment_of_inertia(std::numeric_limits<float>::max()));
-
-			auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass * (height * height + width * width) * (1.0f / 12.0f); };
-
-			float rope_width = 2.0f;
-			// float rope_segment_length = length / numJoints;
-			float rope_segment_length = 3.0f * rope_width;
-			numJoints = length / (rope_segment_length - rope_width);
-
-			auto p = rynx::Shape::makeRectangle(rope_segment_length, rope_width);
-			// auto m = meshes->create(rynx::polygon_triangulation().make_boundary_mesh(p));
-			float piece_radius = sqrtf((rope_width * rope_width + rope_segment_length * rope_segment_length) * 0.25f);
-			float mass = 5.0f;
-			
-			for (int k = 1; k <= numJoints; ++k) {
-				auto id2 = ecs.create(
-					rynx::components::position(pos + dir * (k * rope_segment_length)),
-					rynx::components::motion(),
-					rynx::components::physical_body(rootId).mass(mass).moment_of_inertia(rectangle_moment_of_inertia(mass, rope_segment_length, rope_width)).friction(1.0f).elasticity(0.3f),
-					rynx::components::radius(piece_radius),
-					rynx::components::collisions{ collisionCategoryDynamic.value },
-					rynx::components::color(),
-					// rynx::components::boundary(std::vector<rynx::polygon::segment>(bound)),
-					rynx::components::dampening({ 0.60f, 0.60f }),
-					rynx::components::mesh{ circle_id },
-					rynx::matrix4()
-				);
-
-				rynx::components::phys::joint joint;
-				joint.connect_with_rod().rotation_free();
-
-				joint.id_a = id1;
-				joint.id_b = id2;
-
-				if(id1 == rootId)
-					joint.point_a = rynx::vec3<float>(0, 0, 0);
-				else
-					joint.point_a = rynx::vec3<float>(+rope_segment_length * 0.5f - rope_width * 1.1f, 0, 0);
-				joint.point_b = rynx::vec3<float>(-rope_segment_length * 0.5f + rope_width * 1.1f, 0, 0);
-				joint.length = rope_segment_length * 0.5f; // rope_segment_length;
-				joint.strength = 2.0f;
-				ecs.create(joint);
-
-				id1 = id2;
-			}
-		};
-
-		// makeChain({ -500, +300, 0 }, { +1.0f, 0.0f, 0.0f }, 400.0f, 25);
-
-		// makeBox_outside({ -15, -50, 0 }, -0.3f, 265.f, +0.58f);
-		// makeBox_outside({ -65, -100, 0 }, -0.3f, 65.f, -0.24f);
-		// makeBox_outside({ +25, -120, 0 }, -0.3f, 65.f, -0.12f);
-
-		/*
-		makeBox_inside({ -5, -30, 0 }, +0.3f, 40.f, -0.25f);
-		makeBox_inside({ -65, -100, 0 }, 0.f, 60.f, -0.30f);
-		makeBox_inside({ +25, -120, 0 }, +0.5f, 80.f, +0.15f);
-		*/
-
-		/*
-		makeBox_outside({ 0, -170, 0 }, -0.0f, 100.0f, 0.f);
-		makeBox_outside({ -80, -160, 0 }, -0.3f, 1000.0f, 0.f);
-		makeBox_outside({ +80, -160, 0 }, +0.3f, 1000.0f, 0.f);
-		*/
-	}
 
 	// setup some debug controls
-	float sleepTime = 0.9f;
-	auto slowTime = gameInput.generateAndBindGameKey('X', "slow time");
-	auto fastTime = gameInput.generateAndBindGameKey('C', "fast time");
-
-	auto zoomOut = gameInput.generateAndBindGameKey('1', "zoom out");
-	auto zoomIn = gameInput.generateAndBindGameKey('2', "zoom in");
-
 	auto menuCamera = std::make_shared<rynx::camera>();
-
 	gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(0), "menuCursorActivation");
 	
 	auto cameraUp = gameInput.generateAndBindGameKey('I', "cameraUp");
 	auto cameraLeft = gameInput.generateAndBindGameKey('J', "cameraLeft");
 	auto cameraRight = gameInput.generateAndBindGameKey('L', "cameraRight");
 	auto cameraDown = gameInput.generateAndBindGameKey('K', "cameraDown");
-	
-	auto key_toggle_game_simulation = gameInput.generateAndBindGameKey('P', "simulation enabled");
-	auto key_toggle_editor_enabled = gameInput.generateAndBindGameKey('O', "editor enabled");
 	
 	struct debug_conf {
 		bool visualize_dynamic_collisions = false;
@@ -541,7 +388,6 @@ int main(int argc, char** argv) {
 	rynx::graphics::screenspace_draws(); // initialize gpu buffers for screenspace ops.
 	rynx::application::renderer render(application, camera);
 
-	program_state_editor_running.disable();
 	render.debug_draw_binary_config(program_state_editor_running);
 
 	auto camera_orientation_key = gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(1), "camera_orientation");
@@ -552,22 +398,20 @@ int main(int argc, char** argv) {
 
 	rynx::smooth<rynx::vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
 
-	rynx::timer timer;
+	rynx::timer dt_timer;
+	
 	rynx::numeric_property<float> logic_time;
-	rynx::numeric_property<float> render_time;
 	rynx::numeric_property<float> swap_time;
 	rynx::numeric_property<float> total_time;
 
-	rynx::timer dt_timer;
-	rynx::timer frame_timer_dt;
+
 	float dt = 1.0f / 120.0f;
+	
 	while (!application.isExitRequested()) {
 		
 		dt = std::min(0.016f, std::max(0.001f, dt_timer.time_since_last_access_ms() * 0.001f));
 
 		rynx_profile("Main", "frame");
-		frame_timer_dt.reset();
-		
 		{
 			rynx_profile("Main", "start frame");
 			application.startFrame();
@@ -605,8 +449,6 @@ int main(int argc, char** argv) {
 			// config = audio.play_sound(soundIndex, rynx::vec3f(), rynx::vec3f());
 		}
 
-		timer.reset();
-
 		// menu input must happen first before tick. in case menu components
 		// reserve some input as private.
 		menuSystem.input(gameInput);
@@ -627,9 +469,6 @@ int main(int argc, char** argv) {
 				if (gameInput.isKeyClicked(rynx::key::physical('X'))) {
 					rynx::profiling::write_profile_log();
 				}
-
-				if (gameInput.isKeyClicked(key_toggle_editor_enabled)) { program_state_editor_running.toggle(); }
-				if (gameInput.isKeyClicked(key_toggle_game_simulation)) { program_state_game_running.toggle(); }
 			}
 
 			{
@@ -642,18 +481,21 @@ int main(int argc, char** argv) {
 				scheduler.start_frame();
 			}
 
-			application.swapBuffers();
-			auto swap_time_us = timer.time_since_last_access_us();
-			swap_time.observe_value(swap_time_us / 1000.0f);
+			{
+				rynx::timer swap_buffers_timer;
+				application.swapBuffers();
+				auto swap_time_us = swap_buffers_timer.time_since_last_access_us();
+				swap_time.observe_value(swap_time_us / 1000.0f);
+			}
 
 			{
+				rynx::timer logic_timer;
 				rynx_profile("Main", "Wait for frame end");
 				scheduler.wait_until_complete();
-			}
-		
 
-			auto logic_time_us = swap_time_us + timer.time_since_last_access_us();
-			logic_time.observe_value(logic_time_us / 1000.0f); // down to milliseconds.
+				auto logic_time_us = logic_timer.time_since_last_access_us();
+				logic_time.observe_value(swap_time.avg() + logic_time_us / 1000.0f); // down to milliseconds.
+			}
 		}
 		
 		// menu updates are part of logic, not visualization. must tick every frame.
@@ -661,7 +503,7 @@ int main(int argc, char** argv) {
 
 		// should we render or not.
 		if (true) {
-			timer.reset();
+			rynx::timer render_calls_timer;
 			rynx_profile("Main", "graphics");
 
 			{
@@ -699,6 +541,7 @@ int main(int argc, char** argv) {
 						return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
 					};
 
+					// TODO: Move these somewhere else.
 					rynx::graphics::renderable_text logic_fps_text;
 					logic_fps_text
 						.text("logic:  " + get_min_avg_max(logic_time))
@@ -708,9 +551,6 @@ int main(int argc, char** argv) {
 						.align_left()
 						.font(&fontConsola);
 
-					rynx::graphics::renderable_text render_fps_text = logic_fps_text;
-					render_fps_text.text(std::string("draw:   ") + get_min_avg_max(render_time))
-						.pos({ -0.0f, 0.37f + info_text_pos_y });
 
 					rynx::graphics::renderable_text body_count_text = logic_fps_text;
 					body_count_text.text(std::string("bodies: ") + std::to_string(ecs.query().in<rynx::components::physical_body>().count()))
@@ -726,7 +566,6 @@ int main(int argc, char** argv) {
 
 					if (false) {
 						application.renderer().drawText(logic_fps_text);
-						application.renderer().drawText(render_fps_text);
 						application.renderer().drawText(body_count_text);
 						application.renderer().drawText(frustum_culler_text);
 						application.renderer().drawText(fps_text);
@@ -736,9 +575,7 @@ int main(int argc, char** argv) {
 				scheduler.wait_until_complete();
 			}
 
-			auto render_time_us = timer.time_since_last_access_us();
-			render_time.observe_value(render_time_us / 1000.0f);
-
+			
 			{
 				rynx_profile("Main", "draw");
 				render.execute();
@@ -792,12 +629,10 @@ int main(int argc, char** argv) {
 					if (collision.second) {
 						rynx::matrix4 m;
 						m.discardSetTranslate(collision.first);
-						m.scale(1.55f);
+						m.scale(camera->position().z * 0.002f);
 						application.renderer().drawMesh(circle_id, rynx::graphics::texture_id(), m);
 					}
 				}
-
-				timer.reset();
 			}
 		}
 
@@ -829,20 +664,9 @@ int main(int argc, char** argv) {
 			ecs.erase(ids_dead);
 		}
 
-
 		// lets avoid using all computing power for now.
 		// TODO: Proper time tracking for frames.
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-		if constexpr(false)
-		{
-			rynx_profile("Main", "Sleep");
-			// NOTE: Frame time can be edited during runtime for debugging reasons.
-			if (gameInput.isKeyDown(slowTime)) { sleepTime *= 1.1f; }
-			if (gameInput.isKeyDown(fastTime)) { sleepTime *= 0.9f; }
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(int(sleepTime)));
-		}
 	}
 
 	return 0;

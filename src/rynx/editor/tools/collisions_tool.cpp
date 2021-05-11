@@ -38,6 +38,22 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 	});
 }
 
+void rynx::editor::tools::collisions_tool::on_entity_component_removed(
+	rynx::scheduler::context* ctx,
+	std::string componentTypeName,
+	rynx::ecs& ecs,
+	rynx::id id)
+{
+	if (componentTypeName == rynx::traits::type_name<rynx::components::boundary>()) {
+		logmsg("noticed removal of boundary");
+		if (ecs[id].has<rynx::components::collisions>()) {
+			logmsg("updating collision kind");
+			auto& detection = ctx->get_resource<rynx::collision_detection>();
+			detection.editor_api().update_collider_kind_for_entity(ecs, id);
+		}
+	}
+}
+
 void rynx::editor::tools::collisions_tool::update(rynx::scheduler::context& ctx) {
 
 }

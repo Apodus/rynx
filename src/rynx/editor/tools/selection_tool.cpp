@@ -98,6 +98,14 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 				self->text().text(std::to_string(value->x));
 			});
 
+			x_value->on_update([info, self = x_value.get()]() {
+				if (!self->text().has_dedicated_keyboard_input()) {
+					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+					self->text().text(std::to_string(value->x));
+				}
+			});
+
 			update_ui.emplace_back([ui = x_value.get()](void* ptr) {
 				ui->text().text(std::to_string(reinterpret_cast<rynx::vec3f*>(ptr)->x));
 			});
@@ -125,6 +133,14 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 				self->text().text(std::to_string(value->y));
 			});
 			
+			y_value->on_update([info, self = y_value.get()]() {
+				if (!self->text().has_dedicated_keyboard_input()) {
+					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+					self->text().text(std::to_string(value->y));
+				}
+			});
+
 			update_ui.emplace_back([ui = y_value.get()](void* ptr) {
 				ui->text().text(std::to_string(reinterpret_cast<rynx::vec3f*>(ptr)->y));
 			});
@@ -150,6 +166,14 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 				auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
 				value->z = new_v;
 				self->text().text(std::to_string(value->z));
+			});
+
+			z_value->on_update([info, self = z_value.get()]() {
+				if (!self->text().has_dedicated_keyboard_input()) {
+					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+					self->text().text(std::to_string(value->z));
+				}
 			});
 
 			update_ui.emplace_back([ui = z_value.get()](void* ptr) {

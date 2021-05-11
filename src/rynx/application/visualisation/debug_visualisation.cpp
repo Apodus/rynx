@@ -40,6 +40,7 @@ rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::
 		m->putNormal(0, 1, 0);
 		m->putUVCoord(0.5f, 0.5f);
 		m->indices.emplace_back(static_cast<short>(1));
+		m->lineWidth = 2.0f;
 
 		m_line_mesh = m_meshRenderer->meshes()->create_transient(std::move(m));
 	}
@@ -102,6 +103,7 @@ void rynx::application::DebugVisualization::prepare(rynx::scheduler::context*) {
 
 				entry.second.textures[i] = entry.second.textures.back();
 				entry.second.textures.pop_back();
+				--i;
 			}
 		}
 		for (auto& lifetime : entry.second.lifetimes) {

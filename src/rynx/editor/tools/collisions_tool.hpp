@@ -21,6 +21,12 @@ namespace rynx {
 					return type_name.find("rynx::components::collision") != std::string::npos;
 				}
 
+				virtual void on_entity_component_removed(
+					rynx::scheduler::context* ctx,
+					std::string componentTypeName,
+					rynx::ecs& ecs,
+					rynx::id id) override;
+
 				// default removing collision type component is not ok,
 				// need to know how to inform collision detection of the change.
 				virtual bool allow_component_remove(const std::string& type_name) override { return !operates_on(type_name); }

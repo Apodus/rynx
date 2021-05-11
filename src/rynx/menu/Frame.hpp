@@ -37,7 +37,8 @@ namespace rynx {
 			
 			void buildMesh(float size_x, float size_y);
 			Frame& edge_size(float v) { m_edgeSize = v; return *this; }
-			
+			void set_texture(rynx::graphics::texture_id id) { m_backgroundMeshTexture = id; }
+
 			virtual void update(float) override;
 
 			virtual void onInput(rynx::mapped_input&) override {}

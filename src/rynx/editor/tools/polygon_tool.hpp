@@ -43,6 +43,12 @@ namespace rynx {
 					std::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
+
+				virtual void on_entity_component_removed(
+					rynx::scheduler::context* ctx,
+					std::string componentTypeName,
+					rynx::ecs& ecs,
+					rynx::id id) override;
 				
 				virtual void on_entity_component_value_changed(
 					rynx::scheduler::context* ctx,

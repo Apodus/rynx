@@ -170,6 +170,14 @@ void rynx::menu::Component::release_dedicated_keyboard_input() {
 	m_menuSystem->release_keyboard_input();
 }
 
+bool rynx::menu::Component::has_dedicated_mouse_input() const {
+	return m_menuSystem->has_dedicated_mouse_input(this);
+}
+
+bool rynx::menu::Component::has_dedicated_keyboard_input() const {
+	return m_menuSystem->has_dedicated_keyboard_input(this);
+}
+
 void rynx::menu::Component::set_parent(Component* other) {
 	m_pParent = other;
 }
@@ -297,6 +305,10 @@ void rynx::menu::Component::tick(float dt, float aspectRatio) {
 
 	update(dt);
 	m_color.tick(std::min(1.0f, dt * 5));
+	for (auto&& update_func : m_on_update) {
+		update_func();
+	}
+	
 	for (auto child : m_children) {
 		child->tick(dt, aspectRatio);
 	}
@@ -462,6 +474,14 @@ void rynx::menu::System::release_keyboard_input() {
 		m_keyboardInputCapturedBy->onDedicatedInputLost();
 	}
 	m_keyboardInputCapturedBy = nullptr;
+}
+
+bool rynx::menu::System::has_dedicated_mouse_input(const Component* component) const {
+	return this->m_mouseInputCapturedBy == component;
+}
+
+bool rynx::menu::System::has_dedicated_keyboard_input(const Component* component) const {
+	return this->m_keyboardInputCapturedBy == component;
 }
 
 rynx::scoped_input_inhibitor rynx::menu::System::inhibit_dedicated_inputs(rynx::mapped_input& input) {

@@ -31,6 +31,8 @@ namespace rynx {
 		dynamic_bitset& reset(uint64_t id) {
 			uint64_t block = id >> 6;
 			uint8_t bit = id & 63;
+			if (block >= m_index_data.size())
+				m_index_data.resize(((3 * block) >> 1) + 1, 0);
 			rynx_assert(block < m_index_data.size(), "out of bounds");
 			m_index_data[block] &= ~(uint64_t(1) << bit);
 			return *this;

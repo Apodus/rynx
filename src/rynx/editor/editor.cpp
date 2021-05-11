@@ -5,6 +5,7 @@
 #include <rynx/menu/FileSelector.hpp>
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 #include <rynx/editor/tools/selection_tool.hpp>
+#include <rynx/graphics/camera/camera.hpp>
 
 #include <filesystem>
 #include <sstream>
@@ -179,6 +180,13 @@ void rynx::editor::field_float(
 			field_value = v;
 			text_element->text().text(std::to_string(v));
 		});
+
+		value_slider->on_update([info, mem_offset, self = value_slider.get()]() {
+			if (!self->has_dedicated_mouse_input()) {
+				float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+				self->setValue(field_value);
+			}
+		});
 	}
 
 	variable_value_field->text().on_value_changed([info, mem_offset, config, slider_ptr = value_slider.get()](const std::string& s) {
@@ -189,6 +197,13 @@ void rynx::editor::field_float(
 		ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = new_value;
 		if (!config.slider_dynamic) {
 			slider_ptr->setValue(new_value);
+		}
+	});
+
+	variable_value_field->on_update([info, mem_offset, self = variable_value_field.get()]() {
+		if (!self->text().has_dedicated_keyboard_input()) {
+			float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+			self->text().text(std::to_string(field_value));
 		}
 	});
 
@@ -376,6 +391,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 void rynx::editor_rules::on_entity_selected(rynx::id id) {
 	rynx::ecs& ecs = m_context->get_resource<rynx::ecs>();
 	if (!ecs.exists(id)) {
+		m_components_list->clear_children();
 		return;
 	}
 
@@ -578,6 +594,7 @@ void rynx::editor_rules::display_list_dialog(
 
 rynx::editor_rules::editor_rules(
 	rynx::scheduler::context& ctx,
+	rynx::binary_config::id game_running_state,
 	rynx::reflection::reflections& reflections,
 	Font* font,
 	rynx::menu::Component* editor_menu_host,
@@ -587,6 +604,7 @@ rynx::editor_rules::editor_rules(
 {
 	m_context = &ctx;
 	m_font = font;
+	m_game_running_state = game_running_state;
 
 	struct tool_api_impl : public rynx::editor::editor_shared_state::tool_api {
 	private:
@@ -641,32 +659,10 @@ rynx::editor_rules::editor_rules(
 		// create tools bar
 		m_tools_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.1f, 1.0f, 0.0f });
 		m_tools_bar->align().right_inside().offset(+1.0f);
-		/*
-		m_tools_bar->on_hover([this, ptr = m_tools_bar.get()](rynx::vec3f, bool inRect) {
-			if (inRect) {
-				ptr->align().offset(0.0f);
-			}
-			else {
-				ptr->align().offset(+0.9f + !state_id().is_enabled() * 2.0f);
-			}
-			return inRect;
-		});
-		*/
 
 		// create entity components bar
 		m_entity_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 1.0f, 0.0f));
 		m_entity_bar->align().left_inside().offset(+1.0f);
-		/*
-		m_entity_bar->on_hover([this, ptr = m_entity_bar.get()](rynx::vec3f, bool inRect) {
-			if (inRect) {
-				ptr->align().offset(0.0f);
-			}
-			else {
-				ptr->align().offset(+0.9f + !state_id().is_enabled() * 2.0f);
-			}
-			return inRect;
-		});
-		*/
 
 		auto m_entity_bar_toggle_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.025f, 0.2f, 0.0f));
 		m_entity_bar->addChild(m_entity_bar_toggle_button);
@@ -745,6 +741,8 @@ rynx::editor_rules::editor_rules(
 
 
 		auto load_everything = [this, &ecs](std::string scene_path) {
+			this->m_state.m_selected_ids.clear();
+			on_entity_selected(0);
 			rynx::serialization::vector_reader reader(rynx::filesystem::read_file(scene_path));
 			ecs.clear();
 			all_rulesets().clear(*m_context);
@@ -802,14 +800,83 @@ rynx::editor_rules::editor_rules(
 		m_entity_bar->velocity_position(menuVelocityMedium);
 		m_file_actions_bar->velocity_position(menuVelocityMedium);
 
+		// construct top bar
+		{
+			m_top_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.6f, 0.05f, 0.0f });
+			m_top_bar->align().center_x().top_inside();
+			m_top_bar->set_background(frame_tex);
+			m_top_bar->velocity_position(200.0f);
+			
+			{
+				// add toggle editor button
+				auto toggle_editor_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
+				toggle_editor_button->respect_aspect_ratio();
+				toggle_editor_button->align().left_inside().top_inside().offset_x(-0.5f);
+				toggle_editor_button->velocity_position(200.0f);
+
+				auto update_button_visual = [this, self = toggle_editor_button.get()]() {
+					if (this->state_id().is_enabled()) {
+						self->text().text("ON");
+						self->text().color({ 0.0f, 1.0f, 0.0f, 1.0f });
+					}
+					else {
+						self->text().text("OFF");
+						self->text().color({ 1.0f, 0.3f, 0.3f, 1.0f });
+					}
+				};
+
+				toggle_editor_button->on_click([this, update_button_visual, self = toggle_editor_button.get()]() mutable {
+					this->state_id().toggle();
+					update_button_visual();
+				});
+
+				toggle_editor_button->on_update([update_button_visual]() {
+					update_button_visual();
+				});
+
+				m_top_bar->addChild(toggle_editor_button);
+			}
+
+			{
+				// add pause button
+				auto tex_pause_icon = textures.findTextureByName("icon_pause");
+				auto tex_play_icon = textures.findTextureByName("icon_play");
+				auto pause_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
+				pause_button->respect_aspect_ratio();
+				pause_button->align().target(m_top_bar->last_child()).right_outside().top_inside().offset_x(+0.5f);
+				pause_button->velocity_position(200.0f);
+
+
+				auto update_button_visual = [this, tex_pause_icon, tex_play_icon, self = pause_button.get()]() {
+					if (m_game_running_state.is_enabled()) {
+						self->set_texture(tex_pause_icon);
+					}
+					else {
+						self->set_texture(tex_play_icon);
+					}
+				};
+
+				pause_button->on_click([this, update_button_visual, self = pause_button.get()]() mutable {
+					m_game_running_state.toggle();
+					update_button_visual();
+				});
+
+				pause_button->on_update([update_button_visual]() {
+					update_button_visual();
+				});
+
+				m_top_bar->addChild(pause_button);
+			}
+		}
+
 		m_info_text = std::make_shared<rynx::menu::Text>(rynx::vec3f{ 0.2f, 0.05f, 0.0f });
-		m_info_text->align().center_x().top_inside();
+		m_info_text->align().target(m_top_bar.get()).center_x().bottom_outside();
 
 		m_editor_menu->addChild(m_info_text);
 		m_editor_menu->addChild(m_tools_bar);
 		m_editor_menu->addChild(m_entity_bar);
 		m_editor_menu->addChild(m_file_actions_bar);
-		// m_editor_menu->addChild(m_scene_bar);
+		m_editor_menu->addChild(m_top_bar);
 
 		m_tools_bar->set_background(frame_tex);
 		m_entity_bar->set_background(frame_tex);
@@ -937,6 +1004,7 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 
 	context.add_task("editor tick", [this](
 		rynx::ecs& game_ecs,
+		rynx::camera& game_camera,
 		rynx::application::DebugVisualization& debugVis)
 		{
 			const auto& ids = m_state.m_selected_ids;
@@ -951,6 +1019,62 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 						debugVis.addDebugCircle(m, { 1, 1 ,1 ,1 }, 0.0f);
 					}
 				}
+			}
+
+			auto pos = game_camera.position();
+
+			// visualize world origin
+			debugVis.addDebugLine({ -1000.0f + pos.x, 0, 0 }, { +1000 + pos.x, 0, 0 }, { -5.00f, -2.0f, -5.0f, -255.0f });
+			debugVis.addDebugLine({ 0, -1000.0f + pos.y, 0 }, { 0, +1000 + pos.y, 0 }, { -5.0f, -2.0f, -5.0f, -255.0f });
+
+			float cameraHeight = std::fabsf(pos.z);
+			float smallestGridEntry = 1.0f;
+			if (cameraHeight > smallestGridEntry) {
+				while (cameraHeight > smallestGridEntry * 0.3f) {
+					smallestGridEntry *= 10.0f;
+				}
+				smallestGridEntry *= 0.01f;
+			}
+			else {
+				while (cameraHeight > smallestGridEntry) {
+					smallestGridEntry *= 0.1f;
+				}
+			}
+
+			// minPos = x * smallestGridEntry -> x = minPos / smallestGridEntry
+			float x_min_value = pos.x - cameraHeight;
+			float x_max_value = pos.x + cameraHeight;
+			float y_min_value = pos.y - cameraHeight;
+			float y_max_value = pos.y + cameraHeight;
+
+			int min_x = int((pos.x - cameraHeight * 1.5f) / smallestGridEntry); // * 1.5f is aspect ratio correction.
+			int max_x = int((pos.x + cameraHeight * 1.5f) / smallestGridEntry); // * 1.5f is aspect ratio correction.
+			int min_y = int((pos.y - cameraHeight) / smallestGridEntry);
+			int max_y = int((pos.y + cameraHeight) / smallestGridEntry);
+
+			// TODO: draw some kind of helpers to show distances
+			for (int current_x = min_x; current_x < max_x; ++current_x) {
+				if (current_x == 0)
+					continue;
+
+				float line_x_value = current_x * smallestGridEntry;
+				debugVis.addDebugLine(
+					{ line_x_value, y_min_value, 0 },
+					{ line_x_value, y_max_value, 0 },
+					{ -5.0f, -5.0f, -3.0f, -3.0f }
+				);
+			}
+
+			for (int current_y = min_y; current_y < max_y; ++current_y) {
+				if (current_y == 0)
+					continue;
+
+				float line_y_value = current_y * smallestGridEntry;
+				debugVis.addDebugLine(
+					{ x_min_value, line_y_value, 0 },
+					{ x_max_value, line_y_value, 0 },
+					{ -5.0f, -5.0f, -3.0f, -3.0f }
+				);
 			}
 		}
 	);

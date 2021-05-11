@@ -30,6 +30,11 @@ namespace rynx {
 				initialize();
 			}
 
+			Button& set_texture(rynx::graphics::texture_id tex_id) {
+				static_cast<rynx::menu::Frame*>(m_background.get())->set_texture(tex_id);
+				return *this;
+			}
+
 			Button& no_focus_alpha(float v) {
 				m_no_focus_alpha = v;
 				return *this;

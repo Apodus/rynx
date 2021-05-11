@@ -106,6 +106,14 @@ void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
 	}
 }
 
+void rynx::editor::tools::polygon_tool::on_entity_component_removed(
+	rynx::scheduler::context* ctx,
+	std::string componentTypeName,
+	rynx::ecs& ecs,
+	rynx::id id)
+{
+}
+
 void rynx::editor::tools::polygon_tool::action_rebuild_mesh(rynx::ecs& ecs, rynx::graphics::mesh_collection& meshes) {
 	if (ecs.exists(selected_id())) {
 		auto entity = ecs[selected_id()];

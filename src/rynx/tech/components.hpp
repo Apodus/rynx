@@ -177,8 +177,9 @@ namespace rynx {
 				auto tris = rynx::polygon_triangulation().make_triangles(p);
 				auto centre_of_mass = tris.centre_of_mass();
 				
+				std::vector<rynx::vec3f> points_in_p;
 				while (true) {
-					std::vector<rynx::vec3f> points_in_p;
+					points_in_p.clear();
 
 					for (float x = ext.x.first; x <= ext.x.second; x += initial_scale) {
 						for (float y = ext.y.first; y <= ext.y.second; y += initial_scale) {
