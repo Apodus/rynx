@@ -20,20 +20,6 @@
 
 namespace rynx {
 	namespace editor {
-
-		struct ecs_value_editor {
-			template<typename T>
-			T& access(rynx::ecs& ecs, rynx::ecs::id id, int32_t component_type_id, int32_t memoffset) {
-				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
-				return *reinterpret_cast<T*>(component_ptr + memoffset);
-			}
-
-			void* compute_address(rynx::ecs& ecs, rynx::ecs::id id, int32_t component_type_id, int32_t memoffset) {
-				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
-				return reinterpret_cast<void*>(component_ptr + memoffset);
-			}
-		};
-
 		void field_float(
 			const rynx::reflection::field& member,
 			rynx::editor::component_recursion_info_t info,
@@ -120,6 +106,9 @@ namespace rynx {
 		void execute(Func&& f) {
 			m_execute_in_main_stack.emplace_back(std::forward<Func>(f));
 		}
+
+		void save_scene_to_path(std::string path);
+		void load_scene_from_path(std::string path);
 
 	public:
 		void add_tool(std::unique_ptr<rynx::editor::itool> tool);

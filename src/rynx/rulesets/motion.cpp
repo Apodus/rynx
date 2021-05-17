@@ -35,11 +35,11 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 			});
 
 			ecs.query().for_each_parallel(task_context, [ecs](rynx::components::position& pos, rynx::components::position_relative relative_pos) {
-				if (!ecs.exists(relative_pos.host))
+				if (!ecs.exists(relative_pos.id))
 					return;
 				
-				const auto& host_pos = ecs[relative_pos.host].get<rynx::components::position>();
-				pos.value = host_pos.value + rynx::math::rotatedXY(relative_pos.relative_pos, host_pos.angle);
+				const auto& host_pos = ecs[relative_pos.id].get<rynx::components::position>();
+				pos.value = host_pos.value + rynx::math::rotatedXY(relative_pos.pos, host_pos.angle);
 			});
 		}
 	);

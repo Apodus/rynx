@@ -32,14 +32,14 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 				vec3f world_pos_b;
 
 				void init(components::phys::joint& rope, rynx::ecs::view<const components::position, const components::physical_body, components::motion> ecs) {
-					auto entity_a = ecs[rope.id_a];
-					auto entity_b = ecs[rope.id_b];
+					auto entity_a = ecs[rope.a.id];
+					auto entity_b = ecs[rope.b.id];
 
 					pos_a = entity_a.get<const components::position>();
 					pos_b = entity_b.get<const components::position>();
 
-					relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-					relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+					relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
+					relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
 					world_pos_a = pos_a.value + relative_pos_a;
 					world_pos_b = pos_b.value + relative_pos_b;
 
@@ -143,8 +143,8 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 							joint_data.mot_b->angularVelocity += deltaAngularAccelerationB * dt * multiplier_per_round;
 
 							// update intermediate values
-							joint_data.relative_pos_a = math::rotatedXY(rope.point_a, joint_data.pos_a.angle);
-							joint_data.relative_pos_b = math::rotatedXY(rope.point_b, joint_data.pos_b.angle);
+							joint_data.relative_pos_a = math::rotatedXY(rope.a.pos, joint_data.pos_a.angle);
+							joint_data.relative_pos_b = math::rotatedXY(rope.b.pos, joint_data.pos_b.angle);
 							joint_data.world_pos_a = joint_data.pos_a.value + joint_data.relative_pos_a;
 							joint_data.world_pos_b = joint_data.pos_b.value + joint_data.relative_pos_b;
 							over_extension = joint_data.get_distance() - rope.length;

@@ -592,6 +592,38 @@ void rynx::editor_rules::display_list_dialog(
 	});
 }
 
+void rynx::editor_rules::save_scene_to_path(std::string path)
+{
+	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
+	auto& ecs = m_context->get_resource<rynx::ecs>();
+
+	logmsg("saving active scene to '%s'", path.c_str());
+	auto vector_writer = ecs.serialize(m_reflections);
+	rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
+	rynx::serialize(system_writer.data(), vector_writer);
+	rynx::filesystem::write_file(path, vector_writer.data());
+	meshes.save_all_meshes_to_disk("../meshes");
+}
+
+void rynx::editor_rules::load_scene_from_path(std::string scene_path)
+{
+	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
+	auto& ecs = m_context->get_resource<rynx::ecs>();
+	
+	meshes.load_all_meshes_from_disk("../meshes");
+	m_state.m_selected_ids.clear();
+	on_entity_selected(0);
+	rynx::serialization::vector_reader reader(rynx::filesystem::read_file(scene_path));
+	ecs.clear();
+	all_rulesets().clear(*m_context);
+
+	ecs.deserialize(m_reflections, reader);
+
+	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
+	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
+	all_rulesets().deserialize(*m_context, rulesets_reader);
+}
+
 rynx::editor_rules::editor_rules(
 	rynx::scheduler::context& ctx,
 	rynx::binary_config::id game_running_state,
@@ -625,6 +657,10 @@ rynx::editor_rules::editor_rules(
 			m_host->enable_tools();
 		}
 		
+		virtual rynx::scheduler::context* get_context() {
+			return m_host->m_context;
+		}
+
 		virtual void disable_tools() override {
 			m_host->disable_tools();
 		}
@@ -700,21 +736,11 @@ rynx::editor_rules::editor_rules(
 		m_file_actions_bar->align().center_x().bottom_inside();
 
 		auto& ecs = ctx.get_resource<rynx::ecs>();
-
-		std::function<void(std::string)> save_everything = [this, &ecs](std::string path) {
-			logmsg("saving active scene to '%s'", path.c_str());
-			auto vector_writer = ecs.serialize(m_reflections);
-			rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
-			rynx::serialize(system_writer.data(), vector_writer);
-			rynx::filesystem::write_file(path, vector_writer.data());
-			m_context->get_resource<rynx::graphics::mesh_collection>().save_all_meshes_to_disk("../meshes");
-		};
-
 		auto save_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.50f, 0.0f));
 		save_scene->velocity_position(menuVelocityFast);
 		save_scene->text().text("Save");
 		save_scene->align().top_left_inside();
-		save_scene->on_click([this, save_everything]() {
+		save_scene->on_click([this]() {
 			disable_tools();
 			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
 			fileSelectDialog->configure().m_allowNewFile = true;
@@ -722,8 +748,8 @@ rynx::editor_rules::editor_rules(
 			fileSelectDialog->file_type(".rynxscene");
 			fileSelectDialog->display("../scenes/",
 				// on file selected
-				[this, save_everything](std::string fileName) {
-					save_everything(fileName);
+				[this](std::string fileName) {
+					save_scene_to_path(fileName);
 					execute([this] {
 						enable_tools();
 						pop_popup();
@@ -739,26 +765,11 @@ rynx::editor_rules::editor_rules(
 			rynx::filesystem::write_file("../configs/textures.dat", tex_conf_data.data());
 		});
 
-
-		auto load_everything = [this, &ecs](std::string scene_path) {
-			this->m_state.m_selected_ids.clear();
-			on_entity_selected(0);
-			rynx::serialization::vector_reader reader(rynx::filesystem::read_file(scene_path));
-			ecs.clear();
-			all_rulesets().clear(*m_context);
-
-			ecs.deserialize(m_reflections, reader);
-
-			auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
-			rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
-			all_rulesets().deserialize(*m_context, rulesets_reader);
-		};
-
 		auto load_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
 		load_scene->velocity_position(menuVelocityFast);
 		load_scene->text().text("Load");
 		load_scene->align().target(save_scene.get()).top_inside().right_outside().offset_x(0.1f);
-		load_scene->on_click([this, load_everything]() {
+		load_scene->on_click([this]() {
 			disable_tools();
 			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
 			fileSelectDialog->configure().m_allowNewFile = false;
@@ -766,9 +777,9 @@ rynx::editor_rules::editor_rules(
 			fileSelectDialog->file_type(".rynxscene");
 			fileSelectDialog->display("../scenes/",
 				// on file selected
-				[this, load_everything](std::string fileName) {
+				[this](std::string fileName) {
 					this->m_state.m_selected_ids.clear();
-					load_everything(fileName);
+					load_scene_from_path(fileName);
 					execute([this] {
 						enable_tools();
 						pop_popup();
@@ -787,8 +798,9 @@ rynx::editor_rules::editor_rules(
 		create_empty_scene->on_click([this]() {
 			execute([this]() {
 				this->m_context->get_resource<rynx::ecs>().clear();
-				this->all_rulesets().clear(*m_context);
 				this->m_state.m_selected_ids.clear();
+				this->on_entity_selected(0);
+				this->all_rulesets().clear(*m_context);
 			});
 		});
 		
@@ -802,7 +814,7 @@ rynx::editor_rules::editor_rules(
 
 		// construct top bar
 		{
-			m_top_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.6f, 0.05f, 0.0f });
+			m_top_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.4f, 0.05f, 0.0f });
 			m_top_bar->align().center_x().top_inside();
 			m_top_bar->set_background(frame_tex);
 			m_top_bar->velocity_position(200.0f);
@@ -859,6 +871,13 @@ rynx::editor_rules::editor_rules(
 				pause_button->on_click([this, update_button_visual, self = pause_button.get()]() mutable {
 					m_game_running_state.toggle();
 					update_button_visual();
+
+					if (m_game_running_state.is_enabled()) {
+						save_scene_to_path("../scenes/_autosave.rynxscene");
+					}
+					else {
+						load_scene_from_path("../scenes/_autosave.rynxscene");
+					}
 				});
 
 				pause_button->on_update([update_button_visual]() {
@@ -973,9 +992,12 @@ rynx::editor_rules::editor_rules(
 }
 
 
-void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float /* dt */) {
+void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float dt) {
 
 	if (m_tools_enabled) {
+		for (auto&& tool : m_tools) {
+			tool->update_nofocus(context);
+		}
 		m_active_tool->update(context);
 	}
 
@@ -1002,7 +1024,7 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 
 	m_info_text->text(m_active_tool->get_tool_name() + ": " + m_active_tool->get_info());
 
-	context.add_task("editor tick", [this](
+	context.add_task("editor tick", [this, dt](
 		rynx::ecs& game_ecs,
 		rynx::camera& game_camera,
 		rynx::application::DebugVisualization& debugVis)
@@ -1024,8 +1046,8 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 			auto pos = game_camera.position();
 
 			// visualize world origin
-			debugVis.addDebugLine({ -1000.0f + pos.x, 0, 0 }, { +1000 + pos.x, 0, 0 }, { -5.00f, -2.0f, -5.0f, -255.0f });
-			debugVis.addDebugLine({ 0, -1000.0f + pos.y, 0 }, { 0, +1000 + pos.y, 0 }, { -5.0f, -2.0f, -5.0f, -255.0f });
+			debugVis.addDebugLine({ -1000.0f + pos.x, 0, 0 }, { +1000 + pos.x, 0, 0 }, { 0.0f, 1.0f, 0.0f, 0.5f });
+			debugVis.addDebugLine({ 0, -1000.0f + pos.y, 0 }, { 0, +1000 + pos.y, 0 }, { 0.0f, 1.0f, 0.0f, 0.5f });
 
 			float cameraHeight = std::fabsf(pos.z);
 			float smallestGridEntry = 1.0f;
@@ -1061,7 +1083,7 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 				debugVis.addDebugLine(
 					{ line_x_value, y_min_value, 0 },
 					{ line_x_value, y_max_value, 0 },
-					{ -5.0f, -5.0f, -3.0f, -3.0f }
+					{ 0.0f, 0.0f, 1.0f, 0.5f }
 				);
 			}
 
@@ -1073,7 +1095,7 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 				debugVis.addDebugLine(
 					{ x_min_value, line_y_value, 0 },
 					{ x_max_value, line_y_value, 0 },
-					{ -5.0f, -5.0f, -3.0f, -3.0f }
+					{ 0.0f, 0.0f, 1.0f, 0.5f }
 				);
 			}
 		}

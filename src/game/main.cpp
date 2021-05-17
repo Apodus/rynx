@@ -54,166 +54,10 @@
 #include <rynx/editor/tools/instantiate_tool.hpp>
 #include <rynx/editor/tools/joint_tool.hpp>
 #include <rynx/editor/tools/polygon_tool.hpp>
+#include <rynx/editor/tools/mesh_tool.hpp>
 
 #include <rynx/tech/filesystem/filesystem.hpp>
 #include <rynx/tech/collision_detection.hpp>
-
-struct ball_spawner_ruleset : public rynx::application::logic::iruleset {
-	rynx::graphics::mesh_id circle_id;
-	rynx::graphics::mesh_id square_id;
-	rynx::graphics::texture_id tex_id;
-
-	rynx::collision_detection::category_id dynamic;
-	uint64_t frameCount = 0;
-	uint64_t how_often_to_spawn = 300;
-	float x_spawn = -20.9f;
-
-	rynx::math::rand64 m_random;
-
-	ball_spawner_ruleset(
-		rynx::graphics::mesh_id ball_id,
-		rynx::graphics::mesh_id square_id,
-		rynx::graphics::texture_id tex_id,
-		rynx::collision_detection::category_id dynamic
-	) : circle_id(ball_id), square_id(square_id), tex_id(tex_id), dynamic(dynamic) {}
-
-	virtual void serialize(rynx::scheduler::context& ctx, rynx::serialization::vector_writer& writer) {
-		logmsg("serializing ball spawner: frameCount: %llu", frameCount);
-		writer(frameCount);
-	}
-
-	virtual void deserialize(rynx::scheduler::context& ctx, rynx::serialization::vector_reader& reader) {
-		reader(frameCount);
-		logmsg("deserializing ball spawner: frameCount: %llu", frameCount);
-	}
-
-	virtual void onFrameProcess(rynx::scheduler::context& scheduler, float /* dt */) override {
-		if ((++frameCount % how_often_to_spawn) == 0) {
-			scheduler.add_task("spawn balls", [this](
-				rynx::ecs::edit_view<
-				rynx::components::collisions,
-				rynx::components::position,
-				rynx::components::motion,
-				rynx::components::physical_body,
-				rynx::components::radius,
-				rynx::components::color,
-				rynx::components::dampening,
-				rynx::components::boundary,
-				rynx::components::phys::joint,
-				rynx::components::light_omni,
-				rynx::components::mesh,
-				rynx::components::light_directed,
-				rynx::components::texture> ecs) {
-
-					for (int i = 0; i < 1; ++i) {
-						float x = x_spawn + m_random(0.0f, 4.0f);
-						float y = +100.0f + m_random(0.0f, 4.0f);
-						if (true || m_random() > 0.5f) {
-							auto id1 = ecs.create(
-								rynx::components::position({ x, y, 0 }),
-								rynx::components::motion(),
-								rynx::components::physical_body()
-									.mass(5.0f)
-									.elasticity(0.3f)
-									.friction(2.0f)
-									.moment_of_inertia(10.0f * 10.0f * 5.0f * 0.5f),
-								rynx::components::radius(10.0f),
-								rynx::components::collisions{ dynamic.value },
-								rynx::components::color({ m_random(), m_random(), m_random(), 1.0f}),
-								rynx::components::dampening({ 0.10f, 0.10f }),
-								rynx::components::mesh{ circle_id },
-								rynx::components::texture{"hero"}
-							);
-
-							// add lights.
-							if constexpr (false) {
-								float v = m_random();
-								if (v > 0.97f) {
-									rynx::components::light_omni light;
-									light.color = rynx::floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(30.0f, 100.0f));
-									light.ambient = m_random(0.0f, 0.1f);
-									ecs.attachToEntity(id1, light);
-								}
-								else if (v > 0.94f) {
-									rynx::components::light_directed light;
-									light.color = rynx::floats4(m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(0.0f, 1.0f), m_random(30.0f, 100.0f));
-									light.ambient = m_random(0.0f, 0.1f);
-									light.direction = rynx::vec3f(1, 1, 0).normalize();
-									light.edge_softness = m_random(0.5f, 5.0f);
-									light.angle = m_random(1.5f, 4.14f);
-									ecs.attachToEntity(id1, light);
-								}
-							}
-
-							auto moment_of_inertia_for_center_aligned_box = [](float width, float height, float mass) {
-								return (width * width + height * height) * mass / 12.0f;
-							};
-
-							for (int k = 1; k < 1; ++k) {
-								float v = m_random();
-								float edge_width = 2.0f + m_random() * 5.0f;
-								float mass = edge_width * edge_width * 1.25f;
-
-								x += 2.2f * edge_width;
-								y += 4.0f;
-								auto id2 = ecs.create(
-									rynx::components::position({ x, y, 0 }),
-									rynx::components::motion(),
-									rynx::components::physical_body()
-										.mass(mass)
-										.elasticity(0.1f)
-										.friction(1.0f)
-										.moment_of_inertia(edge_width * edge_width * mass * 0.5f).bias(10.0f),
-									// rynx::components::boundary(rynx::Shape::makeBox(edge_width)),
-									// rynx::components::radius(sqrtf(edge_width * edge_width * 0.25f)),
-									rynx::components::radius(edge_width),
-									rynx::components::collisions{ dynamic.value },
-									rynx::components::color({ m_random(), m_random(), m_random(), 1.0f}),
-									rynx::components::dampening({ 0.10f, 0.10f }),
-									rynx::components::mesh{ circle_id },
-									rynx::components::texture{ "hero" }
-								);
-
-								if constexpr (false) {
-									rynx::components::phys::joint joint;
-									joint.connect_with_rod()
-										.rotation_free();
-
-									joint.id_a = id1;
-									joint.id_b = id2;
-
-									joint.point_a = rynx::vec3<float>(0, 0, 0);
-									joint.point_b = rynx::vec3<float>(0, 0, 0);
-									joint.length = 5.1f;
-									joint.strength = 0.1f;
-									ecs.create(joint);
-									id1 = id2;
-								}
-							}
-						}
-						else {
-							float edge_length = 10.5f + 15.0f * m_random();
-							float mass = 5000.0f;
-							auto rectangle_moment_of_inertia = [](float mass, float width, float height) { return mass / 12.0f * (height * height + width * width); };
-							float radius = 0.5f * rynx::math::sqrt_approx(4.0f * sqr(0.5f * edge_length));
-							ecs.create(
-								rynx::components::position(rynx::vec3<float>(x, y, 0.0f), i * 2.0f),
-								rynx::components::collisions{ dynamic.value },
-								rynx::components::boundary(rynx::Shape::makeBox(edge_length)),
-								rynx::components::radius(radius),
-								rynx::components::physical_body().mass(mass).moment_of_inertia(rectangle_moment_of_inertia(mass, edge_length, edge_length)).elasticity(0.2f).friction(1.0f),
-								rynx::components::color({ 1,1,1,1 }),
-								rynx::components::motion({ 0, 0, 0 }, 0),
-								rynx::components::mesh({ square_id }),
-								rynx::components::dampening({ 0.2f, 1.f })
-							);
-						}
-					}
-				});
-		}
-	}
-};
-
 
 int main(int argc, char** argv) {
 
@@ -351,6 +195,7 @@ int main(int argc, char** argv) {
 		ruleset_editor->add_tool<rynx::editor::tools::collisions_tool>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::instantiation_tool>(*base_simulation.m_context);
 		ruleset_editor->add_tool<rynx::editor::tools::joint_tool>(*base_simulation.m_context);
+		ruleset_editor->add_tool<rynx::editor::tools::mesh_tool>(*base_simulation.m_context);
 
 		ruleset_physical_springs->depends_on(ruleset_motion_updates);
 		ruleset_collisionDetection->depends_on(ruleset_motion_updates);

@@ -84,17 +84,17 @@ namespace rynx {
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
 							ecs.query().notIn<rynx::components::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
-								if (!(ecs.exists(rope.id_a) & ecs.exists(rope.id_b))) {
+								if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id))) {
 									return;
 								}
 
-								auto entity_a = ecs[rope.id_a];
-								auto entity_b = ecs[rope.id_b];
+								auto entity_a = ecs[rope.a.id];
+								auto entity_b = ecs[rope.b.id];
 
 								const auto& pos_a = entity_a.get<const components::position>();
 								const auto& pos_b = entity_b.get<const components::position>();
-								auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-								auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+								auto relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
+								auto relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
 								auto world_pos_a = pos_a.value + relative_pos_a;
 								auto world_pos_b = pos_b.value + relative_pos_b;
 								vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
@@ -120,7 +120,6 @@ namespace rynx {
 				}
 				
 				virtual void execute() override {
-
 					{
 						for (auto&& buf : m_bufs) {
 							std::vector<rynx::graphics::texture_id> tex;

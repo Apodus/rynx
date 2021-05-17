@@ -33,8 +33,8 @@ namespace rynx {
 		};
 
 		struct position_relative {
-			uint64_t host; // TODO: explicit entity id type.
-			vec3f relative_pos;
+			rynx::id id;
+			vec3f pos;
 		};
 
 		struct scale {

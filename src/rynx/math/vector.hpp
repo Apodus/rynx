@@ -196,10 +196,13 @@ namespace rynx {
 		floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
 		floats4(const vec3<float>& other, float w) : x(other.x), y(other.y), z(other.z), w(w) {}
 		floats4(const floats4& other) : x(other.x), y(other.y), z(other.z), w(other.w) {}
-		constexpr floats4(float x = 0, float y = 0, float z = 0, float w = 0) : x(x), y(y), z(z), w(w) {}
+		constexpr floats4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+		floats4() : x(0), y(0), z(0), w(0) {}
 
 		floats4 operator*(float scalar) const { return floats4(x * scalar, y * scalar, z * scalar, w * scalar); }
 		floats4 operator/(float scalar) const { return operator*(1.0f / scalar); }
+		floats4 operator+(float scalar) const { return floats4(x + scalar, y + scalar, z + scalar, w + scalar); }
+		floats4 operator-(float scalar) const { return floats4(x - scalar, y - scalar, z - scalar, w - scalar); }
 
 		floats4 operator/(const floats4& other) const { return floats4(x / other.x, y / other.y, z / other.z, w / other.w); }
 		floats4 operator*(const floats4& other) const { return floats4(x * other.x, y * other.y, z * other.z, w * other.w); }

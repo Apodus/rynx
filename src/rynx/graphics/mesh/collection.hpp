@@ -10,9 +10,16 @@ namespace rynx {
 		class mesh;
 		class GPUTextures;
 
+		struct mesh_entry {
+			std::string name;
+			rynx::graphics::mesh_id id;
+		};
+
 		class mesh_collection {
 		public:
 			mesh_collection(std::shared_ptr<rynx::graphics::GPUTextures> gpuTextures);
+
+			std::vector<mesh_entry> getListOfMeshes() const;
 
 			mesh* get(mesh_id id);
 			mesh_id findByName(std::string humanReadableName);

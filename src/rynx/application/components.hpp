@@ -179,11 +179,8 @@ namespace rynx {
 					return *this;
 				}
 
-				rynx::ecs::id id_a;
-				rynx::ecs::id id_b;
-
-				rynx::vec3<float> point_a;
-				rynx::vec3<float> point_b;
+				rynx::components::position_relative a;
+				rynx::components::position_relative b;
 
 				float ANNOTATE(">=0") length = 0.0f;
 				float ANNOTATE(">=0") strength = 1.0f;
@@ -198,14 +195,17 @@ namespace rynx {
 
 #ifndef RYNX_CODEGEN
 			inline float compute_current_joint_length(const joint& rope, rynx::ecs::view<const rynx::components::position> ecs) {
-				auto entity_a = ecs[rope.id_a];
-				auto entity_b = ecs[rope.id_b];
+				if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id)))
+					return 0;
+
+				auto entity_a = ecs[rope.a.id];
+				auto entity_b = ecs[rope.b.id];
 
 				auto pos_a = entity_a.get<const components::position>();
 				auto pos_b = entity_b.get<const components::position>();
 
-				auto relative_pos_a = math::rotatedXY(rope.point_a, pos_a.angle);
-				auto relative_pos_b = math::rotatedXY(rope.point_b, pos_b.angle);
+				auto relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
+				auto relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
 				auto world_pos_a = pos_a.value + relative_pos_a;
 				auto world_pos_b = pos_b.value + relative_pos_b;
 				return (world_pos_a - world_pos_b).length();

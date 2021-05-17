@@ -5,6 +5,8 @@
 #include <rynx/tech/ecs/id.hpp>
 #include <rynx/graphics/texture/id.hpp>
 #include <rynx/tech/reflection.hpp>
+#include <rynx/tech/ecs.hpp>
+
 #include <vector>
 #include <functional>
 
@@ -22,6 +24,19 @@ namespace rynx {
 
 	namespace editor {
 		class itool;
+
+		struct ecs_value_editor {
+			template<typename T>
+			T& access(rynx::ecs& ecs, rynx::ecs::id id, int32_t component_type_id, int32_t memoffset) {
+				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
+				return *reinterpret_cast<T*>(component_ptr + memoffset);
+			}
+
+			void* compute_address(rynx::ecs& ecs, rynx::ecs::id id, int32_t component_type_id, int32_t memoffset) {
+				char* component_ptr = static_cast<char*>(ecs[id].get(component_type_id));
+				return reinterpret_cast<void*>(component_ptr + memoffset);
+			}
+		};
 
 		struct component_recursion_info_t {
 			rynx::ecs* ecs = nullptr;
@@ -54,6 +69,7 @@ namespace rynx {
 				virtual void enable_tools() = 0;
 				virtual void disable_tools() = 0;
 				virtual void activate_default_tool() = 0;
+				virtual rynx::scheduler::context* get_context() = 0;
 				virtual void execute(std::function<void()> execute_in_main_thread) = 0;
 				virtual void for_each_tool(std::function<void(itool*)> op) = 0;
 			};
@@ -80,6 +96,7 @@ namespace rynx {
 
 			virtual ~itool() { m_editor_state = nullptr; }
 			virtual void update(rynx::scheduler::context& ctx) = 0;
+			virtual void update_nofocus(rynx::scheduler::context& /* ctx */) {} // called even when this tool is not selected.
 			virtual void on_tool_selected() = 0;
 			virtual void on_tool_unselected() = 0;
 

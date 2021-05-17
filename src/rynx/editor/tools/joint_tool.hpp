@@ -18,6 +18,8 @@ namespace rynx {
 				joint_tool(rynx::scheduler::context& ctx);
 
 				virtual void update(rynx::scheduler::context& ctx) override;
+				virtual void update_nofocus(rynx::scheduler::context& ctx) override;
+
 				virtual void on_tool_selected() override {}
 				virtual void on_tool_unselected() override {}
 
@@ -43,6 +45,14 @@ namespace rynx {
 					rynx::editor::component_recursion_info_t info,
 					std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack) override;
 			
+				virtual void on_entity_component_value_changed(
+					rynx::scheduler::context* ctx,
+					std::string componentTypeName,
+					rynx::ecs& ecs,
+					rynx::id id) override;
+
+
+
 			private:
 				
 				struct drag_op_t {

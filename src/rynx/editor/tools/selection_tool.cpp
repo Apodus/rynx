@@ -27,51 +27,11 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 	rynx::editor::component_recursion_info_t info,
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
-	rynx::reflection::type type = info.reflections->get(field_type);
-	if (type.m_type_name == rynx::traits::type_name<rynx::id>())
+	auto create_vec3f_menu = [this](
+		std::string field_name,
+		rynx::editor::component_recursion_info_t info,
+		rynx::id drag_in_local_space_of)
 	{
-		auto field_div = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
-		field_div->velocity_position(200.0f); // TODO
-
-		auto id_pick_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
-		id_pick_button->velocity_position(200.0f); // TODO
-		id_pick_button->on_click([this, info, self = id_pick_button.get()]() {
-			this->source_data([this, info]() {
-				char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
-				auto* value = reinterpret_cast<rynx::id*>(data + info.cumulative_offset);
-				return value;
-			});
-			this->m_mode = Mode::IdField_Pick;
-			this->source_data_cb([](void* data) {
-				// TODO: might as well update the id info to the UI here
-			});
-		});
-
-		id_pick_button->text().text(field_type.m_field_name + ": Pick entity");
-
-		field_div->align()
-			.target(info.component_sheet->last_child())
-			.bottom_outside()
-			.left_inside();
-
-		field_div->addChild(id_pick_button);
-		info.component_sheet->addChild(field_div);
-		return true;
-	}
-
-	if (type.m_type_name == rynx::traits::type_name<rynx::vec3f>())
-	{
-		{
-			auto field_div = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
-			field_div->velocity_position(200.0f); // TODO
-			field_div->text().text(field_type.m_field_name);
-			field_div->align()
-				.target(info.component_sheet->last_child())
-				.bottom_outside()
-				.left_inside();
-			info.component_sheet->addChild(field_div);
-		}
-
 		auto field_div = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 		field_div->velocity_position(200.0f); // TODO
 
@@ -79,10 +39,23 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 		auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
 
 		std::vector<std::function<void(void* data)>> update_ui;
+
+		{
+			auto field_name_label = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.15f, 1.0f, 0.0f));
+			field_name_label->velocity_position(200.0f); // TODO
+			field_name_label->text(field_name);
+			field_name_label->text_align_left();
+			field_name_label->align()
+				.left_inside()
+				.top_inside()
+				.offset_x(-0.2f);
+			field_div->addChild(field_name_label);
+		}
+
 		{
 			auto x_text = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.04f, 1.0f, 0.0f));
 			x_text->text("x");
-			x_text->align().left_inside().top_inside();
+			x_text->align().target(field_div->last_child()).right_outside().top_inside();
 			x_text->velocity_position(200.0f);
 
 			auto x_value = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.20f, 0.8f, 0.0f));
@@ -132,7 +105,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 				value->y = new_v;
 				self->text().text(std::to_string(value->y));
 			});
-			
+
 			y_value->on_update([info, self = y_value.get()]() {
 				if (!self->text().has_dedicated_keyboard_input()) {
 					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
@@ -144,7 +117,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			update_ui.emplace_back([ui = y_value.get()](void* ptr) {
 				ui->text().text(std::to_string(reinterpret_cast<rynx::vec3f*>(ptr)->y));
 			});
-			
+
 			field_div->addChild(y_text);
 			field_div->addChild(y_value);
 		}
@@ -188,21 +161,33 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			auto drag = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.10f, 0.8f, 0.0f));
 			drag->velocity_position(200.0f); // TODO
 			drag->text().text("drag");
-			drag->text().color({0.5f, 1.0f, 0.0f, 1.0f});
+			drag->text().color({ 0.5f, 1.0f, 0.0f, 1.0f });
 			drag->align().target(field_div->last_child()).right_outside().top_inside();
-			drag->on_click([this, info, update_ui]() {
+			drag->on_click([this, info, drag_in_local_space_of, update_ui]() {
 				source_data([info]() {
 					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
 					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
 					return value;
-				});
-				source_data_cb([this, update_ui](void* data) {
+					});
+				source_data_cb([this, info, update_ui](void* data) {
 					for (auto&& op : update_ui) {
 						op(data);
 					}
-				});
+					auto* type_ptr = info.reflections->find(info.component_type_id);
+					if (type_ptr) {
+						this->for_each_tool([this, type_ptr, info](rynx::editor::itool* tool) {
+							tool->on_entity_component_value_changed(
+								m_editor_state->m_editor->get_context(),
+								type_ptr->m_type_name,
+								*info.ecs,
+								info.entity_id
+							);
+							});
+					}
+					});
 				m_mode = Mode::Vec3fDrag;
-			});
+				m_mode_local_space_id = drag_in_local_space_of;
+				});
 
 			field_div->addChild(drag);
 		}
@@ -213,6 +198,65 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			.left_inside();
 
 		info.component_sheet->addChild(field_div);
+	};
+
+	rynx::reflection::type type = info.reflections->get(field_type);
+	if (type.m_type_name == rynx::traits::type_name<rynx::components::position_relative>()) {
+		for (auto field : type.m_fields) {
+			if (field.m_field_name == "id") {
+				info.cumulative_offset += field.m_memory_offset;
+				try_generate_menu(field, info, reflection_stack);
+				info.cumulative_offset -= field.m_memory_offset;
+			}
+			if (field.m_field_name == "pos") {
+				auto local_position =
+					rynx::editor::ecs_value_editor().access<rynx::components::position_relative>(
+						*info.ecs,
+						info.entity_id,
+						info.component_type_id,
+						info.cumulative_offset);
+				info.cumulative_offset += field.m_memory_offset;
+				create_vec3f_menu("offset", info, local_position.id);
+				info.cumulative_offset -= field.m_memory_offset;
+			}
+		}
+		return true;
+	}
+	
+	if (type.m_type_name == rynx::traits::type_name<rynx::id>())
+	{
+		auto field_div = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
+		field_div->velocity_position(200.0f); // TODO
+
+		auto id_pick_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
+		id_pick_button->velocity_position(200.0f); // TODO
+		id_pick_button->on_click([this, info, self = id_pick_button.get()]() {
+			this->source_data([this, info]() {
+				char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+				auto* value = reinterpret_cast<rynx::id*>(data + info.cumulative_offset);
+				return value;
+			});
+			this->m_mode = Mode::IdField_Pick;
+			this->source_data_cb([](void* data) {
+				// TODO: might as well update the id info to the UI here
+			});
+		});
+
+		id_pick_button->text().text(field_type.m_field_name + ": Pick entity");
+
+		field_div->align()
+			.target(info.component_sheet->last_child())
+			.bottom_outside()
+			.left_inside();
+
+		field_div->addChild(id_pick_button);
+		info.component_sheet->addChild(field_div);
+		return true;
+	}
+
+	if (type.m_type_name == rynx::traits::type_name<rynx::vec3f>())
+	{
+		create_vec3f_menu(field_type.m_field_name, info, 0);
 		return true;
 	}
 
@@ -341,9 +385,13 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 
 								execute([this, &game_ecs, &ctx, id]() {
 									for_each_tool([id, &game_ecs, &ctx](rynx::editor::itool* tool) {
-										tool->on_entity_component_value_changed(&ctx, "rynx::components::position", game_ecs, id);
-										});
+										tool->on_entity_component_value_changed(
+											&ctx,
+											rynx::traits::type_name<rynx::components::position>(),
+											game_ecs,
+											id);
 									});
+								});
 							}
 						}
 						else {
@@ -356,15 +404,23 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 
 								execute([this, &game_ecs, &ctx, id]() {
 									for_each_tool([id, &game_ecs, &ctx](rynx::editor::itool* tool) {
-										tool->on_entity_component_value_changed(&ctx, "rynx::components::position", game_ecs, id);
-										});
+										tool->on_entity_component_value_changed(
+											&ctx,
+											rynx::traits::type_name<rynx::components::position>(),
+											game_ecs,
+											id);
 									});
+								});
 							}
 						}
 					}
 					else if (m_mode == Mode::Vec3fDrag) {
-						// TODO: Some callback update mechanism back to the data?
 						auto* data = reinterpret_cast<rynx::vec3f*>(address_of_operand());
+						if (game_ecs.exists(m_mode_local_space_id)) {
+							auto entity = game_ecs[m_mode_local_space_id];
+							auto& entity_pos = entity.get<rynx::components::position>();
+							position_delta = rynx::math::rotatedXY(position_delta, -entity_pos.angle);
+						}
 						*data += position_delta;
 						operand_value_changed(data);
 					}

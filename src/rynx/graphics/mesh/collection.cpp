@@ -84,6 +84,14 @@ rynx::graphics::mesh_id rynx::graphics::mesh_collection::generate_mesh_id() {
 	return { std::chrono::high_resolution_clock::now().time_since_epoch().count() };
 }
 
+std::vector<rynx::graphics::mesh_entry> rynx::graphics::mesh_collection::getListOfMeshes() const {
+	std::vector<mesh_entry> mesh_names;
+	for (auto&& entry : this->m_storage) {
+		mesh_names.emplace_back(entry.second->humanReadableId, entry.first);
+	}
+	return mesh_names;
+}
+
 rynx::graphics::mesh* rynx::graphics::mesh_collection::get(rynx::graphics::mesh_id id) {
 	auto it = m_storage.find(id);
 	rynx_assert(it != m_storage.end(), "mesh not found");

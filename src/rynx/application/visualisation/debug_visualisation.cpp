@@ -44,6 +44,11 @@ rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::
 
 		m_line_mesh = m_meshRenderer->meshes()->create_transient(std::move(m));
 	}
+
+	{
+		auto m = rynx::polygon_triangulation().make_mesh(rynx::Shape::makeBox(1.0f));
+		m_box_mesh = m_meshRenderer->meshes()->create_transient(std::move(m));
+	}
 }
 
 void rynx::application::DebugVisualization::addDebugLine(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float lifetime) {
@@ -56,6 +61,23 @@ void rynx::application::DebugVisualization::addDebugLine(rynx::vec3f point_a, ry
 	model.discardSetTranslate(mid);
 	model.rotate_2d(rynx::math::atan_approx(delta.y / delta.x));
 	model.scale(delta.length());
+
+	obj.colors.emplace_back(color);
+	obj.matrices.emplace_back(model);
+	obj.lifetimes.emplace_back(lifetime);
+	obj.textures.emplace_back(rynx::graphics::texture_id{});
+}
+
+void rynx::application::DebugVisualization::addDebugLine_world(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float width, float lifetime) {
+	auto* mesh = this->m_meshRenderer->meshes()->get(m_box_mesh);
+	auto& obj = m_data[mesh];
+
+	rynx::vec3f mid = (point_a + point_b) * 0.5f;
+	rynx::vec3f delta = (point_a - point_b);
+	rynx::matrix4 model;
+	model.discardSetTranslate(mid);
+	model.rotate_2d(rynx::math::atan_approx(delta.y / delta.x));
+	model.scale(delta.length(), width, 0);
 
 	obj.colors.emplace_back(color);
 	obj.matrices.emplace_back(model);
@@ -90,18 +112,16 @@ void rynx::application::DebugVisualization::addDebugVisual(std::string meshName,
 
 void rynx::application::DebugVisualization::prepare(rynx::scheduler::context*) {
 	for (auto&& entry : m_data) {
-		for (size_t i = 0; i < entry.second.lifetimes.size(); ++i) {
+		for (int32_t i = 0; i < int32_t(entry.second.lifetimes.size()); ++i) {
 			if (entry.second.lifetimes[i] < 0) {
 				entry.second.lifetimes[i] = entry.second.lifetimes.back();
-				entry.second.lifetimes.pop_back();
-
 				entry.second.colors[i] = entry.second.colors.back();
-				entry.second.colors.pop_back();
-
 				entry.second.matrices[i] = entry.second.matrices.back();
-				entry.second.matrices.pop_back();
-
 				entry.second.textures[i] = entry.second.textures.back();
+
+				entry.second.lifetimes.pop_back();
+				entry.second.colors.pop_back();
+				entry.second.matrices.pop_back();
 				entry.second.textures.pop_back();
 				--i;
 			}

@@ -13,7 +13,7 @@ rynx::editor::tools::joint_tool::joint_tool(rynx::scheduler::context& ctx) {
 		{
 			auto& ecs = ctx->get_resource<rynx::ecs>();
 			auto* joint = reinterpret_cast<rynx::components::phys::joint*>(this->address_of_operand());
-			if(ecs.exists(joint->id_a) & ecs.exists(joint->id_b))
+			if(ecs.exists(joint->a.id) & ecs.exists(joint->b.id))
 				joint->length = rynx::components::phys::compute_current_joint_length(*joint, ecs);
 		}
 	);
@@ -25,6 +25,15 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
+	
+	if (type.m_type_name == rynx::traits::type_name<rynx::components::phys::joint>()) {
+		for (auto&& field : type.m_fields) {
+			auto field_type_ = info.reflections->get(field);
+			info.gen_type_editor(field_type_, info, reflection_stack);
+		}
+		return true;
+	}
+	
 	using joint_connector_t = rynx::components::phys::joint::connector_type;
 	if (type.m_type_name == rynx::traits::type_name<joint_connector_t>())
 	{
@@ -74,22 +83,74 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 	return false;
 }
 
-void rynx::editor::tools::joint_tool::update(rynx::scheduler::context& ctx) {
-	
+void rynx::editor::tools::joint_tool::on_entity_component_value_changed(
+	rynx::scheduler::context* ctx,
+	std::string componentTypeName,
+	rynx::ecs& ecs,
+	rynx::id id)
+{
+	bool positionChanged = componentTypeName == rynx::traits::type_name<rynx::components::position>();
+	bool jointChanged = componentTypeName == rynx::traits::type_name<rynx::components::phys::joint>();
+
+	if (positionChanged) {
+		ecs.query().for_each([this, id, &ecs](rynx::id edited_id, rynx::components::phys::joint& j) {
+			if (j.a.id == id || j.b.id == id) {
+				if (ecs.exists(j.a.id) & ecs.exists(j.b.id)) {
+					j.length = rynx::components::phys::compute_current_joint_length(j, ecs);
+				}
+			}
+		});
+	}
+
+	if (jointChanged) {
+		auto& j = ecs[id].get<rynx::components::phys::joint>();
+		j.length = rynx::components::phys::compute_current_joint_length(j, ecs);
+	}
+}
+
+void rynx::editor::tools::joint_tool::update_nofocus(rynx::scheduler::context& ctx) {
 	auto& ecs = ctx.get_resource<rynx::ecs>();
 	auto& dbug = ctx.get_resource<rynx::application::DebugVisualization>();
-	
+
+	ecs.query().for_each([&dbug, &ecs](const rynx::components::phys::joint& joint, rynx::components::position p) {
+		if (ecs.exists(joint.a.id)) {
+			auto pos_a = ecs[joint.a.id].get<rynx::components::position>();
+			auto offset_a = rynx::math::rotatedXY(joint.a.pos, pos_a.angle);
+			dbug.addDebugLine(pos_a.value + offset_a, p.value, { 0.5f, 1.0f, 0.2f, 1.0f });
+		}
+		if (ecs.exists(joint.b.id)) {
+			auto pos_b = ecs[joint.b.id].get<rynx::components::position>();
+			auto offset_b = rynx::math::rotatedXY(joint.b.pos, pos_b.angle);
+			dbug.addDebugLine(pos_b.value + offset_b, p.value, { 0.5f, 1.0f, 0.2f, 1.0f });
+		}
+	});
+
 	auto id = selected_id();
 	if (ecs.exists(id)) {
+		auto joint_entity_pos = ecs[id].get<rynx::components::position>();
 		auto* joint = ecs[id].try_get<rynx::components::phys::joint>();
 		if (joint) {
-			if (ecs.exists(joint->id_a) & ecs.exists(joint->id_b)) {
-				auto& pos_a = ecs[joint->id_a].get<rynx::components::position>();
-				auto& pos_b = ecs[joint->id_b].get<rynx::components::position>();
-				auto offset_a = rynx::math::rotatedXY(joint->point_a, pos_a.angle);
-				auto offset_b = rynx::math::rotatedXY(joint->point_b, pos_b.angle);
-				dbug.addDebugLine(pos_a.value + offset_a, pos_b.value + offset_b, {0.2f, 1.0f, 1.0f, 1.0f});
+			if (ecs.exists(joint->a.id)) {
+				auto pos_a = ecs[joint->a.id].get<rynx::components::position>();
+				auto offset_a = rynx::math::rotatedXY(joint->a.pos, pos_a.angle);
+				dbug.addDebugLine(pos_a.value + offset_a, joint_entity_pos.value, { 0.5f, 1.0f, 0.2f, 1.0f });
+			}
+			if (ecs.exists(joint->b.id)) {
+				auto pos_b = ecs[joint->b.id].get<rynx::components::position>();
+				auto offset_b = rynx::math::rotatedXY(joint->b.pos, pos_b.angle);
+				dbug.addDebugLine(pos_b.value + offset_b, joint_entity_pos.value, { 1.0f, 0.5f, 0.2f, 1.0f });
+			}
+
+			if (ecs.exists(joint->a.id) & ecs.exists(joint->b.id)) {
+				auto pos_a = ecs[joint->a.id].get<rynx::components::position>();
+				auto pos_b = ecs[joint->b.id].get<rynx::components::position>();
+				auto offset_a = rynx::math::rotatedXY(joint->a.pos, pos_a.angle);
+				auto offset_b = rynx::math::rotatedXY(joint->b.pos, pos_b.angle);
+				dbug.addDebugLine(pos_a.value + offset_a, pos_b.value + offset_b, { 0.2f, 1.0f, 1.0f, 1.0f });
 			}
 		}
 	}
+}
+
+void rynx::editor::tools::joint_tool::update(rynx::scheduler::context& ctx) {	
 }

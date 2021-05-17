@@ -26,6 +26,7 @@ namespace rynx {
 			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer);
 
 			void addDebugLine(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugLine_world(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float width, float lifetime = 0.0f);
 			void addDebugCircle(rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 			void addDebugVisual(rynx::graphics::mesh_id mesh_id, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
@@ -47,6 +48,7 @@ namespace rynx {
 
 			rynx::graphics::mesh_id m_circle_mesh;
 			rynx::graphics::mesh_id m_line_mesh;
+			rynx::graphics::mesh_id m_box_mesh;
 		};
 	}
 }

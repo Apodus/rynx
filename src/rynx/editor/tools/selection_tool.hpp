@@ -49,6 +49,7 @@ namespace rynx {
 				};
 
 				Mode m_mode = Mode::Default;
+				rynx::ecs::id m_mode_local_space_id;
 
 				std::pair<rynx::ecs::id, float> find_nearest_entity(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
 
