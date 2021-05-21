@@ -54,6 +54,25 @@ void rynx::editor::tools::collisions_tool::on_entity_component_removed(
 	}
 }
 
+namespace {
+	struct verify_has_component {
+		template<typename T>
+		void check(rynx::editor::itool::error_emitter& emitter, rynx::ecs& ecs, rynx::id entity) {
+			if (!ecs[entity].has<T>()) {
+				emitter.component_missing<T>(entity, "missing from collision");
+			}
+		}
+	};
+}
+
+void rynx::editor::tools::collisions_tool::verify(rynx::scheduler::context& ctx, error_emitter& emitter) {
+	auto& ecs = ctx.get_resource<rynx::ecs>();
+	ecs.query().in<rynx::components::collisions>().for_each([&emitter, &ecs](rynx::id entity) {
+		verify_has_component().check<rynx::components::physical_body>(emitter, ecs, entity);
+		verify_has_component().check<rynx::components::motion>(emitter, ecs, entity);
+	});
+}
+
 void rynx::editor::tools::collisions_tool::update(rynx::scheduler::context& ctx) {
 
 }

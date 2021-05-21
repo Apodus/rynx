@@ -22,7 +22,8 @@ namespace rynx {
 
 				virtual void on_tool_selected() override {}
 				virtual void on_tool_unselected() override {}
-
+				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override;
+				
 				virtual std::string get_info() override {
 					return {};
 				}

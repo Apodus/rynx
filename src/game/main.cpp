@@ -210,7 +210,9 @@ int main(int argc, char** argv) {
 	auto cameraLeft = gameInput.generateAndBindGameKey('J', "cameraLeft");
 	auto cameraRight = gameInput.generateAndBindGameKey('L', "cameraRight");
 	auto cameraDown = gameInput.generateAndBindGameKey('K', "cameraDown");
-	
+	auto zoomIn = gameInput.generateAndBindGameKey('U', "zoomIn");
+	auto zoomOut = gameInput.generateAndBindGameKey('O', "zoomOut");
+
 	struct debug_conf {
 		bool visualize_dynamic_collisions = false;
 		bool visualize_static_collisions = false;
@@ -239,9 +241,7 @@ int main(int argc, char** argv) {
 
 	camera->setUpVector({ 0, 1, 0 });
 	camera->setDirection({ 0, 0, -1 });
-	camera->setPosition({ 0, 0, +130 });
-
-	rynx::smooth<rynx::vec3<float>> cameraPosition(0.0f, 0.0f, 300.0f);
+	camera->setPosition({ 0, 0, +300 });
 
 	rynx::timer dt_timer;
 	
@@ -263,7 +263,6 @@ int main(int argc, char** argv) {
 		}
 		
 		auto mousePos = application.input()->getCursorPosition();
-		cameraPosition.tick(dt * 3);
 
 		{
 			rynx_profile("Main", "update camera");
@@ -283,7 +282,6 @@ int main(int argc, char** argv) {
 			rynx::vec3f direction = rotator_y * rotator_x * rynx::vec3f(0, 0, -1);
 
 			camera->tick(3.0f * dt);
-			camera->setPosition(cameraPosition);
 			camera->setDirection(direction);
 			camera->setUpVector({ 0.0f, 1.0f, 0.0f });
 			camera->setProjection(0.02f, 2000.0f, application.aspectRatio());
@@ -305,12 +303,22 @@ int main(int argc, char** argv) {
 			{
 				const float camera_translate_multiplier = 400.4f * dt;
 				const float camera_zoom_multiplier = (1.0f - dt * 3.0f);
-				if (gameInput.isKeyDown(cameraUp)) { cameraPosition += camera->local_forward() * camera_translate_multiplier; }
-				if (gameInput.isKeyDown(cameraLeft)) { cameraPosition += camera->local_left() * camera_translate_multiplier; }
-				if (gameInput.isKeyDown(cameraRight)) { cameraPosition -= camera->local_left() * camera_translate_multiplier; }
-				if (gameInput.isKeyDown(cameraDown)) { cameraPosition -= camera->local_forward() * camera_translate_multiplier; }
-				// if (gameInput.isKeyDown(zoomOut)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f * camera_zoom_multiplier); }
-				// if (gameInput.isKeyDown(zoomIn)) { cameraPosition *= vec3<float>(1, 1.0f, 1.0f / camera_zoom_multiplier); }
+				if (gameInput.isKeyDown(cameraUp)) { camera->translate(camera->local_up() * camera_translate_multiplier); }
+				if (gameInput.isKeyDown(cameraLeft)) { camera->translate(camera->local_left() * camera_translate_multiplier); }
+				if (gameInput.isKeyDown(cameraRight)) { camera->translate(-camera->local_left() * camera_translate_multiplier); }
+				if (gameInput.isKeyDown(cameraDown)) { camera->translate(-camera->local_up() * camera_translate_multiplier); }
+				if (gameInput.isKeyDown(zoomOut)) {
+					camera->translate(
+						camera->position() *
+						rynx::vec3f{1, 1, 1.0f * camera_zoom_multiplier }
+					);
+				}
+				if (gameInput.isKeyDown(zoomIn)) {
+					camera->translate(
+						camera->position() *
+						rynx::vec3f{ 1, 1, 1.0f / camera_zoom_multiplier }
+					);
+				}
 				if (gameInput.isKeyClicked(rynx::key::physical('X'))) {
 					rynx::profiling::write_profile_log();
 				}

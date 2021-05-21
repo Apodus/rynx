@@ -152,5 +152,34 @@ void rynx::editor::tools::joint_tool::update_nofocus(rynx::scheduler::context& c
 	}
 }
 
-void rynx::editor::tools::joint_tool::update(rynx::scheduler::context& ctx) {	
+namespace {
+	struct verify_has_component {
+		template<typename T>
+		void check(rynx::editor::itool::error_emitter& emitter, rynx::ecs& ecs, rynx::id entity) {
+			if (!ecs[entity].has<T>()) {
+				emitter.component_missing<T>(entity, "missing from joint target");
+			}
+		}
+	};
+}
+
+void rynx::editor::tools::joint_tool::verify(rynx::scheduler::context& ctx, error_emitter& emitter) {
+	auto& ecs = ctx.get_resource<rynx::ecs>();
+	ecs.query().for_each([this, &emitter, &ecs](rynx::id id, const rynx::components::phys::joint& joint, rynx::components::position p) {
+		if (!ecs.exists(joint.a.id) || !ecs.exists(joint.b.id)) {
+			emitter.emit(id, "joint component not connected to entities");
+		}
+		else {
+			auto is_valid_joint_target = [&](rynx::id entity) {
+				verify_has_component().check<rynx::components::physical_body>(emitter, ecs, entity);
+				verify_has_component().check<rynx::components::motion>(emitter, ecs, entity);
+			};
+			
+			is_valid_joint_target(joint.a.id);
+			is_valid_joint_target(joint.b.id);
+		}
+	});
+}
+
+void rynx::editor::tools::joint_tool::update(rynx::scheduler::context& ctx) {
 }

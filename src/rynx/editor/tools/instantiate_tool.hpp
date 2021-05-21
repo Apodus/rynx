@@ -18,6 +18,7 @@ namespace rynx {
 				virtual void update(rynx::scheduler::context& ctx) override;
 				virtual void on_tool_selected() override;
 				virtual void on_tool_unselected() override {}
+				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override {}
 
 				virtual std::string get_tool_name() {
 					return "instantiation tool";

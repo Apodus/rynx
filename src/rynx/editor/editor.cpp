@@ -869,6 +869,46 @@ rynx::editor_rules::editor_rules(
 				};
 
 				pause_button->on_click([this, update_button_visual, self = pause_button.get()]() mutable {
+					if (!m_game_running_state.is_enabled()) {
+						rynx::editor::itool::error_emitter emitter(m_context);
+						for (auto&& tool : m_tools) {
+							tool->verify(*m_context, emitter);
+						}
+
+						if (!emitter.errors().empty()) {
+							const auto& error = emitter.errors().front();
+							auto popupdiv = std::make_shared<rynx::menu::Div>(rynx::vec3f{0.6f, 0.5f, 0});
+							popupdiv->set_background(frame_tex);
+							
+							auto error_text = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.8f, 0.1f, 0));
+							error_text->text(error.what);
+							error_text->align().center_x().center_y();
+							popupdiv->addChild(error_text);
+							
+							for (const auto& op : error.options) {
+								auto option_button = std::make_shared<rynx::menu::Button>(
+									frame_tex,
+									rynx::vec3f{ 0.3f, 0.1f, 0 }
+								);
+
+								option_button->align().target(popupdiv->last_child()).bottom_outside().center_x();
+								option_button->text().text(op.name);
+								option_button->on_click([this, op, id = error.entity_id]() {
+									execute([this, op, id]() {
+										op.op(); 
+										pop_popup();
+										on_entity_selected(id);
+									});
+								});
+
+								popupdiv->addChild(option_button);
+							}
+							
+							push_popup(popupdiv);
+							return;
+						}
+					}
+
 					m_game_running_state.toggle();
 					update_button_visual();
 

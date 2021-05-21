@@ -7,6 +7,11 @@
 #include <rynx/tech/reflection.hpp>
 #include <rynx/tech/ecs.hpp>
 
+#include <rynx/scheduler/context.hpp>
+#include <rynx/system/typeid.hpp>
+#include <rynx/tech/components.hpp>
+#include <rynx/graphics/camera/camera.hpp>
+
 #include <vector>
 #include <functional>
 
@@ -94,8 +99,65 @@ namespace rynx {
 				std::function<void(rynx::scheduler::context*)> m_action;
 			};
 
+			struct error {
+				struct option {
+					std::string name;
+					std::function<void()> op;
+				};
+
+				error& add_option(std::string name, std::function<void()> op) {
+					options.emplace_back(option{ name, op });
+					return *this;
+				}
+
+				std::string what;
+				rynx::id entity_id;
+				std::vector<option> options;
+			};
+
+			struct error_emitter {
+				error_emitter(rynx::scheduler::context* context) : m_context(context) {}
+
+				template<typename T>
+				error& component_missing(rynx::id entity, std::string whyRequired) {
+					std::string error_str = "^g" + rynx::traits::template type_name<T>() + "^w, " + whyRequired;
+					m_errors.emplace_back(error{ error_str, entity });
+					add_goto_option(entity);
+					m_errors.back().add_option("Add component", [entity, ctx = m_context]() {
+						ctx->get_resource<rynx::ecs>()[entity].add(T());
+					});
+					return m_errors.back();
+				}
+
+				error& emit(rynx::id entity, std::string what) {
+					m_errors.emplace_back(error{ what, entity });
+					add_goto_option(entity);
+					// TODO: would be more clean to return a proxy object similar as to how tasks are created.
+					return m_errors.back();
+				}
+
+				const std::vector<error>& errors() const {
+					return m_errors;
+				}
+
+			private:
+				void add_goto_option(rynx::id entity) {
+					m_errors.back().add_option("Goto", [entity, ctx = m_context]() {
+						auto entity_pos = ctx->get_resource<rynx::ecs>()[entity].get<rynx::components::position>().value;
+						auto& camera = ctx->get_resource<rynx::camera>();
+						auto cam_pos = camera.position();
+						camera.setPosition({ entity_pos.x, entity_pos.y, cam_pos.z });
+					});
+				}
+
+				std::vector<error> m_errors;
+				rynx::scheduler::context* m_context = nullptr;
+			};
+
 			virtual ~itool() { m_editor_state = nullptr; }
 			virtual void update(rynx::scheduler::context& ctx) = 0;
+			virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) = 0;
+			
 			virtual void update_nofocus(rynx::scheduler::context& /* ctx */) {} // called even when this tool is not selected.
 			virtual void on_tool_selected() = 0;
 			virtual void on_tool_unselected() = 0;

@@ -18,9 +18,9 @@ namespace rynx {
 			public:
 				polygon_tool(rynx::scheduler::context& ctx);
 				virtual void update(rynx::scheduler::context& ctx) override;
+				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override {}
 
 				virtual void on_tool_selected() override {}
-
 				virtual void on_tool_unselected() override {
 					m_drag_action_active = false;
 					m_selected_vertex = -1;
