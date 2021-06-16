@@ -79,7 +79,7 @@ bool rynx::editor::tools::mesh_tool::try_generate_menu(
 	return false;
 }
 
-void rynx::editor::tools::mesh_tool::update(rynx::scheduler::context& ctx) {}
+void rynx::editor::tools::mesh_tool::update(rynx::scheduler::context&) {}
 
 void rynx::editor::tools::mesh_tool::on_tool_selected() {
 

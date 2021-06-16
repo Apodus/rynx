@@ -5,6 +5,7 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/graphics/color.hpp>
 #include <rynx/graphics/text/font.hpp>
+#include <rynx/tech/memory.hpp>
 
 #include <memory>
 #include <functional>
@@ -95,7 +96,7 @@ namespace rynx {
 
 			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::shared_ptr<rynx::graphics::shaders> m_shaders;
-			std::shared_ptr<camera> m_pCamera;
+			rynx::observer_ptr<camera> m_pCamera;
 			GLuint vao;
 			GLuint vbo, cbo, tbo;
 
@@ -114,7 +115,7 @@ namespace rynx {
 			void setDefaultFont(const Font& font) { m_defaultFont = font; }
 			const Font& getDefaultFont() const { return m_defaultFont; }
 
-			void setCamera(std::shared_ptr<camera> pCamera) { m_pCamera = std::move(pCamera); }
+			void setCamera(rynx::observer_ptr<camera> pCamera) { m_pCamera = pCamera; }
 			void drawText(const renderable_text& text);
 		};
 	}

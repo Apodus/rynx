@@ -14,7 +14,7 @@ rynx::editor::tools::polygon_tool::polygon_tool(rynx::scheduler::context& ctx) {
 	m_secondary_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(1), "polygon tool activate");
 	m_key_smooth = input.generateAndBindGameKey(',', "polygon smooth op");
 
-	define_action(rynx::traits::type_name<rynx::components::boundary>(), "vertices edit", [this](rynx::scheduler::context* ctx) {
+	define_action(rynx::traits::type_name<rynx::components::boundary>(), "vertices edit", [this](rynx::scheduler::context*) {
 		// no action required, just a shorthand to activate the tool.
 	});
 
@@ -92,7 +92,7 @@ void rynx::editor::tools::polygon_tool::on_entity_component_added(
 }
 
 void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
-	rynx::scheduler::context* ctx,
+	rynx::scheduler::context* /* ctx */,
 	std::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
@@ -107,10 +107,10 @@ void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
 }
 
 void rynx::editor::tools::polygon_tool::on_entity_component_removed(
-	rynx::scheduler::context* ctx,
-	std::string componentTypeName,
-	rynx::ecs& ecs,
-	rynx::id id)
+	rynx::scheduler::context* /* ctx */,
+	std::string /* componentTypeName */,
+	rynx::ecs& /* ecs */,
+	rynx::id /* id */)
 {
 }
 

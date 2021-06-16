@@ -12,7 +12,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 {
 	m_textures = &ctx.get_resource<rynx::graphics::GPUTextures>();
 
-	define_action_no_tool_activate("", "select texture", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate("", "select texture", [this]([[maybe_unused]]rynx::scheduler::context* ctx) {
 		m_editor_state->m_editor->disable_tools();
 		m_editor_state->m_editor->execute([this]() {
 			void* ptr = this->address_of_operand();
@@ -175,7 +175,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 	return false;
 }
 
-void rynx::editor::tools::texture_selection::update(rynx::scheduler::context& ctx) {}
+void rynx::editor::tools::texture_selection::update(rynx::scheduler::context&) {}
 
 void rynx::editor::tools::texture_selection::on_tool_selected() {
 

@@ -19,7 +19,7 @@ namespace rynx {
 
 		class renderer : public rynx::application::igraphics_step {
 		public:
-			renderer(rynx::application::Application& application, std::shared_ptr<camera> camera);
+			renderer(rynx::application::Application& application, rynx::observer_ptr<camera> camera);
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
@@ -55,7 +55,7 @@ namespace rynx {
 			std::shared_ptr<rynx::binary_config::id> m_debug_draw_config;
 
 			rynx::application::Application& m_application;
-			std::shared_ptr<camera> camera;
+			rynx::observer_ptr<camera> camera;
 		};
 	}
 }

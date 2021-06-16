@@ -13,7 +13,7 @@ rynx::editor::tools::selection_tool::selection_tool(rynx::scheduler::context& ct
 	auto& input = ctx.get_resource<rynx::mapped_input>();
 	m_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(0), "selection tool activate");
 
-	define_action(rynx::traits::type_name<rynx::id>(), "pick entity", [this](rynx::scheduler::context* ctx) {
+	define_action(rynx::traits::type_name<rynx::id>(), "pick entity", [this](rynx::scheduler::context*) {
 		m_mode = Mode::IdField_Pick;
 	});
 }
@@ -230,15 +230,15 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 		auto id_pick_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
 		id_pick_button->velocity_position(200.0f); // TODO
-		id_pick_button->on_click([this, info, self = id_pick_button.get()]() {
+		id_pick_button->on_click([this, field_type, info, self = id_pick_button.get()]() {
 			this->source_data([this, info]() {
 				char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
 				auto* value = reinterpret_cast<rynx::id*>(data + info.cumulative_offset);
 				return value;
 			});
 			this->m_mode = Mode::IdField_Pick;
-			this->source_data_cb([](void* data) {
-				// TODO: might as well update the id info to the UI here
+			this->source_data_cb([field_type, self](void* data) {
+				self->text().text(field_type.m_field_name + ": ^g" + std::to_string(*reinterpret_cast<int64_t*>(data)));
 			});
 		});
 

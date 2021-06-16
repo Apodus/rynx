@@ -17,7 +17,7 @@ namespace rynx {
 				texture_selection(rynx::scheduler::context& ctx);
 
 				virtual void update(rynx::scheduler::context& ctx) override;
-				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override {}
+				virtual void verify(rynx::scheduler::context&, error_emitter&) override {}
 				virtual void on_tool_selected() override;
 				virtual void on_tool_unselected() override {}
 

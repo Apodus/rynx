@@ -10,7 +10,8 @@ namespace rynx {
 		struct simulation {
 		public:
 			simulation(rynx::scheduler::task_scheduler& scheduler) : m_context(scheduler.make_context()) {
-				m_context->set_resource<rynx::ecs>(&m_ecs);
+				m_ecs = std::make_shared<rynx::ecs>();
+				m_context->set_resource(m_ecs);
 			}
 
 			void generate_tasks(float dt) {
@@ -23,7 +24,7 @@ namespace rynx {
 			}
 
 			void clear() {
-				m_ecs.clear();
+				m_ecs->clear();
 				m_logic.clear(*m_context);
 			}
 
@@ -68,9 +69,9 @@ namespace rynx {
 				m_logic.add_ruleset(std::move(t));
 			}
 
-			rynx::ecs m_ecs;
+			std::shared_ptr<rynx::ecs> m_ecs;
+			rynx::observer_ptr<rynx::scheduler::context> m_context;
 			rynx::application::logic m_logic;
-			rynx::scheduler::context* m_context;
 		};
 	}
 }

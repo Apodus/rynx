@@ -630,8 +630,7 @@ rynx::editor_rules::editor_rules(
 	rynx::reflection::reflections& reflections,
 	Font* font,
 	rynx::menu::Component* editor_menu_host,
-	rynx::graphics::GPUTextures& textures,
-	rynx::mapped_input& gameInput)
+	rynx::graphics::GPUTextures& textures)
 	: m_reflections(reflections)
 {
 	m_context = &ctx;
@@ -735,7 +734,6 @@ rynx::editor_rules::editor_rules(
 		m_file_actions_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.1f, 0.0f));
 		m_file_actions_bar->align().center_x().bottom_inside();
 
-		auto& ecs = ctx.get_resource<rynx::ecs>();
 		auto save_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.50f, 0.0f));
 		save_scene->velocity_position(menuVelocityFast);
 		save_scene->text().text("Save");

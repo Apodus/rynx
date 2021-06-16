@@ -62,8 +62,7 @@ namespace rynx {
 			task_scheduler& operator =(task_scheduler&& other) = delete;
 			task_scheduler& operator =(const task_scheduler& other) = delete;
 
-			// TODO: this should probably return some wrapper object, instead of a pointer. now user might think that he needs to delete it.
-			scheduler::context* make_context();
+			rynx::observer_ptr<scheduler::context> make_context();
 
 			bool checkComplete();
 			uint64_t tick_counter() const { return m_activeFrame; }
@@ -82,7 +81,7 @@ namespace rynx {
 				for (auto& ctx : m_contexts) {
 					ctx.second->m_typeIndex.sync();
 					ctx.second->m_resources.sync();
-					auto* ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
+					auto ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
 					if (ecs_resource) {
 						// ecs_resource->sync_type_index();
 					}

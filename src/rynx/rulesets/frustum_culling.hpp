@@ -3,6 +3,7 @@
 
 #include <rynx/application/logic.hpp>
 #include <rynx/tech/sphere_tree.hpp>
+#include <rynx/tech/memory.hpp>
 #include <memory>
 
 namespace rynx {
@@ -14,7 +15,7 @@ namespace rynx {
 			struct entity_tracked_by_frustum_culling {};
 		
 		public:
-			frustum_culling(std::shared_ptr<camera> camera) 
+			frustum_culling(rynx::observer_ptr<camera> camera) 
 				: m_pCamera(std::move(camera))
 			{}
 			
@@ -26,7 +27,7 @@ namespace rynx {
 		private:
 			rynx::sphere_tree m_in_frustum;
 			rynx::sphere_tree m_out_frustum;
-			std::shared_ptr<camera> m_pCamera;
+			rynx::observer_ptr<camera> m_pCamera;
 		};
 	}
 }

@@ -5,7 +5,7 @@
 #include <rynx/menu/Div.hpp>
 #include <rynx/menu/Button.hpp>
 
-rynx::editor::tools::joint_tool::joint_tool(rynx::scheduler::context& ctx) {
+rynx::editor::tools::joint_tool::joint_tool([[maybe_unused]] rynx::scheduler::context& ctx) {
 	define_action_no_tool_activate(
 		rynx::traits::type_name<rynx::components::phys::joint>(),
 		"recompute length",
@@ -84,7 +84,7 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 }
 
 void rynx::editor::tools::joint_tool::on_entity_component_value_changed(
-	rynx::scheduler::context* ctx,
+	rynx::scheduler::context* /* ctx */,
 	std::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
@@ -93,7 +93,7 @@ void rynx::editor::tools::joint_tool::on_entity_component_value_changed(
 	bool jointChanged = componentTypeName == rynx::traits::type_name<rynx::components::phys::joint>();
 
 	if (positionChanged) {
-		ecs.query().for_each([this, id, &ecs](rynx::id edited_id, rynx::components::phys::joint& j) {
+		ecs.query().for_each([this, id, &ecs](rynx::components::phys::joint& j) {
 			if (j.a.id == id || j.b.id == id) {
 				if (ecs.exists(j.a.id) & ecs.exists(j.b.id)) {
 					j.length = rynx::components::phys::compute_current_joint_length(j, ecs);
@@ -165,21 +165,26 @@ namespace {
 
 void rynx::editor::tools::joint_tool::verify(rynx::scheduler::context& ctx, error_emitter& emitter) {
 	auto& ecs = ctx.get_resource<rynx::ecs>();
-	ecs.query().for_each([this, &emitter, &ecs](rynx::id id, const rynx::components::phys::joint& joint, rynx::components::position p) {
-		if (!ecs.exists(joint.a.id) || !ecs.exists(joint.b.id)) {
-			emitter.emit(id, "joint component not connected to entities");
-		}
-		else {
-			auto is_valid_joint_target = [&](rynx::id entity) {
-				verify_has_component().check<rynx::components::physical_body>(emitter, ecs, entity);
-				verify_has_component().check<rynx::components::motion>(emitter, ecs, entity);
-			};
+	ecs.query().for_each(
+		[this, &emitter, &ecs](
+			rynx::id id,
+			const rynx::components::phys::joint& joint)
+		{
+			if (!ecs.exists(joint.a.id) || !ecs.exists(joint.b.id)) {
+				emitter.emit(id, "joint component not connected to entities");
+			}
+			else {
+				auto is_valid_joint_target = [&](rynx::id entity) {
+					verify_has_component().check<rynx::components::physical_body>(emitter, ecs, entity);
+					verify_has_component().check<rynx::components::motion>(emitter, ecs, entity);
+				};
 			
-			is_valid_joint_target(joint.a.id);
-			is_valid_joint_target(joint.b.id);
+				is_valid_joint_target(joint.a.id);
+				is_valid_joint_target(joint.b.id);
+			}
 		}
-	});
+	);
 }
 
-void rynx::editor::tools::joint_tool::update(rynx::scheduler::context& ctx) {
+void rynx::editor::tools::joint_tool::update(rynx::scheduler::context&) {
 }

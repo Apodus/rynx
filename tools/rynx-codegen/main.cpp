@@ -20,12 +20,12 @@ std::string getString(CXString str) {
 std::string getNamespace(CXCursor cursor) {
 	CXCursor semParent = clang_getCursorSemanticParent(cursor);
 	auto kind = clang_getCursorKind(semParent);
-	
+
 	if (kind == CXCursorKind::CXCursor_FirstInvalid ||
 		kind == CXCursorKind::CXCursor_TranslationUnit)
 		return {};
 
-	
+
 	if (kind == CXCursorKind::CXCursor_Namespace)
 		return getNamespace(semParent) + "::" + getString(clang_getCursorSpelling(semParent));
 	return getNamespace(semParent);
@@ -37,7 +37,7 @@ std::string getFullQualifiedName(CXCursor cursor) {
 	if (kind == CXCursorKind::CXCursor_FirstInvalid ||
 		kind == CXCursorKind::CXCursor_TranslationUnit)
 		return {};
-	
+
 	std::string currentLayerName = getString(clang_getCursorSpelling(semParent));
 	if (currentLayerName.empty())
 		return getFullQualifiedName(semParent);
@@ -76,7 +76,7 @@ std::vector<std::string> getAnnotations(CXCursor cursor) {
 			return CXChildVisitResult::CXChildVisit_Continue;
 		},
 		&output
-	);
+			);
 	return output;
 }
 
@@ -111,7 +111,7 @@ std::vector<char const*> g_clangOptions;
 std::unordered_map<std::string, reflected_type> g_reflected_types;
 
 bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bool generate_serialization = true) {
-	
+
 	CXCursorKind kind = clang_getCursorKind(cursor);
 
 	if (kind == CXCursorKind::CXCursor_FieldDecl) {
@@ -121,11 +121,11 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 		if (clang_getCXXAccessSpecifier(cursor) != CX_CXXAccessSpecifier::CX_CXXPublic) {
 			return false;
 		}
-		
+
 		CXType def = clang_getCursorType(cursor);
 		CXType canonType = clang_getCanonicalType(def);
 		std::string field_type_spelling = getString(clang_getTypeSpelling(canonType));
-		
+
 		struct userData {
 			std::string field_type_spelling;
 			bool generate_serialization;
@@ -143,8 +143,8 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 				return CXVisitorResult::CXVisit_Continue;
 			},
 			&data
-		);
-		
+				);
+
 		field currentField;
 		currentField.spelling = spelling;
 		currentField.type = field_type_spelling;
@@ -179,10 +179,10 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 			[](CXCursor child, CXCursor /* parent */, CXClientData data) {
 				if (clang_getCursorKind(child) == CXCursorKind::CXCursor_CXXBaseSpecifier) {
 					CXType childType = clang_getCursorType(child);
-					
+
 					// call once with the base type - to enable recursive base class crawling.
 					handleInterestingCursor(clang_getTypeDeclaration(childType), *static_cast<std::string*>(data));
-					
+
 					// and call once for each field to attach base class public members to derived class reflection.
 					clang_Type_visitFields(
 						childType,
@@ -191,12 +191,12 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 							return CXVisitorResult::CXVisit_Continue;
 						},
 						data
-					);
+							);
 				}
 				return CXChildVisit_Continue;
 			},
 			&targetTypeName
-		);
+				);
 
 		CXType type = clang_getCursorType(cursor);
 		auto typeSizeOf = clang_Type_getSizeOf(type);
@@ -254,19 +254,19 @@ void write_results(std::string source_file) {
 	// format processed header file paths
 	{
 		// for (auto&& path : compiledHeaderFiles) {
-			for (auto& c : source_file) {
-				if (c == '\\')
-					c = '/';
-			}
+		for (auto& c : source_file) {
+			if (c == '\\')
+				c = '/';
+		}
 
-			while (source_file.front() == '.' || source_file.front() == '/') {
-				source_file.erase(source_file.begin());
-			}
+		while (source_file.front() == '.' || source_file.front() == '/') {
+			source_file.erase(source_file.begin());
+		}
 
-			auto pos = source_file.find(std::string("src/"));
-			if (pos != std::string::npos) {
-				includeSourceFile = source_file.substr(pos + 4);
-			}
+		auto pos = source_file.find(std::string("src/"));
+		if (pos != std::string::npos) {
+			includeSourceFile = source_file.substr(pos + 4);
+		}
 		// }
 	}
 
@@ -284,7 +284,7 @@ void write_results(std::string source_file) {
 		}
 		functionRandomName += randomPartOfName;
 	}
-	
+
 	g_generated_reflection_functions.emplace_back(functionRandomName);
 
 	// write reflection hpp
@@ -376,15 +376,15 @@ void write_results(std::string source_file) {
 		std::ostream& output = fileOutput;
 
 		bool compiler_is_forced_to_evaluate_reflection_loader_obj = false;
-		
+
 		{
 			output << std::endl << "// This is a generated file. Not productive to modify by hand." << std::endl;
 
 			// include processed files.
 			// for (auto&& path : compiledHeaderFiles) {
-				output << "#include <" << includeSourceFile << ">" << std::endl;
+			output << "#include <" << includeSourceFile << ">" << std::endl;
 			// }
-				output << "#include <rynx/tech/serialization.hpp>" << std::endl;
+			output << "#include <rynx/tech/serialization.hpp>" << std::endl;
 
 			output << std::endl;
 			output << "namespace rynx {" << std::endl;
@@ -394,7 +394,7 @@ void write_results(std::string source_file) {
 
 
 			output << "namespace serialization {" << std::endl;
-			
+
 			for (auto&& type : g_reflected_types) {
 				bool skipType = false;
 				for (auto&& ann : type.second.annotations)
@@ -459,6 +459,8 @@ int main(int argc, char** argv) {
 	std::vector<std::string> fileEnds;
 	std::vector<std::string> compiledHeaderFiles;
 
+	std::string source_code_scan_path = ".";
+
 	for (int i = 1; i < argc; ++i) {
 		if (std::string(argv[i]) == "-filename-contains") {
 			fileMatchers.emplace_back(std::string(argv[++i]));
@@ -480,6 +482,9 @@ int main(int argc, char** argv) {
 		else if (std::string(argv[i]).find(std::string("--std")) != std::string::npos) {
 			g_clangOptions.emplace_back(argv[i]);
 		}
+		else if (std::string(argv[i]) == "-src_path") {
+			source_code_scan_path = argv[++i];
+		}
 		else {
 			std::cerr << "unrecognized option '" << std::string(argv[i]) << "', commands are:\n"
 				"-filename-contains <partial matching string, for example \"-filename-contains components\">\n"
@@ -487,6 +492,7 @@ int main(int argc, char** argv) {
 				"-gen-for-namespace ::namespace::to::gen\n"
 				"-I <includepath>\n"
 				"-Dmydefine\n"
+				"-src_path <source code root path>"
 				"--std=desiredstandard" << std::endl;
 			return 0;
 		}
@@ -498,10 +504,10 @@ int main(int argc, char** argv) {
 	std::filesystem::path wd_path(".");
 	std::filesystem::directory_entry wd(wd_path);
 
-	for (auto& p : std::filesystem::recursive_directory_iterator(".")) {
+	for (auto& p : std::filesystem::recursive_directory_iterator(source_code_scan_path)) {
 		if (p.is_regular_file()) {
 			std::string path_string = p.path().string();
-			
+
 			bool matchesAny = fileMatchers.empty();
 			for (auto&& matcher : fileMatchers)
 				matchesAny |= (path_string.find(matcher) != std::string::npos);
@@ -509,7 +515,7 @@ int main(int argc, char** argv) {
 			bool endsWithMatch = fileEnds.empty();
 			for (auto&& fileEnd : fileEnds)
 				endsWithMatch |= path_string.ends_with(fileEnd);
-			
+
 			if (matchesAny && endsWithMatch) {
 				g_reflected_types.clear();
 
@@ -527,11 +533,11 @@ int main(int argc, char** argv) {
 
 void compile(CXIndex& index, std::string path) {
 	std::cout << "processing " << path << " ..." << std::endl;
-	
+
 	CXTranslationUnit unit;
 	[[maybe_unused]] CXErrorCode error = clang_parseTranslationUnit2(index, path.c_str(), g_clangOptions.data(), int(g_clangOptions.size()), nullptr, 0, 0, &unit);
 
-	std::vector<std::string> includeNamespace = {""};
+	std::vector<std::string> includeNamespace = { "" };
 	g_currentlyWorkedOnFile = path;
 
 	CXCursor cursor = clang_getTranslationUnitCursor(unit);
@@ -551,7 +557,7 @@ void compile(CXIndex& index, std::string path) {
 			return CXChildVisitResult::CXChildVisit_Recurse;
 		},
 		nullptr
-	);
+			);
 
 	clang_disposeTranslationUnit(unit);
 

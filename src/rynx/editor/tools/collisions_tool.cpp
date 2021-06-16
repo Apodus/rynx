@@ -73,6 +73,5 @@ void rynx::editor::tools::collisions_tool::verify(rynx::scheduler::context& ctx,
 	});
 }
 
-void rynx::editor::tools::collisions_tool::update(rynx::scheduler::context& ctx) {
-
+void rynx::editor::tools::collisions_tool::update(rynx::scheduler::context&) {
 }

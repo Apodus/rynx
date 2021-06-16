@@ -32,7 +32,7 @@ namespace rynx {
 			check_type type;
 		};
 
-		std::vector<std::unique_ptr<sphere_tree>> m_sphere_trees;
+		std::vector<std::unique_ptr<rynx::sphere_tree>> m_sphere_trees;
 		std::vector<collision_check> m_collision_checks;
 		
 	public:

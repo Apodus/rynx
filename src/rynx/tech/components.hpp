@@ -25,6 +25,14 @@ namespace rynx {
 			};
 		}
 		
+		// TODO TODO TODO: Move to sample code :S
+		struct player {
+			bool touching_ground = false;
+			float jump_cooldown = 0.0f;
+			float walk_speed = 1.0f;
+			float jump_power = 10.0f;
+		};
+
 		struct position {
 			position() = default;
 			position(vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}

@@ -66,7 +66,13 @@ void Window::set_gl_viewport_to_window_dimensions() const {
 
 GLFWwindow* Window::createWindow(std::string name) {
 	GLFWmonitor* monitor = (m_fullscreen) ? glfwGetPrimaryMonitor() : nullptr;
-	GLFWwindow* window = glfwCreateWindow(static_cast<int>(m_width), static_cast<int>(m_height), name.c_str(), monitor, nullptr);
+	GLFWwindow* window = glfwCreateWindow(
+		static_cast<int>(m_width),
+		static_cast<int>(m_height),
+		name.c_str(),
+		monitor,
+		nullptr
+	);
 
 	if (!window) {
 		std::cout << "Could not create window. Ensure OpenGL 4.3 is supported by your drivers." << std::endl;

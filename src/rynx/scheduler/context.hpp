@@ -143,8 +143,10 @@ namespace rynx {
 				return m_task_counter.load() == 0;
 			}
 
-			template<typename T> context& set_resource(T* t) {
-				m_resources.set_and_discard(t);
+
+
+			template<typename T> context& set_resource(T&& t) {
+				m_resources.set_and_discard(rynx::as_observer(t));
 				uint64_t type_id = m_typeIndex.id<std::remove_cvref_t<T>>();
 				rynx_assert(
 					m_resource_counters[type_id].readers == 0 &&
@@ -154,7 +156,26 @@ namespace rynx {
 				return *this;
 			}
 
+			template<typename T> context& set_resource(std::unique_ptr<T>&& t) {
+				m_resources.set_and_discard(std::move(t));
+				uint64_t type_id = m_typeIndex.id<std::remove_cvref_t<T>>();
+				rynx_assert(
+					m_resource_counters[type_id].readers == 0 &&
+					m_resource_counters[type_id].writers == 0,
+					"setting a resource for scheduler context, while the previous instance of the resource is in use! not ok."
+				);
+				return *this;
+			}
+
+			template<typename T> context& set_resource() {
+				return set_resource(std::make_unique<T>());
+			}
+
 			template<typename T> T& get_resource() {
+				return *m_resources.get<T>();
+			}
+			
+			template<typename T> rynx::observer_ptr<T> get_resource_ptr() {
 				return m_resources.get<T>();
 			}
 

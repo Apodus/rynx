@@ -150,7 +150,7 @@ void rynx::menu::FileSelector::display(
 void rynx::menu::FileSelector::onInput(rynx::mapped_input&) {}
 void rynx::menu::FileSelector::draw(rynx::graphics::renderer&) const {}
 
-void rynx::menu::FileSelector::update(float dt) {
+void rynx::menu::FileSelector::update(float /* dt */) {
 	size_t i = 0;
 	while(i < m_ops.size())
 		m_ops[i++]();

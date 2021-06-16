@@ -147,8 +147,7 @@ namespace rynx {
 			rynx::reflection::reflections& reflections,
 			Font* font,
 			rynx::menu::Component* editor_menu_host,
-			rynx::graphics::GPUTextures& textures,
-			rynx::mapped_input& gameInput);
+			rynx::graphics::GPUTextures& textures);
 
 		rynx::editor::itool& get_default_tool() {
 			return *m_tools[0];

@@ -24,7 +24,11 @@
 
 #include <memory>
 
-rynx::application::renderer::renderer(rynx::application::Application& application, std::shared_ptr<rynx::camera> camera) : m_application(application), camera(camera) {
+rynx::application::renderer::renderer(
+	rynx::application::Application& application,
+	rynx::observer_ptr<rynx::camera> camera)
+	: m_application(application), camera(camera)
+{
 	shader_copy_color = application.shaders()->load_shader(
 		"fbo_color_to_bb",
 		"../shaders/screenspace.vs.glsl",

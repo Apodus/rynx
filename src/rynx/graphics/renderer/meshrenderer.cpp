@@ -82,7 +82,7 @@ void rynx::graphics::renderer::setDepthTest(bool depthTestEnabled)
 		glDisable(GL_DEPTH_TEST);
 }
 
-void rynx::graphics::renderer::setCamera(std::shared_ptr<camera> camera) {
+void rynx::graphics::renderer::setCamera(rynx::observer_ptr<camera> camera) {
 	m_pCamera = camera;
 	m_pTextRenderer->setCamera(camera);
 }

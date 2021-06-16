@@ -6,9 +6,9 @@
 #include <rynx/graphics/camera/camera.hpp>
 #include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/tech/unordered_map.hpp>
+#include <rynx/tech/memory.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/matrix.hpp>
-
 
 #include <memory>
 #include <chrono>
@@ -27,7 +27,7 @@ namespace rynx {
 
 			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
 			std::shared_ptr<rynx::graphics::shaders> m_shaders;
-			std::shared_ptr<camera> m_pCamera;
+			rynx::observer_ptr<camera> m_pCamera;
 
 			std::shared_ptr<mesh_collection> m_meshes;
 
@@ -62,7 +62,7 @@ namespace rynx {
 			std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
 			void cameraToGPU();
-			void setCamera(std::shared_ptr<camera> camera);
+			void setCamera(rynx::observer_ptr<camera> camera);
 			void setDefaultFont(const Font& font) { m_pTextRenderer->setDefaultFont(font); }
 			const Font& getDefaultFont() const { return m_pTextRenderer->getDefaultFont(); }
 

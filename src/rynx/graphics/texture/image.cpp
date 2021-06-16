@@ -50,7 +50,7 @@ void Image::rgb_to_rgba() {
 		};
 		
 		color* color_new = static_cast<color*>(malloc(sizeof(color) * sizeX * sizeY));
-		for (int i = 0; i < sizeX * sizeY; ++i) {
+		for (size_t i = 0; i < sizeX * sizeY; ++i) {
 			color_new[i].a = 255;
 			color_new[i].r = data[i * 3 + 0];
 			color_new[i].g = data[i * 3 + 1];
