@@ -6,8 +6,6 @@
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/application/application.hpp>
 
-#include <rynx/application/visualisation/default_graphics_passes.hpp>
-
 #include <rynx/application/visualisation/lights/omnilights_effect.hpp>
 #include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
 #include <rynx/application/visualisation/lights/ambient_light_effect.hpp>
@@ -25,11 +23,15 @@
 #include <memory>
 
 rynx::application::renderer::renderer(
-	rynx::application::Application& application,
+	std::shared_ptr<rynx::graphics::GPUTextures> textures,
+	std::shared_ptr<rynx::graphics::shaders> shaders,
+	rynx::graphics::renderer& renderer,
 	rynx::observer_ptr<rynx::camera> camera)
-	: m_application(application), camera(camera)
+	: gpu_textures(textures), m_rynx_renderer(renderer), camera(camera)
 {
-	shader_copy_color = application.shaders()->load_shader(
+	rynx::graphics::screenspace_draws(); // initialize gpu buffers for screenspace ops.
+
+	shader_copy_color = shaders->load_shader(
 		"fbo_color_to_bb",
 		"../shaders/screenspace.vs.glsl",
 		"../shaders/screenspace_color_passthrough.fs.glsl"
@@ -38,9 +40,9 @@ rynx::application::renderer::renderer(
 	shader_copy_color->activate();
 	shader_copy_color->uniform("tex_color", 0);
 
-	auto omnilights_handler = std::make_unique<rynx::application::visualisation::omnilights_effect>(application.shaders());
-	auto directed_lights_handler = std::make_unique<rynx::application::visualisation::directed_lights_effect>(application.shaders());
-	auto ambient_lights_handler = std::make_unique<rynx::application::visualisation::ambient_light_effect>(application.shaders());
+	auto omnilights_handler = std::make_unique<rynx::application::visualisation::omnilights_effect>(shaders);
+	auto directed_lights_handler = std::make_unique<rynx::application::visualisation::directed_lights_effect>(shaders);
+	auto ambient_lights_handler = std::make_unique<rynx::application::visualisation::ambient_light_effect>(shaders);
 
 	m_ambients = ambient_lights_handler.get();
 
@@ -54,7 +56,6 @@ rynx::application::renderer::renderer(
 	{
 		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
 
-		auto& renderer = application.renderer();
 		rynx::graphics::mesh_id tube_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeBox(1.0f));
 		auto* tube_mesh = renderer.meshes()->get(tube_mesh_id);
 		tube_mesh->scale(sqrt(2.0f));
@@ -79,24 +80,15 @@ rynx::application::renderer::renderer(
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
 		
-		rynx::graphics::mesh_id circle_mesh_id = application.renderer().meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
+		rynx::graphics::mesh_id circle_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
 		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(
 			renderer.meshes()->get(circle_mesh_id),
 			&renderer
 		));
 	}
 
-	gpu_textures = application.textures();
-
 	current_internal_resolution_geometry = { 1.0f, 1.0f };
 	current_internal_resolution_lighting = { 1.0f, 1.0f };
-
-	application.on_resize([this](size_t width, size_t height) {
-		on_resolution_change(width, height);
-	});
-
-	auto [width, height] = application.current_window_size();
-	on_resolution_change(width, height);
 }
 
 void rynx::application::renderer::set_geometry_resolution(float percent_x, float percent_y) {
@@ -129,10 +121,10 @@ void rynx::application::renderer::on_resolution_change(size_t new_size_x, size_t
 void rynx::application::renderer::execute() {
 	{
 		rynx_profile("Main", "draw");
-		m_application.renderer().setDepthTest(false);
+		m_rynx_renderer.setDepthTest(false);
 
-		m_application.renderer().setCamera(camera);
-		m_application.renderer().cameraToGPU();
+		m_rynx_renderer.setCamera(camera);
+		m_rynx_renderer.cameraToGPU();
 
 		fbo_world_geometry->bind_as_output();
 		fbo_world_geometry->clear();
@@ -153,7 +145,6 @@ void rynx::application::renderer::execute() {
 	}
 
 	{
-		m_application.set_gl_viewport_to_window_dimensions();
 		shader_copy_color->activate();
 		fbo_lights->bind_as_input();
 		rynx::graphics::framebuffer::bind_backbuffer();
@@ -190,7 +181,7 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 
 			std::vector<unhandled_entity_tex> found;
 			ecs.query().notIn<rynx::graphics::texture_id>().for_each([this, &found](rynx::ecs::id id, rynx::components::texture tex) {
-				found.emplace_back(id, m_application.textures()->findTextureByName(tex.textureName));
+				found.emplace_back(id, gpu_textures->findTextureByName(tex.textureName));
 			});
 			for (auto&& missingEntityTex : found) {
 				ecs[missingEntityTex.entity_id].add(rynx::graphics::texture_id(missingEntityTex.tex_id));

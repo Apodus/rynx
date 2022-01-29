@@ -12,6 +12,8 @@ namespace rynx {
 	class camera;
 	namespace graphics {
 		class shader;
+		class shaders;
+		class renderer;
 	}
 	
 	namespace application {
@@ -19,7 +21,12 @@ namespace rynx {
 
 		class renderer : public rynx::application::igraphics_step {
 		public:
-			renderer(rynx::application::Application& application, rynx::observer_ptr<camera> camera);
+			renderer(
+				std::shared_ptr<rynx::graphics::GPUTextures> textures,
+				std::shared_ptr<rynx::graphics::shaders> shaders,
+				rynx::graphics::renderer& renderer,
+				rynx::observer_ptr<camera> camera);
+
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
@@ -51,10 +58,10 @@ namespace rynx {
 			std::pair<float, float> current_internal_resolution_lighting;
 
 			igraphics_step* m_ambients = nullptr;
+			rynx::graphics::renderer& m_rynx_renderer;
 
 			std::shared_ptr<rynx::binary_config::id> m_debug_draw_config;
 
-			rynx::application::Application& m_application;
 			rynx::observer_ptr<camera> camera;
 		};
 	}
