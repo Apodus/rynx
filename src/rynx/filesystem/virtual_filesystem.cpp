@@ -3,6 +3,7 @@
 #include <rynx/filesystem/filetree/memfile_directory_node.hpp>
 #include <rynx/filesystem/filetree/native_directory_node.hpp>
 #include <rynx/filesystem/filetree/native_file_node.hpp>
+#include <rynx/filesystem/filetree/memory_file_node.hpp>
 
 #include <rynx/system/assert.hpp>
 #include <functional>

@@ -58,48 +58,5 @@ namespace rynx::filesystem {
 			std::weak_ptr<node> m_parent;
 			std::unordered_map<std::string, std::shared_ptr<node>> m_children;
 		};
-
-		class memoryfile_node : public node {
-		public:
-			memoryfile_node(const std::string& name) : node(name) {}
-			memoryfile_node(const std::string& name, rynx::filesystem::memory_file file) : node(name) {
-				m_file = std::move(file);
-			}
-
-			virtual bool file_exists(const std::string& path) const override {
-				return path.empty();
-			}
-
-			virtual std::shared_ptr<rynx::filesystem::iwrite_file> open_write(const std::string& path, filesystem::iwrite_file::mode mode) override {
-				if (path == "")
-					return std::make_shared<memoryfile_write>(m_file, mode);
-				return {};
-			}
-
-			virtual std::shared_ptr<rynx::filesystem::iread_file> open_read(const std::string& path) override {
-				if (path.empty())
-					return std::make_shared<rynx::filesystem::memoryfile_read>(m_file);
-				return {};
-			}
-
-			virtual bool remove(const std::string& path) override {
-				// TODO:
-				if (path.empty()) {
-
-				}
-				return false;
-			}
-
-			virtual std::vector<std::string> enumerate_content(
-				const std::string& path,
-				rynx::filesystem::recursive,
-				rynx::filesystem::filetree::detail::enumerate_flags flags) override {
-				if (path.empty() && flags.files())
-					return { name() };
-				return {};
-			}
-		private:
-			rynx::filesystem::memory_file m_file;
-		};
 	}
 }
