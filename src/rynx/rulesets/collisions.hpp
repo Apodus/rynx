@@ -10,6 +10,7 @@ namespace rynx {
 			virtual ~physics_2d() {}
 			virtual void clear(rynx::scheduler::context&) override;
 			virtual void onFrameProcess(rynx::scheduler::context& context, float dt) override;
+			virtual void on_entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) override;
 		};
 	}
 }

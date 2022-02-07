@@ -29,7 +29,100 @@
 
 
 
+#include <rynx/filesystem/virtual_filesystem.hpp>
+
 int main(int /* argc */, char** /* argv */) {
+
+	rynx::filesystem::vfs fs;
+	
+	fs.mount().memory_directory("/mem/");
+	fs.mount().native_directory("./", "/wd/");
+	// fs.mount().native_directory("./folder/", "/wd/");
+
+	{
+		rynx::unordered_map<std::string, std::vector<std::string>> test_data;
+		test_data["123"].emplace_back("456");
+		test_data["abc"].emplace_back("def");
+
+		auto file = fs.open_write("/mem/test.lol");
+		fs.open_write("/mem/fol/der/test.lol");
+		rynx::serialize(test_data, *file);
+	}
+
+	{
+		auto file = fs.open_read("/mem/test.lol");
+		auto recovered = rynx::deserialize<rynx::unordered_map<std::string, std::vector<std::string>>>(*file);
+		for (auto&& entry : recovered) {
+			std::cout << entry.first << ": " << entry.second.front() << std::endl;
+		}
+	}
+
+	{
+		auto file = fs.open_write("/wd/test.lol");
+		file->write(3);
+		file->write(4);
+	}
+
+	{
+		auto file = fs.open_read("/wd/test.lol");
+		std::cout << file->read<int32_t>() << std::endl;
+		std::cout << file->read<int32_t>() << std::endl;
+	}
+
+	fs.mount().native_file("./test.lol", "/wd/hehe.lol");
+
+	{
+		auto file = fs.open_read("/wd/hehe.lol");
+		std::cout << file->read<int32_t>() << std::endl;
+		std::cout << file->read<int32_t>() << std::endl;
+	}
+
+	std::cout << std::endl << "enumerating /" << std::endl;
+	for (auto&& file : fs.enumerate_files("/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	std::cout << std::endl << "enumerating /" << std::endl;
+	for (auto&& file : fs.enumerate_directories("/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	std::cout << std::endl << "enumerating /" << std::endl;
+	for (auto&& file : fs.enumerate("/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+	
+	std::cout << std::endl << "enumerating /wd/" << std::endl;
+	for (auto&& file : fs.enumerate_files("/wd", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+	
+	std::cout << std::endl << "enumerating /wd/folder/" << std::endl;
+	for (auto&& file : fs.enumerate_files("/wd/folder/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	std::cout << std::endl << "enumerating /mem/" << std::endl;
+	for (auto&& file : fs.enumerate_files("/mem/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	std::cout << std::endl << "enumerating /mem/fol/" << std::endl;
+	for (auto&& file : fs.enumerate_files("/mem/fol/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	fs.remove("/wd/hehe.lol");
+	fs.remove("/wd/test.lol");
+	fs.remove("/mem/test.lol");
+	
+	std::cout << std::endl << "enumerating /" << std::endl;
+	for (auto&& file : fs.enumerate("/", rynx::filesystem::recursive::yes)) {
+		std::cout << file << std::endl;
+	}
+
+	return 0;
+
 
 	// uses this thread services of rynx, for example in cpu performance profiling.
 	rynx::this_thread::rynx_thread_raii rynx_thread_services_required_token;
@@ -84,12 +177,6 @@ int main(int /* argc */, char** /* argv */) {
 	auto camera_orientation_key = gameInput.generateAndBindGameKey(gameInput.getMouseKeyPhysical(1), "camera_orientation");
 
 	rynx::timer dt_timer;
-	
-	rynx::numeric_property<float> logic_time;
-	rynx::numeric_property<float> swap_time;
-	rynx::numeric_property<float> total_time;
-
-
 	float dt = 1.0f / 120.0f;
 	
 	/*
@@ -162,31 +249,7 @@ int main(int /* argc */, char** /* argv */) {
 		
 		{
 			rynx_profile("Main", "Clean up dead entitites");
-			
-			{
-				std::vector<rynx::ecs::id> ids;
-				ecs.query().for_each([&ids, dt](rynx::ecs::id id, rynx::components::lifetime& time) {
-					time.value -= dt;
-					if (time.value <= 0) {
-						ids.emplace_back(id);
-					}
-				});
-				for(auto&& id : ids)
-					ecs.attachToEntity(id, rynx::components::dead());
-			}
-
 			auto ids_dead = ecs.query().in<rynx::components::dead>().ids();
-			
-			for (auto id : ids_dead) {
-				if (ecs[id].has<rynx::components::collisions>()) {
-					auto collisions = ecs[id].get<rynx::components::collisions>();
-					application
-						.simulation_context()
-						->get_resource<rynx::collision_detection>()
-						.erase(ecs, id.value, collisions.category);
-				}
-			}
-			
 			base_simulation.m_logic.entities_erased(*base_simulation.m_context, ids_dead);
 			ecs.erase(ids_dead);
 		}

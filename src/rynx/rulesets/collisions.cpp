@@ -621,3 +621,13 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	context.add_task("collisions resolve", collision_resolution_first_stage).depends_on(findCollisionsTask);
 }
 
+void rynx::ruleset::physics_2d::on_entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids) {
+	auto& ecs = context.get_resource<rynx::ecs>();
+	auto& collision_detection = context.get_resource<rynx::collision_detection>();
+	for (auto id : ids) {
+		if (ecs[id].has<rynx::components::collisions>()) {
+			auto collisions = ecs[id].get<rynx::components::collisions>();
+			collision_detection.erase(ecs, id.value, collisions.category);
+		}
+	}
+}
