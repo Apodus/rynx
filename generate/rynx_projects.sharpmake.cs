@@ -181,6 +181,22 @@ class Tech : RynxProject
     {
         conf.AddPublicDependency<RynxSystem>(target);
         conf.AddPublicDependency<Math>(target);
+		conf.AddPublicDependency<FileSystem>(target);
+    }
+}
+
+[Generate]
+class FileSystem : RynxProject
+{
+    public FileSystem()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\filesystem\";
+        AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
+    }
+
+    [Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
     }
 }
 

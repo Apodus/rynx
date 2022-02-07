@@ -34,7 +34,7 @@ class RynxCodegen : Solution
     {
         AddTargets(new Target(
             Platform.win64,
-            DevEnv.vs2019,
+            DevEnv.vs2022,
             Optimization.Debug | Optimization.Release));
     }
 
