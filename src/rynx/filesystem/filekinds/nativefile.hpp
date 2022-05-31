@@ -14,7 +14,6 @@ namespace rynx {
 			size_t m_offset = 0;
 			size_t m_size = 0;
 			
-			std::shared_ptr<uint8_t> m_blob;
 			std::ifstream m_nativeFile;
 
 			void open(const std::string& path);

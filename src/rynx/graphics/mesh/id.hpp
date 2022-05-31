@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 #include <cstdint>
 #include <functional> // hash defined here
 

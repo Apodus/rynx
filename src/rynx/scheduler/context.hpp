@@ -10,10 +10,11 @@
 #include <rynx/tech/parallel/queue.hpp>
 #include <rynx/tech/binary_config.hpp>
 
-#include <mutex>
 #include <atomic>
-#include <shared_mutex>
-#include <iostream>
+
+namespace std {
+	class mutex;
+}
 
 namespace rynx {
 
@@ -98,7 +99,7 @@ namespace rynx {
 
 			rynx::object_storage m_resources;
 			
-			std::mutex m_taskMutex;
+			std::mutex* m_taskMutex = nullptr;
 			task_scheduler* m_scheduler = nullptr;
 
 			rynx::binary_config m_execution_state;
@@ -137,6 +138,7 @@ namespace rynx {
 			[[nodiscard]] bool resourcesAvailableFor(const task& t) const;
 
 			context(context_id id, task_scheduler* scheduler);
+			~context();
 
 			[[nodiscard]] bool isFinished() const {
 				// return m_tasks.empty() & m_tasks_parallel_for.empty();

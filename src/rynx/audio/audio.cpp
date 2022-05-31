@@ -12,9 +12,6 @@
 #include <array>
 #include <vector>
 
-#include <thread>
-#include <chrono>
-
 #pragma optimize("s", on)
 #pragma optimize("g", on)
 

@@ -55,7 +55,7 @@ TEST_CASE("tasks and barriers", "scheduler")
 {
 	rynx::this_thread::rynx_thread_raii obj;
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 
 	std::atomic<int> count_a = 0;
 	auto task1 = context->add_task("First", [&]() { REQUIRE(count_a.fetch_add(1) == 0); });
@@ -80,7 +80,7 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	
 	rynx::ecs ecs;
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 	context->set_resource(&ecs);
 
 	std::atomic<int> tasks_started = 0;
@@ -159,7 +159,7 @@ TEST_CASE("task extensions respected", "scheduler")
 	};
 
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 	
 	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
 
@@ -190,7 +190,7 @@ TEST_CASE("task extensions respected nested", "scheduler")
 	};
 
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 
 	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
 
@@ -229,7 +229,7 @@ TEST_CASE("task parallel for dependencies", "scheduler")
 	std::vector<int> data = {1, 2, 3, 4};
 	
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 	context->add_task("test", [&data, test_state](rynx::scheduler::task& task_context) {
 		task_context.parallel().for_each(0, data.size()).deferred_work().for_each([&data, test_state](int64_t index) mutable {
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -254,7 +254,7 @@ TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")
 	auto test_state = std::make_shared<std::atomic<int>>(0);
 
 	rynx::scheduler::task_scheduler scheduler;
-	auto* context = scheduler.make_context();
+	auto context = scheduler.make_context();
 	
 	{
 		auto actual_work_task = context->add_task("test", [&ecs, test_state](rynx::scheduler::task& task_context) {

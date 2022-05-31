@@ -36,7 +36,6 @@ namespace rynx {
 			rynx::unordered_map<scheduler::context::context_id, std::unique_ptr<scheduler::context>> m_contexts;
 			std::array<rynx::scheduler::task_thread*, numThreads> m_threads;
 			semaphore m_waitForComplete;
-			std::mutex m_task_starting_mutex;
 			
 			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
 			uint64_t m_activeFrame = 0;
@@ -79,8 +78,6 @@ namespace rynx {
 				
 				// now all workers are stopped, and we can update our type indices.
 				for (auto& ctx : m_contexts) {
-					ctx.second->m_typeIndex.sync();
-					ctx.second->m_resources.sync();
 					auto ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
 					if (ecs_resource) {
 						// ecs_resource->sync_type_index();

@@ -5,7 +5,7 @@ typedef int GLint;
 typedef unsigned GLuint;
 
 #include <rynx/graphics/mesh/id.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
 

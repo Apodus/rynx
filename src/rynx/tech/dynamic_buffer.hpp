@@ -1,16 +1,56 @@
 #pragma once
 
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 #include <rynx/system/assert.hpp>
 #include <type_traits>
-#include <memory>
 #include <cstring>
 #include <vector>
 
 namespace rynx {
+
 	template<typename T>
 	class dynamic_buffer {
 		static_assert(std::is_trivially_copyable<T>::value && std::is_standard_layout<T>::value, "dynamic buffer can only be used with pods");
+
+		class buffer_ptr {
+		public:
+			buffer_ptr() = default;
+			buffer_ptr(T* t) : t(t) {}
+			buffer_ptr(buffer_ptr&& other) : t(other.t) { other.t = nullptr; }
+			buffer_ptr& operator = (buffer_ptr&& other) {
+				t = other.t;
+				other.t = nullptr;
+				return *this;
+			}
+
+			buffer_ptr(const buffer_ptr& other) = delete;
+			buffer_ptr& operator = (const buffer_ptr& other) = delete;
+
+			~buffer_ptr() {
+				if (t) {
+					delete[] t;
+				}
+			}
+
+			buffer_ptr& reset(T* nt) {
+				if (t) {
+					delete[] t;
+				}
+				t = nt;
+				return *this;
+			}
+
+			T* get() const {
+				return t;
+			}
+
+			operator bool() const {
+				return t != nullptr;
+			}
+
+		private:
+			T* t = nullptr;
+		};
 
 	public:
 		dynamic_buffer() {}
@@ -145,7 +185,7 @@ namespace rynx {
 		size_t size() const { return m_size; }
 
 	private:
-		std::unique_ptr<T[]> m_data;
+		buffer_ptr m_data;
 		size_t m_size = 0;
 
 		friend struct rynx::serialization::Serialize<rynx::dynamic_buffer<T>>;

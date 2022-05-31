@@ -12,6 +12,41 @@ namespace rynx {
 	}
 }
 
+// TODO: Move dynamic bitset tests to separate cpp
+
+TEST_CASE("dynamic_bitset nextOne", "nextOne")
+{
+	rynx::dynamic_bitset bitset;
+	bitset.set(4);
+	bitset.set(17);
+	bitset.set(120);
+
+	REQUIRE(bitset.nextOne() == 4);
+	REQUIRE(bitset.nextOne(5) == 17);
+	REQUIRE(bitset.nextOne(18) == 120);
+}
+
+TEST_CASE("dynamic_bitset insert/test", "verify insert/remove")
+{
+	{
+		// verify inserted elements are found, next element is not.
+		rynx::dynamic_bitset map;
+		for (int i = 0; i < 10000; ++i) {
+			map.set(i);
+			REQUIRE(map.test(i));
+			REQUIRE(!map.test(i + 1));
+		}
+
+		// verify erased elements can't be found. next can.
+		for (int i = 0; i < 10000; i += 2) {
+			REQUIRE(map.test(i));
+			map.reset(i);
+			REQUIRE(!map.test(i));
+			REQUIRE(map.test(i + 1));
+		}
+	}
+}
+
 TEST_CASE("unordered_map", "verify insert/remove")
 {
 	{
@@ -50,30 +85,6 @@ TEST_CASE("unordered_map", "verify insert/remove")
 	}
 }
 
-
-// TODO: Move to separate cpp
-TEST_CASE("dynamic_bitset", "verify insert/remove")
-{
-	{
-		// verify inserted elements are found, next element is not.
-		rynx::dynamic_bitset map;
-		for (int i = 0; i < 10000; ++i) {
-			map.set(i);
-			REQUIRE(map.test(i));
-			REQUIRE(!map.test(i + 1));
-		}
-
-		// verify erased elements can't be found. next can.
-		for (int i = 0; i < 10000; i += 2) {
-			REQUIRE(map.test(i));
-			map.reset(i);
-			REQUIRE(!map.test(i));
-			REQUIRE(map.test(i + 1));
-		}
-	}
-}
-
-/*
 TEST_CASE("unordered_map benchmark", "std vs rynx") {
 
 	auto bench_insert = [](auto& map) {
@@ -155,4 +166,3 @@ TEST_CASE("unordered_map benchmark", "std vs rynx") {
 		};
 	}
 }
-*/

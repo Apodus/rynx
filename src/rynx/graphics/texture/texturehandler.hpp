@@ -1,11 +1,11 @@
 
 #pragma once
 
+#include <rynx/tech/serialization.hpp>
 #include <rynx/graphics/texture/image.hpp>
 #include <rynx/graphics/texture/id.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/math/vector.hpp>
-
 
 #include <string>
 #include <vector>

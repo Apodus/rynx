@@ -35,10 +35,10 @@ namespace rynx {
 		inline uint32_t prev_of_item(size_t slot) const { return m_info[slot + 2 * static_cast<uint64_t>(m_capacity)]; }
 		inline uint32_t hash_of_item(size_t slot) const { return m_info[slot + 3 * static_cast<uint64_t>(m_capacity)]; }
 
+		inline void update_next_of_slot(size_t slot, uint32_t value) { m_info[slot + 0 * static_cast<uint64_t>(m_capacity)] = value; }
 		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[slot + 1 * static_cast<uint64_t>(m_capacity)] = value; }
 		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[slot + 2 * static_cast<uint64_t>(m_capacity)] = value; }
 		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[slot + 3 * static_cast<uint64_t>(m_capacity)] = value; }
-		inline void update_next_of_slot(size_t slot, uint32_t value) { m_info[slot + 0 * static_cast<uint64_t>(m_capacity)] = value; }
 #endif
 
 	public:
@@ -80,7 +80,7 @@ namespace rynx {
 			std::pair<T, U>& operator *() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return *reinterpret_cast<std::pair<T, U>*>(m_pData + m_index); }
 			std::pair<T, U>* operator ->() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return reinterpret_cast<std::pair<T, U>*>(m_pData + m_index); }
 
-			bool operator == (const iterator& other) const { return (m_index == other.m_index) && (m_pPresence == other.m_pPresence); }
+			bool operator == (const iterator& other) const { return (m_index == other.m_index) & (m_pPresence == other.m_pPresence); }
 			bool operator != (const iterator& other) const { return !((*this) == other); }
 
 		private:
@@ -116,7 +116,7 @@ namespace rynx {
 			const value_type& operator *() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return *reinterpret_cast<const value_type*>(m_pData + m_index); }
 			const value_type* operator ->() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return reinterpret_cast<const value_type*>(m_pData + m_index); }
 
-			bool operator == (const const_iterator& other) const { return (m_index == other.m_index) && (m_pPresence == other.m_pPresence); }
+			bool operator == (const const_iterator& other) const { return (m_index == other.m_index) & (m_pPresence == other.m_pPresence); }
 			bool operator != (const const_iterator& other) const { return !((*this) == other); }
 
 		private:
@@ -568,7 +568,7 @@ namespace rynx {
 }
 
 
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 
 namespace rynx {
 	namespace serialization {

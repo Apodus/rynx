@@ -13,7 +13,7 @@ uint32_t rynx::math::rand(int32_t x) {
 
 // xorshift64 - feed the result as the next parameter to get next random number.
 //              must start with nonzero value.
-inline uint64_t rynx::math::rand(uint64_t& state) {
+uint64_t rynx::math::rand(uint64_t& state) {
 	uint64_t x = state;
 	x ^= x >> 12; // a
 	x ^= x << 25; // b

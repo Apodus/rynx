@@ -5,6 +5,8 @@
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/worker_thread.hpp>
 
+#include <iostream>
+
 // TODO: it would probably be better to just find work, and return the task. don't mix threads and worker state to this function. let them do that internally.
 bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex) {
 	rynx_profile("Profiler", "Find work");

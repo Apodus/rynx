@@ -3,6 +3,7 @@
 #include <rynx/graphics/mesh/mesh.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/tech/filesystem/filesystem.hpp>
+#include <rynx/tech/serialization.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <chrono>
 #include <filesystem>

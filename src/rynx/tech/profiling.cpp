@@ -8,6 +8,7 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
+#include <chrono>
 
 namespace rynx {
 	namespace profiling {

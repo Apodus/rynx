@@ -4,6 +4,9 @@
 namespace rynx::filesystem {
 	nativefile_read::nativefile_read(const std::string& path) {
 		open(path);
+		auto beginPos = m_nativeFile.tellg();
+		m_nativeFile.seekg(0, std::ios::end);
+		m_size = m_nativeFile.tellg() - beginPos;
 	}
 
 	nativefile_read::~nativefile_read() {

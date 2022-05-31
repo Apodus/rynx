@@ -131,7 +131,6 @@ namespace rynx {
 		class vector_writer {
 		public:
 			vector_writer() {}
-			// vector_writer(std::vector<char> data) : m_data(std::move(data)) { m_head = m_data.size(); }
 			vector_writer(std::vector<char>&& data) : m_data(std::move(data)) { m_head = m_data.size(); }
 
 			void operator()(const void* src, size_t size) {

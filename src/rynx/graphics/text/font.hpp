@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/graphics/text/fontdata.hpp>
-
+#include <string_view>
 
 class Font {
 

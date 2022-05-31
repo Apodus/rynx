@@ -3,7 +3,7 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
 #include <rynx/tech/ecs/table.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 
 #include <algorithm>
 #include <functional>

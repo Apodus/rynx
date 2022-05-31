@@ -4,11 +4,18 @@
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/barrier.hpp>
 
+#include <mutex>
 #include <iostream>
 
 rynx::scheduler::context::context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler), m_tasks_parallel_for(rynx::scheduler::task_scheduler::numThreads+1){
 	m_resource_counters.resize(1024);
+	m_taskMutex = new std::mutex();
 }
+
+rynx::scheduler::context::~context() {
+	delete m_taskMutex;
+}
+
 
 rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");
@@ -73,11 +80,11 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 
 	do {
 		task_was_completed = false;
-		if (m_taskMutex.try_lock())
+		if (m_taskMutex->try_lock())
 		{
 			{
 				task t = try_get_protected_task();
-				m_taskMutex.unlock();
+				m_taskMutex->unlock();
 				if (t) {
 					return t;
 				}
@@ -100,9 +107,9 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 			}
 
 			{
-				m_taskMutex.lock();
+				m_taskMutex->lock();
 				task t = try_get_protected_task();
-				m_taskMutex.unlock();
+				m_taskMutex->unlock();
 				if (t) {
 					return t;
 				}
@@ -139,13 +146,13 @@ void rynx::scheduler::context::schedule_task(task task) {
 	}
 	else
 	{
-		std::scoped_lock lock(m_taskMutex);
+		std::scoped_lock lock(*m_taskMutex);
 		m_tasks.emplace_back(std::move(task));
 	}
 }
 
 void rynx::scheduler::context::dump() {
-	std::lock_guard<std::mutex> lock(m_taskMutex);
+	std::lock_guard<std::mutex> lock(*m_taskMutex);
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
 	for (auto&& task : m_tasks) {
 		(void)task;

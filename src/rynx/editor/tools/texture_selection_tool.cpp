@@ -7,6 +7,8 @@
 #include <rynx/scheduler/context.hpp>
 #include <rynx/system/typeid.hpp>
 
+#include <iostream>
+
 rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::context& ctx)
 	: m_ecs(ctx.get_resource<rynx::ecs>())
 {

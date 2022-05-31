@@ -16,7 +16,7 @@ namespace rynx {
 
 		// xorshift64 - feed the result as the next parameter to get next random number.
 		//              must start with nonzero value.
-		inline uint64_t rand(uint64_t& state);
+		uint64_t rand(uint64_t& state);
 
 		struct rand64 {
 			rand64(uint64_t seed = 0x75892735A374E381);
@@ -29,6 +29,11 @@ namespace rynx {
 			int64_t operator()(int64_t to);
 			uint64_t operator()(uint64_t from, uint64_t to);
 			uint64_t operator()(uint64_t to);
+
+			template<typename T> T generate() {
+				m_state = math::rand(m_state);
+				return T(m_state);
+			}
 		};
 
 		// TODO: where does this belong.

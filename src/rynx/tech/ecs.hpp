@@ -8,7 +8,7 @@
 
 #include <rynx/system/assert.hpp>
 
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 #include <rynx/tech/reflection.hpp>
 #include <rynx/tech/ecs/table.hpp>
 
@@ -48,6 +48,7 @@ namespace rynx {
 			Mutable,
 			Const
 		};
+
 
 		// TODO: Use some actual hash that works better.
 		struct bitset_hash {
@@ -712,7 +713,7 @@ namespace rynx {
 				}
 			}
 
-			template<typename F> void for_each_partial(range r, F&& op) {
+			template<typename F> void for_each_partial(rynx::ecs::range r, F&& op) {
 				constexpr bool is_id_query = std::is_same_v<FArg, rynx::ecs::id>;
 				if constexpr (!is_id_query) {
 					this->template unpack_types<FArg>();
@@ -732,7 +733,7 @@ namespace rynx {
 							continue;
 						}
 
-						range category_range;
+						rynx::ecs::range category_range;
 
 						if (r.begin < current_index) {
 							category_range.begin = 0;
@@ -801,7 +802,7 @@ namespace rynx {
 			}
 
 			template<bool isIdQuery, typename F, typename... Ts>
-			static void call_user_op_range(range iteration_range, F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
+			static void call_user_op_range(rynx::ecs::range iteration_range, F&& op, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				[[maybe_unused]] auto ids_size = ids.size();
 				((data_ptrs += iteration_range.begin), ...);
 				if constexpr (isIdQuery) {
@@ -1068,7 +1069,7 @@ namespace rynx {
 			}
 
 			template<typename F>
-			range for_each_partial(range r, F&& op) {
+			rynx::ecs::range for_each_partial(rynx::ecs::range r, F&& op) {
 				rynx_assert(!m_consumed, "same query object cannot be executed twice.");
 				m_consumed = true;
 				entity_iterator<accessType, category_source, decltype(&F::operator())> it(m_ecs);
@@ -1267,6 +1268,8 @@ namespace rynx {
 			return out;
 		}
 
+		// a range of entities with consecutive id values.
+		// can be guaranteed for example when deserializing.
 		struct entity_range_t {
 			struct iterator {
 				rynx::ecs::id current;
@@ -1279,6 +1282,7 @@ namespace rynx {
 
 			iterator begin() { return iterator{ m_begin }; }
 			iterator end() { return iterator{ m_end }; }
+			size_t size() const { return m_end.value - m_begin.value; }
 
 			rynx::ecs::id m_begin;
 			rynx::ecs::id m_end;

@@ -7,8 +7,6 @@
 #include <vector>
 #include <type_traits>
 
-#include <iostream>
-
 namespace rynx {
 
 	// object storage does not own the data it manages. user is responsible for life time management.
@@ -19,8 +17,6 @@ namespace rynx {
 		// set object for type T. if one exists already, replace the pointer value and return the old value
 		template<typename T>
 		rynx::observer_ptr<T> set_and_discard(rynx::observer_ptr<T> t) {
-
-			std::cout << "setting from observer: " << typeid(T).name() << std::endl;
 			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
 			ensure_size(id);
 			rynx::observer_ptr<T> old_value = m_stateObjects[id].static_pointer_cast<T>();
@@ -34,8 +30,6 @@ namespace rynx {
 
 		template<typename T>
 		std::unique_ptr<T> set_and_discard(std::unique_ptr<T> t) {
-			std::cout << "setting from unique: " << typeid(T).name() << std::endl;
-
 			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
 			ensure_size(id);
 
@@ -65,11 +59,6 @@ namespace rynx {
 
 		template<typename T> const rynx::observer_ptr<T> get() const { return const_cast<object_storage*>(this)->get<T>(); }
 		template<typename T> const rynx::observer_ptr<T> try_get() const { return const_cast<object_storage*>(this)->try_get<T>(); }
-
-		// not thread safe. should be called once per frame. or "once in a while".
-		void sync() {
-			m_typeIndex.sync();
-		}
 
 	private:
 		void ensure_size(size_t s) {

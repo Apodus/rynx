@@ -7,12 +7,11 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/math/math.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 
 #include <cinttypes>
 #include <cmath>
 #include <limits>
-#include <string>
 
 #pragma warning (disable : 4201) // language extension used, anonymous structs
 #define RYNX_VECTOR_SIMD 0
@@ -64,9 +63,11 @@ namespace rynx {
 		T length() const { return math::sqrt_approx(length_squared()); }
 		T length_squared() const { return dot(*this); }
 
+		/*
 		operator std::string() const {
 			return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
 		}
+		*/
 
 		T x;
 		T y;

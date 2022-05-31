@@ -11,7 +11,6 @@
 #include <rynx/math/matrix.hpp>
 
 #include <memory>
-#include <chrono>
 
 namespace rynx {
 	class camera;

@@ -2,7 +2,6 @@
 #pragma once
 
 #include <string>
-#include <chrono>
 
 namespace rynx {
 	namespace profiling {

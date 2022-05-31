@@ -5,7 +5,7 @@
 #include <rynx/math/geometry/math.hpp>
 
 #include <rynx/tech/dynamic_buffer.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 
 #include <vector>
 
