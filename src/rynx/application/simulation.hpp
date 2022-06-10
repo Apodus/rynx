@@ -3,29 +3,23 @@
 
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/application/logic.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/tech/ecs/scenes.hpp>
 
 namespace rynx {
+	namespace filesystem {
+		class vfs;
+	}
 	namespace application {
 		struct simulation {
 		public:
-			simulation(rynx::scheduler::task_scheduler& scheduler) : m_context(scheduler.make_context()) {
-				m_ecs = std::make_shared<rynx::ecs>();
-				m_context->set_resource(m_ecs);
-			}
+			simulation(rynx::scheduler::task_scheduler& scheduler);
 
-			void generate_tasks(float dt) {
-				m_logic.generate_tasks(*m_context, dt);
-			}
+			void generate_tasks(float dt);
+			void clear();
 
 			template<typename T>
 			void set_resource(T* t) {
 				m_context->set_resource(t);
-			}
-
-			void clear() {
-				m_ecs->clear();
-				m_logic.clear(*m_context);
 			}
 
 			template<typename T>
@@ -69,7 +63,9 @@ namespace rynx {
 				m_logic.add_ruleset(std::move(t));
 			}
 
+			rynx::scenes m_scenes;
 			std::shared_ptr<rynx::ecs> m_ecs;
+			rynx::opaque_unique_ptr<rynx::filesystem::vfs> m_vfs;
 			rynx::observer_ptr<rynx::scheduler::context> m_context;
 			rynx::application::logic m_logic;
 		};

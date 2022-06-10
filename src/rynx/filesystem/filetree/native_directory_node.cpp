@@ -50,9 +50,6 @@ std::vector<std::string> rynx::filesystem::filetree::native_directory_node::enum
 			return rynx::filesystem::native::enumerate_files(m_native_fs_path + path, recurse);
 		return rynx::filesystem::native::enumerate_directories(m_native_fs_path + path, recurse);
 	}();
-
-	if (path.empty() && flags.directories())
-		res.emplace_back();
 	
 	size_t erase_count = m_native_fs_path.size();
 	if (m_native_fs_path.starts_with("./"))
@@ -68,5 +65,8 @@ std::vector<std::string> rynx::filesystem::filetree::native_directory_node::enum
 			fileName.replace(0, total_erase_count, "");
 		}
 	);
+
+	if(flags.directories() && rynx::filesystem::native::directory_exists(m_native_fs_path + path))
+		res.emplace_back("/");
 	return res;
 }

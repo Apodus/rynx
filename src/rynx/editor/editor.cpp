@@ -6,6 +6,7 @@
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 #include <rynx/editor/tools/selection_tool.hpp>
 #include <rynx/graphics/camera/camera.hpp>
+#include <rynx/tech/ecs/scenes.hpp>
 
 #include <filesystem>
 #include <sstream>
@@ -592,34 +593,44 @@ void rynx::editor_rules::display_list_dialog(
 	});
 }
 
-void rynx::editor_rules::save_scene_to_path(std::string path)
-{
+void rynx::editor_rules::save_scene_to_path(std::string path) {
 	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
 	auto& ecs = m_context->get_resource<rynx::ecs>();
+	auto& scenes = m_context->get_resource<rynx::scenes>();
+	auto& vfs = m_context->get_resource<rynx::filesystem::vfs>();
 
 	logmsg("saving active scene to '%s'", path.c_str());
 	auto vector_writer = ecs.serialize(m_reflections);
 	rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
 	rynx::serialize(system_writer.data(), vector_writer);
-	rynx::filesystem::write_file(path, vector_writer.data());
+	
+	auto pos = path.find_last_of('/');
+	std::string scene_name = ((pos != std::string::npos) ? path.substr(pos + 1) : path);
+	scenes.save_scene(vfs, vector_writer, path, scene_name, path);
 	meshes.save_all_meshes_to_disk("../meshes");
+	// rynx::filesystem::write_file(path, vector_writer.data());
 }
 
-void rynx::editor_rules::load_scene_from_path(std::string scene_path)
-{
+void rynx::editor_rules::load_scene_from_path(std::string scene_path) {
 	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
 	auto& ecs = m_context->get_resource<rynx::ecs>();
-	
+	auto& scenes = m_context->get_resource<rynx::scenes>();
+	auto& vfs = m_context->get_resource<rynx::filesystem::vfs>();
+
 	meshes.load_all_meshes_from_disk("../meshes");
+	
 	m_state.m_selected_ids.clear();
 	on_entity_selected(0);
-	rynx::serialization::vector_reader reader(rynx::filesystem::read_file(scene_path));
+	
+	// TODO: use scene id instead of path
+	rynx::serialization::vector_reader reader(scenes.get(vfs, scene_path));
+	
 	ecs.clear();
 	all_rulesets().clear(*m_context);
 
 	ecs.deserialize(m_reflections, reader);
-
 	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
+	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
 	all_rulesets().deserialize(*m_context, rulesets_reader);
 }
@@ -689,6 +700,9 @@ rynx::editor_rules::editor_rules(
 	this->frame_tex = textures.findTextureByName("frame");
 	this->knob_tex = textures.findTextureByName("frame");
 
+	rynx::observer_ptr<rynx::filesystem::vfs> vfs = ctx.get_resource_ptr<rynx::filesystem::vfs>();
+	rynx::observer_ptr<rynx::scenes> scenes = ctx.get_resource_ptr<rynx::scenes>();
+
 	// create editor menus
 	{
 		// create tools bar
@@ -738,13 +752,21 @@ rynx::editor_rules::editor_rules(
 		save_scene->velocity_position(menuVelocityFast);
 		save_scene->text().text("Save");
 		save_scene->align().top_left_inside();
-		save_scene->on_click([this]() {
+		save_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
-			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			auto fileSelectDialog =
+				std::make_shared<rynx::menu::FileSelector>(
+					*vfs.get(),
+					frame_tex,
+					rynx::vec3f(0.3f, 0.6f, 0.0f)
+				);
 			fileSelectDialog->configure().m_allowNewFile = true;
 			fileSelectDialog->configure().m_allowNewDir = true;
 			fileSelectDialog->file_type(".rynxscene");
-			fileSelectDialog->display("../scenes/",
+			fileSelectDialog->filepath_to_display_name([vfs, scenes](std::string path) {
+				return  scenes->filepath_to_info(path).name;
+			});
+			fileSelectDialog->display("/scenes/",
 				// on file selected
 				[this](std::string fileName) {
 					save_scene_to_path(fileName);
@@ -767,13 +789,16 @@ rynx::editor_rules::editor_rules(
 		load_scene->velocity_position(menuVelocityFast);
 		load_scene->text().text("Load");
 		load_scene->align().target(save_scene.get()).top_inside().right_outside().offset_x(0.1f);
-		load_scene->on_click([this]() {
+		load_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
-			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(*vfs, frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
 			fileSelectDialog->configure().m_allowNewFile = false;
 			fileSelectDialog->configure().m_allowNewDir = false;
 			fileSelectDialog->file_type(".rynxscene");
-			fileSelectDialog->display("../scenes/",
+			fileSelectDialog->filepath_to_display_name([vfs, scenes](std::string path) {
+				return  scenes->filepath_to_info(path).name;
+			});
+			fileSelectDialog->display("/scenes/",
 				// on file selected
 				[this](std::string fileName) {
 					this->m_state.m_selected_ids.clear();
@@ -911,10 +936,10 @@ rynx::editor_rules::editor_rules(
 					update_button_visual();
 
 					if (m_game_running_state.is_enabled()) {
-						save_scene_to_path("../scenes/_autosave.rynxscene");
+						save_scene_to_path("/scenes/_autosave.rynxscene");
 					}
 					else {
-						load_scene_from_path("../scenes/_autosave.rynxscene");
+						load_scene_from_path("/scenes/_autosave.rynxscene");
 					}
 				});
 

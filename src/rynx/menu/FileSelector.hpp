@@ -9,6 +9,10 @@
 namespace rynx {
 	class mapped_input;
 
+	namespace filesystem {
+		class vfs;
+	}
+
 	namespace menu {
 
 		class FileSelector : public Component {
@@ -16,10 +20,11 @@ namespace rynx {
 			
 		public:
 			FileSelector(
+				rynx::filesystem::vfs& vfs,
 				rynx::graphics::texture_id texture,
 				vec3<float> scale,
 				vec3<float> position = vec3<float>()
-			) : Component(scale, position)
+			) : Component(scale, position), m_vfs(vfs)
 			{
 				m_frame_tex_id = texture;
 			}
@@ -29,10 +34,14 @@ namespace rynx {
 				bool m_showDirs = true;
 				bool m_allowNewFile = false;
 				bool m_allowNewDir = false;
+				bool m_addFileExtensionToNewFiles = false;
 			};
 
 			Config& configure() { return m_config; }
 			void file_type(std::string type) { m_acceptedFileEnding = type; }
+			void filepath_to_display_name(std::function<std::string(std::string)> nameMapping) {
+				m_pathToName = nameMapping;
+			}
 
 			void display(
 				std::string path,
@@ -49,10 +58,12 @@ namespace rynx {
 			virtual void update(float dt) override;
 			
 			Config m_config;
+			rynx::filesystem::vfs& m_vfs;
 			std::string m_currentPath;
 			std::string m_acceptedFileEnding;
 			rynx::graphics::texture_id m_frame_tex_id;
 			std::vector<std::function<void()>> m_ops;
+			std::function<std::string(std::string)> m_pathToName;
 		};
 	}
 }

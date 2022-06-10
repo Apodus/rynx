@@ -7,14 +7,21 @@ namespace rynx::filesystem {
 		auto beginPos = m_nativeFile.tellg();
 		m_nativeFile.seekg(0, std::ios::end);
 		m_size = m_nativeFile.tellg() - beginPos;
+		seek_beg(0);
 	}
 
 	nativefile_read::~nativefile_read() {
 		close();
 	}
 
-	void nativefile_read::seek_beg(int64_t pos) { m_offset = pos; }
-	void nativefile_read::seek_cur(int64_t pos) { m_offset += pos; }
+	void nativefile_read::seek_beg(int64_t pos) {
+		m_offset = pos;
+		m_nativeFile.seekg(pos, std::ios::beg);
+	}
+	void nativefile_read::seek_cur(int64_t pos) {
+		m_offset += pos;
+		m_nativeFile.seekg(pos, std::ios::cur);
+	}
 	size_t nativefile_read::tell() const { return m_offset; }
 	size_t nativefile_read::size() const { return m_size; }
 

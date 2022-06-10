@@ -1,3 +1,6 @@
 [submodule "tools/sharpmake"]
 	path = tools/sharpmake
 	url = https://github.com/ubisoftinc/Sharpmake.git
+[submodule "external/jolt"]
+	path = external/jolt
+	url = https://github.com/jrouwe/JoltPhysics.git

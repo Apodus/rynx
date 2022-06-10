@@ -5,6 +5,9 @@
 
 namespace rynx {
 	template<typename T> using opaque_unique_ptr = std::unique_ptr<T, std::function<void(T*)>>;
+	template<typename T, typename...Args> opaque_unique_ptr<T> make_opaque_unique_ptr(Args&&... args) {
+		return rynx::opaque_unique_ptr<T>(new T(args...), [](T* t) { delete t; });
+	}
 
 	template<typename T>
 	class observer_ptr {

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <vector>
-#include <memory>
-
-#include <rynx/tech/ecs.hpp>
+#include <rynx/tech/ecs/id.hpp>
 #include <rynx/tech/binary_config.hpp>
 
+#include <vector>
+#include <memory>
+#include <string>
+
 namespace rynx {
-	class ecs;
 	class object_storage;
 	class mapped_input;
 
@@ -15,6 +15,11 @@ namespace rynx {
 		struct barrier;
 		class context;
 		class task_scheduler;
+	}
+
+	namespace serialization {
+		class vector_writer;
+		class vector_reader;
 	}
 
 	namespace application {
@@ -48,7 +53,7 @@ namespace rynx {
 					return m_state_id;
 				}
 
-				virtual void on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::ecs::id>&) {}
+				virtual void on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::id>&) {}
 				virtual void clear(rynx::scheduler::context&) {}
 				virtual void serialize(rynx::scheduler::context&, rynx::serialization::vector_writer&) {}
 				virtual void deserialize(rynx::scheduler::context&, rynx::serialization::vector_reader&) {}
@@ -57,17 +62,9 @@ namespace rynx {
 				public:
 					apply_to_all(iruleset* host) : m_host(host) {}
 
-					rynx::serialization::vector_writer serialize(rynx::scheduler::context& context) {
-						return m_host->m_parent->serialize(context);
-					}
-
-					void deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& reader) {
-						return m_host->m_parent->deserialize(context, reader);
-					}
-
-					void clear(rynx::scheduler::context& context) {
-						m_host->m_parent->clear(context);
-					}
+					rynx::serialization::vector_writer serialize(rynx::scheduler::context& context);
+					void deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& reader);
+					void clear(rynx::scheduler::context& context);
 
 				private:
 					iruleset* m_host;
@@ -92,38 +89,13 @@ namespace rynx {
 
 			logic& add_ruleset(std::unique_ptr<rynx::application::logic::iruleset> ruleset);
 			void generate_tasks(rynx::scheduler::context& context, float dt);
-			void entities_erased(rynx::scheduler::context& context, const std::vector<rynx::ecs::id>& ids);
+			void entities_erased(rynx::scheduler::context& context, const std::vector<rynx::id>& ids);
 			void clear(rynx::scheduler::context& context);
 			
-			void serialize(rynx::scheduler::context& context, rynx::serialization::vector_writer& out) {
-				rynx::unordered_map<std::string, std::vector<char>> serializations;
-				for (auto&& ruleset : m_rules) {
-					rynx::serialization::vector_writer ruleset_out;
-					ruleset->serialize(context, ruleset_out);
-					if (!ruleset_out.data().empty()) {
-						serializations.emplace(ruleset->m_ruleset_unique_name, std::move(ruleset_out.data()));
-					}
-				}
-				rynx::serialize(serializations, out);
-			}
+			void serialize(rynx::scheduler::context& context, rynx::serialization::vector_writer& out);
+			rynx::serialization::vector_writer serialize(rynx::scheduler::context& context);
 			
-			rynx::serialization::vector_writer serialize(rynx::scheduler::context& context) {
-				rynx::serialization::vector_writer out;
-				serialize(context, out);
-				return out;
-			}
-
-			void deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& in) {
-				rynx::unordered_map<std::string, std::vector<char>> serializations;
-				rynx::deserialize(serializations, in);
-				for (auto&& ruleset : m_rules) {
-					auto it = serializations.find(ruleset->m_ruleset_unique_name);
-					if (it != serializations.end()) {
-						rynx::serialization::vector_reader ruleset_in(it->second);
-						ruleset->deserialize(context, ruleset_in);
-					}
-				}
-			}
+			void deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& in);
 
 		private:
 			std::vector<std::unique_ptr<rynx::application::logic::iruleset>> m_rules;

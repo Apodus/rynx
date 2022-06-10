@@ -10,6 +10,19 @@ namespace rynx::filesystem
 		no
 	};
 
+	static std::string resolve_path(std::string path) {
+		while (true) {
+			auto pos = path.find("/../");
+			if (pos != std::string::npos) {
+				auto pos2 = path.find_last_of('/', pos);
+				path.replace(pos2, pos + 4, "");
+			}
+			else {
+				return path;
+			}
+		}
+	}
+
 	namespace native
 	{
 		std::string absolute_path(const std::string& path);

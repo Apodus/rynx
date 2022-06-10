@@ -9,6 +9,9 @@
 #include <rynx/graphics/texture/id.hpp>
 
 namespace rynx {
+	namespace filesystem {
+		class vfs;
+	}
 	namespace editor {
 		namespace tools {
 			class instantiation_tool : public itool {
@@ -40,6 +43,7 @@ namespace rynx {
 				std::string m_selectedScene;
 
 				rynx::graphics::texture_id m_frame_tex_id;
+				rynx::observer_ptr<rynx::filesystem::vfs> m_vfs;
 			};
 		}
 	}

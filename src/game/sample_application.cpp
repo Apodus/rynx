@@ -81,6 +81,13 @@ void SampleApplication::set_simulation_rules() {
 	auto program_state_game_running = context->access_state().generate_state_id();
 	auto program_state_editor_running = context->access_state().generate_state_id();
 
+	auto& vfs = context->get_resource<rynx::filesystem::vfs>();
+	vfs.mount().native_directory("../scenes/", "/scenes/");
+	vfs.mount().native_directory("../textures/", "/textures/");
+	
+	auto& scenes = context->get_resource<rynx::scenes>();
+	scenes.scan_directory(vfs, "/scenes/");
+
 	auto camera = context->get_resource_ptr<rynx::camera>();
 	auto& reflections = context->get_resource<rynx::reflection::reflections>();
 	auto& font = context->get_resource<Font>();

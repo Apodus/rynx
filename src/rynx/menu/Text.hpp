@@ -19,6 +19,14 @@ namespace rynx {
 	namespace menu {
 
 		class Text : public Component {
+		public:
+			struct Config {
+				bool allow_input = false;
+				bool input_type_numeric = true;
+				bool input_type_alhabet = true;
+				bool dim_when_not_hover = true;
+			};
+
 		private:
 			rynx::floats4 m_text_color;
 			rynx::floats4 m_text_dimming_when_not_hovering;
@@ -26,13 +34,6 @@ namespace rynx {
 			vec3<float> m_defaultScale;
 			
 			rynx::graphics::renderable_text m_textline;
-
-			struct Config {
-				bool allow_input = false;
-				bool input_type_numeric = true;
-				bool input_type_alhabet = true;
-				bool dim_when_not_hover = true;
-			};
 
 			Config config;
 			bool m_hasDedicatedInput = false;
@@ -46,6 +47,7 @@ namespace rynx {
 				vec3<float> position = vec3<float>()
 			);
 
+			Config& text_config() { return config; }
 			Text& text_input_enable() { config.allow_input = true; return *this; }
 			Text& text_input_disable() { config.allow_input = false; return *this; }
 			Text& text_align_left() { m_textline.align_left(); return *this; }

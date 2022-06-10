@@ -7,6 +7,7 @@
 
 #include <rynx/system/assert.hpp>
 #include <functional>
+#include <ranges>
 
 rynx::filesystem::vfs::~vfs() {
 }
@@ -50,8 +51,11 @@ bool rynx::filesystem::vfs::directory_exists(std::string path) const {
 	}
 }
 
-std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(std::string virtual_path, rynx::filesystem::recursive recurse, filetree::detail::enumerate_flags flags) const {
-	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
+std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(
+	const std::string virtual_path,
+	rynx::filesystem::recursive recurse,
+	filetree::detail::enumerate_flags flags) const {
+	auto [tree_node, remaining_path] = vfs_tree_access(virtual_path);
 
 	std::vector<std::string> total_result;
 	std::function<void(std::shared_ptr<filetree::node>, std::string)> dfs = [this, &total_result, recurse, flags, &dfs](std::shared_ptr<filetree::node> node, std::string current_virtual_path)
@@ -79,8 +83,10 @@ std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(std::strin
 	if (remaining_path.empty()) {
 		if (recurse == rynx::filesystem::recursive::yes) {
 			for (auto child : tree_node->m_children) {
-				if (child.second->is_file_mount() && flags.files()) {
-					total_result.emplace_back(child.second->m_name);
+				if (child.second->is_file_mount()) {
+					if (flags.files()) {
+						total_result.emplace_back(child.second->m_name);
+					}
 				}
 				else {
 					dfs(child.second, child.second->m_name);
@@ -92,19 +98,17 @@ std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(std::strin
 				if (child.second->is_file_mount() && flags.files()) {
 					total_result.emplace_back(child.second->m_name);
 				}
+				else if(flags.directories()) {
+					total_result.emplace_back(child.second->m_name + "/");
+				}
 			}
 		}
 	}
 
 	// also backtrack the vfs path and scan each mount on the way to the root for possible matches.
 	while (true) {
-		if (tree_node->is_file_mount() && flags.files()) {
-			total_result.emplace_back(tree_node->m_name);
-		}
-		else {
-			auto node_result = tree_node->enumerate_content(remaining_path, recurse, flags);
-			total_result.insert(total_result.end(), node_result.begin(), node_result.end());
-		}
+		auto node_result = tree_node->enumerate_content(remaining_path, recurse, flags);
+		total_result.insert(total_result.end(), node_result.begin(), node_result.end());
 
 		auto parent = tree_node->parent().lock();
 		if (parent) {
@@ -112,20 +116,36 @@ std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(std::strin
 			tree_node = parent;
 		}
 		else {
+			// complete the result paths to be absolute paths in terms of vfs.
+			std::transform(
+				total_result.begin(),
+				total_result.end(),
+				total_result.begin(),
+				[&virtual_path](const std::string& s) {
+					if (virtual_path.ends_with("/") && s == "/")
+						return virtual_path;
+					return virtual_path + s;
+				});
 			return total_result;
 		}
 	}
 }
 
 std::vector<std::string> rynx::filesystem::vfs::enumerate_files(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+	if (virtual_path.empty() || virtual_path.back() != '/')
+		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_files });
 }
 
 std::vector<std::string> rynx::filesystem::vfs::enumerate_directories(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+	if (virtual_path.empty() || virtual_path.back() != '/')
+		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_directories });
 }
 
 std::vector<std::string> rynx::filesystem::vfs::enumerate(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+	if (virtual_path.empty() || virtual_path.back() != '/')
+		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_files | rynx::filesystem::filetree::detail::enumerate_flags::flag_directories });
 }
 

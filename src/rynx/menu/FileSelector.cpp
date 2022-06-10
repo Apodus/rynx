@@ -2,7 +2,7 @@
 #include <rynx/menu/FileSelector.hpp>
 #include <rynx/menu/List.hpp>
 #include <rynx/menu/Button.hpp>
-#include <rynx/tech/filesystem/filesystem.hpp>
+#include <rynx/filesystem/virtual_filesystem.hpp>
 #include <algorithm>
 
 void rynx::menu::FileSelector::display(
@@ -12,10 +12,13 @@ void rynx::menu::FileSelector::display(
 {
 	clear_children();
 
-	m_currentPath = rynx::filesystem::path_normalize(path);
+	m_currentPath = path;
+	if (m_currentPath.ends_with("/")) {
+		m_currentPath.pop_back();
+	}
 
 	auto header = std::make_shared<rynx::menu::Text>(rynx::vec3f{ 1.0f, 0.05f, 0.0f });
-	header->text("Current path: " + m_currentPath);
+	header->text("Current path: " + m_currentPath + "/");
 	header->align().top_outside().left_inside();
 	header->text_align_left();
 	header->velocity_position(100.0f);
@@ -43,7 +46,7 @@ void rynx::menu::FileSelector::display(
 	};
 
 	if (m_config.m_allowNewFile) {
-		createSelection(m_currentPath, "New file", { 1.0f, 1.0f, 0.0f, 1.0f }, [this, on_select_file, on_select_directory](std::string) {
+		createSelection("", "New file", {1.0f, 1.0f, 0.0f, 1.0f}, [this, on_select_file, on_select_directory](std::string) {
 			clear_children();
 			
 			auto popup_div = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1.0f, 0.2f, 0.0f });
@@ -59,8 +62,12 @@ void rynx::menu::FileSelector::display(
 			fileNameButton->align().bottom_inside();
 			fileNameButton->text().text_input_enable();
 			fileNameButton->text().on_value_changed([this, on_select_file, on_select_directory](std::string fileName) {
-				execute([this, fileName, on_select_file, on_select_directory]() {
-					on_select_file(m_currentPath + fileName + m_acceptedFileEnding);
+				std::string new_file_path = m_currentPath + "/" + fileName;
+				if (m_config.m_addFileExtensionToNewFiles) {
+					new_file_path += m_acceptedFileEnding;
+				}
+				execute([new_file_path, on_select_file]() {
+					on_select_file(new_file_path);
 				});
 			});
 
@@ -72,6 +79,8 @@ void rynx::menu::FileSelector::display(
 		});
 	}
 
+	// TODO allow creating directories through the vfs
+	/*
 	if (m_config.m_allowNewDir) {
 		createSelection(m_currentPath, "New directory", { 1.0f, 1.0f, 0.0f, 1.0f }, [this, on_select_file, on_select_directory](std::string) {
 			clear_children();
@@ -103,6 +112,7 @@ void rynx::menu::FileSelector::display(
 			});
 		});
 	}
+	*/
 
 	if (m_config.m_showDirs) {
 		auto directory_selected_wrapper = [this, on_select_file, on_select_directory](std::string path) {
@@ -113,34 +123,56 @@ void rynx::menu::FileSelector::display(
 		};
 
 		{
-			std::string parentDir = rynx::filesystem::path_normalize(m_currentPath + "../");
-			createSelection(parentDir, "../", { 0.2f, 0.6f, 1.0f, 1.0f }, directory_selected_wrapper);
+			std::string parentDir;
+			auto pos = m_currentPath.find_last_of('/');
+			if (pos == std::string::npos || (pos == 0)) {
+				parentDir = "/";
+			}
+			else {
+				parentDir = m_currentPath.substr(0, pos);
+			}
+
+			createSelection(parentDir, "..", { 0.2f, 0.6f, 1.0f, 1.0f }, directory_selected_wrapper);
 		}
 
-		std::vector<std::string> directorypaths = rynx::filesystem::list_directories(m_currentPath);
+		std::vector<std::string> directorypaths = m_vfs.enumerate_directories(m_currentPath);
 		std::ranges::sort(directorypaths);
 		for (auto&& dirpath : directorypaths) {
-			dirpath.pop_back();
-			auto pos = dirpath.find_last_of('/');
-			dirpath.push_back('/');
-			std::string displayName = dirpath;
-			if (pos != std::string::npos) {
-				displayName = dirpath.substr(pos + 1);
+			// is current directory. dirpath will be in form path/to/  while m_currentPath is missing the trailing slash.
+			if (m_currentPath.size() == dirpath.size() - 1) {
+				createSelection(dirpath, ".", { 0.2f, 0.6f, 1.0f, 1.0f }, directory_selected_wrapper);
 			}
-			createSelection(dirpath, displayName, { 0.2f, 0.6f, 1.0f, 1.0f }, directory_selected_wrapper);
+			else {
+				dirpath.pop_back();
+				auto pos = dirpath.find_last_of('/');
+				dirpath.push_back('/');
+				std::string displayName = dirpath;
+				if (pos != std::string::npos) {
+					displayName = dirpath.substr(pos + 1);
+				}
+				rynx::filesystem::resolve_path(dirpath);
+				createSelection(dirpath, displayName, { 0.2f, 0.6f, 1.0f, 1.0f }, directory_selected_wrapper);
+			}
 		}
 	}
 
 	if (m_config.m_showFiles) {
-		std::vector<std::string> filepaths = rynx::filesystem::list_files(m_currentPath);
+		std::vector<std::string> filepaths = m_vfs.enumerate_files(m_currentPath);
 		std::ranges::sort(filepaths);
 		for (auto&& filepath : filepaths) {
 			if (!filepath.ends_with(m_acceptedFileEnding))
 				continue;
-			auto pos = filepath.find_last_of('/');
-			std::string displayName = filepath;
-			if (pos != std::string::npos) {
-				displayName = filepath.substr(pos + 1);
+			
+			std::string displayName;
+			if (m_pathToName) {
+				displayName = m_pathToName(filepath);
+			}
+			else {
+				auto pos = filepath.find_last_of('/');
+				displayName = filepath;
+				if (pos != std::string::npos) {
+					displayName = filepath.substr(pos + 1);
+				}
 			}
 			createSelection(filepath, displayName, { 0.5f, 1.0f, 0.2f, 1.0f }, on_select_file);
 		}
