@@ -11,22 +11,8 @@
 #include <vector>
 #include <typeinfo>
 
-// TODO: move this somewhere
-static uint64_t hashmix(uint64_t key)
-{
-	key = (~key) + (key << 21); // key = (key << 21) - key - 1;
-	key = key ^ (key >> 24);
-	key = (key + (key << 3)) + (key << 8); // key * 265
-	key = key ^ (key >> 14);
-	key = (key + (key << 2)) + (key << 4); // key * 21
-	key = key ^ (key >> 28);
-	key = key + (key << 31);
-	return key;
-}
-
 namespace rynx {
-	class itable;
-
+	
 	namespace reflection {
 		class reflections;
 
@@ -145,20 +131,12 @@ namespace rynx {
 			struct registration_object;
 
 			extern registration_object* global_linked_list_initializer_head;
-			extern registration_object* global_linked_list_initializer_tail;
 
 			struct registration_object {
 				registration_object(std::function<void(rynx::reflection::reflections&)> op) {
 					registration_function = std::move(op);
-
-					if (global_linked_list_initializer_tail == nullptr) {
-						global_linked_list_initializer_head = this;
-						global_linked_list_initializer_tail = this;
-					}
-					else {
-						global_linked_list_initializer_tail->next = this;
-						global_linked_list_initializer_tail = this;
-					}
+					next = global_linked_list_initializer_head;
+					global_linked_list_initializer_head = this;
 				}
 
 				registration_object* next = nullptr;
@@ -170,44 +148,22 @@ namespace rynx {
 		public:
 			reflections(rynx::type_index& index) : m_type_index(index) {}
 
-			void load_generated_reflections() {
-				auto* current = rynx::reflection::internal::global_linked_list_initializer_head;
-				while (current != nullptr) {
-					current->registration_function(*this);
-					current = current->next;
-				}
+			void load_generated_reflections();
+			uint64_t hash(std::string typeName);
 
-				for (auto&& t : m_reflections) {
-					std::sort(t.second.m_fields.begin(), t.second.m_fields.end());
-				}
-			}
+			rynx::reflection::type& get(const rynx::reflection::field& f);
+			const rynx::reflection::type& get(const rynx::reflection::field& f) const;
 
-			uint64_t hash(std::string typeName) {
-				auto* typeReflection = find(typeName);
-				
-				auto hash_type_reflection = [&](rynx::reflection::type* t, auto& self) -> uint64_t {
-					size_t typeHash = std::hash<std::string>()(t->m_type_name);
-					for (auto&& field : t->m_fields) {
-						uint64_t fieldNameHash = std::hash<std::string>()(field.m_field_name);
-						uint64_t fieldTypeNameHash = std::hash<std::string>()(field.m_type_name);
-						
-						uint64_t fieldHash = hashmix(fieldTypeNameHash + fieldNameHash);
-						fieldHash = hashmix(fieldHash + field.m_memory_offset);
-						fieldHash = hashmix(fieldHash + field.m_memory_size);
-						
-						auto* fieldTypeReflection = find(field.m_type_name);
-						if (fieldTypeReflection) {
-							fieldHash = hashmix(fieldHash + self(fieldTypeReflection, self));
-						}
+			rynx::reflection::type* find(uint64_t typeId);
+			rynx::reflection::type* find(std::string typeName);
 
-						typeHash ^= fieldHash; // must be insensitive to order changes
-					}
-					
-					return typeHash;
-				};
-				
-				return hash_type_reflection(typeReflection, hash_type_reflection);
-			}
+			const rynx::reflection::type* find(uint64_t typeId) const;
+			const rynx::reflection::type* find(std::string typeName) const;
+
+			std::vector<std::pair<std::string, rynx::reflection::type>> get_reflection_data() const;
+			bool has(const std::string& s) const;
+			
+			template<typename T> bool has() const { return has(typeid(T).name()); }
 
 			template<typename T>
 			rynx::reflection::type& create() {
@@ -220,7 +176,7 @@ namespace rynx {
 				result.m_is_type_segregated = std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>;
 				result.m_create_table_func = rynx::make_ecs_table_create_func<T>(result.m_type_index_value);
 				result.m_create_instance_func = []() {
-					return opaque_unique_ptr<void>(new T(), [](void* t) { if(t) delete static_cast<T*>(t); });
+					return opaque_unique_ptr<void>(new T(), [](void* t) { if (t) delete static_cast<T*>(t); });
 				};
 
 				result.m_create_map_func = []() {
@@ -247,58 +203,6 @@ namespace rynx {
 				}
 				return it->second;
 			}
-
-			rynx::reflection::type& get(const rynx::reflection::field& f) {
-				auto it = m_reflections.find(f.m_type_name);
-				if (it == m_reflections.end()) {
-					rynx::reflection::type t;
-					// t.m_type_name = "!!" + f.m_type_name;
-					t.m_type_name = f.m_type_name;
-					it = m_reflections.emplace(f.m_type_name, std::move(t)).first;
-				}
-				return it->second;
-			}
-
-			const rynx::reflection::type& get(const rynx::reflection::field& f) const {
-				return const_cast<reflections*>(this)->get(f);
-			}
-
-			rynx::reflection::type* find(uint64_t typeId) {
-				for (auto&& entry : m_reflections) {
-					if (entry.second.m_type_index_value == typeId) {
-						return &entry.second;
-					}
-				}
-				return nullptr;
-			}
-
-			rynx::reflection::type* find(std::string typeName) {
-				for (auto&& entry : m_reflections) {
-					if (entry.second.m_type_name == typeName) {
-						return &entry.second;
-					}
-				}
-				return nullptr;
-			}
-
-			const rynx::reflection::type* find(uint64_t typeId) const {
-				return const_cast<reflections*>(this)->find(typeId);
-			}
-
-			const rynx::reflection::type* find(std::string typeName) const {
-				return const_cast<reflections*>(this)->find(typeName);
-			}
-
-			std::vector<std::pair<std::string, rynx::reflection::type>> get_reflection_data() const {
-				std::vector<std::pair<std::string, rynx::reflection::type>> result;
-				for (const auto& entry : m_reflections) {
-					result.emplace_back(entry.first, entry.second);
-				}
-				return result;
-			}
-
-			bool has(const std::string& s) const { return m_reflections.find(s) != m_reflections.end(); }
-			template<typename T> bool has() const { return has(typeid(T).name()); }
 
 		private:
 			rynx::type_index& m_type_index;
