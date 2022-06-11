@@ -71,7 +71,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
-	if (info.component_type_id == info.ecs->get_type_index().id<rynx::components::texture>())
+	if (info.component_type_id == rynx::type_index::id<rynx::components::texture>())
 	{
 		std::cout << "reflection stack size: " << reflection_stack.size() << std::endl;
 

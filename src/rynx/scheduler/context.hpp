@@ -36,7 +36,6 @@ namespace rynx {
 			using context_id = uint64_t;
 			
 			context_id m_id;
-			rynx::type_index m_typeIndex;
 			
 			struct resource_state {
 				alignas(std::hardware_destructive_interference_size) std::atomic<int> readers = 0;
@@ -149,7 +148,7 @@ namespace rynx {
 
 			template<typename T> context& set_resource(T&& t) {
 				m_resources.set_and_discard(rynx::as_observer(t));
-				uint64_t type_id = m_typeIndex.id<std::remove_cvref_t<T>>();
+				uint64_t type_id = rynx::type_index::id<std::remove_cvref_t<T>>();
 				rynx_assert(
 					m_resource_counters[type_id].readers == 0 &&
 					m_resource_counters[type_id].writers == 0,
@@ -160,7 +159,7 @@ namespace rynx {
 
 			template<typename T> context& set_resource(std::unique_ptr<T>&& t) {
 				m_resources.set_and_discard(std::move(t));
-				uint64_t type_id = m_typeIndex.id<std::remove_cvref_t<T>>();
+				uint64_t type_id = rynx::type_index::id<std::remove_cvref_t<T>>();
 				rynx_assert(
 					m_resource_counters[type_id].readers == 0 &&
 					m_resource_counters[type_id].writers == 0,

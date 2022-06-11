@@ -63,15 +63,12 @@ namespace rynx {
 			}
 		};
 
-		type_index m_types;
 		rynx::ecs_internal::entity_index m_entities;
 
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
 		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
 		rynx::unordered_map<type_id_t, opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>> m_value_segregated_types_maps;
 		std::vector<type_id_t> m_virtual_types_released;
-
-		template<typename T> type_id_t typeId() const { return m_types.template id<T>(); }
 
 		auto& categories() { return m_categories; }
 		const auto& categories() const { return m_categories; }
@@ -88,7 +85,7 @@ namespace rynx {
 		auto& value_segregated_types_map() {
 			using map_type = rynx::ecs_internal::value_segregation_map<T>;
 			
-			auto type_id = m_types.id<T>();
+			auto type_id = rynx::type_index::id<T>();
 			auto it = m_value_segregated_types_maps.find(type_id);
 			if (it == m_value_segregated_types_maps.end()) {
 				opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map> map_ptr(new map_type(), [](void* v) {
@@ -100,15 +97,11 @@ namespace rynx {
 		}
 
 	public:
-		type_index& get_type_index() {
-			return m_types;
-		}
-
 		using id = rynx::id;
 
 		class entity_category {
 		public:
-			entity_category(dynamic_bitset types, type_index* typeIndex) : m_types(std::move(types)), m_typeIndex(typeIndex) {}
+			entity_category(dynamic_bitset types) : m_types(std::move(types)) {}
 
 			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
 			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
@@ -141,7 +134,7 @@ namespace rynx {
 			// TODO: Rename better. This is like bubble-sort single step.
 			// TODO: Use some smarter algorithm?
 			template<typename T> void sort_one_step(rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
-				auto type_index_of_t = m_typeIndex->id<T>();
+				auto type_index_of_t = rynx::type_index::id<T>();
 				auto& table_t = table<T>(type_index_of_t);
 				
 				std::vector<index_t> sequential_swaps; // for each index in vector, swap index <-> index+1
@@ -167,7 +160,7 @@ namespace rynx {
 			}
 
 			template<typename T> void sort(rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>>& idmap) {
-				auto type_index_of_t = m_typeIndex->id<T>();
+				auto type_index_of_t = rynx::type_index::id<T>();
 				auto& table_t = table<T>(type_index_of_t);
 
 				std::vector<index_t> relative_sort_order(m_ids.size());
@@ -367,12 +360,12 @@ namespace rynx {
 			}
 
 			template<typename T, typename U = std::remove_const_t<std::remove_reference_t<T>>> auto& table() {
-				type_id_t typeIndex = m_typeIndex->id<U>();
+				type_id_t typeIndex = rynx::type_index::id<U>();
 				return table<U>(typeIndex);
 			}
 
 			template<typename T> auto& table(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases) {
-				type_id_t original = m_typeIndex->id<T>();
+				type_id_t original = rynx::type_index::id<T>();
 				auto it = typeAliases.find(original);
 				if (it == typeAliases.end()) {
 					return this->table<T>(original);
@@ -457,7 +450,6 @@ namespace rynx {
 			dynamic_bitset m_types;
 			std::vector<std::unique_ptr<rynx::ecs_internal::itable>> m_tables;
 			std::vector<id> m_ids;
-			type_index* m_typeIndex;
 		};
 
 		// TODO: is is ok to have the parallel implementation baked into iterator?
@@ -508,7 +500,7 @@ namespace rynx {
 			template<typename T> void unpack_types_single(rynx::dynamic_bitset& dst) {
 				dst.set(
 					use_mapped_type_if_present(
-						m_ecs.template typeId<T>()
+						rynx::type_index::id<T>()
 					)
 				);
 			}
@@ -900,7 +892,7 @@ namespace rynx {
 
 			template<typename T> T* try_get() {
 				categorySource->template componentTypesAllowed<T&>();
-				type_id_t typeIndex = categorySource->template typeId<T>();
+				type_id_t typeIndex = rynx::type_index::id<T>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
 				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
 				if (m_entity_category->types().test(typeIndex)) {
@@ -924,7 +916,7 @@ namespace rynx {
 				categorySource->template componentTypesAllowed<std::add_const_t<Ts> ...>();
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
 				rynx_assert(m_entity_category->ids().size() > m_category_index && m_entity_category->ids()[m_category_index] == m_id, "entity mapping is broken");
-				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
+				return true & (m_entity_category->types().test(rynx::type_index::id<Ts>()) & ...);
 			}
 
 			bool has(type_id_t t) const noexcept {
@@ -1006,7 +998,7 @@ namespace rynx {
 
 			template<typename T> const T* try_get() const {
 				categorySource->template componentTypesAllowed<T>();
-				type_id_t typeIndex = categorySource->template typeId<T>();
+				type_id_t typeIndex = rynx::type_index::id<T>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
 				if (m_entity_category->types().test(typeIndex)) {
 					return &m_entity_category->template table<T>(typeIndex)[m_category_index];
@@ -1016,7 +1008,7 @@ namespace rynx {
 			template<typename... Ts> bool has() const {
 				categorySource->template componentTypesAllowed<Ts...>();
 				rynx_assert(m_entity_category != nullptr, "referenced entity seems to not exist.");
-				return true & (m_entity_category->types().test(categorySource->template typeId<Ts>()) & ...);
+				return true & (m_entity_category->types().test(rynx::type_index::id<Ts>()) & ...);
 			}
 			bool has(rynx::type_index::virtual_type t) const noexcept {
 				rynx_assert(m_entity_category, "referenced entity seems to not exist.");
@@ -1045,14 +1037,14 @@ namespace rynx {
 			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
 			~query_t() {}
 			
-			template<typename...Ts> query_t& in() { (inTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
-			template<typename...Ts> query_t& notIn() { (notInTypes.set(m_ecs.template typeId<std::add_const_t<Ts>>()), ...); return *this; }
+			template<typename...Ts> query_t& in() { (inTypes.set(rynx::type_index::id<std::add_const_t<Ts>>()), ...); return *this; }
+			template<typename...Ts> query_t& notIn() { (notInTypes.set(rynx::type_index::id<std::add_const_t<Ts>>()), ...); return *this; }
 			
 			query_t& in(rynx::type_index::virtual_type t) { inTypes.set(t.type_value); return *this; }
 			query_t& notIn(rynx::type_index::virtual_type t) { notInTypes.set(t.type_value); return *this; }
 
 			template<typename T> query_t& type_alias(type_index::virtual_type mapped_type) {
-				m_typeAliases.emplace(m_ecs.template typeId<T>(), mapped_type.type_value);
+				m_typeAliases.emplace(rynx::type_index::id<T>(), mapped_type.type_value);
 				return *this;
 			}
 
@@ -1174,7 +1166,10 @@ namespace rynx {
 			}
 		};
 
-		ecs() = default;
+		ecs() {
+			rynx::type_index::initialize();
+		}
+		
 		~ecs() {}
 
 		constexpr size_t size() const {
@@ -1295,7 +1290,7 @@ namespace rynx {
 
 			auto id_range_begin = m_entities.peek_next_id();
 
-			rynx::reflection::reflections format(m_types);
+			rynx::reflection::reflections format;
 			rynx::deserialize(format, in); // reflection of loaded data
 			rynx::deserialize(numEntities, in);
 			rynx::deserialize(numCategories, in);
@@ -1318,7 +1313,7 @@ namespace rynx {
 
 				// if category already does not exist - create category.
 				if (m_categories.find(category_id) == m_categories.end()) {
-					auto res = m_categories.emplace(category_id, std::make_unique<entity_category>(category_id, &m_types));
+					auto res = m_categories.emplace(category_id, std::make_unique<entity_category>(category_id));
 					category_id.forEachOne([&](uint64_t typeId) {
 						auto* typeReflection = reflections.find(typeId);
 						res.first->second->createNewTable(typeId, typeReflection->m_create_table_func());
@@ -1417,7 +1412,7 @@ namespace rynx {
 			auto& categories() { return m_ecs->categories(); }
 			const auto& categories() const { return m_ecs->categories(); }
 
-			template<typename T> type_id_t typeId() { return m_ecs->typeId<T>(); }
+			template<typename T> type_id_t typeId() { return rynx::type_index::id<T>(); }
 			template<typename...Ts> void componentTypesAllowed() const { m_ecs->componentTypesAllowed<Ts...>(); };
 
 			auto& entity_category_map() { return m_ecs->m_idCategoryMap; }
@@ -1494,7 +1489,7 @@ namespace rynx {
 				return t.type_value;
 			}
 			else {
-				return m_types.id<T>();
+				return rynx::type_index::id<T>();
 			}
 		}
 
@@ -1575,7 +1570,7 @@ namespace rynx {
 
 			template<typename T>
 			void reset_component(rynx::dynamic_bitset& dst, [[maybe_unused]] entity_id_t id) {
-				dst.reset(mapped_type_id(m_ecs.m_types.id<T>()));
+				dst.reset(mapped_type_id(rynx::type_index::id<T>()));
 				if constexpr (std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>) {
 					auto& map = m_ecs.value_segregated_types_map<std::remove_cvref_t<T>>();
 
@@ -1589,7 +1584,7 @@ namespace rynx {
 			edit_t(ecs& host) : m_ecs(host) {}
 
 			template<typename T> edit_t& type_alias(type_index::virtual_type mapped_type) {
-				m_typeAliases.emplace(m_ecs.m_types.id<T>(), mapped_type.type_value);
+				m_typeAliases.emplace(rynx::type_index::id<T>(), mapped_type.type_value);
 				return *this;
 			}
 
@@ -1599,7 +1594,7 @@ namespace rynx {
 				dynamic_bitset targetCategory;
 				(compute_type_category(targetCategory, components), ...);
 				auto category_it = m_ecs.m_categories.find(targetCategory);
-				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_ecs.m_types)).first; }
+				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory)).first; }
 				auto index = category_it->second->insertNew(m_typeAliases, id, std::forward<Components>(components)...);
 				m_ecs.m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(index)));
 				return id;
@@ -1623,9 +1618,9 @@ namespace rynx {
 					// target category is the same for all entities created in this call.
 					dynamic_bitset targetCategory;
 					(compute_type_category_n(targetCategory, components), ...);
-					(targetCategory.set(mapped_type_id(m_ecs.m_types.id<Tags>())), ...);
+					(targetCategory.set(mapped_type_id(rynx::type_index::id<Tags>())), ...);
 					auto category_it = m_ecs.m_categories.find(targetCategory);
-					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory, &m_ecs.m_types)).first; }
+					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory)).first; }
 
 					auto first_index = category_it->second->insertNew(m_typeAliases, ids, components...);
 					for (size_t i = 0; i < ids.size(); ++i) {
@@ -1664,7 +1659,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
 
@@ -1698,7 +1693,7 @@ namespace rynx {
 				
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
 
@@ -1733,7 +1728,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
@@ -1762,7 +1757,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
@@ -1797,7 +1792,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes, &m_ecs.m_types)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
@@ -1852,7 +1847,7 @@ namespace rynx {
 				m_virtual_types_released.pop_back();
 				return { virtual_type };
 			}
-			return m_types.create_virtual_type();
+			return rynx::type_index::create_virtual_type();
 		}
 
 	public:
@@ -1924,7 +1919,6 @@ namespace rynx {
 			auto& categories() { return m_ecs->categories(); }
 			const auto& categories() const { return m_ecs->categories(); }
 
-			template<typename T> type_id_t typeId() const { return m_ecs->template typeId<T>(); }
 			auto category_and_index_for(entity_id_t id) const { return m_ecs->category_and_index_for(id); }
 
 		protected:

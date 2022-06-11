@@ -71,7 +71,7 @@ bool rynx::editor::tools::mesh_tool::try_generate_menu(
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
-	if (info.component_type_id == info.ecs->get_type_index().id<rynx::components::mesh>())
+	if (info.component_type_id == rynx::type_index::id<rynx::components::mesh>())
 	{
 		return false;
 	}

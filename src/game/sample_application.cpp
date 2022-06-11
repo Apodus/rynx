@@ -29,7 +29,7 @@
 
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 
-SampleApplication::SampleApplication() : m_reflections(simulation().m_ecs->get_type_index()) {
+SampleApplication::SampleApplication() {
 	m_reflections.load_generated_reflections();
 	m_reflections.create<rynx::matrix4>().add_field("m", &rynx::matrix4::m);
 }

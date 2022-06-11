@@ -79,7 +79,7 @@ TEST_CASE("serialize ecs with id field", "serialization")
 {
 
 	rynx::ecs a;
-	rynx::reflection::reflections reflections(a.get_type_index());
+	rynx::reflection::reflections reflections;
 	reflections.create<int>();
 	reflections.create<id_field_t>();
 
@@ -87,7 +87,7 @@ TEST_CASE("serialize ecs with id field", "serialization")
 		rynx::serialization::vector_writer v;
 		rynx::serialize(reflections, v);
 
-		rynx::reflection::reflections ref_b(a.get_type_index());
+		rynx::reflection::reflections ref_b;
 		rynx::serialization::vector_reader reader(v.data());
 		rynx::deserialize(ref_b, reader);
 
@@ -152,7 +152,7 @@ TEST_CASE("serialize ecs with primitives", "serialization")
 {
 
 	rynx::ecs a;
-	rynx::reflection::reflections reflections(a.get_type_index());
+	rynx::reflection::reflections reflections;
 	reflections.create<int>();
 
 	a.create(1);
@@ -186,7 +186,7 @@ TEST_CASE("serialize ecs with structs", "serialization")
 {
 
 	rynx::ecs a;
-	rynx::reflection::reflections reflections(a.get_type_index());
+	rynx::reflection::reflections reflections;
 	reflections.create<hubbabubba>();
 	
 	hubbabubba myHubbaBubba;

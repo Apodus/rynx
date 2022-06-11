@@ -120,9 +120,9 @@ namespace rynx {
 		template <typename T>
 		class make_reflect {
 		public:
-			rynx::reflection::type operator()(rynx::type_index& typeIndex) {
+			rynx::reflection::type operator()() {
 				rynx::reflection::type result{ std::string(typeid(T).name()) };
-				result.m_type_index_value = static_cast<int32_t>(typeIndex.id<T>());
+				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
 				return result;
 			}
 		};
@@ -146,7 +146,7 @@ namespace rynx {
 
 		class reflections {
 		public:
-			reflections(rynx::type_index& index) : m_type_index(index) {}
+			reflections() = default;
 
 			void load_generated_reflections();
 			uint64_t hash(std::string typeName);
@@ -169,7 +169,7 @@ namespace rynx {
 			rynx::reflection::type& create() {
 				rynx::reflection::type result;
 				result.m_type_name = std::string(typeid(T).name());
-				result.m_type_index_value = static_cast<int32_t>(m_type_index.id<T>());
+				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
 				result.m_serialization_allowed = !std::is_base_of_v<rynx::ecs_no_serialize_tag, T>;
 
 				// TODO: Ecs utils should be tightly knit somewhere under ecs. It is wrong for reflection to make these assumptions.
@@ -205,7 +205,6 @@ namespace rynx {
 			}
 
 		private:
-			rynx::type_index& m_type_index;
 			rynx::unordered_map<std::string, rynx::reflection::type> m_reflections;
 
 			// allow serialization to access our data

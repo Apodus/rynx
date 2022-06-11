@@ -75,16 +75,6 @@ namespace rynx {
 			void wait_until_complete() {
 				m_waitForComplete.wait();
 				rynx_assert(checkComplete(), "wait interrupted ahead of time!");
-				
-				// now all workers are stopped, and we can update our type indices.
-				for (auto& ctx : m_contexts) {
-					auto ecs_resource = ctx.second->m_resources.try_get<rynx::ecs>();
-					if (ecs_resource) {
-						// ecs_resource->sync_type_index();
-					}
-				}
-
-				// logmsg("frame complete\n");
 			}
 
 			// called once per frame.

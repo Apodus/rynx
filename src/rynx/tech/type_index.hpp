@@ -5,7 +5,7 @@
 #include <type_traits>
 
 namespace rynx {
-	class type_index {
+	namespace type_index {
 		
 		struct used_type {
 			used_type* next = nullptr;
@@ -13,23 +13,22 @@ namespace rynx {
 			uint64_t* id = nullptr;
 		};
 		
-		static used_type* used_type_list;
-		static uint64_t runningTypeIndex_global;
-		
+		namespace internal {
+			extern used_type* used_type_list;
+		}
 #ifndef _WIN64
 		template<typename T> static char const* const unique_str_for_t() { return __PRETTY_FUNCTION__; }
 #else
 		template<typename T> static char const* const unique_str_for_t() { return __FUNCSIG__; }
 #endif
 
-	public:
 		template<typename T> struct id_for_type {
 			static uint64_t id;
 		};
 
-		template<typename T> static uint64_t mark_type_is_used(id_for_type<T> t) {
-			static used_type used_type_v { used_type_list, unique_str_for_t<T>(), &t.id };
-			used_type_list = &used_type_v;
+		template<typename T> uint64_t mark_type_is_used(id_for_type<T> t) {
+			static used_type used_type_v { rynx::type_index::internal::used_type_list, unique_str_for_t<T>(), &t.id };
+			rynx::type_index::internal::used_type_list = &used_type_v;
 			return ~uint64_t(0);
 		}
 
@@ -39,13 +38,11 @@ namespace rynx {
 			bool operator == (uint64_t other) const noexcept { return other == type_value; }
 		};
 
-		type_index();
 
-		virtual_type static create_virtual_type() {
-			return virtual_type{ runningTypeIndex_global++ };
-		}
+		void initialize();
+		virtual_type create_virtual_type();
 
-		template<typename T> static uint64_t id() {
+		template<typename T> uint64_t id() {
 			using naked_t = std::remove_cv_t<std::remove_reference_t<T>>;
 			return id_for_type<naked_t>::id;
 		}

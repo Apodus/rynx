@@ -38,6 +38,7 @@ void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 }
 
 rynx::scheduler::task_scheduler::task_scheduler() : m_threads({ nullptr }), m_deadlock_detector(this) {
+	rynx::type_index::initialize();
 	for (int i = 0; i < numThreads; ++i) {
 		m_threads[i] = new rynx::scheduler::task_thread(this, i);
 	}

@@ -69,7 +69,7 @@ namespace rynx {
 				template<typename T>
 				struct unpack_resource {
 					void operator()(task& host) {
-						uint64_t typeId = host.m_context->m_typeIndex.id<std::remove_cvref_t<T>>();
+						uint64_t typeId = rynx::type_index::id<std::remove_cvref_t<T>>();
 						if constexpr (std::is_const_v<std::remove_reference_t<T>>) {
 							host.resources().require_read(typeId);
 						}

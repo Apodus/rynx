@@ -3,11 +3,14 @@
 #include <algorithm>
 #include <vector>
 
-uint64_t rynx::type_index::runningTypeIndex_global = 0;
-rynx::type_index::used_type* rynx::type_index::used_type_list = nullptr;
+namespace {
+	uint64_t runningTypeIndex_global = 0;
+}
 
-rynx::type_index::type_index() {
-	used_type* current = used_type_list;
+rynx::type_index::used_type* rynx::type_index::internal::used_type_list = nullptr;
+
+void rynx::type_index::initialize() {
+	used_type* current = rynx::type_index::internal::used_type_list;
 	if (current == nullptr)
 		return;
 
@@ -25,5 +28,10 @@ rynx::type_index::type_index() {
 	}
 
 	// prevent reinitialization of processed values
-	used_type_list = nullptr;
+	rynx::type_index::internal::used_type_list = nullptr;
+}
+
+
+rynx::type_index::virtual_type rynx::type_index::create_virtual_type() {
+	return virtual_type{ runningTypeIndex_global++ };
 }

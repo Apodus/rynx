@@ -17,7 +17,7 @@ namespace rynx {
 		// set object for type T. if one exists already, replace the pointer value and return the old value
 		template<typename T>
 		rynx::observer_ptr<T> set_and_discard(rynx::observer_ptr<T> t) {
-			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
+			auto id = rynx::type_index::id<std::remove_reference_t<T>>();
 			ensure_size(id);
 			rynx::observer_ptr<T> old_value = m_stateObjects[id].static_pointer_cast<T>();
 			m_stateObjects[id] = std::move(t);
@@ -30,7 +30,7 @@ namespace rynx {
 
 		template<typename T>
 		std::unique_ptr<T> set_and_discard(std::unique_ptr<T> t) {
-			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
+			auto id = rynx::type_index::id<std::remove_reference_t<T>>();
 			ensure_size(id);
 
 			
@@ -45,14 +45,14 @@ namespace rynx {
 
 		template<typename T>
 		rynx::observer_ptr<T> try_get() {
-			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
+			auto id = rynx::type_index::id<std::remove_reference_t<T>>();
 			ensure_size(id);
 			return m_stateObjects[id].static_pointer_cast<T>();
 		}
 
 		template<typename T>
 		rynx::observer_ptr<T> get() {
-			auto id = m_typeIndex.id<std::remove_reference_t<T>>();
+			auto id = rynx::type_index::id<std::remove_reference_t<T>>();
 			rynx_assert(id < m_stateObjects.size()  && m_stateObjects[id] != nullptr, "requested type does not exist in object storage.");
 			return m_stateObjects[id].static_pointer_cast<T>();
 		}
@@ -69,7 +69,6 @@ namespace rynx {
 			}
 		}
 
-		type_index m_typeIndex;
 		std::vector<rynx::observer_ptr<void>> m_stateObjects;
 		std::vector<void*> m_owned_objects;
 	};
