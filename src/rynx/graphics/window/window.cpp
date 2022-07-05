@@ -7,21 +7,20 @@
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
-#include <functional>
 #include <iostream>
-#include <memory>
 
 #include <rynx/system/assert.hpp>
+#include <rynx/tech/std/memory.hpp> // todo: include rynx::function
 
-using ResizeEventMapper = rynx::unordered_map<GLFWwindow*, std::function<void(int, int)>>;
+using ResizeEventMapper = rynx::unordered_map<GLFWwindow*, rynx::function<void(int, int)>>;
 
-static std::unique_ptr<ResizeEventMapper>  g_resizeEventMapper;
+static rynx::unique_ptr<ResizeEventMapper>  g_resizeEventMapper;
 
 static ResizeEventMapper& getResizeEventMapper()
 {
 	if (!g_resizeEventMapper)
 	{
-		g_resizeEventMapper = std::make_unique<ResizeEventMapper>();
+		g_resizeEventMapper = rynx::make_unique<ResizeEventMapper>();
 	}
 	return *g_resizeEventMapper;
 }
@@ -56,7 +55,7 @@ void Window::platformResizeEvent(int width, int height) {
 	set_gl_viewport_to_window_dimensions();
 }
 
-void Window::on_resize(std::function<void(size_t, size_t)> onResize) {
+void Window::on_resize(rynx::function<void(size_t, size_t)> onResize) {
 	m_onResize = std::move(onResize);
 }
 
@@ -64,7 +63,7 @@ void Window::set_gl_viewport_to_window_dimensions() const {
 	glViewport(0, 0, int(m_width), int(m_height));
 }
 
-GLFWwindow* Window::createWindow(std::string name) {
+GLFWwindow* Window::createWindow(rynx::string name) {
 	GLFWmonitor* monitor = (m_fullscreen) ? glfwGetPrimaryMonitor() : nullptr;
 	GLFWwindow* window = glfwCreateWindow(
 		static_cast<int>(m_width),
@@ -91,14 +90,14 @@ GLFWwindow* Window::createWindow(std::string name) {
 	return window;
 }
 
-void Window::createWindow(int width, int height, std::string name) {
+void Window::createWindow(int width, int height, rynx::string name) {
 	m_width = width;
 	m_height = height;
 
 	// Initialize GLFW
 	if (!glfwInit()) {
 		std::cout << "Failed to init GLFW" << std::endl;
-		throw std::string("Failed to init GLFW");
+		throw rynx::string("Failed to init GLFW");
 	}
 
 	// Window hints
@@ -118,9 +117,9 @@ void Window::createWindow(int width, int height, std::string name) {
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
 		std::cout << err << std::endl;
-		std::cout << "Renderer: " << std::string(reinterpret_cast<const char*>(glGetString(GL_RENDERER))) << std::endl;
-		std::cout << "Version:  " << std::string(reinterpret_cast<const char*>(glGetString(GL_VERSION))) << std::endl;
-		throw std::string("Failed to init GLEW");
+		std::cout << "Renderer: " << reinterpret_cast<const char*>(glGetString(GL_RENDERER)) << std::endl;
+		std::cout << "Version:  " << reinterpret_cast<const char*>(glGetString(GL_VERSION)) << std::endl;
+		throw rynx::string("Failed to init GLEW");
 	}
 	else {
 		logmsg("Glew init OK");

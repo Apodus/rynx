@@ -8,7 +8,6 @@
 #include <rynx/graphics/camera/camera.hpp>
 #include <rynx/tech/ecs/scenes.hpp>
 
-#include <filesystem>
 #include <sstream>
 
 namespace
@@ -18,8 +17,8 @@ namespace
 	static constexpr float menuVelocitySlow = 2.0f;
 }
 
-std::string humanize(std::string s) {
-	auto replace_all = [&s](std::string what, std::string with) {
+rynx::string humanize(rynx::string s) {
+	auto replace_all = [&s](rynx::string what, rynx::string with) {
 		while (s.find(what) != s.npos) {
 			s.replace(s.find(what), what.length(), with);
 		}
@@ -43,15 +42,15 @@ void rynx::editor::field_float(
 	int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
 	float value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 
-	auto field_container = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
+	auto field_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 	field_container->velocity_position(menuVelocityFast);
 	
-	auto variable_name_label = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto variable_name_label = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
 	variable_name_label->velocity_position(menuVelocityFast);
-	variable_name_label->text(std::string(info.indent, '-') + member.m_field_name);
+	variable_name_label->text(rynx::string(info.indent, '-') + member.m_field_name);
 	variable_name_label->text_align_left();
 
-	auto variable_value_field = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto variable_value_field = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
 	variable_value_field->velocity_position(menuVelocityFast);
 
 	struct field_config {
@@ -75,8 +74,8 @@ void rynx::editor::field_float(
 		bool skip_next = false;
 		for (auto&& annotation : field.m_annotations) {
 			if (annotation.starts_with("applies_to")) {
-				std::stringstream ss(annotation);
-				std::string v;
+				std::stringstream ss(annotation.c_str());
+				rynx::string v;
 				ss >> v;
 
 				bool self_found = false;
@@ -96,21 +95,21 @@ void rynx::editor::field_float(
 			}
 
 			if (annotation.starts_with("rename")) {
-				std::stringstream ss(annotation);
-				std::string v;
+				std::stringstream ss(annotation.c_str());
+				rynx::string v;
 				ss >> v >> v;
-				std::string source_name = v;
+				rynx::string source_name = v;
 				ss >> v;
 				if (source_name == member.m_field_name) {
-					variable_name_label->text(std::string(info.indent, '-') + v);
+					variable_name_label->text(rynx::string(info.indent, '-') + v);
 				}
 			}
 			else if (annotation == ">=0") {
 				config.min_value = 0;
 			}
 			else if (annotation.starts_with("except")) {
-				std::stringstream ss(annotation);
-				std::string v;
+				std::stringstream ss(annotation.c_str());
+				rynx::string v;
 				ss >> v;
 
 				while (ss >> v) {
@@ -120,13 +119,13 @@ void rynx::editor::field_float(
 				}
 			}
 			else if (annotation.starts_with("range")) {
-				std::stringstream ss(annotation);
-				std::string v;
+				std::stringstream ss(annotation.c_str());
+				rynx::string v;
 				ss >> v;
 				ss >> v;
-				config.min_value = std::stof(v);
+				config.min_value = rynx::stof(v);
 				ss >> v;
-				config.max_value = std::stof(v);
+				config.max_value = rynx::stof(v);
 				config.slider_dynamic = false;
 			}
 		}
@@ -137,14 +136,14 @@ void rynx::editor::field_float(
 	handle_annotations(member);
 
 	variable_value_field->text()
-		.text(std::to_string(value))
+		.text(rynx::to_string(value))
 		.text_align_right()
 		.text_input_enable();
 
-	std::shared_ptr<rynx::menu::SlideBarVertical> value_slider;
+	rynx::shared_ptr<rynx::menu::SlideBarVertical> value_slider;
 
 	if (config.slider_dynamic) {
-		value_slider = std::make_shared<rynx::menu::SlideBarVertical>(info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 1.0f, 0.0f), -1.0f, +1.0f);
+		value_slider = rynx::make_shared<rynx::menu::SlideBarVertical>(info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 1.0f, 0.0f), -1.0f, +1.0f);
 		value_slider->velocity_position(menuVelocityFast);
 		value_slider->setValue(0);
 		value_slider->on_active_tick([info, mem_offset, config, self = value_slider.get(), text_element = variable_value_field.get()](float /* input_v */, float dt) {
@@ -159,7 +158,7 @@ void rynx::editor::field_float(
 				tmp *= 1.0f / (1.0f + std::fabs(input_v) * value_modify_velocity * dt);
 			}
 			v = config.constrain(tmp);
-			text_element->text().text(std::to_string(v));
+			text_element->text().text(rynx::to_string(v));
 		});
 
 		value_slider->on_drag_end([self = value_slider.get()](float /* v */) {
@@ -167,7 +166,7 @@ void rynx::editor::field_float(
 		});
 	}
 	else {
-		value_slider = std::make_shared<rynx::menu::SlideBarVertical>(
+		value_slider = rynx::make_shared<rynx::menu::SlideBarVertical>(
 			info.frame_tex,
 			info.frame_tex,
 			rynx::vec3f(0.2f, 1.0f, 0.0f),
@@ -179,7 +178,7 @@ void rynx::editor::field_float(
 		value_slider->on_value_changed([info, mem_offset, text_element = variable_value_field.get()](float v) {
 			float& field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 			field_value = v;
-			text_element->text().text(std::to_string(v));
+			text_element->text().text(rynx::to_string(v));
 		});
 
 		value_slider->on_update([info, mem_offset, self = value_slider.get()]() {
@@ -190,9 +189,9 @@ void rynx::editor::field_float(
 		});
 	}
 
-	variable_value_field->text().on_value_changed([info, mem_offset, config, slider_ptr = value_slider.get()](const std::string& s) {
+	variable_value_field->text().on_value_changed([info, mem_offset, config, slider_ptr = value_slider.get()](const rynx::string& s) {
 		float new_value = 0.0f;
-		try { new_value = config.constrain(std::stof(s)); }
+		try { new_value = config.constrain(std::stof(s.c_str())); }
 		catch (...) { return; }
 
 		ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = new_value;
@@ -204,7 +203,7 @@ void rynx::editor::field_float(
 	variable_value_field->on_update([info, mem_offset, self = variable_value_field.get()]() {
 		if (!self->text().has_dedicated_keyboard_input()) {
 			float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
-			self->text().text(std::to_string(field_value));
+			self->text().text(rynx::to_string(field_value));
 		}
 	});
 
@@ -232,13 +231,13 @@ void rynx::editor::field_bool(
 	int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
 	bool value = ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 
-	auto field_container = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
-	auto variable_name_label = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto field_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
+	auto variable_name_label = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
 
-	variable_name_label->text(std::string(info.indent, '-') + member.m_field_name);
+	variable_name_label->text(rynx::string(info.indent, '-') + member.m_field_name);
 	variable_name_label->text_align_left();
 
-	auto variable_value_field = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
+	auto variable_value_field = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
 
 	field_container->velocity_position(menuVelocityFast);
 	variable_name_label->velocity_position(menuVelocityFast);
@@ -300,9 +299,9 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			field_bool(member, field_info, reflection_stack);
 		}
 		else if (info.reflections->has(member.m_type_name)) {
-			auto label = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+			auto label = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 			label->text()
-				.text(std::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
+				.text(rynx::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
 				.text_align_left();
 
 			label->align()
@@ -316,10 +315,10 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			// Create tools buttons
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(member.m_type_name)) {
-					std::vector<std::string> actionNames = tool->get_editor_actions_list();
+					std::vector<rynx::string> actionNames = tool->get_editor_actions_list();
 					if (!actionNames.empty()) {
 						for (auto&& actionName : actionNames) {
-							auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+							auto edit_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 							edit_button->velocity_position(menuVelocityFast);
 							edit_button->align().target(info.component_sheet->last_child()).bottom_outside().left_inside();
 							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
@@ -340,7 +339,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 						}
 					}
 					else {
-						auto edit_button = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+						auto edit_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 						edit_button->velocity_position(menuVelocityFast);
 						edit_button->align().target(info.component_sheet->last_child()).bottom_outside().left_inside();
 						edit_button->text().text("^g" + tool->get_tool_name());
@@ -371,9 +370,9 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			reflection_stack.pop_back();
 		}
 		else {
-			auto label = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+			auto label = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 			label->text()
-				.text(std::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
+				.text(rynx::string(info.indent + 1, '-') + member.m_field_name + " (" + humanize(member.m_type_name) + ")")
 				.text_align_left();
 
 			label->align()
@@ -405,14 +404,14 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 	m_components_list->clear_children();
 
 	for (auto&& reflection_entry : reflections_vec) {
-		auto component_sheet = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.0f, 0.0f, 0.0f));
+		auto component_sheet = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.0f, 0.0f, 0.0f));
 		component_sheet->set_background(frame_tex);
 		component_sheet->set_dynamic_position_and_scale();
 		component_sheet->velocity_position(menuVelocityFast);
 		m_components_list->addChild(component_sheet);
 
 		{
-			auto component_name = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f - 0.10f, 0.025f, 0.0f));
+			auto component_name = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f - 0.10f, 0.025f, 0.0f));
 			component_name->velocity_position(menuVelocityFast);
 			component_name->no_focus_alpha(1.0f);
 			component_name->text()
@@ -428,7 +427,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 				.offset_y(-0.5f);
 
 
-			auto delete_component = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.10f, 0.025f, 0.0f));
+			auto delete_component = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.10f, 0.025f, 0.0f));
 			delete_component->velocity_position(menuVelocityFast);
 			delete_component->no_focus_alpha(0.7f);
 			delete_component->text()
@@ -465,10 +464,10 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 
 			for (auto&& tool : m_tools) {
 				if (tool->operates_on(reflection_entry.m_type_name)) {
-					std::vector<std::string> actionNames = tool->get_editor_actions_list();
+					std::vector<rynx::string> actionNames = tool->get_editor_actions_list();
 					if (!actionNames.empty()) {
 						for (auto&& actionName : actionNames) {
-							auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+							auto edit_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 							edit_button->velocity_position(menuVelocityFast);
 							edit_button->align().target(component_sheet->last_child()).bottom_outside().left_inside();
 							edit_button->text().text("^g" + tool->get_tool_name() + ": " + actionName);
@@ -490,7 +489,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 						}
 					}
 					else {
-						auto edit_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
+						auto edit_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.6f, 0.03f, 0.0f));
 						edit_button->velocity_position(menuVelocityFast);
 						edit_button->align().target(component_name.get()).bottom_outside().left_inside();
 						edit_button->text().text("^g" + tool->get_tool_name());
@@ -535,9 +534,9 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 }
 
 
-void rynx::editor_rules::add_tool(std::unique_ptr<rynx::editor::itool> tool) {
+void rynx::editor_rules::add_tool(rynx::unique_ptr<rynx::editor::itool> tool) {
 	auto icon_tex_id = m_context->get_resource<rynx::graphics::GPUTextures>().findTextureByName(tool->get_button_texture());
-	auto selection_tool_button = std::make_shared<rynx::menu::Button>(icon_tex_id, rynx::vec3f(0.25f, 0.25f, 0.0f));
+	auto selection_tool_button = rynx::make_shared<rynx::menu::Button>(icon_tex_id, rynx::vec3f(0.25f, 0.25f, 0.0f));
 	selection_tool_button->respect_aspect_ratio();
 
 	if (m_tools.empty()) {
@@ -562,18 +561,18 @@ void rynx::editor_rules::add_tool(std::unique_ptr<rynx::editor::itool> tool) {
 }
 
 void rynx::editor_rules::display_list_dialog(
-	std::vector<std::string> entries,
-	std::function<rynx::floats4(std::string)> entryColor,
-	std::function<void(std::string)> on_selection)
+	std::vector<rynx::string> entries,
+	rynx::function<rynx::floats4(rynx::string)> entryColor,
+	rynx::function<void(rynx::string)> on_selection)
 {
 	disable_tools();
 	execute([this, entries, entryColor, on_selection]() {
-		auto options_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+		auto options_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
 		options_list->list_element_velocity(menuVelocityFast);
 		options_list->velocity_position(menuVelocityFast);
 		
 		for (auto&& entry : entries) {
-			auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
+			auto button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 			button->velocity_position(menuVelocityFast);
 			button->text().text(entry);
 			button->text().text_align_left();
@@ -593,7 +592,7 @@ void rynx::editor_rules::display_list_dialog(
 	});
 }
 
-void rynx::editor_rules::save_scene_to_path(std::string path) {
+void rynx::editor_rules::save_scene_to_path(rynx::string path) {
 	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
 	auto& ecs = m_context->get_resource<rynx::ecs>();
 	auto& scenes = m_context->get_resource<rynx::scenes>();
@@ -605,13 +604,13 @@ void rynx::editor_rules::save_scene_to_path(std::string path) {
 	rynx::serialize(system_writer.data(), vector_writer);
 	
 	auto pos = path.find_last_of('/');
-	std::string scene_name = ((pos != std::string::npos) ? path.substr(pos + 1) : path);
+	rynx::string scene_name = ((pos != rynx::string::npos) ? path.substr(pos + 1) : path);
 	scenes.save_scene(vfs, vector_writer, path, scene_name, path);
 	meshes.save_all_meshes_to_disk("../meshes");
 	// rynx::filesystem::write_file(path, vector_writer.data());
 }
 
-void rynx::editor_rules::load_scene_from_path(std::string scene_path) {
+void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	auto& meshes = m_context->get_resource<rynx::graphics::mesh_collection>();
 	auto& ecs = m_context->get_resource<rynx::ecs>();
 	auto& scenes = m_context->get_resource<rynx::scenes>();
@@ -655,7 +654,7 @@ rynx::editor_rules::editor_rules(
 	public:
 		tool_api_impl(editor_rules* host) : m_host(host) {}
 
-		virtual void push_popup(std::shared_ptr<rynx::menu::Component> popup) override {
+		virtual void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) override {
 			m_host->push_popup(popup);
 		}
 		
@@ -680,11 +679,11 @@ rynx::editor_rules::editor_rules(
 			m_host->switch_to_tool(default_tool);
 		}
 		
-		virtual void execute(std::function<void()> execute_in_main_thread) override {
+		virtual void execute(rynx::function<void()> execute_in_main_thread) override {
 			m_host->execute(std::move(execute_in_main_thread));
 		}
 
-		virtual void for_each_tool(std::function<void(rynx::editor::itool*)> op) override {
+		virtual void for_each_tool(rynx::function<void(rynx::editor::itool*)> op) override {
 			for (auto& tool : m_host->m_tools) {
 				op(tool.get());
 			}
@@ -694,7 +693,7 @@ rynx::editor_rules::editor_rules(
 
 	m_state.m_editor = new tool_api_impl(this);
 
-	m_editor_menu = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 1, 1, 0 });
+	m_editor_menu = rynx::make_shared<rynx::menu::Div>(rynx::vec3f{ 1, 1, 0 });
 	editor_menu_host->addChild(m_editor_menu);
 
 	this->frame_tex = textures.findTextureByName("frame");
@@ -706,14 +705,14 @@ rynx::editor_rules::editor_rules(
 	// create editor menus
 	{
 		// create tools bar
-		m_tools_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.1f, 1.0f, 0.0f });
+		m_tools_bar = rynx::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.1f, 1.0f, 0.0f });
 		m_tools_bar->align().right_inside().offset(+1.0f);
 
 		// create entity components bar
-		m_entity_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 1.0f, 0.0f));
+		m_entity_bar = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 1.0f, 0.0f));
 		m_entity_bar->align().left_inside().offset(+1.0f);
 
-		auto m_entity_bar_toggle_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.025f, 0.2f, 0.0f));
+		auto m_entity_bar_toggle_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.025f, 0.2f, 0.0f));
 		m_entity_bar->addChild(m_entity_bar_toggle_button);
 		m_entity_bar_toggle_button->ignore_parent_scale();
 		m_entity_bar_toggle_button->align().center_y().right_outside();
@@ -728,7 +727,7 @@ rynx::editor_rules::editor_rules(
 			}
 		});
 
-		auto m_tools_bar_toggle_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.02f, 0.2f, 0.0f));
+		auto m_tools_bar_toggle_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.02f, 0.2f, 0.0f));
 		m_tools_bar->addChild(m_tools_bar_toggle_button);
 		m_tools_bar_toggle_button->ignore_parent_scale();
 		m_tools_bar_toggle_button->align().center_y().left_outside();
@@ -745,17 +744,17 @@ rynx::editor_rules::editor_rules(
 
 
 		// create file actions bar
-		m_file_actions_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.1f, 0.0f));
+		m_file_actions_bar = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.1f, 0.0f));
 		m_file_actions_bar->align().center_x().bottom_inside();
 
-		auto save_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.50f, 0.0f));
+		auto save_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.50f, 0.0f));
 		save_scene->velocity_position(menuVelocityFast);
 		save_scene->text().text("Save");
 		save_scene->align().top_left_inside();
 		save_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
 			auto fileSelectDialog =
-				std::make_shared<rynx::menu::FileSelector>(
+				rynx::make_shared<rynx::menu::FileSelector>(
 					*vfs.get(),
 					frame_tex,
 					rynx::vec3f(0.3f, 0.6f, 0.0f)
@@ -763,12 +762,12 @@ rynx::editor_rules::editor_rules(
 			fileSelectDialog->configure().m_allowNewFile = true;
 			fileSelectDialog->configure().m_allowNewDir = true;
 			fileSelectDialog->file_type(".rynxscene");
-			fileSelectDialog->filepath_to_display_name([vfs, scenes](std::string path) {
+			fileSelectDialog->filepath_to_display_name([vfs, scenes](rynx::string path) {
 				return  scenes->filepath_to_info(path).name;
 			});
 			fileSelectDialog->display("/scenes/",
 				// on file selected
-				[this](std::string fileName) {
+				[this](rynx::string fileName) {
 					save_scene_to_path(fileName);
 					execute([this] {
 						enable_tools();
@@ -776,7 +775,7 @@ rynx::editor_rules::editor_rules(
 					});
 				},
 				// on directory selected
-				[](std::string) {}
+				[](rynx::string) {}
 			);
 
 			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
@@ -785,22 +784,22 @@ rynx::editor_rules::editor_rules(
 			rynx::filesystem::write_file("../configs/textures.dat", tex_conf_data.data());
 		});
 
-		auto load_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
+		auto load_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
 		load_scene->velocity_position(menuVelocityFast);
 		load_scene->text().text("Load");
 		load_scene->align().target(save_scene.get()).top_inside().right_outside().offset_x(0.1f);
 		load_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
-			auto fileSelectDialog = std::make_shared<rynx::menu::FileSelector>(*vfs, frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			auto fileSelectDialog = rynx::make_shared<rynx::menu::FileSelector>(*vfs, frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
 			fileSelectDialog->configure().m_allowNewFile = false;
 			fileSelectDialog->configure().m_allowNewDir = false;
 			fileSelectDialog->file_type(".rynxscene");
-			fileSelectDialog->filepath_to_display_name([vfs, scenes](std::string path) {
+			fileSelectDialog->filepath_to_display_name([vfs, scenes](rynx::string path) {
 				return  scenes->filepath_to_info(path).name;
 			});
 			fileSelectDialog->display("/scenes/",
 				// on file selected
-				[this](std::string fileName) {
+				[this](rynx::string fileName) {
 					this->m_state.m_selected_ids.clear();
 					load_scene_from_path(fileName);
 					execute([this] {
@@ -809,13 +808,13 @@ rynx::editor_rules::editor_rules(
 					});
 				},
 				// on directory selected
-				[](std::string) {}
+				[](rynx::string) {}
 			);
 
 			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
 		});
 
-		auto create_empty_scene = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
+		auto create_empty_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
 		create_empty_scene->text().text("New scene");
 		create_empty_scene->align().target(load_scene.get()).top_inside().right_outside().offset_x(0.1f);
 		create_empty_scene->on_click([this]() {
@@ -837,14 +836,14 @@ rynx::editor_rules::editor_rules(
 
 		// construct top bar
 		{
-			m_top_bar = std::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.4f, 0.05f, 0.0f });
+			m_top_bar = rynx::make_shared<rynx::menu::Div>(rynx::vec3f{ 0.4f, 0.05f, 0.0f });
 			m_top_bar->align().center_x().top_inside();
 			m_top_bar->set_background(frame_tex);
 			m_top_bar->velocity_position(200.0f);
 			
 			{
 				// add toggle editor button
-				auto toggle_editor_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
+				auto toggle_editor_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
 				toggle_editor_button->respect_aspect_ratio();
 				toggle_editor_button->align().left_inside().top_inside().offset_x(-0.5f);
 				toggle_editor_button->velocity_position(200.0f);
@@ -876,7 +875,7 @@ rynx::editor_rules::editor_rules(
 				// add pause button
 				auto tex_pause_icon = textures.findTextureByName("icon_pause");
 				auto tex_play_icon = textures.findTextureByName("icon_play");
-				auto pause_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
+				auto pause_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f{ 0.9f, 0.9f, 0.0f });
 				pause_button->respect_aspect_ratio();
 				pause_button->align().target(m_top_bar->last_child()).right_outside().top_inside().offset_x(+0.5f);
 				pause_button->velocity_position(200.0f);
@@ -900,16 +899,16 @@ rynx::editor_rules::editor_rules(
 
 						if (!emitter.errors().empty()) {
 							const auto& error = emitter.errors().front();
-							auto popupdiv = std::make_shared<rynx::menu::Div>(rynx::vec3f{0.6f, 0.5f, 0});
+							auto popupdiv = rynx::make_shared<rynx::menu::Div>(rynx::vec3f{0.6f, 0.5f, 0});
 							popupdiv->set_background(frame_tex);
 							
-							auto error_text = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.8f, 0.1f, 0));
+							auto error_text = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.8f, 0.1f, 0));
 							error_text->text(error.what);
 							error_text->align().center_x().center_y();
 							popupdiv->addChild(error_text);
 							
 							for (const auto& op : error.options) {
-								auto option_button = std::make_shared<rynx::menu::Button>(
+								auto option_button = rynx::make_shared<rynx::menu::Button>(
 									frame_tex,
 									rynx::vec3f{ 0.3f, 0.1f, 0 }
 								);
@@ -951,7 +950,7 @@ rynx::editor_rules::editor_rules(
 			}
 		}
 
-		m_info_text = std::make_shared<rynx::menu::Text>(rynx::vec3f{ 0.2f, 0.05f, 0.0f });
+		m_info_text = rynx::make_shared<rynx::menu::Text>(rynx::vec3f{ 0.2f, 0.05f, 0.0f });
 		m_info_text->align().target(m_top_bar.get()).center_x().bottom_outside();
 
 		m_editor_menu->addChild(m_info_text);
@@ -966,14 +965,14 @@ rynx::editor_rules::editor_rules(
 
 		// editor entity view menu
 		{
-			m_components_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(1.0f, 0.95f, 0.0f));
+			m_components_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(1.0f, 0.95f, 0.0f));
 			m_components_list->list_endpoint_margin(0.05f);
 			m_components_list->list_element_margin(0.05f);
 			m_components_list->list_element_velocity(menuVelocityFast);
 			m_components_list->align().bottom_inside().left_inside();
 			m_components_list->velocity_position(menuVelocityFast);
 			
-			auto add_component_button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.0f, 0.05f, 0.0f));
+			auto add_component_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.0f, 0.05f, 0.0f));
 			add_component_button->velocity_position(menuVelocityFast);
 			add_component_button->align().top_inside().left_inside();
 			add_component_button->text().text("Add component");
@@ -984,7 +983,7 @@ rynx::editor_rules::editor_rules(
 						if (ecs.exists(m_state.m_selected_ids.front())) {
 							auto reflection_data = m_reflections.get_reflection_data();
 							std::ranges::sort(reflection_data, [](auto& a, auto& b) {return a.first < b.first; });
-							auto menu_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+							auto menu_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
 							menu_list->list_element_velocity(menuVelocityFast);
 							menu_list->velocity_position(menuVelocityFast);
 
@@ -1001,7 +1000,7 @@ rynx::editor_rules::editor_rules(
 									continue;
 								}
 
-								auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
+								auto button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 								menu_list->addChild(button);
 								button->align().center_x();
 								button->velocity_position(menuVelocityFast);

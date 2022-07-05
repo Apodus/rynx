@@ -7,7 +7,7 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/math/vector.hpp>
 
-#include <string>
+#include <string_view>
 #include <vector>
 
 namespace rynx {
@@ -25,8 +25,8 @@ namespace rynx {
 				unsigned textureGL_ID = ~0u;
 				unsigned bufferGL_ID = ~0u;
 				unsigned buffer_gl_format = 0;
-				std::string name;
-				std::string filepath;
+				rynx::string name;
+				rynx::string filepath;
 				bool in_atlas = false;
 				bool has_buffer() const { return bufferGL_ID != ~0u; }
 			};
@@ -104,8 +104,8 @@ namespace rynx {
 			GPUTextures();
 			~GPUTextures();
 
-			void loadTexturesFromPath(const std::string& filename);
-			texture_id loadToTextureAtlas(const std::string&, const std::string&);
+			void loadTexturesFromPath(const rynx::string& filename);
+			texture_id loadToTextureAtlas(const rynx::string&, const rynx::string&);
 			int getAtlasBlocksPerRow() const {
 				return m_texture_atlas.getAtlasBlocksPerRow();;
 			}
@@ -133,20 +133,20 @@ namespace rynx {
 			
 			std::vector<texture_entry> getListOfTextures() const;
 
-			texture_id createTexture(const std::string&, Image& img);
-			texture_id createTexture(const std::string&, int width, int height);
-			texture_id createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel = 16);
-			texture_id createFloatTexture(const std::string& name, int width, int height);
+			texture_id createTexture(const rynx::string&, Image& img);
+			texture_id createTexture(const rynx::string&, int width, int height);
+			texture_id createDepthTexture(const rynx::string& name, int width, int height, int bits_per_pixel = 16);
+			texture_id createFloatTexture(const rynx::string& name, int width, int height);
 			
-			texture_id createBuffer(const std::string& name, size_t bufferSizeBytes);
+			texture_id createBuffer(const rynx::string& name, size_t bufferSizeBytes);
 			void bufferData(rynx::graphics::texture_id id, size_t bytes, void* data, size_t offset = 0);
 
 			int bindTexture(size_t texture_unit, texture_id);
 			void unbindTexture(size_t texture_unit);
 
-			texture_id findTextureByName(std::string_view name) const;
+			texture_id findTextureByName(rynx::string_view name) const;
 
-			bool textureExists(std::string name) const;
+			bool textureExists(rynx::string name) const;
 			bool textureExists(texture_id id) const;
 
 			rynx::graphics::texture_id getCurrentTexture(size_t texture_unit) const;
@@ -185,7 +185,7 @@ namespace rynx {
 
 			dynamic_texture_atlas m_texture_atlas;
 			rynx::unordered_map<texture_id, tex_info> m_textures;
-			rynx::unordered_map<std::string, tex_conf> m_tex_configs;
+			rynx::unordered_map<rynx::string, tex_conf> m_tex_configs;
 			std::vector<texture_id> current_textures;
 			std::vector<texture_id> m_free_ids;
 			int32_t m_next_id = 0;

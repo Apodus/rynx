@@ -23,7 +23,7 @@ public class RynxProject : Project
 		// compiler settings
 		{
 			conf.Defines.Add("_ENABLE_EXTENDED_ALIGNED_STORAGE");
-			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.v10_0_19041_0);
+			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.v10_0_22621_0);
 
 			if (target.Optimization == Optimization.Retail)
 			{
@@ -77,6 +77,7 @@ public class RynxProject : Project
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.Optimization.Disable);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.BufferSecurityCheck.Enable);
 			}
+			conf.AdditionalCompilerOptions.Add("/experimental:module");
 
 			if (target.Optimization == Optimization.Retail)
 			{

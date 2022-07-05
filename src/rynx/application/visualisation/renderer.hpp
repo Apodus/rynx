@@ -2,7 +2,6 @@
 #pragma once
 
 #include <rynx/tech/ecs.hpp>
-#include <memory>
 #include <vector>
 
 namespace rynx {
@@ -20,7 +19,7 @@ namespace rynx {
 
 		class graphics_step : public igraphics_step {
 		public:
-			graphics_step& add_graphics_step(std::unique_ptr<igraphics_step> graphics_step, bool front = false) {
+			graphics_step& add_graphics_step(rynx::unique_ptr<igraphics_step> graphics_step, bool front = false) {
 				if (front) {
 					m_graphics_steps.insert(m_graphics_steps.begin(), std::move(graphics_step));
 				}
@@ -43,7 +42,7 @@ namespace rynx {
 			}
 
 		private:
-			std::vector<std::unique_ptr<igraphics_step>> m_graphics_steps;
+			std::vector<rynx::unique_ptr<igraphics_step>> m_graphics_steps;
 		};
 	}
 }

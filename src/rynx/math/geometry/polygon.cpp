@@ -5,6 +5,22 @@
 #include <rynx/math/spline.hpp>
 #include <rynx/math/geometry/bounding_sphere.hpp>
 
+template<typename T>
+std::vector<T> as_vector(const rynx::dynamic_buffer<T>& src) {
+	std::vector<T> result;
+	result.resize(src.size());
+	memcpy(result.data(), src.data(), sizeof(T) * src.size());
+	return result;
+}
+
+template<typename T>
+std::vector<T> as_vector(const rynx::pod_vector<T>& src) {
+	std::vector<T> result;
+	result.resize(src.size());
+	memcpy(result.data(), src.begin(), sizeof(T) * src.size());
+	return result;
+}
+
 float rynx::polygon::max_component_value() const {
 	float max_d = 0;
 	for (auto vertice : m_vertices) {
@@ -52,11 +68,11 @@ rynx::vec3<std::pair<float, float>> rynx::polygon::extents() const {
 }
 
 std::vector<rynx::vec3f> rynx::polygon::as_vertex_vector() const {
-	return m_vertices.as_vector();
+	return as_vector(m_vertices);
 }
 
 rynx::math::spline rynx::polygon::as_spline(float alpha) const {
-	auto vertices = m_vertices.as_vector();
+	auto vertices = as_vector(m_vertices);
 	vertices.pop_back();
 	return rynx::math::spline(std::move(vertices), alpha);
 }
@@ -83,7 +99,7 @@ rynx::polygon& rynx::polygon::scale(vec3f ranges) {
 }
 
 std::pair<rynx::vec3f, float> rynx::polygon::bounding_sphere() const {
-	return rynx::math::bounding_sphere(m_vertices.as_vector()); // todo, no conversion to vector should be required
+	return rynx::math::bounding_sphere(as_vector(m_vertices)); // todo, no conversion to vector should be required
 }
 
 rynx::polygon_editor rynx::polygon::edit() {

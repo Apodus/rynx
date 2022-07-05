@@ -24,7 +24,7 @@ namespace rynx {
 
 			template<typename T>
 			struct ruleset_conf {
-				ruleset_conf(simulation* host, rynx::binary_config::id state, std::unique_ptr<T> ruleset) : m_ruleset(std::move(ruleset)), m_host(host) { m_ruleset->state_id(state); }
+				ruleset_conf(simulation* host, rynx::binary_config::id state, rynx::unique_ptr<T> ruleset) : m_ruleset(std::move(ruleset)), m_host(host) { m_ruleset->state_id(state); }
 				~ruleset_conf() { m_host->add_rule_set(std::move(m_ruleset)); }
 
 				T* operator->() { return m_ruleset.get(); }
@@ -38,7 +38,7 @@ namespace rynx {
 				}
 
 			private:
-				std::unique_ptr<T> m_ruleset;
+				rynx::unique_ptr<T> m_ruleset;
 				simulation* m_host;
 			};
 
@@ -48,7 +48,7 @@ namespace rynx {
 
 				template<typename T, typename...Args>
 				ruleset_conf<T> create(Args&&... args) {
-					return ruleset_conf<T>(m_host, state, std::make_unique<T>(std::forward<Args>(args)...));
+					return ruleset_conf<T>(m_host, state, rynx::make_unique<T>(std::forward<Args>(args)...));
 				}
 			};
 
@@ -57,14 +57,14 @@ namespace rynx {
 			}
 
 			template<typename T>
-			void add_rule_set(std::unique_ptr<T>&& t) {
+			void add_rule_set(rynx::unique_ptr<T>&& t) {
 				static_assert(std::is_base_of_v<rynx::application::logic::iruleset, T>, "must be an iruleset");
 				rynx::application::logic::iruleset::unique_name_setter()(*t, typeid(T).name());
 				m_logic.add_ruleset(std::move(t));
 			}
 
 			rynx::scenes m_scenes;
-			std::shared_ptr<rynx::ecs> m_ecs;
+			rynx::shared_ptr<rynx::ecs> m_ecs;
 			rynx::opaque_unique_ptr<rynx::filesystem::vfs> m_vfs;
 			rynx::observer_ptr<rynx::scheduler::context> m_context;
 			rynx::application::logic m_logic;

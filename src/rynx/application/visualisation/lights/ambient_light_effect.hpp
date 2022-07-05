@@ -16,7 +16,7 @@ namespace rynx {
 			struct ambient_light_effect : public rynx::application::graphics_step::igraphics_step {
 			public:
 				ambient_light_effect(
-					std::shared_ptr<rynx::graphics::shaders> shader_manager
+					rynx::shared_ptr<rynx::graphics::shaders> shader_manager
 				);
 
 				virtual ~ambient_light_effect() {}
@@ -29,7 +29,7 @@ namespace rynx {
 				rynx::floats4 m_light_colors[2];
 				rynx::vec3f m_light_direction;
 				
-				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
+				rynx::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};
 		}
 	}

@@ -21,7 +21,7 @@ Image& Image::operator = (const Image& other)
 	return *this;
 }
 
-void Image::loadImage(const std::string& filename)
+void Image::loadImage(const rynx::string& filename)
 {
 	auto file_data = rynx::filesystem::read_file(filename);
 	

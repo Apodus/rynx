@@ -3,7 +3,7 @@
 #include <rynx/filesystem/native_fs.hpp>
 #include <rynx/system/assert.hpp>
 
-rynx::filesystem::filetree::native_directory_node::native_directory_node(const std::string& name, const std::string& native_path)
+rynx::filesystem::filetree::native_directory_node::native_directory_node(const rynx::string& name, const rynx::string& native_path)
 	: node(name) {
 	m_native_fs_path = native_path;
 	m_native_fs_path = rynx::filesystem::native::relative_path(m_native_fs_path);
@@ -12,35 +12,35 @@ rynx::filesystem::filetree::native_directory_node::native_directory_node(const s
 		m_native_fs_path += "/";
 }
 
-bool rynx::filesystem::filetree::native_directory_node::file_exists(const std::string& path) const {
-	std::string native_path = m_native_fs_path + path;
+bool rynx::filesystem::filetree::native_directory_node::file_exists(const rynx::string& path) const {
+	rynx::string native_path = m_native_fs_path + path;
 	return rynx::filesystem::native::file_exists(native_path);
 }
 
-bool rynx::filesystem::filetree::native_directory_node::directory_exists(const std::string& path) const {
-	std::string native_path = m_native_fs_path + path;
+bool rynx::filesystem::filetree::native_directory_node::directory_exists(const rynx::string& path) const {
+	rynx::string native_path = m_native_fs_path + path;
 	return rynx::filesystem::native::directory_exists(native_path);
 }
 
-std::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::filetree::native_directory_node::open_write(const std::string& path, filesystem::iwrite_file::mode mode) {
-	std::string native_path = m_native_fs_path + path;
-	return std::make_shared<rynx::filesystem::nativefile_write>(native_path, mode);
+rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::filetree::native_directory_node::open_write(const rynx::string& path, filesystem::iwrite_file::mode mode) {
+	rynx::string native_path = m_native_fs_path + path;
+	return rynx::make_shared<rynx::filesystem::nativefile_write>(native_path, mode);
 }
 
-std::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::filetree::native_directory_node::open_read(const std::string& path) {
-	std::string native_path = m_native_fs_path + path;
+rynx::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::filetree::native_directory_node::open_read(const rynx::string& path) {
+	rynx::string native_path = m_native_fs_path + path;
 	if (rynx::filesystem::native::file_exists(native_path))
-		return std::make_shared<rynx::filesystem::nativefile_read>(native_path);
-	return std::shared_ptr<rynx::filesystem::iread_file>();
+		return rynx::make_shared<rynx::filesystem::nativefile_read>(native_path);
+	return rynx::shared_ptr<rynx::filesystem::iread_file>();
 }
 
-bool rynx::filesystem::filetree::native_directory_node::remove(const std::string& path) {
+bool rynx::filesystem::filetree::native_directory_node::remove(const rynx::string& path) {
 	return rynx::filesystem::native::delete_file(m_native_fs_path + path);
 }
 
 
-std::vector<std::string> rynx::filesystem::filetree::native_directory_node::enumerate_content(
-	const std::string& path,
+std::vector<rynx::string> rynx::filesystem::filetree::native_directory_node::enumerate_content(
+	const rynx::string& path,
 	rynx::filesystem::recursive recurse,
 	rynx::filesystem::filetree::detail::enumerate_flags flags) {
 	auto res = [&]() {
@@ -58,7 +58,7 @@ std::vector<std::string> rynx::filesystem::filetree::native_directory_node::enum
 	std::for_each(
 		res.begin(),
 		res.end(),
-		[total_erase_count = erase_count + path.size()](std::string& fileName) {
+		[total_erase_count = erase_count + path.size()](rynx::string& fileName) {
 		if (fileName[total_erase_count] == '/')
 			fileName.replace(0, total_erase_count + 1, "");
 		else

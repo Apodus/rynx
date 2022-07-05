@@ -344,7 +344,7 @@ void write_results(std::string source_file) {
 				for (auto&& field : type.second.m_fields) {
 					output << "\t" << "reflection.add_field(\"" << field.spelling << "\", &" << type.first << "::" << field.spelling;
 					if (!field.annotations.empty()) {
-						output << ", std::vector<std::string>{\n\t\t\"" << field.annotations.front() << "\"";
+						output << ", std::vector<rynx::string>{\n\t\t\"" << field.annotations.front() << "\"";
 						for (int annotation_i = 1; annotation_i < field.annotations.size(); ++annotation_i) {
 							output << ",\n\t\t\"" << field.annotations[annotation_i] << "\"";
 						}

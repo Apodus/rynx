@@ -116,7 +116,7 @@ void rynx::sound::buffer::resample(float multiplier) {
     *this = std::move(other);
 }
 
-rynx::sound::buffer loadOggVorbis(std::string path, int target_sample_rate = 44100) {
+rynx::sound::buffer loadOggVorbis(rynx::string path, int target_sample_rate = 44100) {
     std::vector<char> buf = rynx::filesystem::read_file(path);
     
     ogg_file t;
@@ -277,7 +277,7 @@ bool rynx::sound::configuration::is_active() const {
 rynx::sound::audio_system::audio_system() {
     PaError err = Pa_Initialize();
     if (err != paNoError) {
-        std::cerr << "failed to initialize audio system: " << std::string(Pa_GetErrorText(err)) << std::endl;
+        std::cerr << "failed to initialize audio system: " << rynx::string(Pa_GetErrorText(err)) << std::endl;
     }
     m_soundBank.emplace_back(); // guarantee that sound index zero points to a silent (and empty) sample.
 }
@@ -285,12 +285,12 @@ rynx::sound::audio_system::audio_system() {
 rynx::sound::audio_system::~audio_system() {
     PaError err = Pa_CloseStream(stream);
     if (err != paNoError) {
-        std::cerr << "failed to close audio stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
+        std::cerr << "failed to close audio stream: " << rynx::string(Pa_GetErrorText(err)) << std::endl;
     }
 
     err = Pa_Terminate();
     if (err != paNoError) {
-        std::cerr << "failed to shutdown audio system: " << std::string(Pa_GetErrorText(err)) << std::endl;
+        std::cerr << "failed to shutdown audio system: " << rynx::string(Pa_GetErrorText(err)) << std::endl;
     }
 }
 
@@ -298,17 +298,17 @@ void rynx::sound::audio_system::setNumChannels(int channels) {
     m_channelDatas.resize(channels);
     m_channels.resize(channels);
     for (size_t i = 0; i < channels; ++i) {
-        m_channels[i] = std::make_unique<std::atomic<uint32_t>>(0);
+        m_channels[i] = rynx::make_unique<std::atomic<uint32_t>>(0);
     }
 }
 
-uint32_t rynx::sound::audio_system::load(std::string path) {
+uint32_t rynx::sound::audio_system::load(rynx::string path) {
     uint32_t soundIndex = static_cast<uint32_t>(m_soundBank.size());
     m_soundBank.emplace_back(loadOggVorbis(path, 60000));
     return soundIndex;
 }
 
-rynx::sound::audio_system& rynx::sound::audio_system::load(std::string path, std::string event_name) {
+rynx::sound::audio_system& rynx::sound::audio_system::load(rynx::string path, rynx::string event_name) {
     m_namedEvents.insert(event_name, load(path));
     return *this;
 }
@@ -337,7 +337,7 @@ rynx::sound::configuration rynx::sound::audio_system::play_sound(int bufferId, v
     return result;
 }
 
-rynx::sound::configuration rynx::sound::audio_system::play_sound(const std::string& named_event, vec3f position, vec3f direction, float loudness) {
+rynx::sound::configuration rynx::sound::audio_system::play_sound(const rynx::string& named_event, vec3f position, vec3f direction, float loudness) {
     return play_sound(m_namedEvents.get(named_event), position, direction, loudness);
 }
 
@@ -370,7 +370,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
             this);
 
         if (err != paNoError) {
-            std::cerr << "failed to open default audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
+            std::cerr << "failed to open default audio output stream: " << rynx::string(Pa_GetErrorText(err)) << std::endl;
             m_outputFormat = format::undefined;
         }
     }
@@ -378,7 +378,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
     {
         PaError err = Pa_StartStream(stream);
         if (err != paNoError) {
-            std::cerr << "failed to start audio output stream: " << std::string(Pa_GetErrorText(err)) << std::endl;
+            std::cerr << "failed to start audio output stream: " << rynx::string(Pa_GetErrorText(err)) << std::endl;
             m_outputFormat = format::undefined;
         }
     }
@@ -420,7 +420,7 @@ void rynx::sound::audio_system::render_audio(void* deviceBuffer, size_t numSampl
 
     constexpr int numChannels = 2;
     if (m_outBufLength < numSamples * numChannels) {
-        m_outBuf = std::unique_ptr<float[]>(new float[numSamples * numChannels]);
+        m_outBuf = rynx::unique_ptr<float[]>(new float[numSamples * numChannels]);
         m_outBufLength = numSamples * numChannels;
     }
 

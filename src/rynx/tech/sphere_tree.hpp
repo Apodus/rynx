@@ -59,11 +59,11 @@ namespace rynx {
 				return id_of_erased;
 			}
 
-			std::unique_ptr<node> node_migrates(node* child_ptr) {
+			rynx::unique_ptr<node> node_migrates(node* child_ptr) {
 				size_t i = 0;
 				for (;;) {
 					if (m_children[i].get() == child_ptr) {
-						std::unique_ptr<node> child = std::move(m_children[i]);
+						rynx::unique_ptr<node> child = std::move(m_children[i]);
 						m_children[i] = std::move(m_children.back());
 						m_children.pop_back();
 						return child;
@@ -89,7 +89,7 @@ namespace rynx {
 					// if we have no parent (we are root node), add a couple of new child nodes under me.
 					if (!m_parent) [[unlikely]] {
 						for (size_t i = 0; i < MaxNodesInNode; ++i) {
-							m_children.emplace_back(std::make_unique<node>(m_members[i].pos, this, depth + 1));
+							m_children.emplace_back(rynx::make_unique<node>(m_members[i].pos, this, depth + 1));
 						}
 						for (size_t i = 0; i < m_members.size(); ++i) {
 							m_children[i % m_children.size()]->insert(std::move(m_members[i]), container);
@@ -104,10 +104,10 @@ namespace rynx {
 						// add a new layer of nodes between my parent, and myself.
 						if (m_parent->m_children.size() >= MaxNodesInNode) {
 							// first take the existing children to safety.
-							std::vector<std::unique_ptr<node>> children_of_parent = std::move(m_parent->m_children);
+							std::vector<rynx::unique_ptr<node>> children_of_parent = std::move(m_parent->m_children);
 							m_parent->m_children.clear();
 							for (size_t i = 0; i < MaxNodesInNode; ++i) {
-								m_parent->m_children.emplace_back(std::make_unique<node>(children_of_parent[i]->pos, m_parent, m_parent->depth + 1));
+								m_parent->m_children.emplace_back(rynx::make_unique<node>(children_of_parent[i]->pos, m_parent, m_parent->depth + 1));
 							}
 							node* old_parent = m_parent;
 							for (size_t i = 0; i < children_of_parent.size(); ++i) {
@@ -127,7 +127,7 @@ namespace rynx {
 						// now there should be space in parent node's children list, add new siblings to self there.
 						auto f1 = rynx::math::farPoint(m_members.back().pos, m_members);
 						{
-							m_parent->m_children.emplace_back(std::make_unique<node>(m_members[f1.first].pos, m_parent, depth));
+							m_parent->m_children.emplace_back(rynx::make_unique<node>(m_members[f1.first].pos, m_parent, depth));
 							auto id = m_members[f1.first].entityId;
 							m_parent->m_children.back()->m_members.emplace_back(std::move(m_members[f1.first]));
 
@@ -221,7 +221,7 @@ namespace rynx {
 			bool apply_optimized_parents_for_nodes() {
 				bool moved_to_different_parent = m_new_parent != nullptr;
 				if (m_new_parent) {
-					std::unique_ptr<node> myself = m_parent->node_migrates(this);
+					rynx::unique_ptr<node> myself = m_parent->node_migrates(this);
 					myself->m_parent = m_new_parent;
 					m_new_parent->m_children.emplace_back(std::move(myself));
 					m_new_parent->update_single();
@@ -340,7 +340,7 @@ namespace rynx {
 
 			node* m_parent = nullptr;
 			node* m_new_parent = nullptr;
-			std::vector<std::unique_ptr<node>> m_children; // child nodes
+			std::vector<rynx::unique_ptr<node>> m_children; // child nodes
 			std::vector<entry> m_members;
 		};
 
@@ -494,9 +494,9 @@ namespace rynx {
 			rynx::scheduler::barrier entities_migrated_bar;
 
 			auto limit = (capacity >> 4) + 1;
-			std::shared_ptr<rynx::parallel_accumulator<plip>> accumulator = std::make_shared<rynx::parallel_accumulator<plip>>();
-			auto bar = task_context.parallel().for_each(update_next_index, update_next_index + limit)
-				.for_each([this, capacity, accumulator](int64_t index) {
+			rynx::shared_ptr<rynx::parallel_accumulator<plip>> accumulator = rynx::make_shared<rynx::parallel_accumulator<plip>>();
+			auto bar = task_context.parallel().range(update_next_index, update_next_index + limit)
+				.execute([this, capacity, accumulator](int64_t index) {
 				index &= capacity - 1;
 				if (entryMap.slot_test(index)) {
 					auto entry = entryMap.slot_get(index);
@@ -565,7 +565,7 @@ namespace rynx {
 					// objects is detected one frame late. but this does give 60% performance boost, and the error case of possible late detection isn't too bad.
 					std::reverse(flat_answer.begin(), flat_answer.end());
 					size_t s = flat_answer.size();
-					task_context.parallel().for_each(0, s, 128).for_each([layer = std::move(flat_answer)](int64_t i) {
+					task_context.parallel().range(0, s, 128).execute([layer = std::move(flat_answer)](int64_t i) {
 						layer[i]->update_single();
 					});
 
@@ -575,7 +575,7 @@ namespace rynx {
 						for (auto it = node_levels.rbegin(); it != node_levels.rend(); ++it) {
 							task_context.extend_task_execute_sequential("update node pos & r", [this, layer = std::move(*it)](rynx::scheduler::task& task_context) {
 								size_t size = layer.size();
-								task_context.parallel().for_each(0, size, 8).for_each([layer = std::move(layer)](int64_t i) {
+								task_context.parallel().range(0, size, 8).execute([layer = std::move(layer)](int64_t i) {
 									layer[i]->update_single();
 								});
 							});
@@ -698,7 +698,7 @@ namespace rynx {
 		}
 
 		template<typename T, typename F> static void collisions_internal_parallel_intra_node(
-			std::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
+			rynx::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
 			F&& f,
 			rynx::scheduler::task& task,
 			const node* rynx_restrict a)
@@ -706,7 +706,7 @@ namespace rynx {
 			rynx_assert(a != nullptr, "node cannot be null");
 			auto leaf_nodes = collisions_internal_gather_leaf_nodes(a);
 			auto leaf_node_count = leaf_nodes.size();
-			task.parallel().for_each(0, leaf_node_count, 8).for_each([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
+			task.parallel().range(0, leaf_node_count, 8).execute([accumulator, f, leaf_nodes = std::move(leaf_nodes)](int64_t node_index) mutable {
 				auto& local_accumulator = accumulator->template get_local_storage<T>();
 				const node* a = leaf_nodes[node_index];
 				for (size_t i = 0; i < a->m_members.size(); ++i) {
@@ -724,20 +724,20 @@ namespace rynx {
 		}
 
 		template<typename T, typename F> static void collisions_internal_parallel_node_node(
-			std::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
+			rynx::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
 			F&& f,
 			rynx::scheduler::task& task_context,
 			const node* a,
 			const node* b)
 		{
-			std::shared_ptr<rynx::unordered_map<const node*, std::vector<const node*>>> leaf_pairs = std::make_shared<rynx::unordered_map<const node*, std::vector<const node*>>>();
+			rynx::shared_ptr<rynx::unordered_map<const node*, std::vector<const node*>>> leaf_pairs = rynx::make_shared<rynx::unordered_map<const node*, std::vector<const node*>>>();
 			{
 				rynx_profile("collision detection", "gather node pairs");
 				collisions_internal_gather_leaf_node_pairs(a, b, *leaf_pairs);
 			}
 
 			rynx_profile("collision detection", "gather entity pairs");
-			task_context.parallel().for_each(0, leaf_pairs->capacity(), 8).for_each([accumulator, f, leaf_pairs](int64_t i) mutable {
+			task_context.parallel().range(0, leaf_pairs->capacity(), 8).execute([accumulator, f, leaf_pairs](int64_t i) mutable {
 				if (!leaf_pairs->slot_test(i))
 					return;
 
@@ -762,7 +762,7 @@ namespace rynx {
 		}
 
 		template<typename T, typename F> static void collisions_internal_parallel(
-			std::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
+			rynx::shared_ptr<rynx::parallel_accumulator<T>> accumulator,
 			F&& f,
 			rynx::scheduler::task& task_context,
 			const node* rynx_restrict a)

@@ -5,16 +5,16 @@
 #include <rynx/graphics/camera/camera.hpp>
 
 rynx::graphics::renderer::renderer(
-	std::shared_ptr<rynx::graphics::GPUTextures> textures,
-	std::shared_ptr<rynx::graphics::shaders> shaders
+	rynx::shared_ptr<rynx::graphics::GPUTextures> textures,
+	rynx::shared_ptr<rynx::graphics::shaders> shaders
 )
 {
 	m_textures = textures;
 	m_shaders = shaders;
-	m_meshes = std::make_shared<mesh_collection>(m_textures);
+	m_meshes = rynx::make_shared<mesh_collection>(m_textures);
 	init();
 
-	m_pTextRenderer = std::make_unique<rynx::graphics::text_renderer>(textures, shaders);
+	m_pTextRenderer = rynx::make_unique<rynx::graphics::text_renderer>(textures, shaders);
 	m_rectangle = m_meshes->create_transient(rynx::Shape::makeBox(2.0f));
 }
 

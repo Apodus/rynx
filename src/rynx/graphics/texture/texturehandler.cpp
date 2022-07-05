@@ -176,12 +176,12 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::getCurrentTexture(size_t
 	return current_textures[texture_unit];
 }
 
-void rynx::graphics::GPUTextures::loadTexturesFromPath(const std::string& path) {
-	for (auto& p : std::filesystem::recursive_directory_iterator(path)) {
+void rynx::graphics::GPUTextures::loadTexturesFromPath(const rynx::string& path) {
+	for (auto& p : std::filesystem::recursive_directory_iterator(path.c_str())) {
 		if (p.is_regular_file()) {
-			std::string path_string = p.path().string();
+			rynx::string path_string = p.path().string().c_str();
 			if (path_string.ends_with(".png")) {
-				std::string filename = path_string;
+				rynx::string filename = path_string;
 				filename.pop_back();
 				filename.pop_back();
 				filename.pop_back();
@@ -189,11 +189,11 @@ void rynx::graphics::GPUTextures::loadTexturesFromPath(const std::string& path) 
 				auto pos1 = filename.find_last_of("/");
 				auto pos2 = filename.find_last_of("\\");
 				auto pos = std::min(pos1, pos2);
-				if (pos1 != std::string::npos && pos2 != std::string::npos) {
+				if (pos1 != rynx::string::npos && pos2 != rynx::string::npos) {
 					pos = std::max(pos1, pos2);
 				}
 
-				if (pos != std::string::npos)
+				if (pos != rynx::string::npos)
 					filename = filename.substr(pos + 1);
 				loadToTextureAtlas(filename, path_string);
 			}
@@ -201,7 +201,7 @@ void rynx::graphics::GPUTextures::loadTexturesFromPath(const std::string& path) 
 	}
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::loadToTextureAtlas(const std::string& name, const std::string& filename) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::loadToTextureAtlas(const rynx::string& name, const rynx::string& filename) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 
 	rynx::graphics::texture_id id = generate_tex_id();
@@ -255,7 +255,7 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::generate_tex_id() {
 }
 
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createFloatTexture(const std::string& name, int width, int height) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createFloatTexture(const rynx::string& name, int width, int height) {
 	rynx_assert(!name.empty(), "create float texture called with empty name");
 
 	rynx::graphics::texture_id id = generate_tex_id();
@@ -274,7 +274,7 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::createFloatTexture(const
 	return id;
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const std::string& name, int width, int height) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const rynx::string& name, int width, int height) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 	rynx::graphics::texture_id id = generate_tex_id();
 	m_textures[id].name = name;
@@ -294,7 +294,7 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const std:
 	return id;
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createBuffer(const std::string& name, size_t bufferSizeBytes) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createBuffer(const rynx::string& name, size_t bufferSizeBytes) {
 	rynx_assert(!name.empty(), "create texture called with empty name");
 	rynx::graphics::texture_id id = generate_tex_id();
 	m_textures[id].name = name;
@@ -313,7 +313,7 @@ void rynx::graphics::GPUTextures::bufferData(rynx::graphics::texture_id id, size
 	glBufferSubData(GL_TEXTURE_BUFFER, offset, bytes, data);
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createDepthTexture(const std::string& name, int width, int height, int bits_per_pixel) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createDepthTexture(const rynx::string& name, int width, int height, int bits_per_pixel) {
 	rynx_assert(!name.empty(), "create depth texture called with empty name");
 
 	rynx::graphics::texture_id id = generate_tex_id();
@@ -349,7 +349,7 @@ std::vector<rynx::graphics::GPUTextures::texture_entry> rynx::graphics::GPUTextu
 	return result;
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const std::string& name, Image& img) {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::createTexture(const rynx::string& name, Image& img) {
 	rynx_assert(!name.empty(), "create texture called with an empty name.");
 	rynx_assert(img.data, "createTexture called with nullptr img data.");
 
@@ -455,7 +455,7 @@ void rynx::graphics::GPUTextures::deleteAllTextures() {
 	m_textures.clear();
 }
 
-rynx::graphics::texture_id rynx::graphics::GPUTextures::findTextureByName(std::string_view name) const {
+rynx::graphics::texture_id rynx::graphics::GPUTextures::findTextureByName(rynx::string_view name) const {
 	for (auto&& entry : m_textures)
 		if (entry.second.name == name)
 			return entry.first;
@@ -463,7 +463,7 @@ rynx::graphics::texture_id rynx::graphics::GPUTextures::findTextureByName(std::s
 	return {};
 }
 
-bool rynx::graphics::GPUTextures::textureExists(std::string name) const {
+bool rynx::graphics::GPUTextures::textureExists(rynx::string name) const {
 	for (auto&& entry : m_textures)
 		if (entry.second.name == name)
 			return true;

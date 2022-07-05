@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rynx/tech/unordered_map.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <rynx/scheduler/barrier.hpp>
@@ -11,10 +12,6 @@
 #include <rynx/thread/semaphore.hpp>
 
 #include <array>
-#include <atomic>
-#include <string>
-#include <memory>
-#include <functional>
 
 namespace rynx {
 	namespace scheduler {
@@ -33,7 +30,7 @@ namespace rynx {
 
 		private:
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
-			rynx::unordered_map<scheduler::context::context_id, std::unique_ptr<scheduler::context>> m_contexts;
+			rynx::unordered_map<scheduler::context::context_id, rynx::unique_ptr<scheduler::context>> m_contexts;
 			std::array<rynx::scheduler::task_thread*, numThreads> m_threads;
 			semaphore m_waitForComplete;
 			

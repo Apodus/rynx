@@ -8,8 +8,6 @@
 #include <rynx/graphics/mesh/mesh.hpp>
 #include <rynx/graphics/texture/id.hpp>
 
-#include <memory>
-
 namespace rynx {
 	namespace graphics {
 		class mesh;
@@ -23,7 +21,7 @@ namespace rynx {
 		class Frame : public Component {
 			vec3<float> m_prevScale;
 			matrix4 m_modelMatrix;
-			std::unique_ptr<rynx::graphics::mesh> m_backgroundMesh;
+			rynx::unique_ptr<rynx::graphics::mesh> m_backgroundMesh;
 			rynx::graphics::texture_id m_backgroundMeshTexture;
 			float m_edgeSize;
 

@@ -2,11 +2,11 @@
 #pragma once
 
 #include <rynx/tech/ecs/id.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <type_traits>
 #include <vector>
-#include <string>
 
 namespace rynx {
 	template<typename T, typename IOStream> void serialize(const T& t, IOStream& io);
@@ -43,15 +43,15 @@ namespace rynx {
 			}
 		};
 
-		template<> struct Serialize<std::string> {
+		template<> struct Serialize<rynx::string> {
 			template<typename IOStream>
-			void serialize(const std::string& s, IOStream& writer) {
+			void serialize(const rynx::string& s, IOStream& writer) {
 				writer(s.size());
 				writer(s.data(), s.size());
 			}
 
 			template<typename IOStream>
-			void deserialize(std::string& s, IOStream& reader) {
+			void deserialize(rynx::string& s, IOStream& reader) {
 				size_t numElements = 0;
 				reader(numElements);
 				s.resize(numElements);

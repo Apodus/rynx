@@ -138,7 +138,7 @@ namespace rynx {
 					}
 				}
 
-				std::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
+				rynx::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
 				std::vector<buffer> m_bufs;
 
 				rynx::graphics::renderer* m_meshRenderer;

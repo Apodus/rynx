@@ -3,7 +3,6 @@
 
 #include <rynx/tech/serialization_declares.hpp>
 #include <cstdint>
-#include <functional> // hash defined here
 
 namespace rynx {
 	namespace graphics {
@@ -30,6 +29,8 @@ namespace rynx {
 }
 
 namespace std {
+	template <class T> struct hash;
+
 	template<>
 	struct hash<rynx::graphics::mesh_id> {
 		size_t operator()(const rynx::graphics::mesh_id& id) const {

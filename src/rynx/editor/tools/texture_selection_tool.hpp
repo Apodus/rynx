@@ -26,15 +26,15 @@ namespace rynx {
 					rynx::editor::component_recursion_info_t info,
 					std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack) override;
 
-				virtual bool operates_on(const std::string& type_name) override {
-					return type_name.find("rynx::components::texture") != std::string::npos;
+				virtual bool operates_on(const rynx::string& type_name) override {
+					return type_name.find("rynx::components::texture") != rynx::string::npos;
 				}
 
-				virtual std::string get_tool_name() override {
+				virtual rynx::string get_tool_name() override {
 					return "select texture";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "texture_tool";
 				}
 

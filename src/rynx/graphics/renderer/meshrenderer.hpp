@@ -6,11 +6,9 @@
 #include <rynx/graphics/camera/camera.hpp>
 #include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/memory.hpp>
+#include <rynx/tech/std/memory.hpp>
 #include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/matrix.hpp>
-
-#include <memory>
 
 namespace rynx {
 	class camera;
@@ -22,17 +20,17 @@ namespace rynx {
 
 		class renderer {
 			mesh_id m_rectangle;
-			std::unique_ptr<rynx::graphics::text_renderer> m_pTextRenderer;
+			rynx::unique_ptr<rynx::graphics::text_renderer> m_pTextRenderer;
 
-			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
-			std::shared_ptr<rynx::graphics::shaders> m_shaders;
+			rynx::shared_ptr<rynx::graphics::GPUTextures> m_textures;
+			rynx::shared_ptr<rynx::graphics::shaders> m_shaders;
 			rynx::observer_ptr<camera> m_pCamera;
 
-			std::shared_ptr<mesh_collection> m_meshes;
+			rynx::shared_ptr<mesh_collection> m_meshes;
 
-			std::shared_ptr<rynx::graphics::shader> shader_single;
-			std::shared_ptr<rynx::graphics::shader> shader_instanced;
-			std::shared_ptr<rynx::graphics::shader> shader_instanced_deferred;
+			rynx::shared_ptr<rynx::graphics::shader> shader_single;
+			rynx::shared_ptr<rynx::graphics::shader> shader_instanced;
+			rynx::shared_ptr<rynx::graphics::shader> shader_instanced_deferred;
 
 			GLuint model_matrices_buffer = 0;
 			GLuint colors_buffer = 0;
@@ -55,10 +53,10 @@ namespace rynx {
 				DrawType type);
 
 		public:
-			renderer(std::shared_ptr<rynx::graphics::GPUTextures> texture, std::shared_ptr<rynx::graphics::shaders> shaders);
+			renderer(rynx::shared_ptr<rynx::graphics::GPUTextures> texture, rynx::shared_ptr<rynx::graphics::shaders> shaders);
 
 			void setDepthTest(bool depthTestEnabled);
-			std::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
+			rynx::shared_ptr<mesh_collection> meshes() const { return m_meshes; }
 
 			void cameraToGPU();
 			void setCamera(rynx::observer_ptr<camera> camera);

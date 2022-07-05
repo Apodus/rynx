@@ -2,8 +2,7 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
-#include <string>
-#include <memory>
+#include <rynx/tech/std/string.hpp>
 
 struct Image {
 	Image() {}
@@ -16,7 +15,7 @@ struct Image {
 	Image(const Image& other);
 	Image& operator = (const Image& other);
 
-	void loadImage(const std::string& filename);
+	void loadImage(const rynx::string& filename);
 	void unload();
 	void rescale(int newX, int newY);
 

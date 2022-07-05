@@ -40,7 +40,7 @@ void SampleApplication::startup_load() {
 
 void SampleApplication::set_resources() {
 	auto* context = simulation_context();
-	auto font = std::make_unique<Font>(
+	auto font = rynx::make_unique<Font>(
 		Fonts::setFontConsolaMono(
 			textures()->findTextureByName("consola1024")
 		)
@@ -49,7 +49,7 @@ void SampleApplication::set_resources() {
 	renderer().setDefaultFont(*font);
 
 	context->set_resource(std::move(font));
-	context->set_resource(std::make_unique<rynx::mapped_input>(input()));
+	context->set_resource(rynx::make_unique<rynx::mapped_input>(input()));
 
 	context->set_resource(m_reflections);
 	context->set_resource(m_menuSystem);

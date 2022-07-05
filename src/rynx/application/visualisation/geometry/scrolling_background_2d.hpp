@@ -15,7 +15,7 @@ namespace rynx {
 		namespace visualization {
 			class scrolling_background_2d : public rynx::application::igraphics_step {
 			public:
-				scrolling_background_2d(rynx::graphics::renderer& mesh_renderer, std::shared_ptr<rynx::camera> camera, rynx::graphics::mesh* m);
+				scrolling_background_2d(rynx::graphics::renderer& mesh_renderer, rynx::shared_ptr<rynx::camera> camera, rynx::graphics::mesh* m);
 				virtual ~scrolling_background_2d() {}
 				virtual void execute() override;
 				virtual void prepare(rynx::scheduler::context* ctx);
@@ -28,7 +28,7 @@ namespace rynx {
 				rynx::graphics::mesh* m_bg_mesh = nullptr;
 				rynx::graphics::texture_id m_bg_texture;
 
-				std::shared_ptr<rynx::camera> m_camera;
+				rynx::shared_ptr<rynx::camera> m_camera;
 				rynx::graphics::renderer& m_mesh_renderer;
 				rynx::vec3f m_pos;
 				float m_scale = 1.0f;

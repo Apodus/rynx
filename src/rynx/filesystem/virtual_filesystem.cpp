@@ -6,18 +6,17 @@
 #include <rynx/filesystem/filetree/memory_file_node.hpp>
 
 #include <rynx/system/assert.hpp>
-#include <functional>
-#include <ranges>
+#include <rynx/tech/std/memory.hpp> // todo - should include rynx::function
 
 rynx::filesystem::vfs::~vfs() {
 }
 
 rynx::filesystem::vfs::vfs() {
-	m_filetree_root = std::make_shared<filetree::node>("");
+	m_filetree_root = rynx::make_shared<filetree::node>("");
 	native_directory("./", "/wd");
 }
 
-bool rynx::filesystem::vfs::file_exists(std::string path) const {
+bool rynx::filesystem::vfs::file_exists(rynx::string path) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(path));
 	while (true) {
 		if (tree_node->file_exists(remaining_path))
@@ -34,7 +33,7 @@ bool rynx::filesystem::vfs::file_exists(std::string path) const {
 	}
 }
 
-bool rynx::filesystem::vfs::directory_exists(std::string path) const {
+bool rynx::filesystem::vfs::directory_exists(rynx::string path) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(path));
 	while (true) {
 		if (tree_node->directory_exists(remaining_path))
@@ -51,20 +50,20 @@ bool rynx::filesystem::vfs::directory_exists(std::string path) const {
 	}
 }
 
-std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(
-	const std::string virtual_path,
+std::vector<rynx::string> rynx::filesystem::vfs::enumerate_vfs_content(
+	const rynx::string virtual_path,
 	rynx::filesystem::recursive recurse,
 	filetree::detail::enumerate_flags flags) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(virtual_path);
 
-	std::vector<std::string> total_result;
-	std::function<void(std::shared_ptr<filetree::node>, std::string)> dfs = [this, &total_result, recurse, flags, &dfs](std::shared_ptr<filetree::node> node, std::string current_virtual_path)
+	std::vector<rynx::string> total_result;
+	rynx::function<void(rynx::shared_ptr<filetree::node>, rynx::string)> dfs = [this, &total_result, recurse, flags, &dfs](rynx::shared_ptr<filetree::node> node, rynx::string current_virtual_path)
 	{
 		if (current_virtual_path.back() != '/')
 			current_virtual_path += "/";
 
 		auto local_result = node->enumerate_content("", recurse, flags);
-		std::transform(local_result.begin(), local_result.end(), local_result.begin(), [&current_virtual_path](const std::string& p)->std::string { return current_virtual_path + p; });
+		std::transform(local_result.begin(), local_result.end(), local_result.begin(), [&current_virtual_path](const rynx::string& p)->rynx::string { return current_virtual_path + p; });
 		total_result.insert(total_result.end(), local_result.begin(), local_result.end());
 
 		for (const auto& child : node->m_children) {
@@ -121,7 +120,7 @@ std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(
 				total_result.begin(),
 				total_result.end(),
 				total_result.begin(),
-				[&virtual_path](const std::string& s) {
+				[&virtual_path](const rynx::string& s) {
 					if (virtual_path.ends_with("/") && s == "/")
 						return virtual_path;
 					return virtual_path + s;
@@ -131,26 +130,26 @@ std::vector<std::string> rynx::filesystem::vfs::enumerate_vfs_content(
 	}
 }
 
-std::vector<std::string> rynx::filesystem::vfs::enumerate_files(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+std::vector<rynx::string> rynx::filesystem::vfs::enumerate_files(rynx::string virtual_path, rynx::filesystem::recursive recurse) const {
 	if (virtual_path.empty() || virtual_path.back() != '/')
 		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_files });
 }
 
-std::vector<std::string> rynx::filesystem::vfs::enumerate_directories(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+std::vector<rynx::string> rynx::filesystem::vfs::enumerate_directories(rynx::string virtual_path, rynx::filesystem::recursive recurse) const {
 	if (virtual_path.empty() || virtual_path.back() != '/')
 		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_directories });
 }
 
-std::vector<std::string> rynx::filesystem::vfs::enumerate(std::string virtual_path, rynx::filesystem::recursive recurse) const {
+std::vector<rynx::string> rynx::filesystem::vfs::enumerate(rynx::string virtual_path, rynx::filesystem::recursive recurse) const {
 	if (virtual_path.empty() || virtual_path.back() != '/')
 		virtual_path.push_back('/');
 	return enumerate_vfs_content(std::move(virtual_path), recurse, { rynx::filesystem::filetree::detail::enumerate_flags::flag_files | rynx::filesystem::filetree::detail::enumerate_flags::flag_directories });
 }
 
 
-std::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::vfs::open_write(std::string virtual_path, filesystem::iwrite_file::mode mode) const {
+rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::vfs::open_write(rynx::string virtual_path, filesystem::iwrite_file::mode mode) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
 	while (true) {
 		auto pFile = tree_node->open_write(remaining_path, mode);
@@ -168,7 +167,7 @@ std::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::vfs::open_write
 	}
 }
 
-std::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::vfs::open_read(std::string virtual_path) const {
+rynx::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::vfs::open_read(rynx::string virtual_path) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
 	while (true) {
 		auto file = tree_node->open_read(remaining_path);
@@ -187,7 +186,7 @@ std::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::vfs::open_read(s
 	}
 }
 
-bool rynx::filesystem::vfs::remove(std::string virtual_path) const {
+bool rynx::filesystem::vfs::remove(rynx::string virtual_path) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
 	while (true) {
 
@@ -216,28 +215,33 @@ bool rynx::filesystem::vfs::remove(std::string virtual_path) const {
 }
 
 namespace {
-	void remove_backslashes_from_path(std::string& path) {
+	void remove_backslashes_from_path(rynx::string& path) {
 		std::transform(path.begin(), path.end(), path.begin(), [](char in) { if (in == '\\') return '/'; return in; });
 	}
 }
 
-void rynx::filesystem::vfs::unmount(std::string virtual_path) {
+void rynx::filesystem::vfs::unmount(rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
-	auto [mountNode, remaining_path] = vfs_tree_access(std::move(virtual_path));
-	auto parent = mountNode->parent().lock();
-	parent->m_children.erase(mountNode->name());
-	auto new_child = std::make_shared<filetree::node>(mountNode->name());
+	auto [mount_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
+	auto parent = mount_node->parent().lock();
+	parent->m_children.erase(mount_node->name());
+	auto new_child = rynx::make_shared<filetree::node>(mount_node->name());
 	new_child->m_parent = parent;
-	parent->m_children.emplace(std::make_pair(mountNode->name(), std::move(new_child)));
-	parent->m_children[mountNode->name()]->m_children = mountNode->m_children;
-	auto newParent = parent->m_children[mountNode->name()];
-	std::for_each(mountNode->m_children.begin(), mountNode->m_children.end(), [&newParent](std::pair<const std::string, std::shared_ptr<filetree::node>>& child) { child.second->m_parent = newParent; });
+	parent->m_children.emplace(std::make_pair(mount_node->name(), std::move(new_child)));
+	parent->m_children[mount_node->name()]->m_children = mount_node->m_children;
+	auto new_parent = parent->m_children[mount_node->name()];
+	for (auto&& mount_node_child : mount_node->m_children)
+		mount_node_child.second->m_parent = new_parent;
 }
 
 namespace {
-	void attach_to_filetree(std::shared_ptr<rynx::filesystem::filetree::node> node_replaced, std::shared_ptr<rynx::filesystem::filetree::node> node_replace_with) {
+	void attach_to_filetree(rynx::shared_ptr<rynx::filesystem::filetree::node> node_replaced, rynx::shared_ptr<rynx::filesystem::filetree::node> node_replace_with) {
 		// first erase the node where we are about to mount.
 		auto parent = node_replaced->m_parent.lock();
+		if (!parent) {
+			return;
+		}
+		
 		parent->m_children.erase(node_replaced->m_name);
 		
 		node_replace_with->m_parent = parent;
@@ -249,68 +253,63 @@ namespace {
 		
 		// update any existing child nodes' parent pointers to just mounted node
 		auto new_parent = parent->m_children[node_replaced->m_name];
-		std::for_each(
-			node_replaced->m_children.begin(),
-			node_replaced->m_children.end(),
-			[&new_parent](std::pair<const std::string, std::shared_ptr<rynx::filesystem::filetree::node>>& child) {
-				child.second->m_parent = new_parent;
-			}
-		);
+		for (auto&& replaced_node_child : node_replaced->m_children)
+			replaced_node_child.second->m_parent = new_parent;
 	}
 }
 
-void rynx::filesystem::vfs::memory_file(std::string virtual_path) {
+void rynx::filesystem::vfs::memory_file(rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
-	std::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, std::make_shared<filetree::memoryfile_node>(mountNode->m_name));
+	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
+	attach_to_filetree(mountNode, rynx::make_shared<filetree::memoryfile_node>(mountNode->m_name));
 }
 
-void rynx::filesystem::vfs::memory_directory(std::string virtual_path) {
+void rynx::filesystem::vfs::memory_directory(rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
-	std::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, std::make_shared<filetree::memory_directory_node>(mountNode->m_name));
+	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
+	attach_to_filetree(mountNode, rynx::make_shared<filetree::memory_directory_node>(mountNode->m_name));
 }
 
-void rynx::filesystem::vfs::native_directory(std::string native_path, std::string virtual_path) {
+void rynx::filesystem::vfs::native_directory(rynx::string native_path, rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
 	if (native_path.back() != '/')
 		native_path += "/";
 
 	rynx_assert(rynx::filesystem::native::directory_exists(native_path), "mounting native directory '%s' - it does not exist.", native_path.c_str());
-	std::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode,std::make_shared<filetree::native_directory_node>(mountNode->m_name, native_path));
+	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
+	attach_to_filetree(mountNode,rynx::make_shared<filetree::native_directory_node>(mountNode->m_name, native_path));
 }
 
-void rynx::filesystem::vfs::native_file(std::string native_path, std::string virtual_path) {
+void rynx::filesystem::vfs::native_file(rynx::string native_path, rynx::string virtual_path) {
 	remove_backslashes_from_path(native_path);
 	if (native_path.back() == '/')
 		native_path.pop_back();
 
 	rynx_assert(rynx::filesystem::native::file_exists(native_path), "mounting native file '%s' - it does not exist.", native_path.c_str());
-	std::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, std::make_shared<filetree::native_file_node>(mountNode->m_name, native_path));
+	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
+	attach_to_filetree(mountNode, rynx::make_shared<filetree::native_file_node>(mountNode->m_name, native_path));
 }
 
 namespace {
 	// removes the first path token from given path string
 	// returns the first path token as a separate string value
-	std::string firstPathToken(std::string& path) {
-		auto delim_pos = path.find_first_of("/");
-		if (delim_pos != std::string::npos) {
-			std::string token = path.substr(0, delim_pos);
+	rynx::string firstPathToken(rynx::string& path) {
+		auto delim_pos = path.find_first_of('/');
+		if (delim_pos != rynx::string::npos) {
+			rynx::string token = path.substr(0, delim_pos);
 			path = path.substr(delim_pos + 1);
 			return token;
 		}
 
-		std::string token = path;
+		rynx::string token = path;
 		path.clear();
 		return token;
 	}
 }
 
-std::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::vfs_tree_mount(std::string virtual_path) const {
-	std::shared_ptr<rynx::filesystem::filetree::node> currentNode = m_filetree_root;
-	std::string currentTokenName;
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::vfs_tree_mount(rynx::string virtual_path) const {
+	rynx::shared_ptr<rynx::filesystem::filetree::node> currentNode(m_filetree_root);
+	rynx::string currentTokenName;
 
 	while (true) {
 		currentTokenName = firstPathToken(virtual_path);
@@ -330,7 +329,7 @@ std::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::vfs_tre
 			currentNode = it->second;
 		}
 		else {
-			auto emptyNode = std::make_shared<rynx::filesystem::filetree::node>(currentTokenName);
+			auto emptyNode = rynx::make_shared<rynx::filesystem::filetree::node>(currentTokenName);
 			emptyNode->m_parent = currentNode;
 			
 			currentNode->m_children.insert(std::make_pair(currentTokenName, std::move(emptyNode)));
@@ -344,10 +343,10 @@ std::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::vfs_tre
 	return currentNode;
 }
 
-std::pair<std::shared_ptr<rynx::filesystem::filetree::node>, std::string> rynx::filesystem::vfs::vfs_tree_access(std::string virtual_path) const {
-	std::shared_ptr<rynx::filesystem::filetree::node> currentNode = m_filetree_root;
-	std::string currentTokenName;
-	std::string remaining_path;
+std::pair<rynx::shared_ptr<rynx::filesystem::filetree::node>, rynx::string> rynx::filesystem::vfs::vfs_tree_access(rynx::string virtual_path) const {
+	rynx::shared_ptr<rynx::filesystem::filetree::node> currentNode = m_filetree_root;
+	rynx::string currentTokenName;
+	rynx::string remaining_path;
 	while (true) {
 		currentTokenName = firstPathToken(virtual_path);
 		if (currentTokenName.empty() || currentTokenName == ".") {

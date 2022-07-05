@@ -13,7 +13,7 @@
 #include <rynx/system/assert.hpp>
 
 rynx::application::visualisation::omnilights_effect::omnilights_effect(
-	std::shared_ptr<rynx::graphics::shaders> shader_manager
+	rynx::shared_ptr<rynx::graphics::shaders> shader_manager
 ) {
 	m_lights_shader = shader_manager->load_shader(
 		"fbo_lights",

@@ -15,7 +15,7 @@ namespace rynx {
 		namespace scene {
 			struct link {
 				// path where scene should be? is this ok or should have some scene_id type?
-				std::string path;
+				rynx::string path;
 			};
 
 			// need some way to figure out which entities belong to some scene,

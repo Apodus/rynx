@@ -3,12 +3,80 @@
 #include <rynx/tech/dynamic_buffer.hpp>
 #include <rynx/tech/dynamic_bitset.hpp>
 #include <rynx/system/assert.hpp>
+#include <rynx/tech/std/memory.hpp>
 
-#include <utility>
-#include <memory>
-#include <stdexcept>
+#include <utility> // for std::pair ..
 
 namespace rynx {
+	template<typename T, typename U>
+	struct pair {
+		using first_type = T;
+		using second_type = U;
+
+		template <class _Uty1 = T, class _Uty2 = U,
+			std::enable_if_t<std::conjunction_v<std::is_default_constructible<_Uty1>, std::is_default_constructible<_Uty2>>, int> = 0>
+		constexpr pair() noexcept(std::is_nothrow_default_constructible_v<_Uty1> && std::is_nothrow_default_constructible_v<_Uty2>)
+			: first(), second() {}
+
+		template <class _Uty1 = T, class _Uty2 = U,
+			std::enable_if_t<std::conjunction_v<std::is_copy_constructible<_Uty1>, std::is_copy_constructible<_Uty2>>, int> = 0>
+		constexpr explicit(!std::conjunction_v<std::is_convertible<const _Uty1&, _Uty1>, std::is_convertible<const _Uty2&, _Uty2>>)
+			pair(const T& _Val1, const U& _Val2) noexcept(std::is_nothrow_copy_constructible_v<_Uty1> && std::is_nothrow_copy_constructible_v<_Uty2>)
+			: first(_Val1), second(_Val2) {}
+
+		template <class _Other1 = T, class _Other2 = U,
+			std::enable_if_t<std::conjunction_v<std::is_constructible<T, _Other1>, std::is_constructible<U, _Other2>>, int> = 0>
+		constexpr explicit(!std::conjunction_v<std::is_convertible<_Other1, T>, std::is_convertible<_Other2, U>>)
+			pair(_Other1&& _Val1, _Other2&& _Val2) noexcept(
+				std::is_nothrow_constructible_v<T, _Other1>&& std::is_nothrow_constructible_v<U, _Other2>) // strengthened
+			: first(std::forward<_Other1>(_Val1)), second(std::forward<_Other2>(_Val2)) {}
+
+		pair(const pair&) = default;
+		pair(pair&&) = default;
+
+		template <class _Other1, class _Other2,
+			std::enable_if_t<std::conjunction_v<std::is_constructible<T, const _Other1&>, std::is_constructible<U, const _Other2&>>, int> = 0>
+		constexpr explicit(!std::conjunction_v<std::is_convertible<const _Other1&, T>, std::is_convertible<const _Other2&, U>>)
+			pair(const pair<_Other1, _Other2>& _Right) noexcept(std::is_nothrow_constructible_v<T, const _Other1&> && std::is_nothrow_constructible_v<U, const _Other2&>)
+			: first(_Right.first), second(_Right.second) {}
+
+		template <class _Other1, class _Other2,
+			std::enable_if_t<std::conjunction_v<std::is_constructible<T, _Other1>, std::is_constructible<U, _Other2>>, int> = 0>
+		constexpr explicit(!std::conjunction_v<std::is_convertible<_Other1, T>, std::is_convertible<_Other2, U>>)
+			pair(pair<_Other1, _Other2>&& _Right) noexcept(
+				std::is_nothrow_constructible_v<T, _Other1> && std::is_nothrow_constructible_v<U, _Other2>)
+			: first(std::forward<_Other1>(_Right.first)), second(std::forward<_Other2>(_Right.second)) {}
+
+		pair& operator=(const volatile pair&) = delete;
+
+		template <class Other1, class Other2>
+			constexpr pair& operator=(const pair<Other1, Other2>& other) noexcept (std::is_nothrow_assignable_v<T&, const Other1&> && std::is_nothrow_assignable_v<U&, const Other2&>) {
+			first = other.first;
+			second = other.second;
+			return *this;
+		}
+
+		template <class Other1, class Other2>
+			constexpr pair& operator=(pair<Other1, Other2>&& other) noexcept(std::is_nothrow_assignable_v<T&, Other1> && std::is_nothrow_assignable_v<U&, Other2>) {
+			first = std::forward<Other1>(other.first);
+			second = std::forward<Other2>(other.second);
+			return *this;
+		}
+
+		constexpr void swap(pair& other) {
+			if (this != &other) {
+				std::swap(first, other.first);
+				std::swap(second, other.second);
+			}
+		}
+		
+		T first;
+		U second;
+	};
+	
+	template <class _Ty1, class _Ty2>
+	pair(_Ty1, _Ty2) -> pair<_Ty1, _Ty2>;
+
 	template<typename T>
     struct equal_to
     {
@@ -461,7 +529,7 @@ namespace rynx {
 			auto it = find(key);
 			if (it != end())
 				return it->second;
-			throw std::out_of_range("key not found");
+			rynx_assert(false, "key not found");
 		}
 
 		const U& at(const T& key) const { return const_cast<unordered_map*>(this)->at(key); }
@@ -558,7 +626,7 @@ namespace rynx {
 			*this = std::move(other);
 		}
 
-		std::unique_ptr<std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[]> m_data;
+		rynx::unique_ptr<std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[]> m_data;
 		dynamic_buffer<uint32_t> m_info;
 		dynamic_bitset m_presence;
 

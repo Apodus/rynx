@@ -161,7 +161,7 @@ TEST_CASE("task extensions respected", "scheduler")
 	rynx::scheduler::task_scheduler scheduler;
 	auto context = scheduler.make_context();
 	
-	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
+	auto extension_task_completed = rynx::make_shared<std::atomic<int>>(0);
 
 	context->add_task("TestRead", [=](rynx::scheduler::task& context) mutable {
 		context.extend_task_independent("extension", [=]() mutable {
@@ -192,7 +192,7 @@ TEST_CASE("task extensions respected nested", "scheduler")
 	rynx::scheduler::task_scheduler scheduler;
 	auto context = scheduler.make_context();
 
-	auto extension_task_completed = std::make_shared<std::atomic<int>>(0);
+	auto extension_task_completed = rynx::make_shared<std::atomic<int>>(0);
 
 	context->add_task("TestRead", [=](rynx::scheduler::task& context) mutable {
 		auto task1 = context.extend_task_independent("extension", [=](rynx::scheduler::task& inner_context) mutable {
@@ -224,14 +224,14 @@ TEST_CASE("task parallel for dependencies", "scheduler")
 {
 	rynx::this_thread::rynx_thread_raii obj;
 
-	auto test_state = std::make_shared<std::atomic<int>>(0);
+	auto test_state = rynx::make_shared<std::atomic<int>>(0);
 
 	std::vector<int> data = {1, 2, 3, 4};
 	
 	rynx::scheduler::task_scheduler scheduler;
 	auto context = scheduler.make_context();
 	context->add_task("test", [&data, test_state](rynx::scheduler::task& task_context) {
-		task_context.parallel().for_each(0, data.size()).deferred_work().for_each([&data, test_state](int64_t index) mutable {
+		task_context.parallel().range(0, data.size()).deferred_work().execute([&data, test_state](int64_t index) mutable {
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			*test_state += 1;
 		});
@@ -251,7 +251,7 @@ TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")
 	ecs.create(component{ 2 });
 	ecs.create(component{ 3 });
 
-	auto test_state = std::make_shared<std::atomic<int>>(0);
+	auto test_state = rynx::make_shared<std::atomic<int>>(0);
 
 	rynx::scheduler::task_scheduler scheduler;
 	auto context = scheduler.make_context();

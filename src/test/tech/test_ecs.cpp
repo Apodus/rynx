@@ -15,23 +15,23 @@ namespace rynx {
 
 TEST_CASE("serialization", "strings & vectors")
 {
-	std::vector<std::string> strings{"abba", "yks", "kaks"};
-	std::vector<std::vector<std::string>> moreStrings{ {"yks"}, {"kaks"}, {"kolme", "kolme ja puol"} };
+	std::vector<rynx::string> strings{"abba", "yks", "kaks"};
+	std::vector<std::vector<rynx::string>> moreStrings{ {"yks"}, {"kaks"}, {"kolme", "kolme ja puol"} };
 	rynx::serialization::vector_writer out;
 	rynx::serialize(strings, out);
 	rynx::serialize(moreStrings, out);
 
 	rynx::serialization::vector_reader reader(out.data());
-	auto result = rynx::deserialize<std::vector<std::string>>(reader);
+	auto result = rynx::deserialize<std::vector<rynx::string>>(reader);
 	REQUIRE(strings == result);
 
-	auto result2 = rynx::deserialize<std::vector<std::vector<std::string>>>(reader);
+	auto result2 = rynx::deserialize<std::vector<std::vector<rynx::string>>>(reader);
 	REQUIRE(moreStrings == result2);
 }
 
 struct hubbabubba {
-	std::string kekkonen;
-	std::vector<std::string> lol;
+	rynx::string kekkonen;
+	std::vector<rynx::string> lol;
 };
 
 struct id_field_t {
@@ -207,7 +207,7 @@ TEST_CASE("serialize ecs with structs", "serialization")
 		REQUIRE(b.query().in<hubbabubba>().count() == 1);
 		b.query().for_each([](hubbabubba f) {
 			REQUIRE(f.kekkonen == "kekkonen");
-			REQUIRE(f.lol == std::vector<std::string>{"yks", "kaks"});
+			REQUIRE(f.lol == std::vector<rynx::string>{"yks", "kaks"});
 			});
 	}
 
@@ -218,7 +218,7 @@ TEST_CASE("serialize ecs with structs", "serialization")
 		REQUIRE(b.query().in<hubbabubba>().count() == 2);
 		b.query().for_each([](hubbabubba f) {
 			REQUIRE(f.kekkonen == "kekkonen");
-			REQUIRE(f.lol == std::vector<std::string>{"yks", "kaks"});
+			REQUIRE(f.lol == std::vector<rynx::string>{"yks", "kaks"});
 		});
 	}
 }

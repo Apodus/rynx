@@ -25,9 +25,6 @@
 #include <thread>
 
 #include <cmath>
-#include <memory>
-
-
 
 #include <rynx/filesystem/virtual_filesystem.hpp>
 
@@ -57,7 +54,7 @@ int main(int /* argc */, char** /* argv */) {
 
 	// setup some debug controls
 	
-	auto menuCamera = std::make_shared<rynx::camera>();
+	auto menuCamera = rynx::make_shared<rynx::camera>();
 	menuCamera->setPosition({ 0, 0, 1 });
 	menuCamera->setDirection({ 0, 0, -1 });
 	menuCamera->setUpVector({ 0, 1, 0 });

@@ -3,8 +3,7 @@
 
 #include <rynx/application/logic.hpp>
 #include <rynx/tech/sphere_tree.hpp>
-#include <rynx/tech/memory.hpp>
-#include <memory>
+#include <rynx/tech/std/memory.hpp>
 
 namespace rynx {
 	class ecs;

@@ -31,12 +31,12 @@ void rynx::polygon_triangulation::addTriangle(int earNode, int t1, int t2) {
 	unhandled.pop_back();
 }
 
-std::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::buildMeshData(
+rynx::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::buildMeshData(
 	floats4 uvLimits,
 	rynx::vec3<std::pair<float, float>> poly_extents,
 	float uv_multiplier)
 {
-	std::unique_ptr<rynx::graphics::mesh> polyMesh = std::make_unique<rynx::graphics::mesh>();
+	rynx::unique_ptr<rynx::graphics::mesh> polyMesh = rynx::make_unique<rynx::graphics::mesh>();
 
 	float uvHalfWidthX = (uvLimits.z - uvLimits.x) * 0.5f;
 	float uvHalfHeightY = (uvLimits.w - uvLimits.y) * 0.5f;
@@ -157,7 +157,7 @@ rynx::triangles rynx::polygon_triangulation::make_triangles(const rynx::polygon&
 	return tris;
 }
 
-std::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_mesh(const rynx::polygon& polygon_, floats4 uvLimits) {
+rynx::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_mesh(const rynx::polygon& polygon_, floats4 uvLimits) {
 	rynx::polygon copy = polygon_;
 	copy.normalize();
 	float uv_multiplier = 1.0f / copy.max_component_value();
@@ -166,9 +166,9 @@ std::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_mesh(con
 	return buildMeshData(uvLimits, poly_extents, uv_multiplier);
 }
 
-std::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_boundary_mesh(const rynx::polygon& polygon_, float line_width, rynx::floats4 tex_coords) {
+rynx::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_boundary_mesh(const rynx::polygon& polygon_, float line_width, rynx::floats4 tex_coords) {
 	
-	std::unique_ptr<rynx::graphics::mesh> polyMesh = std::make_unique<rynx::graphics::mesh>();
+	rynx::unique_ptr<rynx::graphics::mesh> polyMesh = rynx::make_unique<rynx::graphics::mesh>();
 	rynx::polygon copy = polygon_;
 	float radius = copy.normalize();
 

@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <string>
-#include <functional>
+#include <rynx/tech/std/memory.hpp> // include rynx::function
+#include <rynx/tech/std/string.hpp>
 
 struct GLFWwindow;
 
@@ -17,7 +17,7 @@ public:
 	void toggle_fullscreen();
 	void swap_buffers() const;
 
-	void createWindow(int, int, std::string name = "Game");
+	void createWindow(int, int, rynx::string name = "Game");
 
 	void enable_grab() const;
 	void disable_grab() const;
@@ -29,7 +29,7 @@ public:
 	bool active() const;
 	void hide() const;
 
-	void on_resize(std::function<void(size_t, size_t)> onResize);
+	void on_resize(rynx::function<void(size_t, size_t)> onResize);
 
 	inline float getAspectRatio() const {
 		return m_aspectRatio;
@@ -43,10 +43,10 @@ private:
 	Window& operator=(const Window&); // Disabled.
 	Window(const Window&); // Disabled.
 
-	GLFWwindow* createWindow(std::string name = "Game");
+	GLFWwindow* createWindow(rynx::string name = "Game");
 	void platformResizeEvent(int width, int height);
 
-	std::function<void(size_t, size_t)> m_onResize;
+	rynx::function<void(size_t, size_t)> m_onResize;
 
 	size_t m_width;
 	size_t m_height;

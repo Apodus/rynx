@@ -3,6 +3,7 @@
 #include <rynx/tech/dynamic_bitset.hpp>
 #include <atomic>
 #include <cstdint>
+#include <vector>
 
 namespace rynx {
 	struct binary_config {

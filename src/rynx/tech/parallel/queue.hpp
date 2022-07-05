@@ -126,7 +126,7 @@ namespace rynx {
 
 		private:
 			uint32_t m_size = 0;
-			std::unique_ptr<per_thread_queue[]> m_subques;
+			rynx::unique_ptr<per_thread_queue[]> m_subques;
 		};
 	}
 }

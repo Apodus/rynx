@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <memory>
 
 class SamplerBase {
 public:
@@ -31,10 +30,10 @@ private:
 	virtual float baseSample(float time, float frequencyModifier = 1.0f) const = 0;
 
 protected:
-	std::vector<std::shared_ptr<SamplerBase>> m_modulateFrequency;
-	std::vector<std::shared_ptr<SamplerBase>> m_modulateAmplitude;
-	std::vector<std::shared_ptr<SamplerBase>> m_modulatePhase;
-	std::vector<std::shared_ptr<SamplerBase>> m_modulateAmplitudeOffset;
+	std::vector<rynx::shared_ptr<SamplerBase>> m_modulateFrequency;
+	std::vector<rynx::shared_ptr<SamplerBase>> m_modulateAmplitude;
+	std::vector<rynx::shared_ptr<SamplerBase>> m_modulatePhase;
+	std::vector<rynx::shared_ptr<SamplerBase>> m_modulateAmplitudeOffset;
 };
 
 template<typename SamplerImpl>
@@ -44,44 +43,44 @@ public:
 
 	template<typename Samp>
 	SamplerImpl& modulateAmp(Samp&& samp) {
-		modulateAmp(std::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
+		modulateAmp(rynx::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
 	template<typename Samp>
 	SamplerImpl& modulateFreq(Samp&& samp) {
-		modulateFreq(std::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
+		modulateFreq(rynx::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
 	template<typename Samp>
 	SamplerImpl& modulatePhase(Samp&& samp) {
-		modulatePhase(std::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
+		modulatePhase(rynx::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
 	template<typename Samp>
 	SamplerImpl& volumeOffset(Samp&& samp) {
-		volumeOffset(std::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
+		volumeOffset(rynx::shared_ptr<SamplerBase>(new std::decay_t<Samp>(std::move(samp))));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
-	SamplerImpl& modulateAmp(std::shared_ptr<SamplerBase> sampler) {
+	SamplerImpl& modulateAmp(rynx::shared_ptr<SamplerBase> sampler) {
 		m_modulateAmplitude.emplace_back(std::move(sampler));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
-	SamplerImpl& modulateFreq(std::shared_ptr<SamplerBase> sampler) {
+	SamplerImpl& modulateFreq(rynx::shared_ptr<SamplerBase> sampler) {
 		m_modulateFrequency.emplace_back(std::move(sampler));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
-	SamplerImpl& modulatePhase(std::shared_ptr<SamplerBase> sampler) {
+	SamplerImpl& modulatePhase(rynx::shared_ptr<SamplerBase> sampler) {
 		m_modulatePhase.emplace_back(std::move(sampler));
 		return static_cast<SamplerImpl&>(*this);
 	}
 
-	SamplerImpl& volumeOffset(std::shared_ptr<SamplerBase> sampler) {
+	SamplerImpl& volumeOffset(rynx::shared_ptr<SamplerBase> sampler) {
 		m_modulateAmplitudeOffset.emplace_back(std::move(sampler));
 		return static_cast<SamplerImpl&>(*this);
 	}

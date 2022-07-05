@@ -2,10 +2,10 @@
 
 #include <rynx/tech/ecs/id.hpp>
 #include <rynx/tech/binary_config.hpp>
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 
 #include <vector>
-#include <memory>
-#include <string>
 
 namespace rynx {
 	class object_storage;
@@ -29,7 +29,7 @@ namespace rynx {
 			class iruleset {
 			public:
 				struct unique_name_setter {
-					void operator()(iruleset& ruleset, std::string name) {
+					void operator()(iruleset& ruleset, rynx::string name) {
 						ruleset.m_ruleset_unique_name = name;
 					}
 				};
@@ -80,14 +80,14 @@ namespace rynx {
 
 				friend class rynx::application::logic;
 				rynx::application::logic* m_parent = nullptr;
-				std::string m_ruleset_unique_name;
+				rynx::string m_ruleset_unique_name;
 
 				rynx::binary_config::id m_state_id;
-				std::unique_ptr<rynx::scheduler::barrier> m_barrier;
-				std::vector<std::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
+				rynx::unique_ptr<rynx::scheduler::barrier> m_barrier;
+				std::vector<rynx::unique_ptr<rynx::scheduler::barrier>> m_dependOn;
 			};
 
-			logic& add_ruleset(std::unique_ptr<rynx::application::logic::iruleset> ruleset);
+			logic& add_ruleset(rynx::unique_ptr<rynx::application::logic::iruleset> ruleset);
 			void generate_tasks(rynx::scheduler::context& context, float dt);
 			void entities_erased(rynx::scheduler::context& context, const std::vector<rynx::id>& ids);
 			void clear(rynx::scheduler::context& context);
@@ -98,7 +98,7 @@ namespace rynx {
 			void deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& in);
 
 		private:
-			std::vector<std::unique_ptr<rynx::application::logic::iruleset>> m_rules;
+			std::vector<rynx::unique_ptr<rynx::application::logic::iruleset>> m_rules;
 		};
 	}
 }

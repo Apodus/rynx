@@ -42,12 +42,12 @@ float rynx::graphics::renderable_text::alignmentOffset(const Font& font) const {
 }
 
 rynx::vec3f rynx::graphics::renderable_text::position(const Font& font, int32_t cursor_pos) const {
-	float dx = font.getLength(std::string_view(m_str.data(), cursor_pos), m_textHeight);
+	float dx = font.getLength(rynx::string_view{ m_str, size_t(cursor_pos) }, m_textHeight);
 	return m_pos + rynx::vec3f{ alignmentOffset(font) + dx, 0, 0 };
 }
 
 
-rynx::graphics::text_renderer::text_renderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders) :
+rynx::graphics::text_renderer::text_renderer(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, rynx::shared_ptr<rynx::graphics::shaders> shaders) :
 	m_textures(textures),
 	m_shaders(shaders)
 {
@@ -87,7 +87,7 @@ rynx::graphics::text_renderer::text_renderer(std::shared_ptr<rynx::graphics::GPU
 
 void rynx::graphics::text_renderer::drawText(const rynx::graphics::renderable_text& text_line) {
 	activeColor = text_line.color();
-	std::string_view text = text_line.text();
+	rynx::string_view text = text_line.text();
 	rynx_assert(text.length() < MAX_TEXT_LENGTH, "too long text to render!");
 	if (text.length() >= MAX_TEXT_LENGTH) {
 		return;
@@ -103,7 +103,7 @@ void rynx::graphics::text_renderer::drawTextBuffers(int textLength, rynx::graphi
 	if (textLength == 0)
 		return;
 
-	std::shared_ptr<rynx::graphics::shader> textShader = m_shaders->activate_shader("font");
+	rynx::shared_ptr<rynx::graphics::shader> textShader = m_shaders->activate_shader("font");
 	const matrix4& projectionMatrix = m_pCamera->getProjection();
 	const matrix4& viewMatrix = m_pCamera->getView();
 
@@ -130,7 +130,7 @@ void rynx::graphics::text_renderer::drawTextBuffers(int textLength, rynx::graphi
 }
 
 int rynx::graphics::text_renderer::fillTextBuffers(const rynx::graphics::renderable_text& line, const Font& font) {
-	std::string_view text = line.text();
+	rynx::string_view text = line.text();
 	float scaleY = line.font_size();
 	float scaleX = line.font_size();
 	

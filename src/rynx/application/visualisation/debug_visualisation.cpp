@@ -6,13 +6,12 @@
 #include <rynx/math/spline.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/mesh/mesh.hpp>
-#include <memory>
 
-rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer) : m_meshRenderer(meshRenderer) {
+rynx::application::DebugVisualization::DebugVisualization(rynx::shared_ptr<rynx::graphics::renderer> meshRenderer) : m_meshRenderer(meshRenderer) {
 	// define debug circle mesh
 	{
 		std::vector<rynx::vec3f> vertices = rynx::Shape::makeCircle(1.0f, 1024).as_vertex_vector();
-		auto m = std::make_unique<rynx::graphics::mesh>();
+		auto m = rynx::make_unique<rynx::graphics::mesh>();
 		m->setModeLineStrip();
 
 		short i = 0;
@@ -28,7 +27,7 @@ rynx::application::DebugVisualization::DebugVisualization(std::shared_ptr<rynx::
 
 	// define debug line mesh
 	{
-		auto m = std::make_unique<rynx::graphics::mesh>();
+		auto m = rynx::make_unique<rynx::graphics::mesh>();
 		m->setModeLineStrip();
 
 		m->putVertex({-0.5f, 0.0f, 0.0f});
@@ -106,7 +105,7 @@ void rynx::application::DebugVisualization::addDebugVisual(rynx::graphics::mesh_
 	addDebugVisual(m_meshRenderer->meshes()->get(mesh_id), model, color, lifetime);
 }
 
-void rynx::application::DebugVisualization::addDebugVisual(std::string meshName, rynx::matrix4 model, floats4 color, float lifetime) {
+void rynx::application::DebugVisualization::addDebugVisual(rynx::string meshName, rynx::matrix4 model, floats4 color, float lifetime) {
 	addDebugVisual(m_meshRenderer->meshes()->findByName(meshName), model, color, lifetime);
 }
 

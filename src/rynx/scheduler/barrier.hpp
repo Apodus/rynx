@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
-#include <atomic>
-#include <memory>
-#include <vector>
-
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/system/assert.hpp>
+
+#include <atomic>
+#include <vector>
 
 namespace rynx {
 	namespace scheduler {
@@ -13,7 +13,7 @@ namespace rynx {
 
 		struct barrier {
 			barrier() : barrier("anon") {}
-			barrier(std::string name) : name(std::move(name)), counter(std::make_shared<std::atomic<int32_t>>(0)) {}
+			barrier(rynx::string name) : name(std::move(name)), counter(rynx::make_shared<std::atomic<int32_t>>(0)) {}
 			barrier(const barrier& other) = default;
 			barrier(barrier&& other) = default;
 			barrier& operator = (const barrier& other) = default;
@@ -21,8 +21,8 @@ namespace rynx {
 
 			operator bool() const { return counter->load(std::memory_order_acquire) == 0; }
 
-			std::string name;
-			std::shared_ptr<std::atomic<int32_t>> counter; // counter object is shared by all copies of the same barrier.
+			rynx::string name;
+			rynx::shared_ptr<std::atomic<int32_t>> counter; // counter object is shared by all copies of the same barrier.
 		};
 
 		class operation_barriers {
@@ -33,8 +33,9 @@ namespace rynx {
 				m_requires = other.m_requires;
 				m_blocks = other.m_blocks;
 
-				for (auto&& bar : m_blocks)
-					++*bar.counter;
+				for (auto&& bar : m_blocks) {
+					++* bar.counter;
+				}
 			}
 
 			operation_barriers& operator =(operation_barriers&&) = default;
@@ -45,8 +46,8 @@ namespace rynx {
 			}
 
 			operation_barriers& required_for(barrier bar) {
-				for (auto&& extension : m_extensions)
-				{
+				for (auto&& extension : m_extensions) {
+					// Can the extension task complete right after we get the reference, and before we add the requirement barrier?
 					auto shared_extension = extension.lock();
 					if (shared_extension)
 						shared_extension->required_for(bar);
@@ -91,9 +92,9 @@ namespace rynx {
 
 			// in cases where we are running a task, and notice that there is some additional work with different resources
 			// that must be done before we can say the first task is complete, we can say completion_blocked_by(other)
-			void completion_blocked_by(std::shared_ptr<operation_barriers>& other) {
+			void completion_blocked_by(rynx::shared_ptr<operation_barriers>& other) {
 				m_extensions.emplace_back(other);
-				for (auto& bar : m_blocks) {
+				for (auto&& bar : m_blocks) {
 					other->required_for(bar);
 				}
 			}
@@ -101,7 +102,7 @@ namespace rynx {
 		private:
 			std::vector<barrier> m_requires; // barriers that must be completed before starting this task.
 			std::vector<barrier> m_blocks; // barriers that are not complete without this task.
-			std::vector<std::weak_ptr<operation_barriers>> m_extensions; // operations that extend this operation instance.
+			std::vector<rynx::weak_ptr<operation_barriers>> m_extensions; // operations that extend this operation instance.
 		};
 
 		class operation_resources {

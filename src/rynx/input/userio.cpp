@@ -4,18 +4,16 @@
 #include <rynx/system/assert.hpp>
 #include <rynx/graphics/window/window.hpp>
 
-#include <iostream>
-#include <functional>
-#include <memory>
-
 #include <GLFW/glfw3.h>
 
+#include <rynx/tech/std/memory.hpp> // todo: include function
+
 namespace {
-	std::function<void(int, int, int, int)> g_keyboardKeyEventHandler;
-	std::function<void(double, double)> g_mouseScrollEventHandler;
-	std::function<void(double, double)> g_mouseMoveEventHandler;
-	std::function<void(int, int, int)> g_mouseKeyEventHandler;
-	std::function<void(int)> g_mouseEnteredHandler;
+	rynx::function<void(int, int, int, int)> g_keyboardKeyEventHandler;
+	rynx::function<void(double, double)> g_mouseScrollEventHandler;
+	rynx::function<void(double, double)> g_mouseMoveEventHandler;
+	rynx::function<void(int, int, int)> g_mouseKeyEventHandler;
+	rynx::function<void(int)> g_mouseEnteredHandler;
 }
 
 bool rynx::input::modifiers_t::shift_left() { return m_host->isKeyDown(rynx::key::codes::shift_left(), true); }
@@ -27,7 +25,7 @@ bool rynx::input::modifiers_t::alt_right() { return m_host->isKeyDown(rynx::key:
 bool rynx::input::modifiers_t::ctrl_left() { return m_host->isKeyDown(rynx::key::codes::control_left(), true); }
 bool rynx::input::modifiers_t::ctrl_right() { return m_host->isKeyDown(rynx::key::codes::control_right(), true); }
 
-rynx::input::input(std::shared_ptr<Window> window)
+rynx::input::input(rynx::shared_ptr<Window> window)
 {
 	rynx_assert(!g_keyboardKeyEventHandler, "Multiple UserIO initialisations not allowed :( Never fix");
 	
@@ -37,11 +35,11 @@ rynx::input::input(std::shared_ptr<Window> window)
 	m_window = window;
 	m_mouseInScreen = true;
 
-	g_keyboardKeyEventHandler = std::bind(&input::onKeyEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-	g_mouseScrollEventHandler = std::bind(&input::onMouseScrollEvent, this, std::placeholders::_1, std::placeholders::_2);
-	g_mouseMoveEventHandler = std::bind(&input::onMouseMoveEvent, this, std::placeholders::_1, std::placeholders::_2);
-	g_mouseKeyEventHandler = std::bind(&input::onMouseButtonEvent, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	g_mouseEnteredHandler = std::bind(&input::onMouseEnterEvent, this, std::placeholders::_1);
+	g_keyboardKeyEventHandler = [this](int key, int scancode, int action, int mods) { onKeyEvent(key, scancode, action, mods); };
+	g_mouseScrollEventHandler = [this](double /* xoffset */, double yoffset) { onMouseScrollEvent(0, yoffset); };
+	g_mouseMoveEventHandler = [this](double xpos, double ypos) { onMouseMoveEvent(xpos, ypos); };
+	g_mouseKeyEventHandler = [this](int key, int action, int mods) { onMouseButtonEvent(key, action, mods); };
+	g_mouseEnteredHandler = [this](int entered) { onMouseEnterEvent(entered); };
 
 	glfwSetKeyCallback(window->getGLFWwindow(), keyCallbackDummy);
 	glfwSetScrollCallback(window->getGLFWwindow(), scrollCallbackDummy);

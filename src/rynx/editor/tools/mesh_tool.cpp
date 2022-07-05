@@ -24,13 +24,13 @@ rynx::editor::tools::mesh_tool::mesh_tool(rynx::scheduler::context& ctx)
 			rynx::components::mesh* ptr_mesh = reinterpret_cast<rynx::components::mesh*>(ptr);
 
 			auto frame_tex = m_textures->findTextureByName("frame");
-			auto mesh_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+			auto mesh_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
 			mesh_list->list_element_velocity(150.0f);
 
 			auto& mesh_collection = ctx->get_resource<rynx::graphics::mesh_collection>();
 			auto meshes = mesh_collection.getListOfMeshes();
 			for (auto&& entry : meshes) {
-				auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
+				auto button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 				button->text().text(entry.name);
 				button->on_click([this, ptr_mesh, mesh_entry = entry]() {
 					m_editor_state->m_editor->execute([this, ptr_mesh, mesh_entry]() {

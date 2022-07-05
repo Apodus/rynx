@@ -4,6 +4,7 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
+#include <rynx/tech/std/string.hpp>
 #include <rynx/graphics/mesh/id.hpp>
 #include <rynx/tech/serialization_declares.hpp>
 #include <rynx/math/vector.hpp>
@@ -47,8 +48,8 @@ namespace rynx {
 			void set_transient() { m_is_transient = true; }
 			bool is_transient() { return m_is_transient; }
 
-			void set_category(std::string category) { m_category = category; }
-			const std::string& get_category() const { return m_category; }
+			void set_category(rynx::string category) { m_category = category; }
+			const rynx::string& get_category() const { return m_category; }
 
 			// TODO: Move to some kind of material settings or something.
 			float lighting_direction_bias = 0.0f; // light vs. geometry hit angle affects how strongly the light is applied. this is a constant offset to that value.
@@ -60,8 +61,8 @@ namespace rynx {
 			std::vector<short> indices;
 
 			mesh_id id;
-			std::string humanReadableId;
-			std::string m_category;
+			rynx::string humanReadableId;
+			rynx::string m_category;
 
 			enum Mode {
 				Triangles = 0,

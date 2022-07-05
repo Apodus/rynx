@@ -18,25 +18,25 @@ namespace rynx {
 				virtual void on_tool_unselected() override {}
 				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override;
 
-				virtual bool operates_on(const std::string& type_name) override {
-					return type_name.find("rynx::components::collision") != std::string::npos;
+				virtual bool operates_on(const rynx::string& type_name) override {
+					return type_name.find("rynx::components::collision") != rynx::string::npos;
 				}
 
 				virtual void on_entity_component_removed(
 					rynx::scheduler::context* ctx,
-					std::string componentTypeName,
+					rynx::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 
 				// default removing collision type component is not ok,
 				// need to know how to inform collision detection of the change.
-				virtual bool allow_component_remove(const std::string& type_name) override { return !operates_on(type_name); }
+				virtual bool allow_component_remove(const rynx::string& type_name) override { return !operates_on(type_name); }
 
-				virtual std::string get_tool_name() override {
+				virtual rynx::string get_tool_name() override {
 					return "collisions";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "collisions_tool";
 				}
 

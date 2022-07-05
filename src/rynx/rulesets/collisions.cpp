@@ -403,7 +403,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		}
 	);
 
-	std::shared_ptr<rynx::parallel_accumulator<collision_event>> collisions_accumulator = std::make_shared<rynx::parallel_accumulator<collision_event>>();
+	rynx::shared_ptr<rynx::parallel_accumulator<collision_event>> collisions_accumulator = rynx::make_shared<rynx::parallel_accumulator<collision_event>>();
 	auto findCollisionsTask = context.add_task("Find collisions", [collisions_accumulator](
 		rynx::ecs::view<
 		const components::position,
@@ -439,16 +439,16 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			float relative_position_length_b;
 		};
 
-		auto overlaps_vector = std::make_shared<std::vector<std::shared_ptr<std::vector<collision_event>>>>();
-		auto extra_infos = std::make_shared<std::vector<std::shared_ptr<std::vector<event_extra_info>>>>();
+		auto overlaps_vector = rynx::make_shared<std::vector<rynx::shared_ptr<std::vector<collision_event>>>>();
+		auto extra_infos = rynx::make_shared<std::vector<rynx::shared_ptr<std::vector<event_extra_info>>>>();
 
 		collisions_accumulator->for_each([&overlaps_vector](std::vector<collision_event>& overlaps) mutable {
-			overlaps_vector->emplace_back(std::make_shared<std::vector<collision_event>>(std::move(overlaps)));
+			overlaps_vector->emplace_back(rynx::make_shared<std::vector<collision_event>>(std::move(overlaps)));
 		});
 		extra_infos->resize(overlaps_vector->size());
 		
 		for (size_t i = 0; i < overlaps_vector->size(); ++i) {
-			extra_infos->operator[](i) = std::make_shared<std::vector<event_extra_info>>();
+			extra_infos->operator[](i) = rynx::make_shared<std::vector<event_extra_info>>();
 			extra_infos->operator[](i)->resize(overlaps_vector->operator[](i)->size());
 		}
 
@@ -462,7 +462,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 					auto overlaps = overlaps_vector->operator[](i);
 					auto extras = extra_infos->operator[](i);
 
-					parallel_ops.for_each(0, overlaps->size(), 64).for_each([overlaps, extras, ecs](int64_t index) mutable {
+					parallel_ops.range(0, overlaps->size(), 64).execute([overlaps, extras, ecs](int64_t index) mutable {
 						auto& collision = overlaps->operator[](index);
 						collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
 						collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
@@ -535,7 +535,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 				for (size_t k = 0; k < overlaps_vector->size(); ++k) {
 					auto& overlaps = overlaps_vector->operator[](k);
 					auto& extras = extra_infos->operator[](k);
-					task.parallel().for_each(0, overlaps->size(), 2048).deferred_work().for_each([overlaps, extras, ecs, dt](int64_t index) mutable {
+					task.parallel().range(0, overlaps->size(), 2048).deferred_work().execute([overlaps, extras, ecs, dt](int64_t index) mutable {
 						const auto& collision = overlaps->operator[](index);
 						components::motion& motion_a = *collision.a_motion;
 						components::motion& motion_b = *collision.b_motion;

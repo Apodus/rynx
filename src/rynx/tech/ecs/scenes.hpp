@@ -17,7 +17,7 @@ namespace rynx {
 		static scene_id generate();
 		operator bool() const;
 		bool operator < (const scene_id& other) const;
-		operator std::string() const;
+		operator rynx::string() const;
 
 		struct hash {
 			size_t operator()(const scene_id& id) const {
@@ -28,8 +28,8 @@ namespace rynx {
 
 	struct scene_info {
 		rynx::scene_id id;
-		std::string ui_path; // intended for UI use. user can set & modify the logical path and organize the scenes in editor this way, with no need to move the files on disk.
-		std::string name; // scene name :)
+		rynx::string ui_path; // intended for UI use. user can set & modify the logical path and organize the scenes in editor this way, with no need to move the files on disk.
+		rynx::string name; // scene name :)
 	};
 
 	namespace serialization {
@@ -89,29 +89,29 @@ namespace rynx {
 			return {};
 		}
 
-		void scan_directory(rynx::filesystem::vfs& fs, const std::string& logical_path);
+		void scan_directory(rynx::filesystem::vfs& fs, const rynx::string& logical_path);
 
 		std::vector<char> get(rynx::filesystem::vfs& fs, rynx::scene_id id) const;
-		std::vector<char> get(rynx::filesystem::vfs& fs, std::string filepath) const;
+		std::vector<char> get(rynx::filesystem::vfs& fs, rynx::string filepath) const;
 		
 		void save_scene(
 			rynx::filesystem::vfs& fs,
 			rynx::serialization::vector_writer& serialized_scene,
-			std::string ui_path,
-			std::string scene_name,
-			std::string filepath
+			rynx::string ui_path,
+			rynx::string scene_name,
+			rynx::string filepath
 		);
 
-		rynx::scene_info& filepath_to_info(const std::string& path);
-		const rynx::scene_info& filepath_to_info(const std::string& path) const;
+		rynx::scene_info& filepath_to_info(const rynx::string& path);
+		const rynx::scene_info& filepath_to_info(const rynx::string& path) const;
 
-		std::vector<std::pair<std::string, rynx::scene_id>> list_scenes() const;
+		std::vector<std::pair<rynx::string, rynx::scene_id>> list_scenes() const;
 
 	private:
-		void internal_update(rynx::scene_info& info, std::string filepath);
+		void internal_update(rynx::scene_info& info, rynx::string filepath);
 
-		rynx::unordered_map<std::string, rynx::scene_info> m_filepath_to_info;
-		rynx::unordered_map<rynx::scene_id, std::string, rynx::scene_id::hash> m_filepaths;
+		rynx::unordered_map<rynx::string, rynx::scene_info> m_filepath_to_info;
+		rynx::unordered_map<rynx::scene_id, rynx::string, rynx::scene_id::hash> m_filepaths;
 		rynx::unordered_map<rynx::scene_id, rynx::scene_info, rynx::scene_id::hash> m_infos;
 	};
 }

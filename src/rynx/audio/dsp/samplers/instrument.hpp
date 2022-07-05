@@ -11,7 +11,7 @@
 //       how to attach them?
 class Instrument : public Sampler<Instrument> {
 public:
-	Instrument(std::string name, int samplingRate, float frequency, int attackTime_ms)
+	Instrument(rynx::string name, int samplingRate, float frequency, int attackTime_ms)
 		: samplingRate(samplingRate), attackTime(attackTime_ms * samplingRate / 1000) {
 		this->name = std::move(name);
 		this->frequency = frequency;
@@ -67,5 +67,5 @@ private:
 	float frequency; // not sure what this actually describes. like. in reality.
 	float baseFrequency = 0;
 	std::vector<Oscillator> oscillators;
-	std::string name;
+	rynx::string name;
 };

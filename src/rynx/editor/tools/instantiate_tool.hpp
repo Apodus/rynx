@@ -23,15 +23,15 @@ namespace rynx {
 				virtual void on_tool_unselected() override {}
 				virtual void verify(rynx::scheduler::context&, error_emitter&) override {}
 
-				virtual std::string get_tool_name() {
+				virtual rynx::string get_tool_name() {
 					return "instantiation tool";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "instantiation_tool";
 				}
 
-				virtual bool operates_on(const std::string& /* type_name */) override {
+				virtual bool operates_on(const rynx::string& /* type_name */) override {
 					return false;
 				}
 
@@ -40,7 +40,7 @@ namespace rynx {
 				
 				// Todo: loading from file is not ideal. Could keep at least some scenes in memory?
 				// Todo: keep unordered map of scene path -> ecs instance in editor state?
-				std::string m_selectedScene;
+				rynx::string m_selectedScene;
 
 				rynx::graphics::texture_id m_frame_tex_id;
 				rynx::observer_ptr<rynx::filesystem::vfs> m_vfs;

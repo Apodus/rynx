@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
+#include <rynx/tech/std/string.hpp>
 
 namespace rynx {
 	namespace traits {
 		template<typename T>
-		std::string type_name() {
+		rynx::string type_name() {
 			return typeid(T).name();
 		}
 	}

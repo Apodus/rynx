@@ -25,7 +25,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 			rynx::components::texture* ptr_tex = reinterpret_cast<rynx::components::texture*>(ptr);
 
 			auto frame_tex = m_textures->findTextureByName("frame");
-			auto texture_list = std::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+			auto texture_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
 			texture_list->list_element_velocity(150.0f);
 
 			auto tex = m_textures->getListOfTextures();
@@ -34,7 +34,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 					continue;
 				}
 
-				auto button = std::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
+				auto button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 				button->text().text(entry.info.name);
 				button->on_click([this, ptr_tex, tex_name = entry.info.name, tex_id = entry.tex_id]() {
 					m_editor_state->m_editor->execute([this, ptr_tex, tex_name, tex_id]() {
@@ -75,7 +75,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 	{
 		std::cout << "reflection stack size: " << reflection_stack.size() << std::endl;
 
-		auto field_div = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.06f, 0.0f));
+		auto field_div = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.06f, 0.0f));
 		field_div->velocity_position(200.0f); // TODO
 
 		{
@@ -85,32 +85,32 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 				return false;
 			}
 
-			auto scale_text = std::make_shared<rynx::menu::Text>(rynx::vec3f(0.1f, 0.5f, 0.0f));
+			auto scale_text = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.1f, 0.5f, 0.0f));
 			scale_text->text("scale");
 			scale_text->text_align_left();
 			scale_text->align().left_inside().top_inside().offset_x(-0.3f);
 			scale_text->velocity_position(200.0f);
 
-			auto variable_value_field = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.20f, 0.5f, 0.0f));
+			auto variable_value_field = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.20f, 0.5f, 0.0f));
 			variable_value_field->velocity_position(200.0f); // TODO
 			float current_value = info.textures->get_tex_config(*tex_id).vertex_position_scale;
-			variable_value_field->text().text(std::to_string(current_value));
+			variable_value_field->text().text(rynx::to_string(current_value));
 			variable_value_field->text().text_input_enable();
 			variable_value_field->align().target(scale_text.get()).right_outside().top_inside();
-			variable_value_field->text().on_value_changed([info, self = variable_value_field.get()](std::string s) {
+			variable_value_field->text().on_value_changed([info, self = variable_value_field.get()](rynx::string s) {
 				auto* tex_id = (*info.ecs)[info.entity_id].try_get<rynx::graphics::texture_id>();
 				if (!tex_id)
 					return;
 				auto tex_id_v = *tex_id;
 				
-				float new_v = std::stof(s);
+				float new_v = rynx::stof(s);
 				auto conf = info.textures->get_tex_config(tex_id_v);
 				conf.vertex_position_scale = new_v;
 				info.textures->set_tex_config(tex_id_v, conf);
-				self->text().text(std::to_string(new_v));
+				self->text().text(rynx::to_string(new_v));
 			});
 
-			auto value_slider = std::make_shared<rynx::menu::SlideBarVertical>(info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f), -1.0f, +1.0f);
+			auto value_slider = rynx::make_shared<rynx::menu::SlideBarVertical>(info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f), -1.0f, +1.0f);
 			value_slider->align().target(variable_value_field.get()).right_outside().top_inside();
 			value_slider->velocity_position(200.0f);
 			value_slider->setValue(0);
@@ -133,7 +133,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 					tmp *= 1.0f / (1.0f + std::fabs(input_v) * value_modify_velocity * dt);
 				}
 				v = std::clamp(tmp, 0.0f, 100000.0f);
-				text_element->text().text(std::to_string(v));
+				text_element->text().text(rynx::to_string(v));
 				
 				info.textures->set_tex_config(tex_id_v, conf);
 			});
@@ -142,7 +142,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 				self->setValue(0);
 			});
 
-			auto toggle_vertex_pos_as_uv = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.70f, 0.5f, 0.0f));
+			auto toggle_vertex_pos_as_uv = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.70f, 0.5f, 0.0f));
 			toggle_vertex_pos_as_uv->velocity_position(200.0f); // TODO
 			bool is_pos_as_uv = info.textures->get_tex_config(*tex_id).vertex_positions_as_uv;
 			toggle_vertex_pos_as_uv->text().text(is_pos_as_uv ? "vertex pos as uv" : "uv from attributes");

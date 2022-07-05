@@ -9,6 +9,12 @@
 
 #include <vector>
 
+template<typename T>
+void from_vector(rynx::pod_vector<T>& dst, const std::vector<T>& src) {
+	dst.resize(src.size());
+	memcpy(dst.begin(), src.data(), sizeof(T) * src.size());
+}
+
 namespace rynx {
 	namespace math {
 		class spline;
@@ -22,18 +28,18 @@ namespace rynx {
 
 		polygon() = default;
 		polygon(const polygon& other) = default;
-		polygon(polygon&& other) {
+		polygon(polygon&& other) noexcept {
 			this->operator=(std::move(other));
 		}
 
-		polygon(std::vector<rynx::vec3f> verts) : m_vertices(std::move(verts)) { recompute_normals(); }
-		polygon(std::vector<rynx::vec3f>&& verts) : m_vertices(std::move(verts)) { recompute_normals(); }
+		polygon(std::vector<rynx::vec3f> verts) { from_vector(m_vertices, verts); recompute_normals(); }
+		polygon(std::vector<rynx::vec3f>&& verts) { from_vector(m_vertices, verts); recompute_normals(); }
 
-		polygon& operator = (const std::vector<rynx::vec3f>& verts) { m_vertices = verts; recompute_normals(); return *this; }
-		polygon& operator = (std::vector<rynx::vec3f>&& verts) { m_vertices = std::move(verts); recompute_normals(); return *this; }
+		polygon& operator = (const std::vector<rynx::vec3f>& verts) { from_vector(m_vertices, verts); recompute_normals(); return *this; }
+		polygon& operator = (std::vector<rynx::vec3f>&& verts) { from_vector(m_vertices, verts); recompute_normals(); return *this; }
 
 		polygon& operator = (const polygon& other) = default;
-		polygon& operator = (polygon&& other) {
+		polygon& operator = (polygon&& other) noexcept {
 			m_vertices = std::move(other.m_vertices);
 			m_vertex_normal = std::move(other.m_vertex_normal);
 			m_segment_normal = std::move(other.m_segment_normal);

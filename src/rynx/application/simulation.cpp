@@ -4,7 +4,7 @@
 #include <rynx/tech/ecs.hpp>
 
 rynx::application::simulation::simulation(rynx::scheduler::task_scheduler& scheduler) : m_context(scheduler.make_context()) {
-	m_ecs = std::make_shared<rynx::ecs>();
+	m_ecs = rynx::make_shared<rynx::ecs>();
 	m_vfs = rynx::make_opaque_unique_ptr<rynx::filesystem::vfs>();
 	m_context->set_resource(*m_vfs);
 	m_context->set_resource(m_ecs);

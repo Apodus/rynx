@@ -30,3 +30,18 @@ public class TestTech : TestProject
         conf.AddPublicDependency<Tech>(target);
     }
 }
+
+[Generate]
+public class TestFilesystem : TestProject
+{
+    public TestFilesystem()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\test\filesystem\";
+    }
+
+    [Configure]
+    public void conf_test(Project.Configuration conf, Target target)
+    {
+        conf.AddPublicDependency<FileSystem>(target);
+    }
+}

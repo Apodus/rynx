@@ -16,7 +16,7 @@ namespace rynx {
 			struct directed_lights_effect : public rynx::application::graphics_step::igraphics_step {
 			public:
 				directed_lights_effect(
-					std::shared_ptr<rynx::graphics::shaders> shader_manager
+					rynx::shared_ptr<rynx::graphics::shaders> shader_manager
 				);
 				
 				virtual ~directed_lights_effect() {}
@@ -29,7 +29,7 @@ namespace rynx {
 				std::vector<floats4> m_light_settings; // x=edge softness[0...inf], y=linear attenuation[0..inf], z=quadratic attenuation[0..inf], a=backside lighting (penetrating) [0..1]
 				std::vector<vec3f> m_light_positions;
 				
-				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
+				rynx::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};
 		}
 	}

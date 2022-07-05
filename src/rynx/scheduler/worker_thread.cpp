@@ -9,9 +9,39 @@ rynx::scheduler::task_thread::task_thread(task_scheduler* pTaskMaster, int myInd
 	m_scheduler = pTaskMaster;
 	m_sleeping = true;
 	m_alive = true;
-	m_thread = std::thread([this, myIndex]() {
+	m_thread = rynx::make_opaque_unique_ptr<std::thread>(std::thread([this, myIndex]() {
 		threadEntry(myIndex);
-	});
+	}));
+}
+
+rynx::scheduler::task_thread::~task_thread() {}
+
+void rynx::scheduler::task_thread::set_task(task task) { m_task = std::move(task); }
+const rynx::scheduler::task& rynx::scheduler::task_thread::getTask() { return m_task; }
+
+void rynx::scheduler::task_thread::shutdown() {
+	m_alive = false;
+	while (!is_sleeping()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	}
+	m_semaphore.signal();
+	m_thread->join();
+}
+
+bool rynx::scheduler::task_thread::wake_up() {
+	if (m_sleeping.exchange(false)) {
+		m_semaphore.signal();
+		return true;
+	}
+	return false;
+}
+
+void rynx::scheduler::task_thread::wait() {
+	m_semaphore.wait();
+}
+
+bool rynx::scheduler::task_thread::is_sleeping() const {
+	return m_sleeping;
 }
 
 

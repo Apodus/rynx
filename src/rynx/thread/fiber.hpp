@@ -1,8 +1,7 @@
 
 #pragma once
 
-#include <functional>
-#include <memory>
+#include <rynx/tech/std/memory.hpp>
 
 #ifndef _WIN32
 #include <ucontext.h>
@@ -16,7 +15,7 @@ public:
 	Fiber();
 	~Fiber();
 
-	void go(std::function<void(Fiber*)>);
+	void go(rynx::function<void(Fiber*)>);
 	void resume();
 	void yield() const;
 
@@ -29,7 +28,7 @@ private:
 	
 	static void switchToFiber(void* pFromFiber, void* pToFiber);
 
-	std::function<void(Fiber*)> m_func;
+	rynx::function<void(Fiber*)> m_func;
 	bool m_isThread;
 
 #ifdef _WIN32

@@ -16,10 +16,10 @@ bool rynx::scene_id::operator < (const scene_id& other) const {
 	return std::tie(m_random_1, m_random_2) < std::tie(other.m_random_1, other.m_random_2);
 }
 
-rynx::scene_id::operator std::string() const {
+rynx::scene_id::operator rynx::string() const {
 	static constexpr char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 	auto value_to_base64_str = [](uint64_t v) {
-		std::string result;
+		rynx::string result;
 		for (int bits_covered = 0; bits_covered < 64; bits_covered += 6) {
 			result += base64_chars[v & ((1 << 6) - 1)];
 			v >>= 6;
@@ -32,7 +32,7 @@ rynx::scene_id::operator std::string() const {
 
 
 
-void rynx::scenes::scan_directory(rynx::filesystem::vfs& fs, const std::string& logical_path) {
+void rynx::scenes::scan_directory(rynx::filesystem::vfs& fs, const rynx::string& logical_path) {
 	auto files = fs.enumerate_files(logical_path, rynx::filesystem::recursive::yes);
 	for (auto&& filepath : files) {
 		bool success = true;
@@ -75,7 +75,7 @@ std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, rynx::scene_id id
 	return rynx::deserialize<std::vector<char>>(*file);
 }
 
-std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, std::string filepath) const {
+std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, rynx::string filepath) const {
 	for (auto&& entry : m_filepaths) {
 		if (entry.second == filepath) {
 			auto file = fs.open_read(entry.second);
@@ -89,9 +89,9 @@ std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, std::string filep
 void rynx::scenes::save_scene(
 	rynx::filesystem::vfs& fs,
 	rynx::serialization::vector_writer& serialized_scene,
-	std::string ui_path,
-	std::string scene_name,
-	std::string filepath
+	rynx::string ui_path,
+	rynx::string scene_name,
+	rynx::string filepath
 ) {
 	if (fs.file_exists(filepath)) {
 		// overwrite existing scene
@@ -124,7 +124,7 @@ void rynx::scenes::save_scene(
 		info.ui_path = ui_path;
 		info.name = scene_name;
 
-		auto storageFilePath = filepath + "_" + std::string(id) + ".rynxscene";
+		auto storageFilePath = filepath + "_" + id.operator rynx::string() + ".rynxscene";
 		auto file = fs.open_write(storageFilePath);
 		rynx::serialize(serialized_scene_marker, *file);
 		rynx::serialize(info, *file);
@@ -134,30 +134,30 @@ void rynx::scenes::save_scene(
 	}
 }
 
-rynx::scene_info& rynx::scenes::filepath_to_info(const std::string& path) {
+rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path) {
 	auto it = m_filepath_to_info.find(path);
 	rynx_assert(it != m_filepath_to_info.end(), "filepath to info must succeed");
 	return it->second;
 }
 
-const rynx::scene_info& rynx::scenes::filepath_to_info(const std::string& path) const {
+const rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path) const {
 	auto it = m_filepath_to_info.find(path);
 	rynx_assert(it != m_filepath_to_info.end(), "filepath to info must succeed");
 	return it->second;
 }
 
-std::vector<std::pair<std::string, rynx::scene_id>> rynx::scenes::list_scenes() const {
-	std::vector<std::pair<std::string, rynx::scene_id>> result;
+std::vector<std::pair<rynx::string, rynx::scene_id>> rynx::scenes::list_scenes() const {
+	std::vector<std::pair<rynx::string, rynx::scene_id>> result;
 	for (auto&& entry : m_filepaths) {
 		result.emplace_back(entry.second, entry.first);
 	}
-	std::sort(result.begin(), result.end(), [](const std::pair<std::string, rynx::scene_id>& a, const std::pair<std::string, rynx::scene_id>& b) {
+	std::sort(result.begin(), result.end(), [](const std::pair<rynx::string, rynx::scene_id>& a, const std::pair<rynx::string, rynx::scene_id>& b) {
 		return a.first < b.first;
 		});
 	return result;
 }
 
-void rynx::scenes::internal_update(rynx::scene_info& info, std::string filepath) {
+void rynx::scenes::internal_update(rynx::scene_info& info, rynx::string filepath) {
 	m_infos.emplace(info.id, info);
 	m_filepaths[info.id] = filepath;
 	m_filepath_to_info[filepath] = info;

@@ -4,14 +4,12 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/math/random.hpp>
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 
 #include <vector>
 #include <cstdint>
-
-#include <memory>
 #include <atomic>
-#include <thread>
-#include <string>
 
 namespace rynx {
     namespace sound {
@@ -92,11 +90,11 @@ namespace rynx {
 
             class named_events {
             public:
-                void insert(const std::string& name, int value) {
+                void insert(const rynx::string& name, int value) {
                     m_data[name].emplace_back(value);
                 }
 
-                int get(const std::string& name) const {
+                int get(const rynx::string& name) const {
                     auto it = m_data.find(name);
                     if (it != m_data.end()) {
                         if (!it->second.empty()) {
@@ -108,12 +106,12 @@ namespace rynx {
 
             private:
                 mutable rynx::math::rand64 m_random;
-                rynx::unordered_map<std::string, std::vector<int>> m_data;
+                rynx::unordered_map<rynx::string, std::vector<int>> m_data;
             };
 
         private:
             std::vector<buffer> m_soundBank;
-            std::vector<std::unique_ptr<std::atomic<uint32_t>>> m_channels; // Three states. 0 = free, 1 = reserved, 2 = ready for playback?
+            std::vector<rynx::unique_ptr<std::atomic<uint32_t>>> m_channels; // Three states. 0 = free, 1 = reserved, 2 = ready for playback?
             std::vector<source_instance> m_channelDatas;
             source_instance m_invalidChannel;
 
@@ -132,7 +130,7 @@ namespace rynx {
             float m_default_quadratic_attenuation = 1.0f;
             float m_default_linear_attenuation = 0.0f;
 
-            std::unique_ptr<float[]> m_outBuf;
+            rynx::unique_ptr<float[]> m_outBuf;
             size_t m_outBufLength = 0;
             format m_outputFormat = format::undefined;
             
@@ -160,11 +158,11 @@ namespace rynx {
             audio_system();
             ~audio_system();
             
-            uint32_t load(std::string path); // returns the id of the loaded sound buffer.
-            audio_system& load(std::string path, std::string event_name); // load sound as a named event. use the event name later to refer to it.
+            uint32_t load(rynx::string path); // returns the id of the loaded sound buffer.
+            audio_system& load(rynx::string path, rynx::string event_name); // load sound as a named event. use the event name later to refer to it.
 
             configuration play_sound(int bufferId, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
-            configuration play_sound(const std::string& named_event, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
+            configuration play_sound(const rynx::string& named_event, vec3f position, vec3f direction = vec3f(), float loudness = 1.0f);
             
             void open_output_device(int numChannels = 64, int samplesPerRender = 256, audio_system::format format = format::int16);
             void render_audio(void* outBuf, size_t numSamples); // Do not call this. This is called automatically.

@@ -6,7 +6,7 @@
 
 void rynx::scheduler::operation_barriers::dump() const {
 	for (auto&& bar : m_requires) {
-		std::cout << "\tbarrier name: '" << bar.name << "', counter: " << bar.counter->load() << std::endl;
+		std::cout << "\tbarrier name: '" << bar.name.c_str() << "', counter: " << bar.counter->load() << std::endl;
 	}
 }
 

@@ -5,7 +5,6 @@
 #include <rynx/tech/components.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
-#include <memory>
 
 namespace rynx {
 	class sphere_tree;
@@ -32,7 +31,7 @@ namespace rynx {
 			check_type type;
 		};
 
-		std::vector<std::unique_ptr<rynx::sphere_tree>> m_sphere_trees;
+		std::vector<rynx::unique_ptr<rynx::sphere_tree>> m_sphere_trees;
 		std::vector<collision_check> m_collision_checks;
 		
 	public:
@@ -137,7 +136,7 @@ namespace rynx {
 			}
 		}
 
-		template<typename T, typename F> void for_each_collision_parallel(std::shared_ptr<rynx::parallel_accumulator<T>>& accumulator, F&& f, rynx::scheduler::task& task) {
+		template<typename T, typename F> void for_each_collision_parallel(rynx::shared_ptr<rynx::parallel_accumulator<T>>& accumulator, F&& f, rynx::scheduler::task& task) {
 			using storage_t = decltype(accumulator->template get_local_storage<T>());
 			for (auto&& check : m_collision_checks) {
 				if (check.a == check.b)

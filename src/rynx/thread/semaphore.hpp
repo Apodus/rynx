@@ -95,7 +95,7 @@ public:
         }
     }
 
-    _NODISCARD bool try_acquire() noexcept {
+    [[nodiscard]] bool try_acquire() noexcept {
         unsigned char prev = m_counter.exchange(0);
         rynx_assert((prev & ~1) == 0, "only first bit is allowed to be set");
         return reinterpret_cast<const bool&>(prev);

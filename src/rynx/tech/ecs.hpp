@@ -4,7 +4,7 @@
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/type_index.hpp>
 #include <rynx/tech/profiling.hpp>
-#include <rynx/tech/memory.hpp>
+#include <rynx/tech/std/memory.hpp>
 
 #include <rynx/system/assert.hpp>
 
@@ -66,14 +66,14 @@ namespace rynx {
 		rynx::ecs_internal::entity_index m_entities;
 
 		rynx::unordered_map<entity_id_t, std::pair<entity_category*, index_t>> m_idCategoryMap;
-		rynx::unordered_map<dynamic_bitset, std::unique_ptr<entity_category>, bitset_hash> m_categories;
+		rynx::unordered_map<dynamic_bitset, rynx::unique_ptr<entity_category>, bitset_hash> m_categories;
 		rynx::unordered_map<type_id_t, opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>> m_value_segregated_types_maps;
 		std::vector<type_id_t> m_virtual_types_released;
 
 		auto& categories() { return m_categories; }
 		const auto& categories() const { return m_categories; }
 
-		rynx::ecs_internal::ivalue_segregation_map& value_segregated_types_map(type_id_t type_id, std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func) {
+		rynx::ecs_internal::ivalue_segregation_map& value_segregated_types_map(type_id_t type_id, rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func) {
 			auto it = m_value_segregated_types_maps.find(type_id);
 			if (it == m_value_segregated_types_maps.end()) {
 				it = m_value_segregated_types_maps.emplace(type_id, map_create_func()).first;
@@ -106,7 +106,7 @@ namespace rynx {
 			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
 			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
 
-			void createNewTable(uint64_t typeId, std::unique_ptr<rynx::ecs_internal::itable> tablePtr) {
+			void createNewTable(uint64_t typeId, rynx::unique_ptr<rynx::ecs_internal::itable> tablePtr) {
 				if (typeId >= m_tables.size()) {
 					m_tables.resize(((3 * typeId) >> 1) + 1);
 				}
@@ -346,7 +346,7 @@ namespace rynx {
 						rynx_assert(false, "never create tag tables");
 					}
 					else {
-						m_tables[typeIndex] = std::make_unique<rynx::ecs_internal::component_table<U>>(typeIndex);
+						m_tables[typeIndex] = rynx::make_unique<rynx::ecs_internal::component_table<U>>(typeIndex);
 					}
 				}
 				
@@ -448,7 +448,7 @@ namespace rynx {
 			friend class rynx::ecs; // TODO: Remove
 
 			dynamic_bitset m_types;
-			std::vector<std::unique_ptr<rynx::ecs_internal::itable>> m_tables;
+			std::vector<rynx::unique_ptr<rynx::ecs_internal::itable>> m_tables;
 			std::vector<id> m_ids;
 		};
 
@@ -814,14 +814,18 @@ namespace rynx {
 			template<bool isIdQuery, typename F, typename ParallelOp, typename... Ts>
 			static void call_user_op_parallel(F&& op, ParallelOp&& parallel_ops_container, std::vector<id>& ids, Ts* rynx_restrict ... data_ptrs) {
 				if constexpr (isIdQuery) {
-					parallel_ops_container.for_each(0, ids.size()).for_each([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					parallel_ops_container
+						.range(0, ids.size())
+						.execute([op, &ids, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([&ids, op, index](auto*... ptrs) mutable {
 							op(ids[index], ptrs[index]...);
 						}, args);
 					});
 				}
 				else {
-					parallel_ops_container.for_each(0, ids.size()).for_each([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
+					parallel_ops_container
+						.range(0, ids.size())
+						.execute([op, args = std::make_tuple(data_ptrs...)](int64_t index) mutable {
 						std::apply([op, index](auto*... ptrs) mutable {
 							op(ptrs[index]...);
 						}, args);
@@ -1209,7 +1213,7 @@ namespace rynx {
 				if (category.second->ids().empty())
 					continue;
 
-				std::vector<std::string> category_typenames;
+				std::vector<rynx::string> category_typenames;
 				category.first.forEachOne([&category, &reflections, &category_typenames](uint64_t type_id) {
 					auto* typeReflection = reflections.find(type_id);
 					auto* tablePtr = category.second->table_ptr(type_id);
@@ -1302,7 +1306,7 @@ namespace rynx {
 			}
 
 			for (size_t i = 0; i < numCategories; ++i) {
-				auto category_typenames = rynx::deserialize<std::vector<std::string>>(in);
+				auto category_typenames = rynx::deserialize<std::vector<rynx::string>>(in);
 				
 				rynx::dynamic_bitset category_id;
 				for (auto&& name : category_typenames) {
@@ -1313,7 +1317,7 @@ namespace rynx {
 
 				// if category already does not exist - create category.
 				if (m_categories.find(category_id) == m_categories.end()) {
-					auto res = m_categories.emplace(category_id, std::make_unique<entity_category>(category_id));
+					auto res = m_categories.emplace(category_id, rynx::make_unique<entity_category>(category_id));
 					category_id.forEachOne([&](uint64_t typeId) {
 						auto* typeReflection = reflections.find(typeId);
 						res.first->second->createNewTable(typeId, typeReflection->m_create_table_func());
@@ -1534,7 +1538,7 @@ namespace rynx {
 				rynx::dynamic_bitset& dst,
 				type_id_t type_id,
 				bool is_value_segregated,
-				std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
+				rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
 				void* data)
 			{
 				dst.set(mapped_type_id(type_id));
@@ -1594,7 +1598,7 @@ namespace rynx {
 				dynamic_bitset targetCategory;
 				(compute_type_category(targetCategory, components), ...);
 				auto category_it = m_ecs.m_categories.find(targetCategory);
-				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory)).first; }
+				if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, rynx::make_unique<entity_category>(targetCategory)).first; }
 				auto index = category_it->second->insertNew(m_typeAliases, id, std::forward<Components>(components)...);
 				m_ecs.m_idCategoryMap.emplace(id, std::make_pair(category_it->second.get(), index_t(index)));
 				return id;
@@ -1620,7 +1624,7 @@ namespace rynx {
 					(compute_type_category_n(targetCategory, components), ...);
 					(targetCategory.set(mapped_type_id(rynx::type_index::id<Tags>())), ...);
 					auto category_it = m_ecs.m_categories.find(targetCategory);
-					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, std::make_unique<entity_category>(targetCategory)).first; }
+					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, rynx::make_unique<entity_category>(targetCategory)).first; }
 
 					auto first_index = category_it->second->insertNew(m_typeAliases, ids, components...);
 					for (size_t i = 0; i < ids.size(); ++i) {
@@ -1643,7 +1647,7 @@ namespace rynx {
 				type_id_t type_id,
 				bool is_value_segregated,
 				rynx::ecs_table_create_func& table_create_func,
-				std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
+				rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
 				opaque_unique_ptr<void> component)
 			{
 				auto it = m_ecs.m_idCategoryMap.find(id);
@@ -1659,7 +1663,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
 
@@ -1693,7 +1697,7 @@ namespace rynx {
 				
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
 
@@ -1728,7 +1732,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
@@ -1757,7 +1761,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 
@@ -1792,7 +1796,7 @@ namespace rynx {
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
-					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, std::make_unique<entity_category>(resultTypes)).first;
+					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
 

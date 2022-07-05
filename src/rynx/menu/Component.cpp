@@ -183,15 +183,15 @@ void rynx::menu::Component::set_parent(Component* other) {
 }
 
 void rynx::menu::Component::set_background(rynx::graphics::texture_id id, float edge_size) {
-	m_background = std::make_unique<rynx::menu::Frame>(id, edge_size);
+	m_background = rynx::make_unique<rynx::menu::Frame>(id, edge_size);
 	m_background->set_parent(this);
 }
 
-void rynx::menu::Component::addChild(std::shared_ptr<Component> child) {
+void rynx::menu::Component::addChild(rynx::shared_ptr<Component> child) {
 	child->m_pParent = this;
 	child->m_menuSystem = this->m_menuSystem;
 	
-	std::function<void(Component*)> recursiveSystemUpdate = [menuSys = this->m_menuSystem, &recursiveSystemUpdate](Component* component) {
+	rynx::function<void(Component*)> recursiveSystemUpdate = [menuSys = this->m_menuSystem, &recursiveSystemUpdate](Component* component) {
 		for (auto&& child : component->m_children) {
 			child->m_menuSystem = menuSys;
 			recursiveSystemUpdate(child.get());
@@ -205,10 +205,10 @@ void rynx::menu::Component::addChild(std::shared_ptr<Component> child) {
 	m_children.emplace_back(std::move(child));
 }
 
-std::shared_ptr<rynx::menu::Component> rynx::menu::Component::detachChild(const Component* ptr) {
-	auto it = std::find_if(m_children.begin(), m_children.end(), [ptr](const std::shared_ptr<Component>& child) { return child.get() == ptr; });
+rynx::shared_ptr<rynx::menu::Component> rynx::menu::Component::detachChild(const Component* ptr) {
+	auto it = std::find_if(m_children.begin(), m_children.end(), [ptr](const rynx::shared_ptr<Component>& child) { return child.get() == ptr; });
 	rynx_assert(it != m_children.end(), "detached child must exist");
-	std::shared_ptr<Component> detachedChild = std::move(*it);
+	rynx::shared_ptr<Component> detachedChild = std::move(*it);
 	m_children.erase(it);
 	return detachedChild;
 }
@@ -410,7 +410,7 @@ rynx::vec3<float>& rynx::menu::Component::target_position() {
 // system
 
 rynx::menu::System::System() {
-	m_root = std::make_unique<rynx::menu::Div>(rynx::vec3f(2.0f, 2.0f, 0.0f));
+	m_root = rynx::make_unique<rynx::menu::Div>(rynx::vec3f(2.0f, 2.0f, 0.0f));
 	m_root->m_menuSystem = this;
 }
 

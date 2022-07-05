@@ -52,7 +52,7 @@ void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& c
 
 void rynx::editor::tools::instantiation_tool::on_tool_selected() {
 	execute([this]() {
-		auto fileselector = std::make_shared<rynx::menu::FileSelector>(*m_vfs, m_frame_tex_id, rynx::vec3f(0.5f, 0.5f, 0.0f));
+		auto fileselector = rynx::make_shared<rynx::menu::FileSelector>(*m_vfs, m_frame_tex_id, rynx::vec3f(0.5f, 0.5f, 0.0f));
 		fileselector->file_type(".rynxscene");
 		fileselector->configure().m_allowNewFile = false;
 		fileselector->configure().m_allowNewDir = false;
@@ -60,11 +60,11 @@ void rynx::editor::tools::instantiation_tool::on_tool_selected() {
 		m_editor_state->m_editor->push_popup(fileselector);
 		fileselector->display(
 			"/scenes/",
-			[this](std::string filePath) {
+			[this](rynx::string filePath) {
 				m_selectedScene = filePath;
 				execute([this]() { m_editor_state->m_editor->pop_popup(); });
 			},
-			[](std::string dirPath) {}
+			[](rynx::string dirPath) {}
 		);
 	});
 }

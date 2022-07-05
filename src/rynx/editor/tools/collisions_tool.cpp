@@ -40,7 +40,7 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 
 void rynx::editor::tools::collisions_tool::on_entity_component_removed(
 	rynx::scheduler::context* ctx,
-	std::string componentTypeName,
+	rynx::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
 {

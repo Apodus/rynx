@@ -3,8 +3,8 @@
 
 #include <rynx/menu/Component.hpp>
 #include <rynx/math/vector.hpp>
-#include <functional>
-#include <string>
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 
 namespace rynx {
 	class mapped_input;
@@ -38,18 +38,18 @@ namespace rynx {
 			};
 
 			Config& configure() { return m_config; }
-			void file_type(std::string type) { m_acceptedFileEnding = type; }
-			void filepath_to_display_name(std::function<std::string(std::string)> nameMapping) {
+			void file_type(rynx::string type) { m_acceptedFileEnding = type; }
+			void filepath_to_display_name(rynx::function<rynx::string(rynx::string)> nameMapping) {
 				m_pathToName = nameMapping;
 			}
 
 			void display(
-				std::string path,
-				std::function<void(std::string)> on_select_file,
-				std::function<void(std::string)> on_select_directory);
+				rynx::string path,
+				rynx::function<void(rynx::string)> on_select_file,
+				rynx::function<void(rynx::string)> on_select_directory);
 
 		private:
-			void execute(std::function<void()> op) {
+			void execute(rynx::function<void()> op) {
 				m_ops.emplace_back(std::move(op));
 			}
 
@@ -59,11 +59,11 @@ namespace rynx {
 			
 			Config m_config;
 			rynx::filesystem::vfs& m_vfs;
-			std::string m_currentPath;
-			std::string m_acceptedFileEnding;
+			rynx::string m_currentPath;
+			rynx::string m_acceptedFileEnding;
 			rynx::graphics::texture_id m_frame_tex_id;
-			std::vector<std::function<void()>> m_ops;
-			std::function<std::string(std::string)> m_pathToName;
+			std::vector<rynx::function<void()>> m_ops;
+			rynx::function<rynx::string(rynx::string)> m_pathToName;
 		};
 	}
 }

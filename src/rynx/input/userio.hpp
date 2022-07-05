@@ -2,10 +2,9 @@
 #pragma once
 
 #include <array>
-#include <string>
 #include <cstdlib>
-#include <memory>
-
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/input/key_types.hpp>
 
@@ -31,7 +30,7 @@ namespace rynx {
 		vec3<float> m_mouseDelta;
 		vec3<float> m_mousePosition;
 		vec3<float> m_mousePosition_clickBegin;
-		std::shared_ptr<Window> m_window;
+		rynx::shared_ptr<Window> m_window;
 		float m_mouseScroll = 0;
 		bool m_mouseInScreen = true;
 
@@ -69,7 +68,7 @@ namespace rynx {
 		}
 
 	public:
-		input(std::shared_ptr<Window> window);
+		input(rynx::shared_ptr<Window> window);
 		~input();
 
 		// as long as you hold on to the scoped inhibitor, the inhibit holds.

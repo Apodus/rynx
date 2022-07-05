@@ -1,15 +1,15 @@
 
 #pragma once
 
-#include <string>
+#include <rynx/tech/std/string.hpp>
 
 namespace rynx {
 	namespace profiling {
 		constexpr bool enabled = true;
 
 		void push_event_begin(
-			std::string& name,
-			std::string& category,
+			rynx::string name,
+			rynx::string category,
 			uint64_t pid
 		);
 
@@ -20,7 +20,7 @@ namespace rynx {
 		void write_profile_log();
 
 		struct scope {
-			scope(std::string name, std::string category) {
+			scope(rynx::string name, rynx::string category) {
 				if constexpr (enabled) {
 					push_event_begin(
 						name,

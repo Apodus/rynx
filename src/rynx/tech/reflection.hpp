@@ -6,8 +6,6 @@
 #include <rynx/tech/serialization_declares.hpp>
 
 #include <algorithm>
-#include <functional>
-#include <string>
 #include <vector>
 #include <typeinfo>
 
@@ -18,14 +16,14 @@ namespace rynx {
 
 		class field {
 		public:
-			std::string m_field_name;
-			std::string m_type_name;
+			rynx::string m_field_name;
+			rynx::string m_type_name;
 			int32_t m_memory_offset = 0;
 			int32_t m_memory_size = 0;
-			std::vector<std::string> m_annotations;
+			std::vector<rynx::string> m_annotations;
 
 			template<typename MemberType, typename ObjectType>
-			static rynx::reflection::field construct(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations = {}) {
+			static rynx::reflection::field construct(rynx::string fieldName, MemberType ObjectType::* ptr, std::vector<rynx::string> fieldAnnotations = {}) {
 				rynx::reflection::field f;
 				f.m_memory_offset = static_cast<int32_t>(reinterpret_cast<uint64_t>(&((*static_cast<ObjectType*>(nullptr)).*ptr)));
 				f.m_memory_size = sizeof(MemberType);
@@ -66,18 +64,18 @@ namespace rynx {
 	namespace reflection {
 		class type {
 		public:
-			std::string m_type_name;
+			rynx::string m_type_name;
 			std::vector<field> m_fields;
 			int32_t m_type_index_value = -1;
 			bool m_is_type_segregated = false;
 			bool m_serialization_allowed = true;
 			
 			rynx::ecs_table_create_func m_create_table_func;
-			std::function<opaque_unique_ptr<void>()> m_create_instance_func;
-			std::function<std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> m_create_map_func;
+			rynx::function<opaque_unique_ptr<void>()> m_create_instance_func;
+			rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> m_create_map_func;
 
 			template<typename MemberType, typename ObjectType>
-			type& add_field(std::string fieldName, MemberType ObjectType::* ptr) {
+			type& add_field(rynx::string fieldName, MemberType ObjectType::* ptr) {
 				auto field = rynx::reflection::field::construct(fieldName, ptr);
 				bool exists_already = false;
 				for (auto&& f : m_fields) {
@@ -90,7 +88,7 @@ namespace rynx {
 			}
 
 			template<typename MemberType, typename ObjectType>
-			type& add_field(std::string fieldName, MemberType ObjectType::* ptr, std::vector<std::string> fieldAnnotations) {
+			type& add_field(rynx::string fieldName, MemberType ObjectType::* ptr, std::vector<rynx::string> fieldAnnotations) {
 				m_fields.emplace_back(rynx::reflection::field::construct(fieldName, ptr, fieldAnnotations));
 				return *this;
 			}
@@ -121,7 +119,7 @@ namespace rynx {
 		class make_reflect {
 		public:
 			rynx::reflection::type operator()() {
-				rynx::reflection::type result{ std::string(typeid(T).name()) };
+				rynx::reflection::type result{ rynx::string(typeid(T).name()) };
 				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
 				return result;
 			}
@@ -133,14 +131,14 @@ namespace rynx {
 			extern registration_object* global_linked_list_initializer_head;
 
 			struct registration_object {
-				registration_object(std::function<void(rynx::reflection::reflections&)> op) {
+				registration_object(rynx::function<void(rynx::reflection::reflections&)> op) {
 					registration_function = std::move(op);
 					next = global_linked_list_initializer_head;
 					global_linked_list_initializer_head = this;
 				}
 
 				registration_object* next = nullptr;
-				std::function<void(rynx::reflection::reflections&)> registration_function;
+				rynx::function<void(rynx::reflection::reflections&)> registration_function;
 			};
 		}
 
@@ -149,28 +147,32 @@ namespace rynx {
 			reflections() = default;
 
 			void load_generated_reflections();
-			uint64_t hash(std::string typeName);
+			uint64_t hash(rynx::string typeName);
 
 			rynx::reflection::type& get(const rynx::reflection::field& f);
 			const rynx::reflection::type& get(const rynx::reflection::field& f) const;
 
 			rynx::reflection::type* find(uint64_t typeId);
-			rynx::reflection::type* find(std::string typeName);
+			rynx::reflection::type* find(rynx::string typeName);
 
 			const rynx::reflection::type* find(uint64_t typeId) const;
-			const rynx::reflection::type* find(std::string typeName) const;
+			const rynx::reflection::type* find(rynx::string typeName) const;
 
-			std::vector<std::pair<std::string, rynx::reflection::type>> get_reflection_data() const;
-			bool has(const std::string& s) const;
+			std::vector<std::pair<rynx::string, rynx::reflection::type>> get_reflection_data() const;
+			bool has(const rynx::string& s) const;
 			
 			template<typename T> bool has() const { return has(typeid(T).name()); }
 
 			template<typename T>
 			rynx::reflection::type& create() {
 				rynx::reflection::type result;
-				result.m_type_name = std::string(typeid(T).name());
+				result.m_type_name = rynx::string(typeid(T).name());
 				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
 				result.m_serialization_allowed = !std::is_base_of_v<rynx::ecs_no_serialize_tag, T>;
+
+				rynx::unique_ptr<rynx::function<void(void*)>> a = rynx::make_unique<rynx::function<void(void*)>>([](void* a) { delete static_cast<int*>(a); });
+				rynx::unique_ptr<rynx::function<void(void*)>> b = rynx::make_unique<rynx::function<void(void*)>>([](void* b) { delete static_cast<int*>(b); });
+				a = std::move(b);
 
 				// TODO: Ecs utils should be tightly knit somewhere under ecs. It is wrong for reflection to make these assumptions.
 				result.m_is_type_segregated = std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>;
@@ -183,13 +185,13 @@ namespace rynx {
 					using tag_t = rynx::ecs_value_segregated_component_tag;
 					using type_t = std::remove_cvref_t<T>;
 					if constexpr (std::is_base_of_v<tag_t, type_t> && !std::is_same_v<tag_t, type_t>) {
-						return std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(new rynx::ecs_internal::value_segregation_map<T>());
+						return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(new rynx::ecs_internal::value_segregation_map<T>());
 					}
 					rynx_assert(false, "calling map create for a type that has no map type");
-					return std::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
+					return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
 				};
 
-				m_reflections.emplace(std::string(typeid(T).name()), std::move(result));
+				m_reflections.emplace(rynx::string(typeid(T).name()), std::move(result));
 				return get<T>();
 			}
 
@@ -198,14 +200,13 @@ namespace rynx {
 				auto it = m_reflections.find(typeid(T).name());
 				if (it == m_reflections.end()) {
 					rynx::reflection::type& reflection = create<T>();
-					// reflection.m_type_name = "!!" + reflection.m_type_name;
 					return reflection;
 				}
 				return it->second;
 			}
 
 		private:
-			rynx::unordered_map<std::string, rynx::reflection::type> m_reflections;
+			rynx::unordered_map<rynx::string, rynx::reflection::type> m_reflections;
 
 			// allow serialization to access our data
 			friend struct rynx::serialization::Serialize<rynx::reflection::reflections>;

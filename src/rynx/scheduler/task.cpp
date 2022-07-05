@@ -11,7 +11,7 @@ rynx::scheduler::task_token::~task_token() {
 }
 
 rynx::scheduler::task_token::task_token(task&& task) {
-	m_pTask = std::make_unique<rynx::scheduler::task>(std::move(task));
+	m_pTask = rynx::make_unique<rynx::scheduler::task>(std::move(task));
 }
 
 rynx::scheduler::task_token& rynx::scheduler::task_token::depends_on(task& other) {
@@ -107,7 +107,7 @@ rynx::scheduler::task& rynx::scheduler::task::operator | (task_token& other) {
 rynx::scheduler::task::task(const task& other) {
 	m_name = other.m_name;
 	m_op = other.m_op;
-	m_barriers = std::make_shared<operation_barriers>(*other.m_barriers);
+	m_barriers = rynx::make_shared<operation_barriers>(*other.m_barriers);
 
 	m_resources = other.m_resources;
 	m_resources_shared = other.m_resources_shared;
@@ -115,6 +115,11 @@ rynx::scheduler::task::task(const task& other) {
 
 	m_context = other.m_context;
 	m_enable_logging = other.m_enable_logging;
+}
+
+rynx::scheduler::task rynx::scheduler::task::clone() const {
+	task copy(*this);
+	return copy;
 }
 
 void rynx::scheduler::task::notify_work_available() const {

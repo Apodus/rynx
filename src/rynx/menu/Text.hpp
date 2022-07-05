@@ -9,8 +9,6 @@
 
 #include <rynx/graphics/renderer/textrenderer.hpp> // annoying but have to include to get vision to TextRenderer::Align
 
-#include <functional>
-
 class Font;
 
 namespace rynx {
@@ -38,7 +36,7 @@ namespace rynx {
 			Config config;
 			bool m_hasDedicatedInput = false;
 
-			std::function<void(std::string)> m_commit;
+			rynx::function<void(rynx::string)> m_commit;
 			int32_t m_cursor_pos = 0;
 
 		public:
@@ -55,8 +53,8 @@ namespace rynx {
 			Text& text_align_center() { m_textline.align_center(); return *this; }
 			
 			Text& font(Font* font) { m_textline.font(font); return *this; }
-			Text& text(std::string t) { m_textline.text() = std::move(t); return *this; }
-			Text& on_value_changed(std::function<void(const std::string&)> op) { m_commit = std::move(op); return *this; }
+			Text& text(rynx::string t) { m_textline.text() = std::move(t); return *this; }
+			Text& on_value_changed(rynx::function<void(const rynx::string&)> op) { m_commit = std::move(op); return *this; }
 			Text& color(floats4 c) { m_text_color = c; return *this; }
 			floats4& color() { return m_text_color; }
 

@@ -64,7 +64,7 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 
 				void apply_rotational_force(vec3f force) {
 					mot_a->angularAcceleration += force.dot(relative_pos_a.normal2d()) * phys_a->inv_moment_of_inertia;
-					mot_b->angularAcceleration += -force.dot(relative_pos_b.normal2d()) * phys_b->inv_moment_of_inertia;
+					mot_b->angularAcceleration -= force.dot(relative_pos_b.normal2d()) * phys_b->inv_moment_of_inertia;
 				}
 
 				vec3f get_force_direction() const {

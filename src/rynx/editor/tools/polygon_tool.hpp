@@ -26,33 +26,33 @@ namespace rynx {
 					m_selected_vertex = -1;
 				}
 
-				virtual bool operates_on(const std::string& type_name) override {
-					return type_name.find("rynx::components::boundary") != std::string::npos;
+				virtual bool operates_on(const rynx::string& type_name) override {
+					return type_name.find("rynx::components::boundary") != rynx::string::npos;
 				}
 
-				virtual std::string get_tool_name() override {
+				virtual rynx::string get_tool_name() override {
 					return "polygon editor";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "polygon_tool";
 				}
 
 				virtual void on_entity_component_added(
 					rynx::scheduler::context* ctx,
-					std::string componentTypeName,
+					rynx::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 
 				virtual void on_entity_component_removed(
 					rynx::scheduler::context* ctx,
-					std::string componentTypeName,
+					rynx::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 				
 				virtual void on_entity_component_value_changed(
 					rynx::scheduler::context* ctx,
-					std::string componentTypeName,
+					rynx::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 

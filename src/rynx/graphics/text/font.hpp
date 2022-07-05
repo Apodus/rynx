@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/graphics/text/fontdata.hpp>
-#include <string_view>
+#include <rynx/tech/std/string.hpp>
 
 class Font {
 
@@ -16,7 +16,7 @@ public:
 		this->fontData.fillTextureCoordinates();
 	}
 
-	float totalWidth(std::string_view text) const {
+	float totalWidth(rynx::string_view text) const {
 		float sum = 0.0f;
 		for (unsigned i = 0; i < text.length(); ++i) {
 			char c = text[i];
@@ -29,7 +29,7 @@ public:
 		return sum;
 	}
 
-	float getLength(std::string_view text, float lineHeight) const {
+	float getLength(rynx::string_view text, float lineHeight) const {
 		float totalWidth = this->totalWidth(text);
 		return totalWidth * lineHeight;
 	}

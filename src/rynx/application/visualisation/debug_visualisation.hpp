@@ -7,7 +7,6 @@
 #include <rynx/application/render.hpp>
 #include <rynx/graphics/mesh/id.hpp>
 
-#include <memory>
 #include <vector>
 
 
@@ -23,14 +22,14 @@ namespace rynx {
 	namespace application {
 		class DebugVisualization : public igraphics_step {
 		public:
-			DebugVisualization(std::shared_ptr<rynx::graphics::renderer> meshRenderer);
+			DebugVisualization(rynx::shared_ptr<rynx::graphics::renderer> meshRenderer);
 
 			void addDebugLine(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float lifetime = 0.0f);
 			void addDebugLine_world(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float width, float lifetime = 0.0f);
 			void addDebugCircle(rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 			void addDebugVisual(rynx::graphics::mesh* mesh, matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 			void addDebugVisual(rynx::graphics::mesh_id mesh_id, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
-			void addDebugVisual(std::string meshName, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
+			void addDebugVisual(rynx::string meshName, rynx::matrix4 model, rynx::floats4 color, float lifetime = 0.0f);
 
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 			virtual void execute() override;
@@ -44,7 +43,7 @@ namespace rynx {
 			};
 
 			rynx::unordered_map<rynx::graphics::mesh*, buffer_obj> m_data;
-			std::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
+			rynx::shared_ptr<rynx::graphics::renderer> m_meshRenderer;
 
 			rynx::graphics::mesh_id m_circle_mesh;
 			rynx::graphics::mesh_id m_line_mesh;

@@ -11,8 +11,8 @@ namespace rynx {
 
 	namespace application {
 		namespace visualisation {
-			std::unique_ptr<rynx::application::graphics_step> default_geometry_pass(rynx::graphics::renderer* pRenderer);
-			std::unique_ptr<rynx::application::graphics_step> default_lighting_pass(std::shared_ptr<rynx::graphics::shaders> shaders);
+			rynx::unique_ptr<rynx::application::graphics_step> default_geometry_pass(rynx::graphics::renderer* pRenderer);
+			rynx::unique_ptr<rynx::application::graphics_step> default_lighting_pass(rynx::shared_ptr<rynx::graphics::shaders> shaders);
 		}
 	}
 }

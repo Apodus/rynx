@@ -29,7 +29,7 @@ DefaultProcessingFunctionality::default_frame_processing_functionality(rynx::obs
 		.add_rgba8_target("color")
 		.construct(m_host->textures(), "menu");
 
-	m_menuCamera = std::make_shared<rynx::camera>();
+	m_menuCamera = rynx::make_shared<rynx::camera>();
 	m_menuCamera->setPosition({ 0, 0, 1 });
 	m_menuCamera->setDirection({ 0, 0, -1 });
 	m_menuCamera->setUpVector({ 0, 1, 0 });
@@ -127,7 +127,7 @@ void DefaultProcessingFunctionality::render() {
 				auto num_entities = m_host->simulation().m_ecs->size();
 				float info_text_pos_y = +0.1f;
 				auto get_min_avg_max = [](rynx::numeric_property<float>& prop) {
-					return std::to_string(prop.min()) + "/" + std::to_string(prop.avg()) + "/" + std::to_string(prop.max()) + "ms";
+					return rynx::to_string(prop.min()) + "/" + rynx::to_string(prop.avg()) + "/" + rynx::to_string(prop.max()) + "ms";
 				};
 			}
 
@@ -164,21 +164,21 @@ void DefaultProcessingFunctionality::frame_end() {
 rynx::application::Application::Application() : m_simulation(m_scheduler) {
 }
 
-void rynx::application::Application::openWindow(int width, int height, std::string name) {
-	m_window = std::make_shared<Window>();
+void rynx::application::Application::openWindow(int width, int height, rynx::string name) {
+	m_window = rynx::make_shared<Window>();
 	m_window->on_resize([this](size_t /* width */, size_t /* height */) {
 		m_window_resized = true;
 	});
 	
 	m_window->createWindow(width, height, name);
-	m_input = std::make_shared<rynx::input>(m_window);
-	m_textures = std::make_shared<rynx::graphics::GPUTextures>();
-	m_shaders = std::make_shared<rynx::graphics::shaders>();
-	m_renderer = std::make_shared<rynx::graphics::renderer>(m_textures, m_shaders);
-	m_debugVisualization = std::make_shared<application::DebugVisualization>(m_renderer);
+	m_input = rynx::make_shared<rynx::input>(m_window);
+	m_textures = rynx::make_shared<rynx::graphics::GPUTextures>();
+	m_shaders = rynx::make_shared<rynx::graphics::shaders>();
+	m_renderer = rynx::make_shared<rynx::graphics::renderer>(m_textures, m_shaders);
+	m_debugVisualization = rynx::make_shared<application::DebugVisualization>(m_renderer);
 
 	this->simulation_context()->set_resource(m_camera);
-	m_rendering_steps = std::make_unique<rynx::application::renderer>(
+	m_rendering_steps = rynx::make_unique<rynx::application::renderer>(
 		textures(),
 		shaders(),
 		renderer(),
@@ -191,7 +191,7 @@ void rynx::application::Application::openWindow(int width, int height, std::stri
 	rendering_steps()->on_resolution_change(width, height);
 }
 
-void rynx::application::Application::loadTextures(std::string path) {
+void rynx::application::Application::loadTextures(rynx::string path) {
 	m_textures->loadTexturesFromPath(path);
 }
 
@@ -199,7 +199,7 @@ std::pair<size_t, size_t> rynx::application::Application::current_window_size() 
 	return { m_window->width(), m_window->height() };
 }
 
-void rynx::application::Application::on_resize(std::function<void(size_t, size_t)> onWindowResize) {
+void rynx::application::Application::on_resize(rynx::function<void(size_t, size_t)> onWindowResize) {
 	m_resizeCallbacks.emplace_back(std::move(onWindowResize));
 }
 

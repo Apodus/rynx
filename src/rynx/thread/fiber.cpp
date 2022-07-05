@@ -1,11 +1,12 @@
 
 #include <rynx/thread/fiber.hpp>
+#include <rynx/tech/std/memory.hpp>
 
 void* Fiber::getFiberAddress() {
 	return m_fiber;
 }
 
-void Fiber::go(std::function<void(Fiber*)> func) {
+void Fiber::go(rynx::function<void(Fiber*)> func) {
 	m_func = func;
 	resume();
 }

@@ -14,7 +14,7 @@
 #include <rynx/system/assert.hpp>
 
 rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
-	std::shared_ptr<rynx::graphics::shaders> shader_manager
+	rynx::shared_ptr<rynx::graphics::shaders> shader_manager
 ) {
 	m_lights_shader = shader_manager->load_shader(
 		"fbo_light_ambient",

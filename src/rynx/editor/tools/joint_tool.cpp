@@ -37,10 +37,10 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 	using joint_connector_t = rynx::components::phys::joint::connector_type;
 	if (type.m_type_name == rynx::traits::type_name<joint_connector_t>())
 	{
-		auto field_div = std::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
+		auto field_div = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 		field_div->velocity_position(200.0f); // TODO
 
-		auto jointConnectionButton = std::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
+		auto jointConnectionButton = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
 		jointConnectionButton->velocity_position(200.0f); // TODO
 		jointConnectionButton->on_click([field_type, type, info, self = jointConnectionButton.get()]() {
 			char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
@@ -85,7 +85,7 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 
 void rynx::editor::tools::joint_tool::on_entity_component_value_changed(
 	rynx::scheduler::context* /* ctx */,
-	std::string componentTypeName,
+	rynx::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
 {

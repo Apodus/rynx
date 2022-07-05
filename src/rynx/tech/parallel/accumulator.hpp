@@ -4,7 +4,6 @@
 #include <rynx/thread/this_thread.hpp>
 #include <vector>
 #include <tuple>
-#include <memory>
 
 namespace rynx {
 	template<typename... Ts>
@@ -69,7 +68,7 @@ namespace rynx {
 	};
 
 	template<typename... Ts>
-	std::shared_ptr<rynx::parallel_accumulator<Ts...>> make_accumulator_shared_ptr() {
-		return std::make_shared<rynx::parallel_accumulator<Ts...>>();
+	rynx::shared_ptr<rynx::parallel_accumulator<Ts...>> make_accumulator_shared_ptr() {
+		return rynx::make_shared<rynx::parallel_accumulator<Ts...>>();
 	}
 }

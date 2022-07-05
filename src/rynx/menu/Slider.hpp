@@ -3,10 +3,7 @@
 
 #include <rynx/menu/Component.hpp>
 #include <rynx/math/matrix.hpp>
-
-#include <string>
-#include <functional>
-
+#include <rynx/tech/std/string.hpp>
 
 namespace rynx {
 	namespace graphics {
@@ -17,9 +14,9 @@ namespace rynx {
 		
 		class SlideBarVertical : public Component {
 			
-			std::function<void(float)> m_callback;
-			std::function<void(float)> m_on_drag_end;
-			std::function<void(float, float)> m_on_active_tick;
+			rynx::function<void(float)> m_callback;
+			rynx::function<void(float)> m_on_drag_end;
+			rynx::function<void(float, float)> m_on_active_tick;
 
 			float m_minValue;
 			float m_maxValue;
@@ -41,9 +38,9 @@ namespace rynx {
 				float initialValue = 0.5f
 			);
 
-			SlideBarVertical& on_value_changed(std::function<void(float)> t);
-			SlideBarVertical& on_drag_end(std::function<void(float)> t);
-			SlideBarVertical& on_active_tick(std::function<void(float, float)> t);
+			SlideBarVertical& on_value_changed(rynx::function<void(float)> t);
+			SlideBarVertical& on_drag_end(rynx::function<void(float)> t);
+			SlideBarVertical& on_active_tick(rynx::function<void(float, float)> t);
 
 			virtual void draw(rynx::graphics::renderer&) const override {}
 			virtual void onInput(rynx::mapped_input& input) override;

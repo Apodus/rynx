@@ -12,11 +12,11 @@
 #include <iostream>
 
 namespace {
-	std::string readFile(const std::string& path)
+	rynx::string readFile(const rynx::string& path)
 	{
 		std::vector<char> data = rynx::filesystem::read_file(path);
 		rynx_assert(data.size() > 0, "Shader source code length zero!");
-		std::string s;
+		rynx::string s;
 		s.resize(data.size());
 		memcpy(s.data(), data.data(), data.size());
 		return s;
@@ -38,9 +38,9 @@ namespace {
 		}
 	}
 
-	GLuint loadVertexShader(const std::string& filename)
+	GLuint loadVertexShader(const rynx::string& filename)
 	{
-		std::string str = readFile(filename);
+		rynx::string str = readFile(filename);
 		const char* data = str.c_str();
 
 		GLuint ret = glCreateShader(GL_VERTEX_SHADER);
@@ -50,9 +50,9 @@ namespace {
 		return ret;
 	}
 
-	GLuint loadFragmentShader(const std::string& filename)
+	GLuint loadFragmentShader(const rynx::string& filename)
 	{
-		std::string str = readFile(filename);
+		rynx::string str = readFile(filename);
 		const char* data = str.c_str();
 
 		GLuint ret = glCreateShader(GL_FRAGMENT_SHADER);
@@ -62,9 +62,9 @@ namespace {
 		return ret;
 	}
 
-	GLuint loadGeometryShader(const std::string& filename)
+	GLuint loadGeometryShader(const rynx::string& filename)
 	{
-		std::string str = readFile(filename);
+		rynx::string str = readFile(filename);
 		const char* data = str.c_str();
 
 		GLuint ret = glCreateShader(GL_GEOMETRY_SHADER);
@@ -76,9 +76,9 @@ namespace {
 }
 
 rynx::graphics::shader::shader(
-	std::string name,
-	const std::string& vert,
-	const std::string& frag)
+	rynx::string name,
+	const rynx::string& vert,
+	const rynx::string& frag)
 	:
 	m_name(std::move(name)),
 	m_programID(0),
@@ -113,10 +113,10 @@ rynx::graphics::shader::shader(
 }
 
 rynx::graphics::shader::shader(
-	std::string name,
-	const std::string& vert,
-	const std::string& frag,
-	const std::string& geom,
+	rynx::string name,
+	const rynx::string& vert,
+	const rynx::string& frag,
+	const rynx::string& geom,
 	GLint input,
 	GLint output,
 	GLint vertices)
@@ -188,7 +188,7 @@ rynx::graphics::shader::~shader()
 	}
 }
 
-GLint rynx::graphics::shader::uniform(const std::string& name)
+GLint rynx::graphics::shader::uniform(const rynx::string& name)
 {
 	rynx_assert(glGetError() == GL_NO_ERROR, "gl error :(");
 	rynx_assert(m_started, "looking for uniform when shader has not been started! not good.");
@@ -206,61 +206,61 @@ GLint rynx::graphics::shader::uniform(const std::string& name)
 	}
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float value)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, float value)
 {
 	glUniform1f(uniform(name), value);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float value1, float value2)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, float value1, float value2)
 {
 	glUniform2f(uniform(name), value1, value2);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float value1, float value2, float value3)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, float value1, float value2, float value3)
 {
 	glUniform3f(uniform(name), value1, value2, value3);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float value1, float value2, float value3, float value4)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, float value1, float value2, float value3, float value4)
 {
 	glUniform4f(uniform(name), value1, value2, value3, value4);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, int32_t value)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, int32_t value)
 {
 	glUniform1i(uniform(name), value);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, int32_t value1, int32_t value2)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, int32_t value1, int32_t value2)
 {
 	glUniform2i(uniform(name), value1, value2);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, int32_t value1, int32_t value2, int32_t value3)
 {
 	glUniform3i(uniform(name), value1, value2, value3);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, int32_t value1, int32_t value2, int32_t value3, int32_t value4)
 {
 	glUniform4i(uniform(name), value1, value2, value3, value4);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, const rynx::matrix4& matrix)
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, const rynx::matrix4& matrix)
 {
 	glUniformMatrix4fv(uniform(name), 1, false, matrix.m);
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, floats4* v, size_t amount) {
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, floats4* v, size_t amount) {
 	static_assert(sizeof(floats4) == 4 * sizeof(float), "can't take array of floats4 directly because of padding.");
 	glUniform4fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
 	return *this;
@@ -268,19 +268,19 @@ rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name,
 
 // due to aligment requirements of simd instructions, vec3f is 4floats in size.
 // transmitting them to gpu we agree that they are of type vec4 from gpu perspective.
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, vec3f* v, size_t amount) {
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, vec3f* v, size_t amount) {
 	static_assert(sizeof(vec3f) == 4 * sizeof(float), "can't take array of vec3f directly because of padding.");
 	glUniform4fv(uniform(name), GLsizei(amount), reinterpret_cast<float*>(v));
 	return *this;
 }
 
-rynx::graphics::shader& rynx::graphics::shader::uniform(const std::string& name, float* v, size_t amount) {
+rynx::graphics::shader& rynx::graphics::shader::uniform(const rynx::string& name, float* v, size_t amount) {
 	glUniform1fv(uniform(name), GLsizei(amount), v);
 	return *this;
 }
 
 
-GLint rynx::graphics::shader::attribute(const std::string& name)
+GLint rynx::graphics::shader::attribute(const rynx::string& name)
 {
 	rynx_assert(m_started, "trying to fetch attribute from a shader that is not active!");
 	auto it = m_uniformLocations.find(name);

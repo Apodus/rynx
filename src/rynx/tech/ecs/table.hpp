@@ -3,13 +3,10 @@
 
 #include <rynx/tech/serialization.hpp>
 #include <rynx/tech/ecs/id.hpp>
-#include <rynx/tech/memory.hpp>
+#include <rynx/tech/std/memory.hpp>
 #include <rynx/system/assert.hpp>
 #include <vector>
-#include <memory>
 #include <numeric>
-#include <functional>
-
 
 namespace rynx {
 	namespace ecs_internal {
@@ -22,11 +19,11 @@ namespace rynx {
 
 			virtual void serialize(rynx::serialization::vector_writer& writer) = 0;
 			virtual void deserialize(rynx::serialization::vector_reader& reader) = 0;
-			virtual void for_each_id_field(std::function<void(rynx::id&)>) = 0;
+			virtual void for_each_id_field(rynx::function<void(rynx::id&)>) = 0;
 
 			// when we already have content in ecs, and we deserialize (load) more content in,
 			// we need to operate over all deserialized entities but to not touch pre-existing data.
-			virtual void for_each_id_field_from_index(size_t startingIndex, std::function<void(rynx::id&)>) = 0;
+			virtual void for_each_id_field_from_index(size_t startingIndex, rynx::function<void(rynx::id&)>) = 0;
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) = 0;
 			virtual void swap_to_given_order(const std::vector<index_t>& relative_sort_order) = 0;
@@ -34,10 +31,10 @@ namespace rynx {
 			virtual void replace_with_back_and_pop(index_t i) = 0;
 
 			virtual void* get(index_t) = 0;
-			virtual std::string type_name() const = 0;
+			virtual rynx::string type_name() const = 0;
 			virtual bool is_type_segregated() const = 0;
 
-			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) = 0;
+			virtual void copyTableTypeTo(type_id_t typeId, std::vector<rynx::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
 
 			uint64_t m_type_id;
@@ -92,14 +89,14 @@ namespace rynx {
 			}
 
 			// TODO: skip iterating over data if no types in hierarchy have id members.
-			virtual void for_each_id_field(std::function<void(rynx::id&)> op) {
+			virtual void for_each_id_field(rynx::function<void(rynx::id&)> op) {
 				for (auto& entry : m_data) {
 					rynx::for_each_id_field(entry, op);
 				}
 			}
 
 			// TODO: skip iterating over data if no types in hierarchy have id members.
-			virtual void for_each_id_field_from_index(size_t startingIndex, std::function<void(rynx::id&)> op) {
+			virtual void for_each_id_field_from_index(size_t startingIndex, rynx::function<void(rynx::id&)> op) {
 				for (size_t i = startingIndex; i < m_data.size(); ++i) {
 					rynx::for_each_id_field(m_data[i], op);
 				}
@@ -111,7 +108,7 @@ namespace rynx {
 			}
 
 			virtual void* get(index_t i) override { return &m_data[i]; }
-			virtual std::string type_name() const {
+			virtual rynx::string type_name() const {
 				return typeid(T).name();
 			}
 			virtual bool is_type_segregated() const {
@@ -124,11 +121,11 @@ namespace rynx {
 			}
 
 			// NOTE: This is required for moving entities between categories reliably.
-			virtual void copyTableTypeTo(type_id_t typeId, std::vector<std::unique_ptr<itable>>& targetTables) override {
+			virtual void copyTableTypeTo(type_id_t typeId, std::vector<rynx::unique_ptr<itable>>& targetTables) override {
 				if (typeId >= targetTables.size()) {
 					targetTables.resize(((3 * typeId) >> 1) + 1);
 				}
-				targetTables[typeId] = std::make_unique<component_table>(typeId);
+				targetTables[typeId] = rynx::make_unique<component_table>(typeId);
 			}
 
 			virtual void moveFromIndexTo(index_t index, itable* dst) override {
@@ -214,16 +211,16 @@ namespace rynx {
 		};
 	}
 
-	using ecs_table_create_func = std::function<std::unique_ptr<rynx::ecs_internal::itable>()>;
+	using ecs_table_create_func = rynx::function<rynx::unique_ptr<rynx::ecs_internal::itable>()>;
 
 	template<typename T>
 	ecs_table_create_func make_ecs_table_create_func(type_id_t type_id) {
 		return [type_id]() {
 			if constexpr (std::is_empty_v<T>) {
-				return std::unique_ptr<rynx::ecs_internal::component_table<T>>(nullptr); // don't create tables for empty types (tag types)
+				return rynx::unique_ptr<rynx::ecs_internal::component_table<T>>(nullptr); // don't create tables for empty types (tag types)
 			}
 			else {
-				return std::make_unique<rynx::ecs_internal::component_table<T>>(type_id);
+				return rynx::make_unique<rynx::ecs_internal::component_table<T>>(type_id);
 			}
 		};
 	}

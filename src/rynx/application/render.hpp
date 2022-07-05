@@ -6,7 +6,6 @@
 #include <rynx/graphics/framebuffer.hpp>
 #include <rynx/tech/binary_config.hpp>
 #include <rynx/math/vector.hpp>
-#include <memory>
 
 namespace rynx {
 	class camera;
@@ -22,15 +21,15 @@ namespace rynx {
 		class renderer : public rynx::application::igraphics_step {
 		public:
 			renderer(
-				std::shared_ptr<rynx::graphics::GPUTextures> textures,
-				std::shared_ptr<rynx::graphics::shaders> shaders,
+				rynx::shared_ptr<rynx::graphics::GPUTextures> textures,
+				rynx::shared_ptr<rynx::graphics::shaders> shaders,
 				rynx::graphics::renderer& renderer,
 				rynx::observer_ptr<camera> camera);
 
 			virtual void execute() override;
 			virtual void prepare(rynx::scheduler::context* ctx) override;
 
-			void geometry_step_insert_front(std::unique_ptr<igraphics_step>);
+			void geometry_step_insert_front(rynx::unique_ptr<igraphics_step>);
 
 			void light_global_ambient(rynx::floats4 color);
 			void light_global_directed(rynx::floats4 color, rynx::vec3f direction);
@@ -45,13 +44,13 @@ namespace rynx {
 			}
 
 		private:
-			std::unique_ptr<rynx::application::graphics_step> geometry_pass;
-			std::unique_ptr<rynx::application::graphics_step> lighting_pass;
+			rynx::unique_ptr<rynx::application::graphics_step> geometry_pass;
+			rynx::unique_ptr<rynx::application::graphics_step> lighting_pass;
 
-			std::shared_ptr<rynx::graphics::GPUTextures> gpu_textures;
-			std::shared_ptr<rynx::graphics::shader> shader_copy_color;
-			std::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
-			std::shared_ptr<rynx::graphics::framebuffer> fbo_lights;
+			rynx::shared_ptr<rynx::graphics::GPUTextures> gpu_textures;
+			rynx::shared_ptr<rynx::graphics::shader> shader_copy_color;
+			rynx::shared_ptr<rynx::graphics::framebuffer> fbo_world_geometry;
+			rynx::shared_ptr<rynx::graphics::framebuffer> fbo_lights;
 			
 			std::pair<size_t, size_t> current_resolution;
 			std::pair<float, float> current_internal_resolution_geometry;
@@ -60,7 +59,7 @@ namespace rynx {
 			igraphics_step* m_ambients = nullptr;
 			rynx::graphics::renderer& m_rynx_renderer;
 
-			std::shared_ptr<rynx::binary_config::id> m_debug_draw_config;
+			rynx::shared_ptr<rynx::binary_config::id> m_debug_draw_config;
 
 			rynx::observer_ptr<camera> camera;
 		};

@@ -41,25 +41,25 @@ namespace rynx {
 		rynx::graphics::texture_id frame_tex;
 		rynx::graphics::texture_id knob_tex;
 
-		std::shared_ptr<rynx::menu::Div> m_editor_menu; // editor root level menu container.
+		rynx::shared_ptr<rynx::menu::Div> m_editor_menu; // editor root level menu container.
 		
 		// TODO: Maybe wrap the editor menus inside a class?
-		std::shared_ptr<rynx::menu::Div> m_entity_bar; // left side menu, containing info of selection
-		std::shared_ptr<rynx::menu::List> m_components_list; // entity bar component list view - showing all components of an entity.
+		rynx::shared_ptr<rynx::menu::Div> m_entity_bar; // left side menu, containing info of selection
+		rynx::shared_ptr<rynx::menu::List> m_components_list; // entity bar component list view - showing all components of an entity.
 
-		std::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
-		std::shared_ptr<rynx::menu::Div> m_file_actions_bar; // bottom side menu, containing global actions (new empty scene, save scene, load scene)
+		rynx::shared_ptr<rynx::menu::Div> m_tools_bar; // right side menu, containing info of tools
+		rynx::shared_ptr<rynx::menu::Div> m_file_actions_bar; // bottom side menu, containing global actions (new empty scene, save scene, load scene)
 		
-		std::shared_ptr<rynx::menu::Div> m_top_bar; // top side menu, contains run/pause, editor on/off, ..?
-		std::shared_ptr<rynx::menu::Text> m_info_text;
+		rynx::shared_ptr<rynx::menu::Div> m_top_bar; // top side menu, contains run/pause, editor on/off, ..?
+		rynx::shared_ptr<rynx::menu::Text> m_info_text;
 
 		rynx::binary_config::id m_game_running_state;
 
-		std::vector<std::shared_ptr<rynx::menu::Component>> m_popups;
-		std::vector<std::function<void()>> m_execute_in_main_stack;
+		std::vector<rynx::shared_ptr<rynx::menu::Component>> m_popups;
+		std::vector<rynx::function<void()>> m_execute_in_main_stack;
 
 		rynx::editor::itool* m_active_tool = nullptr;
-		std::vector<std::unique_ptr<rynx::editor::itool>> m_tools;
+		std::vector<rynx::unique_ptr<rynx::editor::itool>> m_tools;
 
 		rynx::reflection::reflections& m_reflections;
 		rynx::scheduler::context* m_context = nullptr;
@@ -67,7 +67,7 @@ namespace rynx {
 		Font* m_font = nullptr;
 		bool m_tools_enabled = true;
 
-		void push_popup(std::shared_ptr<rynx::menu::Component> popup) {
+		void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) {
 			if (!popup->parent()) {
 				m_editor_menu->addChild(popup);
 			}
@@ -98,25 +98,25 @@ namespace rynx {
 		}
 
 		void display_list_dialog(
-			std::vector<std::string> entries,
-			std::function<rynx::floats4(std::string)> entryColor,
-			std::function<void(std::string)> on_selection);
+			std::vector<rynx::string> entries,
+			rynx::function<rynx::floats4(rynx::string)> entryColor,
+			rynx::function<void(rynx::string)> on_selection);
 
 		template<typename Func>
 		void execute(Func&& f) {
 			m_execute_in_main_stack.emplace_back(std::forward<Func>(f));
 		}
 
-		void save_scene_to_path(std::string path);
-		void load_scene_from_path(std::string path);
+		void save_scene_to_path(rynx::string path);
+		void load_scene_from_path(rynx::string path);
 
 	public:
-		void add_tool(std::unique_ptr<rynx::editor::itool> tool);
+		void add_tool(rynx::unique_ptr<rynx::editor::itool> tool);
 
 		template<typename ToolType, typename... ArgTypes>
 		void add_tool(ArgTypes&&... args) {
 			static_assert(std::is_base_of_v<rynx::editor::itool, ToolType>, "only tools derived from editor::itool are allowed");
-			auto tool = std::make_unique<ToolType>(std::forward<ArgTypes>(args)...);
+			auto tool = rynx::make_unique<ToolType>(std::forward<ArgTypes>(args)...);
 			tool->m_editor_state = &m_state;
 			return add_tool(std::move(tool));
 		}

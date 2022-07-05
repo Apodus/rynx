@@ -2,7 +2,7 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/tech/type_index.hpp>
-#include <rynx/tech/memory.hpp>
+#include <rynx/tech/std/memory.hpp>
 
 #include <vector>
 #include <type_traits>
@@ -29,12 +29,12 @@ namespace rynx {
 		}
 
 		template<typename T>
-		std::unique_ptr<T> set_and_discard(std::unique_ptr<T> t) {
+		rynx::unique_ptr<T> set_and_discard(rynx::unique_ptr<T> t) {
 			auto id = rynx::type_index::id<std::remove_reference_t<T>>();
 			ensure_size(id);
 
 			
-			std::unique_ptr<T> original(static_cast<T*>(m_owned_objects[id]));
+			rynx::unique_ptr<T> original(static_cast<T*>(m_owned_objects[id]));
 			
 			m_owned_objects[id] = t.get();
 			t.release();

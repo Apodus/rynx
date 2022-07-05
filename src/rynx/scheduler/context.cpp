@@ -5,7 +5,6 @@
 #include <rynx/scheduler/barrier.hpp>
 
 #include <mutex>
-#include <iostream>
 
 rynx::scheduler::context::context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler), m_tasks_parallel_for(rynx::scheduler::task_scheduler::numThreads+1){
 	m_resource_counters.resize(1024);
@@ -61,7 +60,8 @@ rynx::scheduler::task rynx::scheduler::context::findWork() {
 			auto& task = m_tasks[i];
 			if (task.barriers().can_start() & resourcesAvailableFor(task)) {
 				rynx::scheduler::task t(std::move(task));
-				m_tasks[i] = std::move(m_tasks.back());
+				if(i+1 < m_tasks.size())
+					m_tasks[i] = std::move(m_tasks.back());
 				m_tasks.pop_back();
 				reserve_resources(t.resources());
 				
@@ -140,6 +140,8 @@ void rynx::scheduler::context::schedule_task(task task) {
 	++m_task_counter;
 	++m_tasks_per_frame;
 
+	logmsg("%s scheduled", task.name().c_str());
+
 	if (task.resources().empty() && task.barriers().can_start())
 	{
 		m_tasks_parallel_for.enque(std::move(task));
@@ -151,6 +153,10 @@ void rynx::scheduler::context::schedule_task(task task) {
 	}
 }
 
+
+// since logmsg doesn't output anything in retail builds, we use iostream for dumping the context state.
+#include <iostream>
+
 void rynx::scheduler::context::dump() {
 	std::lock_guard<std::mutex> lock(*m_taskMutex);
 	std::cout << m_tasks.size() << " tasks remaining" << std::endl;
@@ -158,7 +164,6 @@ void rynx::scheduler::context::dump() {
 		(void)task;
 		std::cout << " barriers: " << task.barriers().can_start() << ", resources: " << resourcesAvailableFor(task) << " -- " << task.name() << std::endl;
 		task.barriers().dump();
-		// logmsg("%s barriers: %d, resources: %d", task.name().c_str(), task.barriers().can_start(), resourcesAvailableFor(task));
 	}
 
 	while (!m_tasks_parallel_for.empty()) {

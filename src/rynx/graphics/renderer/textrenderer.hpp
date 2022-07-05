@@ -5,10 +5,10 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/graphics/color.hpp>
 #include <rynx/graphics/text/font.hpp>
-#include <rynx/tech/memory.hpp>
+#include <rynx/tech/std/memory.hpp>
 
-#include <memory>
-#include <functional>
+#include <vector>
+#include <string_view>
 
 typedef int GLint;
 typedef unsigned GLuint;
@@ -38,8 +38,8 @@ namespace rynx {
 				rynx::vec3f forward = {0.0f, 0.0f, -1.0f};
 			};
 
-			renderable_text& text(std::string s) { m_str = std::move(s); return *this; }
-			std::string& text() { return m_str; }
+			renderable_text& text(rynx::string s) { m_str = std::move(s); return *this; }
+			rynx::string& text() { return m_str; }
 			renderable_text& align_left() { m_align = align::Left; return *this; }
 			renderable_text& align_right() { m_align = align::Right; return *this; }
 			renderable_text& align_center() { m_align = align::Center; return *this; }
@@ -56,7 +56,7 @@ namespace rynx {
 			orientation_t& orientation() { return m_orientation; }
 			const orientation_t& orientation() const { return m_orientation; }
 
-			std::string_view text() const { return m_str; }
+			rynx::string_view text() const { return m_str; }
 			rynx::vec3f pos() const { return m_pos; }
 			rynx::floats4 color() const { return m_color; }
 			float font_size() const { return m_textHeight; }
@@ -73,7 +73,7 @@ namespace rynx {
 			operator bool() const { return !m_str.empty(); }
 
 		private:
-			std::string m_str;
+			rynx::string m_str;
 			rynx::vec3f m_pos;
 			rynx::floats4 m_color = {1,1,1,1};
 			renderable_text::align m_align = align::Center;
@@ -94,8 +94,8 @@ namespace rynx {
 
 			floats4 activeColor;
 
-			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
-			std::shared_ptr<rynx::graphics::shaders> m_shaders;
+			rynx::shared_ptr<rynx::graphics::GPUTextures> m_textures;
+			rynx::shared_ptr<rynx::graphics::shaders> m_shaders;
 			rynx::observer_ptr<camera> m_pCamera;
 			GLuint vao;
 			GLuint vbo, cbo, tbo;
@@ -110,7 +110,7 @@ namespace rynx {
 			void fillTextureCoordinates(const Font& font, char c);
 
 		public:
-			text_renderer(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::shared_ptr<rynx::graphics::shaders> shaders);
+			text_renderer(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, rynx::shared_ptr<rynx::graphics::shaders> shaders);
 
 			void setDefaultFont(const Font& font) { m_defaultFont = font; }
 			const Font& getDefaultFont() const { return m_defaultFont; }

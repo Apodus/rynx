@@ -3,9 +3,7 @@
 
 #include <rynx/graphics/shader/shader.hpp>
 #include <rynx/tech/unordered_map.hpp>
-
-#include <string>
-#include <memory>
+#include <rynx/tech/std/string.hpp>
 
 typedef int GLint;
 typedef unsigned GLuint;
@@ -20,14 +18,14 @@ namespace rynx {
 
 			void release();
 
-			std::shared_ptr<shader> load_shader(const std::string& name, const std::string& vertexShader, const std::string& fragmentShader);
-			std::shared_ptr<shader> activate_shader(const std::string& name);
+			rynx::shared_ptr<shader> load_shader(const rynx::string& name, const rynx::string& vertexShader, const rynx::string& fragmentShader);
+			rynx::shared_ptr<shader> activate_shader(const rynx::string& name);
 
 		private:
-			rynx::unordered_map<std::string, std::shared_ptr<shader>> m_shaders;
+			rynx::unordered_map<rynx::string, rynx::shared_ptr<shader>> m_shaders;
 
-			std::shared_ptr<shader> m_activeShader;
-			std::string m_activeShaderName;
+			rynx::shared_ptr<shader> m_activeShader;
+			rynx::string m_activeShaderName;
 		};
 	}
 }

@@ -5,11 +5,10 @@
 #include <rynx/graphics/texture/id.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/tech/smooth_value.hpp>
+#include <rynx/tech/std/memory.hpp>
+#include <rynx/tech/std/string.hpp>
 
-#include <memory>
-#include <string>
 #include <vector>
-#include <functional>
 
 namespace rynx {
 	namespace graphics {
@@ -74,7 +73,7 @@ namespace rynx {
 		protected:
 			vec3<float> m_positionAlign;
 			Component* m_pParent;
-			std::vector<std::shared_ptr<Component>> m_children;
+			std::vector<rynx::shared_ptr<Component>> m_children;
 
 			rynx::smooth<vec3<float>> m_position;
 			rynx::smooth<vec3<float>> m_scale;
@@ -95,12 +94,12 @@ namespace rynx {
 			bool m_dynamic_scale = false;
 			bool m_ignore_parent_scale = false;
 
-			std::vector<std::function<bool(rynx::vec3f, bool)>> m_on_hover;
-			std::vector<std::function<void(rynx::mapped_input&)>> m_on_input;
-			std::vector<std::function<void()>> m_on_click;
-			std::vector<std::function<void()>> m_on_update;
+			std::vector<rynx::function<bool(rynx::vec3f, bool)>> m_on_hover;
+			std::vector<rynx::function<void(rynx::mapped_input&)>> m_on_input;
+			std::vector<rynx::function<void()>> m_on_click;
+			std::vector<rynx::function<void()>> m_on_update;
 
-			std::unique_ptr<Component> m_background;
+			rynx::unique_ptr<Component> m_background;
 			System* m_menuSystem = nullptr;
 
 			virtual void onInput(rynx::mapped_input& input) = 0;
@@ -121,7 +120,7 @@ namespace rynx {
 				m_active = enableInput;
 			}
 
-			void recursive_call(std::function<void(rynx::menu::Component*)> func) {
+			void recursive_call(rynx::function<void(rynx::menu::Component*)> func) {
 				func(this);
 				for (auto& child : m_children)
 					child->recursive_call(func);
@@ -141,10 +140,10 @@ namespace rynx {
 
 			virtual ~Component() {}
 
-			void on_hover(std::function<bool(rynx::vec3f, bool)> hover_func) { m_on_hover.emplace_back(std::move(hover_func)); }
-			void on_click(std::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
-			void on_input(std::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
-			void on_update(std::function<void()> update_func) { m_on_update.emplace_back(std::move(update_func)); }
+			void on_hover(rynx::function<bool(rynx::vec3f, bool)> hover_func) { m_on_hover.emplace_back(std::move(hover_func)); }
+			void on_click(rynx::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
+			void on_input(rynx::function<void(rynx::mapped_input&)> input_func) { m_on_input.emplace_back(std::move(input_func)); }
+			void on_update(rynx::function<void()> update_func) { m_on_update.emplace_back(std::move(update_func)); }
 
 			void set_background(rynx::graphics::texture_id, float edge_size = 0.2f);
 
@@ -251,8 +250,8 @@ namespace rynx {
 			AlignConfig align() { return { this }; }
 
 			void clear_children() { m_children.clear(); }
-			void addChild(std::shared_ptr<Component> child);
-			std::shared_ptr<Component> detachChild(const Component* ptr);
+			void addChild(rynx::shared_ptr<Component> child);
+			rynx::shared_ptr<Component> detachChild(const Component* ptr);
 			rynx::menu::Component* last_child(int32_t n=0) {
 				rynx_assert(n < m_children.size(), "nth child from back not available");
 				return (m_children.end()-(n+1))->get();
@@ -285,7 +284,7 @@ namespace rynx {
 		//       contains the menu root component, which may have child components.
 		//       a menu "System" is guaranteed to not have a parent menu element.
 		class System {
-			std::unique_ptr<Component> m_root;
+			rynx::unique_ptr<Component> m_root;
 
 			// some components require dedicated focus state to function correctly.
 			// for example think of a text input box. clickin this will enable inputs

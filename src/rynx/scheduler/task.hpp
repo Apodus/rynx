@@ -3,12 +3,9 @@
 
 #include <rynx/tech/parallel/accumulator.hpp>
 #include <rynx/tech/ecs.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/system/assert.hpp>
-
-#include <string>
-#include <functional>
-#include <memory>
 
 namespace rynx {
 	namespace scheduler {
@@ -20,7 +17,7 @@ namespace rynx {
 		class task_token {
 		private:
 			// TODO get rid of this
-			template<typename RynxTask, typename F> static task_token silly_delayed_evaluate(std::string&& name, RynxTask& task, F&& f) {
+			template<typename RynxTask, typename F> static task_token silly_delayed_evaluate(rynx::string&& name, RynxTask& task, F&& f) {
 				auto followUpTask = task.m_context->add_task(std::move(name), std::forward<F>(f));
 				followUpTask.depends_on(task);
 				return followUpTask;
@@ -44,7 +41,7 @@ namespace rynx {
 			task_token& required_for(task_token& other) { return required_for(*other); }
 
 			template<typename F>
-			task_token then(std::string name, F&& f) {
+			task_token then(rynx::string name, F&& f) {
 				return this->silly_delayed_evaluate(std::move(name), *m_pTask.get(), std::forward<F>(f));
 				/*
 				auto followUpTask = m_pTask->m_context->add_task(std::move(name), std::forward<F>(f));
@@ -56,7 +53,7 @@ namespace rynx {
 			template<typename F> task_token then(F&& f) { return then("->", std::forward<F>(f)); }
 
 		private:
-			std::unique_ptr<task> m_pTask;
+			rynx::unique_ptr<task> m_pTask;
 		};
 
 		class task {
@@ -122,27 +119,29 @@ namespace rynx {
 		public:
 			// TODO: use some memory pool thing for task_resources.
 			task() : m_name("EmptyTask"), m_context(nullptr) {}
-			task(context& context, std::string name)
+			task(context& context, rynx::string name)
 				: m_name(std::move(name))
 				, m_context(&context)
-				, m_barriers(std::make_shared<rynx::scheduler::operation_barriers>())
-				, m_resources(std::make_shared<task_resources>(&context))
+				, m_barriers(rynx::make_shared<rynx::scheduler::operation_barriers>())
+				, m_resources(rynx::make_shared<task_resources>(&context))
 			{}
 			
-			template<typename F> task(context& context, std::string taskName, F&& op)
+			template<typename F> task(context& context, rynx::string taskName, F&& op)
 				: m_name(std::move(taskName))
 				, m_context(&context)
-				, m_barriers(std::make_shared<rynx::scheduler::operation_barriers>())
-				, m_resources(std::make_shared<task_resources>(&context)) {
+				, m_barriers(rynx::make_shared<rynx::scheduler::operation_barriers>())
+				, m_resources(rynx::make_shared<task_resources>(&context)) {
 				set(std::forward<F>(op));
 			}
 
+			task(task&& other) = default;
 			task& operator =(task&& other) = default;
-			
-			// TODO: PRIVATE!!
-		public:
-			task(const task& other); // copy is required in parallel_for case.
+
+			task clone() const; // copy is required in parallel_for case.
 		
+		private:
+			task(const task& other); // copy is required in parallel_for case.
+
 		public:
 			operation_barriers& barriers() { return *m_barriers; }
 			const operation_barriers& barriers() const { return *m_barriers; }
@@ -184,7 +183,7 @@ namespace rynx {
 			task& operator | (task_token& other);
 
 			// TODO: Rename all task creation functions.
-			template<typename F> task_token make_task(std::string name, F&& op) {
+			template<typename F> task_token make_task(rynx::string name, F&& op) {
 				task_token t = m_context->add_task(name, std::forward<F>(op));
 				t->m_enable_logging = m_enable_logging;
 				return t;
@@ -193,7 +192,7 @@ namespace rynx {
 				return make_task("task", std::forward<F>(op));
 			}
 
-			template<typename F> task_token extend_task_independent(std::string name, F&& op) {
+			template<typename F> task_token extend_task_independent(rynx::string name, F&& op) {
 				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(*followUpTask);
 				followUpTask->m_enable_logging = m_enable_logging;
@@ -202,7 +201,7 @@ namespace rynx {
 
 			template<typename F> task_token extend_task_independent(F&& op) { return extend_task_independent(m_name + "_e", std::forward<F>(op)); }
 			
-			template<typename F> task_token make_extension_task_execute_sequential(std::string name, F&& op) {
+			template<typename F> task_token make_extension_task_execute_sequential(rynx::string name, F&& op) {
 				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(*followUpTask);
 				copy_resources(*followUpTask); // uses same resources but must reserve them individually.
@@ -210,7 +209,7 @@ namespace rynx {
 				return followUpTask;
 			}
 			
-			template<typename F> task_token make_extension_task_execute_parallel(std::string name, F&& op) {
+			template<typename F> task_token make_extension_task_execute_parallel(rynx::string name, F&& op) {
 				task_token followUpTask = m_context->add_task(std::move(name), std::forward<F>(op));
 				completion_blocked_by(*followUpTask);
 				share_resources(*followUpTask); // use and extend parent reservation on resources.
@@ -218,17 +217,15 @@ namespace rynx {
 				return followUpTask;
 			}
 
-			template<typename F> task_token extend_task_execute_parallel(std::string name, F&& op) { return make_extension_task_execute_parallel(std::move(name), std::forward<F>(op)); }
+			template<typename F> task_token extend_task_execute_parallel(rynx::string name, F&& op) { return make_extension_task_execute_parallel(std::move(name), std::forward<F>(op)); }
 			template<typename F> task_token extend_task_execute_parallel(F&& op) { return extend_task_execute_parallel(m_name + "_es", std::forward<F>(op)); }
-			template<typename F> task_token extend_task_execute_sequential(std::string name, F&& op) { return make_extension_task_execute_sequential(std::move(name), std::forward<F>(op)); }
+			template<typename F> task_token extend_task_execute_sequential(rynx::string name, F&& op) { return make_extension_task_execute_sequential(std::move(name), std::forward<F>(op)); }
 			template<typename F> task_token extend_task_execute_sequential(F&& op) { return extend_task_execute_sequential(m_name + "_es", std::forward<F>(op)); }
-
-			task(task&& other) = default;
 
 			void run();
 
 			operator bool() const { return static_cast<bool>(m_op); }
-			const std::string& name() const { return m_name; }
+			const rynx::string& name() const { return m_name; }
 			void clear() {
 				m_op = nullptr;
 				m_barriers.reset();
@@ -265,19 +262,19 @@ namespace rynx {
 			}
 
 			struct parallel_for_each_data {
-				parallel_for_each_data(int64_t begin, int64_t end) : index(begin), end(end) {
-					work_remaining = end - index;
+				parallel_for_each_data(int64_t begin, int64_t end) noexcept : index(begin), end(end) {
+					work_remaining = end - begin;
 				}
 				
-				bool work_available() const {
+				bool work_available() const noexcept {
 					return index < end;
 				}
 
-				bool all_work_completed() const {
+				bool all_work_completed() const noexcept {
 					return work_remaining <= 0;
 				}
 
-				int64_t get_work() {
+				int64_t get_work() noexcept {
 					return index.fetch_add(work_size);
 				}
 
@@ -296,8 +293,8 @@ namespace rynx {
 			//       approach to parallel fors was abandoned.
 			
 			struct parallel_for_operation {
-				parallel_for_operation(rynx::scheduler::task& parent) : m_parent(&parent), m_ops(std::make_shared<std::vector<std::function<void()>>>()) {
-					m_executor = std::make_unique<rynx::scheduler::task_token>(parent.extend_task_execute_parallel(this->m_parent->name() + " (parallel for)", [ops = this->m_ops]() mutable {
+				parallel_for_operation(rynx::scheduler::task& parent) : m_parent(&parent), m_ops(rynx::make_shared<std::vector<rynx::function<void()>>>()) {
+					m_executor = rynx::make_unique<rynx::scheduler::task_token>(parent.extend_task_execute_parallel(this->m_parent->name() + " (parallel for)", [ops = this->m_ops]() mutable {
 						for (auto&& op : *ops) {
 							op();
 						}
@@ -331,20 +328,20 @@ namespace rynx {
 					return m_barrier;
 				}
 
-				std::unique_ptr<rynx::scheduler::task_token> m_executor;
+				rynx::unique_ptr<rynx::scheduler::task_token> m_executor;
 				rynx::scheduler::barrier m_barrier;
 
 				rynx::scheduler::task* m_parent;
-				std::shared_ptr<parallel_for_each_data> for_each_data;
-				std::shared_ptr<std::vector<std::function<void()>>> m_ops;
+				rynx::shared_ptr<parallel_for_each_data> for_each_data;
+				rynx::shared_ptr<std::vector<rynx::function<void()>>> m_ops;
 				bool self_participate = true;
 					
 				// if you are creating multiple parallel for tasks with deferred_work, then might be better to
 				// skip notify workers during task creation and just notify once after all tasks are created.
 				bool notify_workers = true;
 
-				parallel_for_operation& range(int64_t begin_, int64_t end_, int64_t work_size_) {
-					for_each_data = std::make_shared<parallel_for_each_data>(begin_, end_);
+				parallel_for_operation& range(int64_t begin_, int64_t end_, int64_t work_size_ = 256) {
+					for_each_data = rynx::make_shared<parallel_for_each_data>(begin_, end_);
 					for_each_data->work_size = work_size_;
 					return *this;
 				}
@@ -359,30 +356,23 @@ namespace rynx {
 					return *this;
 				}
 
-				// TODO: Naming of functions is now super unclear. Fix.
-				//       Could also merge the foreach functions, or enforce in other ways that you can't misuse them.
-				parallel_for_operation& for_each(int64_t begin, int64_t end, int64_t work_size = 256) {
-					range(begin, end, work_size);
-					return *this;
-				}
-
 				template<typename F>
-				parallel_for_operation& for_each(F&& op) {
+				parallel_for_operation& execute(F&& op) {
 					rynx_assert(for_each_data != nullptr, "no operation range given. call range(..) first.");
 					
 					auto work_on_task = [for_each_data = this->for_each_data, op]() mutable  {
-						const int64_t local_work_size = for_each_data->work_size;
-						const int64_t local_end = for_each_data->end;
+						const int64_t work_segment_size = for_each_data->work_size;
+						const int64_t work_end = for_each_data->end;
 						for (;;) {
-							int64_t my_index = for_each_data->get_work();
-							if (my_index >= local_end) {
+							const int64_t work_segment_begin = for_each_data->get_work();
+							if (work_segment_begin >= work_end) {
 								return;
 							}
-							int64_t limit = my_index + local_work_size >= local_end ? local_end : my_index + local_work_size;
-							for (int64_t i = my_index; i < limit; ++i) {
+							const int64_t work_segment_end = work_segment_begin + work_segment_size >= work_end ? work_end : work_segment_begin + work_segment_size;
+							for (int64_t i = work_segment_begin; i < work_segment_end; ++i) {
 								op(i);
 							}
-							for_each_data->work_remaining -= limit - my_index;
+							for_each_data->work_remaining -= work_segment_end - work_segment_begin;
 						}
 					};
 
@@ -451,16 +441,16 @@ namespace rynx {
 				context* m_context = nullptr;
 			};
 
-			std::string m_name;
-			std::function<void(rynx::scheduler::task*)> m_op;
-			std::shared_ptr<operation_barriers> m_barriers;
+			rynx::string m_name;
+			rynx::function<void(rynx::scheduler::task*)> m_op;
+			rynx::shared_ptr<operation_barriers> m_barriers;
 
-			std::shared_ptr<task_resources> m_resources;
-			std::vector<std::shared_ptr<task_resources>> m_resources_shared;
-			std::vector<std::shared_ptr<parallel_for_each_data>> m_for_each;
+			rynx::shared_ptr<task_resources> m_resources;
+			std::vector<rynx::shared_ptr<task_resources>> m_resources_shared;
+			std::vector<rynx::shared_ptr<parallel_for_each_data>> m_for_each;
 
 			context* m_context = nullptr;
-			bool m_enable_logging = false;
+			bool m_enable_logging = true;
 		};
 	}
 }

@@ -1,9 +1,8 @@
 
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/graphics/internal/includes.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/system/assert.hpp>
-
-#include <string>
 
 rynx::graphics::shaders::shaders() {
 	GLint n;
@@ -21,7 +20,7 @@ void rynx::graphics::shaders::release() {
 	m_shaders.clear();
 }
 
-std::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::activate_shader(const std::string& name) {
+rynx::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::activate_shader(const rynx::string& name) {
 	if(m_activeShaderName == name)
 		return m_activeShader;
 
@@ -37,13 +36,13 @@ std::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::activate_shader
 	return m_activeShader;
 }
 
-std::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::load_shader(
-	const std::string& name,
-	const std::string& vertexShader,
-	const std::string& fragmentShader)
+rynx::shared_ptr<rynx::graphics::shader> rynx::graphics::shaders::load_shader(
+	const rynx::string& name,
+	const rynx::string& vertexShader,
+	const rynx::string& fragmentShader)
 {
 	logmsg("loading shader %s", name.c_str());
-	auto pShader = std::make_shared<shader>(name, vertexShader, fragmentShader);
+	auto pShader = rynx::make_shared<shader>(name, vertexShader, fragmentShader);
 	pShader->set_shader_manager(this);
 	m_shaders.insert_or_assign(name, pShader);
 	return pShader;

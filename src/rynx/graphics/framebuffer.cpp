@@ -2,17 +2,15 @@
 #include <rynx/graphics/internal/includes.hpp>
 #include <rynx/graphics/framebuffer.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
+#include <rynx/tech/std/string.hpp>
 #include <rynx/system/assert.hpp>
-
-#include <string>
-#include <stdexcept>
 
 namespace {
 	constexpr int FboMaxTextures = 16;
 	constexpr int default_resolution = -1;
 }
 
-rynx::graphics::framebuffer::framebuffer(std::shared_ptr<rynx::graphics::GPUTextures> textures, const std::string& name):
+rynx::graphics::framebuffer::framebuffer(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, const rynx::string& name):
 	fbo_name(name),
 	location(0),
 	m_textures(textures)
@@ -29,14 +27,14 @@ rynx::graphics::framebuffer::~framebuffer() {
 	destroy();
 }
 
-std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::string name) {
-	auto fbo = std::make_shared<rynx::graphics::framebuffer>(textures, name);
+rynx::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config::construct(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, rynx::string name) {
+	auto fbo = rynx::make_shared<rynx::graphics::framebuffer>(textures, name);
 	fbo->resolution_x = m_default_resolution_x;
 	fbo->resolution_y = m_default_resolution_y;
 
 	auto add_one = [this, &textures, &name, &fbo](render_target& render_target_instance) {
 		auto add_depth_buffer = [&](int bits_per_pixel) {
-			fbo->depthtexture = name + std::string("_depth") + std::to_string(bits_per_pixel);
+			fbo->depthtexture = name + rynx::string("_depth") + rynx::to_string(bits_per_pixel).c_str();
 			if (render_target_instance.resolution_x == default_resolution) {
 				fbo->depthtexture_id =
 					textures->createDepthTexture(
@@ -63,7 +61,7 @@ std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config
 			break;
 			
 		case render_target_type::rgba8:
-			fbo->targets.emplace_back(name + std::string("_rgba8_slot") + std::to_string(fbo->targets.size()));
+			fbo->targets.emplace_back(name + rynx::string("_rgba8_slot") + rynx::to_string(fbo->targets.size()));
 			if (render_target_instance.resolution_x == default_resolution) {
 				fbo->targets.back().id = textures->createTexture(fbo->targets.back().name, int(m_default_resolution_x), int(m_default_resolution_y));
 			}
@@ -81,7 +79,7 @@ std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config
 			break;
 
 		case render_target_type::float32:
-			fbo->targets.emplace_back(name + std::string("_float32_slot") + std::to_string(fbo->targets.size()));
+			fbo->targets.emplace_back(name + rynx::string("_float32_slot") + rynx::to_string(fbo->targets.size()));
 			if (render_target_instance.resolution_x == default_resolution) {
 				fbo->targets.back().id = textures->createFloatTexture(fbo->targets.back().name, int(m_default_resolution_x), int(m_default_resolution_y));
 			}
@@ -120,7 +118,7 @@ std::shared_ptr<rynx::graphics::framebuffer> rynx::graphics::framebuffer::config
 	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
 	{
-		throw std::runtime_error(std::string("Failed to create FBO: '") + name + std::string("', error: ") + std::to_string(status));
+		rynx_assert(false, "Failed to create FBO");
 	}
 
 	return fbo;
@@ -132,22 +130,22 @@ rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::set_de
 	return *this;
 }
 
-rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(std::string name, int res_x, int res_y) {
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(rynx::string name, int res_x, int res_y) {
 	m_targets.emplace_back(render_target{ res_x, res_y, render_target_type::rgba8, name });
 	return *this;
 }
 
-rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(std::string name) {
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_rgba8_target(rynx::string name) {
 	m_targets.emplace_back(render_target{default_resolution, default_resolution, render_target_type::rgba8, name});
 	return *this;
 }
 
-rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(std::string name, int res_x, int res_y) {
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(rynx::string name, int res_x, int res_y) {
 	m_targets.emplace_back(render_target{ res_x, res_y, render_target_type::float32, name });
 	return *this;
 }
 
-rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(std::string name) {
+rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_float_target(rynx::string name) {
 	m_targets.emplace_back(render_target{ default_resolution, default_resolution, render_target_type::float32, name });
 	return *this;
 }
@@ -184,7 +182,7 @@ rynx::graphics::framebuffer::config& rynx::graphics::framebuffer::config::add_de
 	return *this;
 }
 
-rynx::graphics::texture_id rynx::graphics::framebuffer::operator [](const std::string& name) {
+rynx::graphics::texture_id rynx::graphics::framebuffer::operator [](const rynx::string& name) {
 	auto it = m_tex_map.find(name);
 	rynx_assert(it != m_tex_map.end(), "requested render target does not exist in this FBO");
 	return it->second;

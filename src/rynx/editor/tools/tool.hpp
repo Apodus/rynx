@@ -13,7 +13,6 @@
 #include <rynx/graphics/camera/camera.hpp>
 
 #include <vector>
-#include <functional>
 
 namespace rynx {
 	class ecs;
@@ -61,7 +60,7 @@ namespace rynx {
 			rynx::graphics::texture_id frame_tex;
 			rynx::graphics::texture_id knob_tex;
 
-			std::function<void(
+			rynx::function<void(
 				const rynx::reflection::type& type_reflection,
 				rynx::editor::component_recursion_info_t info,
 				std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>)> gen_type_editor;
@@ -69,48 +68,48 @@ namespace rynx {
 
 		struct editor_shared_state {
 			struct tool_api {
-				virtual void push_popup(std::shared_ptr<rynx::menu::Component> popup) = 0;
+				virtual void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) = 0;
 				virtual void pop_popup() = 0;
 				virtual void enable_tools() = 0;
 				virtual void disable_tools() = 0;
 				virtual void activate_default_tool() = 0;
 				virtual rynx::scheduler::context* get_context() = 0;
-				virtual void execute(std::function<void()> execute_in_main_thread) = 0;
-				virtual void for_each_tool(std::function<void(itool*)> op) = 0;
+				virtual void execute(rynx::function<void()> execute_in_main_thread) = 0;
+				virtual void for_each_tool(rynx::function<void(itool*)> op) = 0;
 			};
 
 			tool_api* m_editor;
 
 			std::vector<rynx::id> m_selected_ids;
-			std::function<void(rynx::id)> m_on_entity_selected;
+			rynx::function<void(rynx::id)> m_on_entity_selected;
 		};
 
 		class itool {
 		public:
 			struct action {
 				action() = default;
-				action(bool activate_tool, std::string target_type, std::string name, std::function<void(rynx::scheduler::context*)> op)
+				action(bool activate_tool, rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op)
 					: activate_tool(activate_tool), target_type(std::move(target_type)), name(std::move(name)), m_action(std::move(op))
 				{}
 
 				bool activate_tool = true;
-				std::string target_type;
-				std::string name;
-				std::function<void(rynx::scheduler::context*)> m_action;
+				rynx::string target_type;
+				rynx::string name;
+				rynx::function<void(rynx::scheduler::context*)> m_action;
 			};
 
 			struct error {
 				struct option {
-					std::string name;
-					std::function<void()> op;
+					rynx::string name;
+					rynx::function<void()> op;
 				};
 
-				error& add_option(std::string name, std::function<void()> op) {
+				error& add_option(rynx::string name, rynx::function<void()> op) {
 					options.emplace_back(option{ name, op });
 					return *this;
 				}
 
-				std::string what;
+				rynx::string what;
 				rynx::id entity_id;
 				std::vector<option> options;
 			};
@@ -119,8 +118,8 @@ namespace rynx {
 				error_emitter(rynx::scheduler::context* context) : m_context(context) {}
 
 				template<typename T>
-				error& component_missing(rynx::id entity, std::string whyRequired) {
-					std::string error_str = "^g" + rynx::traits::template type_name<T>() + "^w, " + whyRequired;
+				error& component_missing(rynx::id entity, rynx::string whyRequired) {
+					rynx::string error_str = "^g" + rynx::traits::template type_name<T>() + "^w, " + whyRequired;
 					m_errors.emplace_back(error{ error_str, entity });
 					add_goto_option(entity);
 					m_errors.back().add_option("Add component", [entity, ctx = m_context]() {
@@ -129,7 +128,7 @@ namespace rynx {
 					return m_errors.back();
 				}
 
-				error& emit(rynx::id entity, std::string what) {
+				error& emit(rynx::id entity, rynx::string what) {
 					m_errors.emplace_back(error{ what, entity });
 					add_goto_option(entity);
 					// TODO: would be more clean to return a proxy object similar as to how tasks are created.
@@ -164,25 +163,25 @@ namespace rynx {
 
 			virtual void on_entity_component_removed(
 				rynx::scheduler::context*,
-				std::string /* componentTypeName */,
+				rynx::string /* componentTypeName */,
 				rynx::ecs&,
 				rynx::id) {}
 			
 			virtual void on_entity_component_added(
 				rynx::scheduler::context*,
-				std::string /* componentTypeName */,
+				rynx::string /* componentTypeName */,
 				rynx::ecs&,
 				rynx::id) {}
 
 			virtual void on_entity_component_value_changed(
 				rynx::scheduler::context*,
-				std::string /* componentTypeName */,
+				rynx::string /* componentTypeName */,
 				rynx::ecs&,
 				rynx::id) {}
 
-			virtual std::string get_info() { return {}; } // displayed in editor
-			virtual std::string get_tool_name() = 0;
-			virtual std::string get_button_texture() = 0;
+			virtual rynx::string get_info() { return {}; } // displayed in editor
+			virtual rynx::string get_tool_name() = 0;
+			virtual rynx::string get_button_texture() = 0;
 
 			virtual bool try_generate_menu(
 				rynx::reflection::field type,
@@ -192,34 +191,34 @@ namespace rynx {
 				return false;
 			}
 
-			virtual bool operates_on(const std::string& type_name) = 0;
-			virtual bool allow_component_remove(const std::string& /* type_name */) { return true; }
+			virtual bool operates_on(const rynx::string& type_name) = 0;
+			virtual bool allow_component_remove(const rynx::string& /* type_name */) { return true; }
 
 			// TODO: Wrap under some common namespace or struct
-			void source_data(std::function<void* ()> func);
-			void source_data_cb(std::function<void(void*)> func);
+			void source_data(rynx::function<void* ()> func);
+			void source_data_cb(rynx::function<void(void*)> func);
 			void* address_of_operand();
 			void operand_value_changed(void* ptr) { if (m_data_changed) { m_data_changed(ptr); } }
 
-			std::vector<std::string> get_editor_actions_list();
-			bool editor_action_execute(std::string actionName, rynx::scheduler::context* ctx);
+			std::vector<rynx::string> get_editor_actions_list();
+			bool editor_action_execute(rynx::string actionName, rynx::scheduler::context* ctx);
 
 			rynx::id selected_id() const;
 			const std::vector<rynx::id>& selected_id_vector() const;
 
-			void execute(std::function<void()> op) { m_editor_state->m_editor->execute(std::move(op)); }
-			void for_each_tool(std::function<void(itool*)> op) { m_editor_state->m_editor->for_each_tool(op); }
+			void execute(rynx::function<void()> op) { m_editor_state->m_editor->execute(std::move(op)); }
+			void for_each_tool(rynx::function<void(itool*)> op) { m_editor_state->m_editor->for_each_tool(op); }
 
 			editor_shared_state* m_editor_state = nullptr;
 
 		protected:
-			void define_action(std::string target_type, std::string name, std::function<void(rynx::scheduler::context*)> op);
-			void define_action_no_tool_activate(std::string target_type, std::string name, std::function<void(rynx::scheduler::context*)> op);
+			void define_action(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
+			void define_action_no_tool_activate(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
 
 		private:
-			std::function<void* ()> m_get_data;
-			std::function<void(void*)> m_data_changed;
-			rynx::unordered_map<std::string, action> m_actions;
+			rynx::function<void* ()> m_get_data;
+			rynx::function<void(void*)> m_data_changed;
+			rynx::unordered_map<rynx::string, action> m_actions;
 		};
 	}
 }

@@ -64,8 +64,8 @@ namespace rynx {
 		T length_squared() const { return dot(*this); }
 
 		/*
-		operator std::string() const {
-			return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
+		operator rynx::string() const {
+			return rynx::string("(") + rynx::to_string(x) + ", " + rynx::to_string(y) + ", " + rynx::to_string(z) + ")";
 		}
 		*/
 
@@ -145,8 +145,8 @@ namespace rynx {
 			return _mm_sub_ps(t5, t6);
 		}
 
-		operator std::string() const {
-			return std::string("(") + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z) + ")";
+		operator rynx::string() const {
+			return rynx::string("(") + rynx::to_string(x) + ", " + rynx::to_string(y) + ", " + rynx::to_string(z) + ")";
 		}
 
 		vec3 normal() { w = 0; float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }

@@ -8,8 +8,6 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/math/vector.hpp>
 
-#include <functional>
-
 class Font;
 
 namespace rynx {

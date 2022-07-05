@@ -19,12 +19,9 @@
 #include <rynx/graphics/renderer/textrenderer.hpp>
 #include <rynx/graphics/opengl.hpp>
 
-
-#include <memory>
-
 rynx::application::renderer::renderer(
-	std::shared_ptr<rynx::graphics::GPUTextures> textures,
-	std::shared_ptr<rynx::graphics::shaders> shaders,
+	rynx::shared_ptr<rynx::graphics::GPUTextures> textures,
+	rynx::shared_ptr<rynx::graphics::shaders> shaders,
 	rynx::graphics::renderer& renderer,
 	rynx::observer_ptr<rynx::camera> camera)
 	: gpu_textures(textures), m_rynx_renderer(renderer), camera(camera)
@@ -40,21 +37,21 @@ rynx::application::renderer::renderer(
 	shader_copy_color->activate();
 	shader_copy_color->uniform("tex_color", 0);
 
-	auto omnilights_handler = std::make_unique<rynx::application::visualisation::omnilights_effect>(shaders);
-	auto directed_lights_handler = std::make_unique<rynx::application::visualisation::directed_lights_effect>(shaders);
-	auto ambient_lights_handler = std::make_unique<rynx::application::visualisation::ambient_light_effect>(shaders);
+	auto omnilights_handler = rynx::make_unique<rynx::application::visualisation::omnilights_effect>(shaders);
+	auto directed_lights_handler = rynx::make_unique<rynx::application::visualisation::directed_lights_effect>(shaders);
+	auto ambient_lights_handler = rynx::make_unique<rynx::application::visualisation::ambient_light_effect>(shaders);
 
 	m_ambients = ambient_lights_handler.get();
 
 	{
-		lighting_pass = std::make_unique<graphics_step>();
+		lighting_pass = rynx::make_unique<graphics_step>();
 		lighting_pass->add_graphics_step(std::move(omnilights_handler));
 		lighting_pass->add_graphics_step(std::move(directed_lights_handler));
 		lighting_pass->add_graphics_step(std::move(ambient_lights_handler));
 	}
 
 	{
-		m_debug_draw_config = std::make_shared<rynx::binary_config::id>();
+		m_debug_draw_config = rynx::make_shared<rynx::binary_config::id>();
 
 		rynx::graphics::mesh_id tube_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeBox(1.0f));
 		auto* tube_mesh = renderer.meshes()->get(tube_mesh_id);
@@ -67,7 +64,7 @@ rynx::application::renderer::renderer(
 		tube_mesh->bind();
 		tube_mesh->rebuildNormalBuffer();
 
-		auto boundary_rendering = std::make_unique<rynx::application::visualisation::boundary_renderer>(
+		auto boundary_rendering = rynx::make_unique<rynx::application::visualisation::boundary_renderer>(
 			tube_mesh_id,
 			&renderer
 		);
@@ -75,13 +72,13 @@ rynx::application::renderer::renderer(
 
 
 
-		geometry_pass = std::make_unique<graphics_step>();
-		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::model_matrix_updates>());
-		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
+		geometry_pass = rynx::make_unique<graphics_step>();
+		geometry_pass->add_graphics_step(rynx::make_unique<rynx::application::visualisation::model_matrix_updates>());
+		geometry_pass->add_graphics_step(rynx::make_unique<rynx::application::visualisation::mesh_renderer>(&renderer));
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
 		
 		rynx::graphics::mesh_id circle_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
-		geometry_pass->add_graphics_step(std::make_unique<rynx::application::visualisation::ball_renderer>(
+		geometry_pass->add_graphics_step(rynx::make_unique<rynx::application::visualisation::ball_renderer>(
 			renderer.meshes()->get(circle_mesh_id),
 			&renderer
 		));
@@ -193,7 +190,7 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 	lighting_pass->prepare(ctx);
 }
 
-void rynx::application::renderer::geometry_step_insert_front(std::unique_ptr<igraphics_step> step) {
+void rynx::application::renderer::geometry_step_insert_front(rynx::unique_ptr<igraphics_step> step) {
 	geometry_pass->add_graphics_step(std::move(step), true);
 }
 

@@ -5,7 +5,7 @@
 #include <rynx/tech/serialization.hpp>
 
 rynx::application::logic::iruleset::iruleset() {
-	m_barrier = std::make_unique<rynx::scheduler::barrier>("SystemBarrier");
+	m_barrier = rynx::make_unique<rynx::scheduler::barrier>("SystemBarrier");
 }
 
 void rynx::application::logic::iruleset::process(rynx::scheduler::context& context, float dt) {
@@ -21,7 +21,7 @@ void rynx::application::logic::iruleset::process(rynx::scheduler::context& conte
 rynx::scheduler::barrier rynx::application::logic::iruleset::barrier() const { return *m_barrier; }
 
 void rynx::application::logic::iruleset::required_for(iruleset& other) {
-	other.m_dependOn.emplace_back(std::make_unique<rynx::scheduler::barrier>(*m_barrier));
+	other.m_dependOn.emplace_back(rynx::make_unique<rynx::scheduler::barrier>(*m_barrier));
 }
 
 rynx::serialization::vector_writer rynx::application::logic::iruleset::apply_to_all::serialize(rynx::scheduler::context& context) {
@@ -36,7 +36,7 @@ void rynx::application::logic::iruleset::apply_to_all::clear(rynx::scheduler::co
 	m_host->m_parent->clear(context);
 }
 
-rynx::application::logic& rynx::application::logic::add_ruleset(std::unique_ptr<iruleset> ruleset) {
+rynx::application::logic& rynx::application::logic::add_ruleset(rynx::unique_ptr<iruleset> ruleset) {
 	m_rules.emplace_back(std::move(ruleset));
 	m_rules.back()->m_parent = this;
 	return *this;
@@ -63,7 +63,7 @@ void rynx::application::logic::clear(rynx::scheduler::context& context) {
 }
 
 void rynx::application::logic::serialize(rynx::scheduler::context& context, rynx::serialization::vector_writer& out) {
-	rynx::unordered_map<std::string, std::vector<char>> serializations;
+	rynx::unordered_map<rynx::string, std::vector<char>> serializations;
 	for (auto&& ruleset : m_rules) {
 		rynx::serialization::vector_writer ruleset_out;
 		ruleset->serialize(context, ruleset_out);
@@ -81,7 +81,7 @@ rynx::serialization::vector_writer rynx::application::logic::serialize(rynx::sch
 }
 
 void rynx::application::logic::deserialize(rynx::scheduler::context& context, rynx::serialization::vector_reader& in) {
-	rynx::unordered_map<std::string, std::vector<char>> serializations;
+	rynx::unordered_map<rynx::string, std::vector<char>> serializations;
 	rynx::deserialize(serializations, in);
 	for (auto&& ruleset : m_rules) {
 		auto it = serializations.find(ruleset->m_ruleset_unique_name);

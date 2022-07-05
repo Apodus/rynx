@@ -24,19 +24,19 @@ namespace rynx {
 				virtual void on_tool_unselected() override {}
 				virtual void verify(rynx::scheduler::context& ctx, error_emitter& emitter) override;
 				
-				virtual std::string get_info() override {
+				virtual rynx::string get_info() override {
 					return {};
 				}
 
-				virtual std::string get_tool_name() {
+				virtual rynx::string get_tool_name() {
 					return "joint";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "joint_tool";
 				}
 
-				virtual bool operates_on(const std::string& type_name) override {
+				virtual bool operates_on(const rynx::string& type_name) override {
 					return type_name == rynx::traits::type_name<rynx::components::phys::joint>() ||
 						type_name == rynx::traits::type_name<rynx::components::phys::joint::connector_type>();
 				}
@@ -48,7 +48,7 @@ namespace rynx {
 			
 				virtual void on_entity_component_value_changed(
 					rynx::scheduler::context* ctx,
-					std::string componentTypeName,
+					rynx::string componentTypeName,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 

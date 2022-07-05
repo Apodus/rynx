@@ -13,8 +13,6 @@
 #include <rynx/tech/components.hpp>
 #endif
 
-#include <string>
-
 namespace rynx {
 	namespace graphics {
 		class mesh;
@@ -222,7 +220,7 @@ namespace rynx {
 		};
 
 		struct texture {
-			std::string textureName;
+			rynx::string textureName;
 		};
 	}
 

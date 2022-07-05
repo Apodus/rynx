@@ -1,9 +1,9 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
+#include <rynx/tech/std/memory.hpp>
 #include <utility>
 #include <vector>
-#include <memory>
 
 namespace rynx {
 	namespace math {
@@ -12,14 +12,14 @@ namespace rynx {
 			const T& operator()(const T& t) { return t; }
 		};
 
-		template<typename T> struct access_object<std::unique_ptr<T>> {
-			T& operator()(std::unique_ptr<T>& t) { return *t; }
-			const T& operator()(const std::unique_ptr<T>& t) { return *t; }
+		template<typename T> struct access_object<rynx::unique_ptr<T>> {
+			T& operator()(rynx::unique_ptr<T>& t) { return *t; }
+			const T& operator()(const rynx::unique_ptr<T>& t) { return *t; }
 		};
 
-		template<typename T> struct access_object<std::shared_ptr<T>> {
-			T& operator()(std::shared_ptr<T>& t) { return *t; }
-			const T& operator()(const std::shared_ptr<T>& t) { return *t; }
+		template<typename T> struct access_object<rynx::shared_ptr<T>> {
+			T& operator()(rynx::shared_ptr<T>& t) { return *t; }
+			const T& operator()(const rynx::shared_ptr<T>& t) { return *t; }
 		};
 
 		template<typename T> struct access_object<T*> {

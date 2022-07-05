@@ -20,7 +20,7 @@ namespace {
 rynx::graphics::screenspace_draws::screenspace_draws() {
 	/*
 	{
-		std::shared_ptr<shader> screenspace_shader_ripple = shaders->load_shader(
+		rynx::shared_ptr<shader> screenspace_shader_ripple = shaders->load_shader(
 			"fbo_color_ripple",
 			"../shaders/screenspace.vs.glsl",
 			"../shaders/screenspace_ripple.fs.glsl"

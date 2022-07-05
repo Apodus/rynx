@@ -3,7 +3,7 @@
 #include <rynx/tech/components.hpp>
 
 rynx::collision_detection::category_id rynx::collision_detection::add_category() {
-	m_sphere_trees.emplace_back(std::make_unique<sphere_tree>());
+	m_sphere_trees.emplace_back(rynx::make_unique<sphere_tree>());
 	return category_id(int32_t(m_sphere_trees.size()) - 1);
 }
 

@@ -18,16 +18,16 @@ rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::texture_id baseTe
 	rynx_assert(minValue < maxValue, "wut");
 
 	{
-		auto slideBarDiv = std::make_shared<Div>(vec3<float>(1.0f, 0.25f, 0));
-		auto slideBarFrame = std::make_shared<Frame>(baseTexture, 0.15f);
+		auto slideBarDiv = rynx::make_shared<Div>(vec3<float>(1.0f, 0.25f, 0));
+		auto slideBarFrame = rynx::make_shared<Frame>(baseTexture, 0.15f);
 		slideBarDiv->addChild(std::move(slideBarFrame));
 		addChild(slideBarDiv);
 	}
 
 	{
 		// todo: better formulation for slider knob dimensions
-		auto knobDiv = std::make_shared<Div>(vec3<float>(0.2f, 0.5f, 0));
-		auto knobFrame = std::make_shared<Frame>(std::move(knobTexture));
+		auto knobDiv = rynx::make_shared<Div>(vec3<float>(0.2f, 0.5f, 0));
+		auto knobFrame = rynx::make_shared<Frame>(std::move(knobTexture));
 		knobDiv->addChild(std::move(knobFrame));
 		addChild(knobDiv);
 		m_knobDiv = knobDiv.get();
@@ -40,17 +40,17 @@ rynx::menu::SlideBarVertical::SlideBarVertical(rynx::graphics::texture_id baseTe
 	setValue(initialValue);
 }
 
-rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_value_changed(std::function<void(float)> t) {
+rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_value_changed(rynx::function<void(float)> t) {
 	m_callback = std::move(t);
 	return *this;
 }
 
-rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_drag_end(std::function<void(float)> t) {
+rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_drag_end(rynx::function<void(float)> t) {
 	m_on_drag_end = std::move(t);
 	return *this;
 }
 
-rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_active_tick(std::function<void(float, float)> t) {
+rynx::menu::SlideBarVertical& rynx::menu::SlideBarVertical::on_active_tick(rynx::function<void(float, float)> t) {
 	m_on_active_tick = std::move(t);
 	return *this;
 }

@@ -9,6 +9,7 @@
 #include <mutex>
 #include <sstream>
 #include <chrono>
+#include <sstream>
 
 namespace rynx {
 	namespace profiling {
@@ -20,8 +21,8 @@ namespace rynx {
 					m_pid = 0;
 				}
 
-				std::string m_name;
-				std::string m_category;
+				rynx::string m_name;
+				rynx::string m_category;
 
 				double m_time_point = 0;
 				uint64_t m_thread_id = 0;
@@ -32,13 +33,12 @@ namespace rynx {
 					return !(m_time_point == 0 && m_thread_id == 0);
 				}
 
-				operator std::string() const {
-					
-					return "{\"name\": \"" + m_name +
-						"\", \"cat\" : \"" + m_category +
-						"\", \"ph\" : \"" + m_type + "\", \"ts\" : " + std::to_string(m_time_point) +
-						", \"pid\" : " + std::to_string(m_pid) +
-						", \"tid\" : " + std::to_string(m_thread_id) +
+				operator rynx::string() const {
+					return "{\"name\": \"" + rynx::string(m_name) +
+						"\", \"cat\" : \"" + rynx::string(m_category) +
+						"\", \"ph\" : \"" + m_type + "\", \"ts\" : " + rynx::to_string(m_time_point) +
+						", \"pid\" : " + rynx::to_string(m_pid) +
+						", \"tid\" : " + rynx::to_string(m_thread_id) +
 						", \"args\" : {}}";
 				}
 			};
@@ -65,8 +65,8 @@ namespace rynx {
 		}
 
 		void push_event_begin(
-			std::string& name,
-			std::string& category,
+			rynx::string name,
+			rynx::string category,
 			uint64_t pid
 		) {
 			init_for_this_thread();
@@ -104,16 +104,16 @@ namespace rynx {
 				while (!g_profiling_storage->operator[](first)) first = ++first% g_profiling_storage->size();
 				size_t next = first;
 
-				out << static_cast<std::string>(g_profiling_storage->operator[](next));
+				out << g_profiling_storage->operator[](next).operator rynx::string();
 				++next;
 				
 				for (; next < g_profiling_storage->size(); ++next) {
 					if(g_profiling_storage->operator[](next))
-						out << ", " << static_cast<std::string>(g_profiling_storage->operator[](next));
+						out << ", " << g_profiling_storage->operator[](next).operator rynx::string();
 				}
 				for (size_t from_beginning = 0; from_beginning < first; ++from_beginning) {
 					if(g_profiling_storage->operator[](from_beginning))
-						out << ", " << static_cast<std::string>(g_profiling_storage->operator[](from_beginning));
+						out << ", " << g_profiling_storage->operator[](from_beginning).operator rynx::string();
 				}
 
 				out << "]}";

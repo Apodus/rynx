@@ -20,7 +20,7 @@ namespace rynx {
 				virtual void on_tool_unselected() override {}
 				virtual void verify(rynx::scheduler::context&, error_emitter&) override {}
 
-				virtual std::string get_info() override {
+				virtual rynx::string get_info() override {
 					if (m_mode == Mode::IdField_Pick)
 						return "Pick entity";
 					if (m_mode == Mode::Vec3fDrag)
@@ -28,15 +28,15 @@ namespace rynx {
 					return {};
 				}
 
-				virtual std::string get_tool_name() {
+				virtual rynx::string get_tool_name() {
 					return "selection";
 				}
 
-				virtual std::string get_button_texture() override {
+				virtual rynx::string get_button_texture() override {
 					return "selection_tool";
 				}
 
-				virtual bool operates_on(const std::string& type_name) override;
+				virtual bool operates_on(const rynx::string& type_name) override;
 				virtual bool try_generate_menu(
 					rynx::reflection::field type,
 					rynx::editor::component_recursion_info_t info,
@@ -54,7 +54,7 @@ namespace rynx {
 
 				std::pair<rynx::ecs::id, float> find_nearest_entity(rynx::ecs& game_ecs, rynx::vec3f cursorWorldPos);
 
-				std::function<void()> m_run_on_main_thread;
+				rynx::function<void()> m_run_on_main_thread;
 				rynx::key::logical m_activation_key;
 
 				struct drag_op_t {

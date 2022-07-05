@@ -3,6 +3,7 @@
 #include <rynx/input/userio.hpp>
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/tech/object_storage.hpp>
+#include <rynx/tech/std/string.hpp>
 
 namespace rynx {
 	class ray;
@@ -10,7 +11,7 @@ namespace rynx {
 
 	class mapped_input {
 	public:
-		mapped_input(std::shared_ptr<rynx::input> physicalIO) {
+		mapped_input(rynx::shared_ptr<rynx::input> physicalIO) {
 			userIO = physicalIO;
 			rebindAction(rynx::key::invalid_logical_key, rynx::key::invalid_physical_key);
 		}
@@ -61,14 +62,14 @@ namespace rynx {
 			return userIO->getMouseScroll();
 		}
 
-		rynx::key::logical generateAndBindGameKey(rynx::key::physical physicalKey, std::string actionName = "") {
+		rynx::key::logical generateAndBindGameKey(rynx::key::physical physicalKey, rynx::string actionName = "") {
 			rebindAction(rynx::key::logical{ ++gameKeyCounter }, physicalKey);
 			if (!actionName.empty())
 				applicationKeyByName_map[actionName] = rynx::key::logical{ gameKeyCounter };
 			return { gameKeyCounter };
 		}
 
-		rynx::key::logical generateAndBindGameKey(char8_t physicalKey, std::string actionName = "") {
+		rynx::key::logical generateAndBindGameKey(char8_t physicalKey, rynx::string actionName = "") {
 			return generateAndBindGameKey(rynx::key::physical{ int32_t(physicalKey) }, std::move(actionName));
 		}
 
@@ -85,7 +86,7 @@ namespace rynx {
 			reverseBindings[physicalKey].emplace_back(applicationKey);
 		}
 
-		rynx::key::logical applicationKeyByName(const std::string& actionName) const {
+		rynx::key::logical applicationKeyByName(const rynx::string& actionName) const {
 			return applicationKeyByName_map.find(actionName)->second;
 		}
 
@@ -170,11 +171,11 @@ namespace rynx {
 
 	private:
 		int32_t gameKeyCounter = 0;
-		std::shared_ptr<rynx::input> userIO;
+		rynx::shared_ptr<rynx::input> userIO;
 		
 		rynx::unordered_map<rynx::key::logical, rynx::key::physical, rynx::key::logical::hash> keyBindings;
 		rynx::unordered_map<rynx::key::physical, std::vector<rynx::key::logical>, rynx::key::physical::hash> reverseBindings;
-		rynx::unordered_map<std::string, rynx::key::logical> applicationKeyByName_map;
+		rynx::unordered_map<rynx::string, rynx::key::logical> applicationKeyByName_map;
 
 		vec3<float> m_mouseWorldPos; // TODO: is this an ok place to have this?
 	};

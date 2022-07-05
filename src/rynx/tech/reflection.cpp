@@ -31,14 +31,14 @@ void rynx::reflection::reflections::load_generated_reflections() {
 	}
 }
 
-uint64_t rynx::reflection::reflections::hash(std::string typeName) {
+uint64_t rynx::reflection::reflections::hash(rynx::string typeName) {
 	auto* typeReflection = find(typeName);
 
 	auto hash_type_reflection = [&](rynx::reflection::type* t, auto& self) -> uint64_t {
-		size_t typeHash = std::hash<std::string>()(t->m_type_name);
+		size_t typeHash = std::hash<rynx::string>()(t->m_type_name);
 		for (auto&& field : t->m_fields) {
-			uint64_t fieldNameHash = std::hash<std::string>()(field.m_field_name);
-			uint64_t fieldTypeNameHash = std::hash<std::string>()(field.m_type_name);
+			uint64_t fieldNameHash = std::hash<rynx::string>()(field.m_field_name);
+			uint64_t fieldTypeNameHash = std::hash<rynx::string>()(field.m_type_name);
 
 			uint64_t fieldHash = hashmix(fieldTypeNameHash + fieldNameHash);
 			fieldHash = hashmix(fieldHash + field.m_memory_offset);
@@ -83,7 +83,7 @@ rynx::reflection::type* rynx::reflection::reflections::find(uint64_t typeId) {
 	return nullptr;
 }
 
-rynx::reflection::type* rynx::reflection::reflections::find(std::string typeName) {
+rynx::reflection::type* rynx::reflection::reflections::find(rynx::string typeName) {
 	for (auto&& entry : m_reflections) {
 		if (entry.second.m_type_name == typeName) {
 			return &entry.second;
@@ -96,16 +96,16 @@ const rynx::reflection::type* rynx::reflection::reflections::find(uint64_t typeI
 	return const_cast<reflections*>(this)->find(typeId);
 }
 
-const rynx::reflection::type* rynx::reflection::reflections::find(std::string typeName) const {
+const rynx::reflection::type* rynx::reflection::reflections::find(rynx::string typeName) const {
 	return const_cast<reflections*>(this)->find(typeName);
 }
 
-std::vector<std::pair<std::string, rynx::reflection::type>> rynx::reflection::reflections::get_reflection_data() const {
-	std::vector<std::pair<std::string, rynx::reflection::type>> result;
+std::vector<std::pair<rynx::string, rynx::reflection::type>> rynx::reflection::reflections::get_reflection_data() const {
+	std::vector<std::pair<rynx::string, rynx::reflection::type>> result;
 	for (const auto& entry : m_reflections) {
 		result.emplace_back(entry.first, entry.second);
 	}
 	return result;
 }
 
-bool rynx::reflection::reflections::has(const std::string& s) const { return m_reflections.find(s) != m_reflections.end(); }
+bool rynx::reflection::reflections::has(const rynx::string& s) const { return m_reflections.find(s) != m_reflections.end(); }

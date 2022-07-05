@@ -157,7 +157,7 @@ namespace rynx {
 				return *this;
 			}
 
-			template<typename T> context& set_resource(std::unique_ptr<T>&& t) {
+			template<typename T> context& set_resource(rynx::unique_ptr<T>&& t) {
 				m_resources.set_and_discard(std::move(t));
 				uint64_t type_id = rynx::type_index::id<std::remove_cvref_t<T>>();
 				rynx_assert(
@@ -169,7 +169,7 @@ namespace rynx {
 			}
 
 			template<typename T> context& set_resource() {
-				return set_resource(std::make_unique<T>());
+				return set_resource(rynx::make_unique<T>());
 			}
 
 			template<typename T> T& get_resource() {
@@ -182,7 +182,7 @@ namespace rynx {
 
 			task_token add_task(task task);
 
-			template<typename F> task_token add_task(std::string taskName, F&& taskOp);
+			template<typename F> task_token add_task(rynx::string taskName, F&& taskOp);
 
 			void schedule_task(task task);
 			void dump();
@@ -192,6 +192,6 @@ namespace rynx {
 
 #include <rynx/scheduler/task.hpp>
 
-template<typename F> rynx::scheduler::task_token rynx::scheduler::context::add_task(std::string taskName, F&& taskOp) {
+template<typename F> rynx::scheduler::task_token rynx::scheduler::context::add_task(rynx::string taskName, F&& taskOp) {
 	return add_task(task(*this, std::move(taskName), std::forward<F>(taskOp)));
 }

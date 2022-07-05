@@ -6,28 +6,27 @@ typedef unsigned GLuint;
 
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/graphics/texture/id.hpp>
-#include <string>
+#include <rynx/tech/std/string.hpp>
 #include <vector>
-#include <memory>
 
 namespace rynx {
 	namespace graphics {
 		class GPUTextures;
 		class framebuffer {
 		public:
-			framebuffer(std::shared_ptr<rynx::graphics::GPUTextures> textures, const std::string& name);
+			framebuffer(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, const rynx::string& name);
 			~framebuffer();
 
 			class config {
 			public:
-				std::shared_ptr<framebuffer> construct(std::shared_ptr<rynx::graphics::GPUTextures> textures, std::string name);
+				rynx::shared_ptr<framebuffer> construct(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, rynx::string name);
 
 				config& set_default_resolution(int width, int height);
-				config& add_rgba8_target(std::string name, int res_x, int res_y);
-				config& add_rgba8_target(std::string name);
+				config& add_rgba8_target(rynx::string name, int res_x, int res_y);
+				config& add_rgba8_target(rynx::string name);
 
-				config& add_float_target(std::string name, int res_x, int res_y);
-				config& add_float_target(std::string name);
+				config& add_float_target(rynx::string name, int res_x, int res_y);
+				config& add_float_target(rynx::string name);
 
 				config& add_depth16_target(int res_x, int res_y);
 				config& add_depth16_target();
@@ -48,7 +47,7 @@ namespace rynx {
 					int resolution_x = 0;
 					int resolution_y = 0;
 					render_target_type type = render_target_type::none;
-					std::string name;
+					rynx::string name;
 				};
 
 				int m_default_resolution_x = 0;
@@ -57,8 +56,8 @@ namespace rynx {
 				render_target m_depth_target;
 			};
 
-			rynx::graphics::texture_id operator [](const std::string& name);
-			rynx::graphics::texture_id get_texture_name_of_render_target(const std::string& name) { return this->operator[](name); }
+			rynx::graphics::texture_id operator [](const rynx::string& name);
+			rynx::graphics::texture_id get_texture_name_of_render_target(const rynx::string& name) { return this->operator[](name); }
 			void destroy();
 			void clear() const;
 
@@ -76,21 +75,21 @@ namespace rynx {
 			static void bind_backbuffer();
 
 		private:
-			std::string fbo_name;
+			rynx::string fbo_name;
 
-			rynx::unordered_map<std::string, rynx::graphics::texture_id> m_tex_map; // map from render target name to texture id.
+			rynx::unordered_map<rynx::string, rynx::graphics::texture_id> m_tex_map; // map from render target name to texture id.
 
 			int32_t resolution_x = 0;
 			int32_t resolution_y = 0;
 
 			struct fbo_tex {
-				std::string name;
+				rynx::string name;
 				rynx::graphics::texture_id id;
 			};
 
 			GLuint location;
-			std::shared_ptr<rynx::graphics::GPUTextures> m_textures;
-			std::string depthtexture;
+			rynx::shared_ptr<rynx::graphics::GPUTextures> m_textures;
+			rynx::string depthtexture;
 			rynx::graphics::texture_id depthtexture_id;
 			std::vector<fbo_tex> targets;
 		};

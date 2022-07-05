@@ -16,7 +16,7 @@ namespace rynx {
 			struct omnilights_effect : public rynx::application::graphics_step::igraphics_step {
 			public:
 				omnilights_effect(
-					std::shared_ptr<rynx::graphics::shaders> shader_manager
+					rynx::shared_ptr<rynx::graphics::shaders> shader_manager
 				);
 				
 				virtual ~omnilights_effect() {}
@@ -28,7 +28,7 @@ namespace rynx {
 				std::vector<floats4> m_light_settings;
 				std::vector<vec3f> m_light_positions;
 
-				std::shared_ptr<rynx::graphics::shader> m_lights_shader;
+				rynx::shared_ptr<rynx::graphics::shader> m_lights_shader;
 			};
 		}
 	}

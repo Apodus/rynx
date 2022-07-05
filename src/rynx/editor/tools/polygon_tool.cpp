@@ -68,7 +68,7 @@ void rynx::editor::tools::polygon_tool::action_smooth(rynx::ecs& ecs) {
 
 void rynx::editor::tools::polygon_tool::on_entity_component_added(
 	rynx::scheduler::context* ctx,
-	std::string componentTypeName,
+	rynx::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
 {
@@ -93,11 +93,11 @@ void rynx::editor::tools::polygon_tool::on_entity_component_added(
 
 void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
 	rynx::scheduler::context* /* ctx */,
-	std::string componentTypeName,
+	rynx::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
 {
-	if (componentTypeName.find("rynx::components::position") != std::string::npos) {
+	if (componentTypeName.find("rynx::components::position") != rynx::string::npos) {
 		auto* position_ptr = ecs[id].try_get<rynx::components::position>();
 		auto* boundary_ptr = ecs[id].try_get<rynx::components::boundary>();
 		if (position_ptr && boundary_ptr) {
@@ -108,7 +108,7 @@ void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
 
 void rynx::editor::tools::polygon_tool::on_entity_component_removed(
 	rynx::scheduler::context* /* ctx */,
-	std::string /* componentTypeName */,
+	rynx::string /* componentTypeName */,
 	rynx::ecs& /* ecs */,
 	rynx::id /* id */)
 {
