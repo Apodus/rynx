@@ -73,14 +73,12 @@ namespace rynx {
 
 			// called once per frame.
 			void start_frame() {
-				// todo: get rid of busyloop?
-				while (m_active_workers.load() != 0) {}
-
+				// NOTE: Frame start/end should be property of a scheduling context.
+				// NOTE: Workers can be loaded by other scheduling contexts when another one starts, this assertion should be removed.
+				rynx_assert(m_active_workers.load() == 0, "workers are still active when starting frame");
 				rynx_assert(m_frameComplete.load() == 1, "mismatch with scheduler starts and waits");
 				m_frameComplete.store(0);
-
 				wake_up_sleeping_workers();
-
 				++m_activeFrame;
 			}
 
