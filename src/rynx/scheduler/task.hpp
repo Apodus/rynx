@@ -328,17 +328,9 @@ namespace rynx {
 					return m_barrier;
 				}
 
-				rynx::unique_ptr<rynx::scheduler::task_token> m_executor;
-				rynx::scheduler::barrier m_barrier;
-
-				rynx::scheduler::task* m_parent;
-				rynx::shared_ptr<parallel_for_each_data> for_each_data;
-				rynx::shared_ptr<std::vector<rynx::function<void()>>> m_ops;
-				bool self_participate = true;
-					
-				// if you are creating multiple parallel for tasks with deferred_work, then might be better to
-				// skip notify workers during task creation and just notify once after all tasks are created.
-				bool notify_workers = true;
+				rynx::observer_ptr<rynx::scheduler::task_token> task() const {
+					return m_executor;
+				}
 
 				parallel_for_operation& range(int64_t begin_, int64_t end_, int64_t work_size_ = 256) {
 					for_each_data = rynx::make_shared<parallel_for_each_data>(begin_, end_);
@@ -381,6 +373,19 @@ namespace rynx {
 					for_each_data.reset();
 					return *this;
 				}
+
+			private:
+				rynx::unique_ptr<rynx::scheduler::task_token> m_executor;
+				rynx::scheduler::barrier m_barrier;
+
+				rynx::scheduler::task* m_parent;
+				rynx::shared_ptr<parallel_for_each_data> for_each_data;
+				rynx::shared_ptr<std::vector<rynx::function<void()>>> m_ops;
+				bool self_participate = true;
+
+				// if you are creating multiple parallel for tasks with deferred_work, then might be better to
+				// skip notify workers during task creation and just notify once after all tasks are created.
+				bool notify_workers = true;
 			};
 
 			parallel_for_operation parallel() {

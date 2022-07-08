@@ -14,8 +14,8 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 		{
 			auto apply_acceleration_to_velocity = ecs.query().for_each_parallel(task_context, [dt](components::position& p, components::motion& m) {
 
-				auto linear_acceleration_effect = m.acceleration * dt * dt + m.velocity * dt;
-				auto angular_acceleration_effect = m.angularAcceleration * dt * dt + m.angularVelocity * dt;
+				auto delta_position = m.acceleration * dt * dt + m.velocity * dt;
+				auto delta_orientation = m.angularAcceleration * dt * dt + m.angularVelocity * dt;
 
 				// update velocity
 				m.velocity += m.acceleration * dt;
@@ -25,14 +25,17 @@ void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& con
 				m.angularAcceleration = 0;
 
 				// update position
-				p.value += linear_acceleration_effect;
-				p.angle += angular_acceleration_effect;
+				p.value += delta_position;
+				p.angle += delta_orientation;
 			});
 
-			// TODO: constant force might be applied before acceleration is reset in above task.
-			ecs.query().for_each_parallel(task_context, [dt](rynx::components::motion& m, const rynx::components::constant_force force) {
+			auto apply_constant_forces = ecs.query().for_each_parallel(task_context, [dt](rynx::components::motion& m, const rynx::components::constant_force force) {
 				m.acceleration += force.force * dt;
 			});
+
+			// NOTE: To prevent constant forces being applied before acceleration is reset by velocity update.
+			// The order of the tasks doesn't really matter. They just cant run at the same time.
+			apply_constant_forces.task()->depends_on(*apply_acceleration_to_velocity.task());
 
 			ecs.query().for_each_parallel(task_context, [ecs](rynx::components::position& pos, rynx::components::position_relative relative_pos) {
 				if (!ecs.exists(relative_pos.id))
