@@ -86,7 +86,7 @@ namespace rynx {
 			};
 
 		public:
-			queue(int32_t numThreads = 8) {
+			queue(uint32_t numThreads = 8) {
 				m_subques.reset(new per_thread_queue[numThreads]);
 				m_size = numThreads;
 			}
@@ -125,8 +125,8 @@ namespace rynx {
 			}
 
 		private:
-			uint32_t m_size = 0;
 			rynx::unique_ptr<per_thread_queue[]> m_subques;
+			uint32_t m_size = 0;
 		};
 	}
 }

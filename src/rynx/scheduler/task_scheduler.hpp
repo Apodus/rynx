@@ -11,7 +11,7 @@
 #include <rynx/scheduler/deadlock_detector.hpp>
 #include <rynx/thread/semaphore.hpp>
 
-#include <array>
+#include <vector>
 
 namespace rynx {
 	namespace scheduler {
@@ -21,9 +21,6 @@ namespace rynx {
 
 		class task_scheduler {
 		public:
-			// TODO: fix the number of threads here later if necessary.
-			static constexpr int numThreads = 16;
-
 			friend class scheduler::context;
 			friend class scheduler::task_thread;
 			friend class scheduler::task;
@@ -31,12 +28,12 @@ namespace rynx {
 		private:
 			std::atomic<scheduler::context::context_id> m_contextIdGen = 0;
 			rynx::unordered_map<scheduler::context::context_id, rynx::unique_ptr<scheduler::context>> m_contexts;
-			std::array<rynx::scheduler::task_thread*, numThreads> m_threads;
-			semaphore m_waitForComplete;
+			std::vector<rynx::scheduler::task_thread*> m_threads;
 			
-			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
 			uint64_t m_activeFrame = 0;
+			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
 			std::atomic<int32_t> m_active_workers = 0; // starting a new frame is not allowed until all workers are inactive.
+			semaphore m_waitForComplete;
 			
 			dead_lock_detector m_deadlock_detector;
 
@@ -49,7 +46,7 @@ namespace rynx {
 
 		public:
 
-			task_scheduler();
+			task_scheduler(uint64_t numWorkers = 16);
 			~task_scheduler();
 
 			// No move, no copy.
@@ -64,8 +61,8 @@ namespace rynx {
 			uint64_t tick_counter() const { return m_activeFrame; }
 			operator uint64_t() const { return m_activeFrame; }
 
-			int32_t worker_count() const {
-				return numThreads;
+			uint64_t worker_count() const {
+				return m_threads.size();
 			}
 
 			// called once per frame.

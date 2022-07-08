@@ -6,7 +6,10 @@
 
 #include <mutex>
 
-rynx::scheduler::context::context(context_id id, task_scheduler* scheduler) : m_id(id), m_scheduler(scheduler), m_tasks_parallel_for(rynx::scheduler::task_scheduler::numThreads+1){
+rynx::scheduler::context::context(context_id id, task_scheduler* scheduler)
+	: m_id(id)
+	, m_scheduler(scheduler)
+	, m_tasks_parallel_for(uint32_t(scheduler->worker_count() + 1)) {
 	m_resource_counters.resize(1024);
 	m_taskMutex = new std::mutex();
 }
@@ -14,7 +17,6 @@ rynx::scheduler::context::context(context_id id, task_scheduler* scheduler) : m_
 rynx::scheduler::context::~context() {
 	delete m_taskMutex;
 }
-
 
 rynx::scheduler::task rynx::scheduler::context::findWork() {
 	rynx_profile("Profiler", "Find work self");

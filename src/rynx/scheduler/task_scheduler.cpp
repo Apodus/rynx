@@ -30,24 +30,25 @@ void rynx::scheduler::task_scheduler::worker_deactivated() {
 
 void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 	rynx_profile("Profiler", "Wake up sleeping workers");
-	for (int i = 0; i < numThreads; ++i) {
-		if (m_threads[i]->wake_up()) {
+	for (auto* thread_ptr : m_threads) {
+		if (thread_ptr->wake_up()) {
 			return; // wake up one is always enough. if they find work, they will wake up the next worker.
 		}
 	}
 }
 
-rynx::scheduler::task_scheduler::task_scheduler() : m_threads({ nullptr }), m_deadlock_detector(this) {
+rynx::scheduler::task_scheduler::task_scheduler(uint64_t numWorkers) : m_threads({ nullptr }), m_deadlock_detector(this) {
 	rynx::type_index::initialize();
-	for (int i = 0; i < numThreads; ++i) {
+	m_threads.resize(numWorkers, nullptr);
+	for (int i = 0; i < numWorkers; ++i) {
 		m_threads[i] = new rynx::scheduler::task_thread(this, i);
 	}
 }
 
 rynx::scheduler::task_scheduler::~task_scheduler() {
-	for (int i = 0; i < numThreads; ++i) {
-		m_threads[i]->shutdown();
-		delete m_threads[i];
+	for (auto* thread_ptr : m_threads) {
+		thread_ptr->shutdown();
+		delete thread_ptr;
 	}
 }
 
