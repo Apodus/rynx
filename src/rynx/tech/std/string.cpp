@@ -456,7 +456,7 @@ size_t rynx::std_replacements::string::find(const rynx::std_replacements::string
 	if (other_len > my_len)
 		return npos;
 
-	for (size_t pos = offset; pos < my_len - other_len; ++pos) {
+	for (size_t pos = offset; pos <= my_len - other_len; ++pos) {
 		bool found = true;
 		char const* self_it = begin() + pos;
 		char const* other_it = other.begin();
