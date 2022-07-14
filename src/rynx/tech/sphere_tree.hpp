@@ -436,7 +436,7 @@ namespace rynx {
 			}
 
 			{
-				rynx_profile("SphereTree", "Find optimized parents for nodes");
+				rynx_profile("SphereTree", "optimize node hierarchy");
 				root.find_optimized_parents_for_nodes();
 			}
 
@@ -527,7 +527,7 @@ namespace rynx {
 			rynx::scheduler::barrier update_complete_barrier;
 			auto generic_tasks = task_context.extend_task_execute_parallel([this](rynx::scheduler::task& task_context) {
 				{
-					rynx_profile("SphereTree", "Find optimized parents for nodes");
+					rynx_profile("SphereTree", "optimize node hierarchy");
 					root.find_optimized_parents_for_nodes();
 				}
 

@@ -8,7 +8,7 @@
 #include <rynx/scheduler/barrier.hpp>
 
 void rynx::ruleset::motion_updates::onFrameProcess(rynx::scheduler::context& context, float dt) {
-	auto position_updates = context.add_task("Apply acceleration and reset", [dt](
+	auto position_updates = context.add_task("Motion update", [dt](
 		rynx::ecs::view<const components::constant_force, components::motion, components::position, components::position_relative> ecs,
 		rynx::scheduler::task& task_context)
 		{

@@ -88,7 +88,11 @@ rynx::graphics::mesh_id rynx::graphics::mesh_collection::generate_mesh_id() {
 std::vector<rynx::graphics::mesh_entry> rynx::graphics::mesh_collection::getListOfMeshes() const {
 	std::vector<mesh_entry> mesh_names;
 	for (auto&& entry : this->m_storage) {
-		mesh_names.emplace_back(entry.second->humanReadableId, entry.first);
+		// transients can't be shown outside. if user picks a transient and saves the level, loading will crash.
+		// this is because transients get a new id every run.
+		if (!entry.second->is_transient()) {
+			mesh_names.emplace_back(entry.second->humanReadableId, entry.first);
+		}
 	}
 	return mesh_names;
 }

@@ -21,6 +21,9 @@ namespace rynx {
 
 		struct scope {
 			scope(rynx::string name, rynx::string category) {
+				// TODO: profiling should ensure that names are not dynamically allocated.
+				// rynx_assert(rynx::is_small_space(name), "profiling string requires dynamic alloc, please make it shorter; '%s'", name.c_str());
+				// rynx_assert(rynx::is_small_space(category), "profiling string requires dynamic alloc, please make it shorter; '%s'", category.c_str());
 				if constexpr (enabled) {
 					push_event_begin(
 						name,

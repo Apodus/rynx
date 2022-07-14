@@ -26,7 +26,7 @@ void rynx::ruleset::frustum_culling::on_entities_erased(rynx::scheduler::context
 
 void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& context, float /* dt */) {
 	
-	auto update_new_entities = context.add_task("add new entities to frustum culling structures", [this](
+	auto update_new_entities = context.add_task("frustum cull add new entities", [this](
 		rynx::ecs::edit_view<
 		entity_tracked_by_frustum_culling,
 		const components::draw_always,

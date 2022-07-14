@@ -294,7 +294,7 @@ namespace rynx {
 			
 			struct parallel_for_operation {
 				parallel_for_operation(rynx::scheduler::task& parent) : m_parent(&parent), m_ops(rynx::make_shared<std::vector<rynx::function<void()>>>()) {
-					m_executor = rynx::make_unique<rynx::scheduler::task_token>(parent.extend_task_execute_parallel(this->m_parent->name() + " (parallel for)", [ops = this->m_ops]() mutable {
+					m_executor = rynx::make_unique<rynx::scheduler::task_token>(parent.extend_task_execute_parallel(this->m_parent->name() + "_pf", [ops = this->m_ops]() mutable {
 						for (auto&& op : *ops) {
 							op();
 						}

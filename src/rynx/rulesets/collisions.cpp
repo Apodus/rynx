@@ -374,7 +374,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 		});
 	}
 
-	auto add_entities_sphere_tree = context.add_task("track collisions for new entities", [](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
+	auto add_entities_sphere_tree = context.add_task("collisions: new entities", [](rynx::scheduler::task& task_context, rynx::collision_detection& detection) {
 		detection.track_entities(task_context);
 	});
 
