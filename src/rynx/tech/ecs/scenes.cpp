@@ -1,5 +1,6 @@
 
 #include <rynx/tech/ecs/scenes.hpp>
+#include <rynx/tech/serialization.hpp>
 #include <random>
 
 rynx::scene_id rynx::scene_id::generate() {
@@ -88,7 +89,7 @@ std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, rynx::string file
 
 void rynx::scenes::save_scene(
 	rynx::filesystem::vfs& fs,
-	rynx::serialization::vector_writer& serialized_scene,
+	std::vector<char>& serialized_scene,
 	rynx::string ui_path,
 	rynx::string scene_name,
 	rynx::string filepath
@@ -108,7 +109,7 @@ void rynx::scenes::save_scene(
 			auto file = fs.open_write(filepath);
 			rynx::serialize(serialized_scene_marker, *file);
 			rynx::serialize(info, *file);
-			rynx::serialize(serialized_scene.data(), *file);
+			rynx::serialize(serialized_scene, *file);
 
 			internal_update(info, filepath);
 		}
@@ -128,7 +129,7 @@ void rynx::scenes::save_scene(
 		auto file = fs.open_write(storageFilePath);
 		rynx::serialize(serialized_scene_marker, *file);
 		rynx::serialize(info, *file);
-		rynx::serialize(serialized_scene.data(), *file);
+		rynx::serialize(serialized_scene, *file);
 
 		internal_update(info, storageFilePath);
 	}

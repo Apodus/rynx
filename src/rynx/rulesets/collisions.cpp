@@ -571,11 +571,11 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 						// This *60 is not the same as dt. Just a random constant.
 						const auto proximity_force =
-							collision.normal * ((overlap_value > 0) ? overlap_value : 0) * 0.5f *
+							collision.normal * (overlap_value > 0) * overlap_value * 0.5f *
 							(collision.a_body.bias_multiply + collision.b_body.bias_multiply) / (collision.a_body.inv_mass + collision.b_body.inv_mass);
 
 						const vec3<float> normal = collision.normal;
-						const auto soft_impact_force = normal * soft_j;
+						const auto impact_linear_force = normal * soft_j;
 
 						const float mu = (collision.a_body.friction_multiplier + collision.b_body.friction_multiplier) * 0.5f;
 						vec3<float> tangent = normal.normal2d();
@@ -589,26 +589,26 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 								friction_power *= 0.9f;
 						}
 
-						tangent *= friction_power;
+						const vec3<float> friction_linear_force = tangent * friction_power;
 
 
 						// proximity_force = bias (to keep the simulation stable, and prevent objects from sinking into each other over time)
-						// soft_impact_force = linear collision response along the collision normal
-						// "tangent" = friction response along the collision tangent
+						// impact_linear_force = linear collision response along the collision normal
+						// friction_linear_force = friction response along the collision tangent
 						const float inv_dt = 1.0f / dt;
 						const vec3f force_mask_xy(1.0f, 1.0f, 0.0f);
-						motion_a.acceleration += force_mask_xy * (proximity_force + soft_impact_force + tangent) * collision.a_body.inv_mass * inv_dt;
-						motion_b.acceleration -= force_mask_xy * (proximity_force + soft_impact_force + tangent) * collision.b_body.inv_mass * inv_dt;
+						motion_a.acceleration += force_mask_xy * (proximity_force + impact_linear_force + friction_linear_force) * collision.a_body.inv_mass * inv_dt;
+						motion_b.acceleration -= force_mask_xy * (proximity_force + impact_linear_force + friction_linear_force) * collision.b_body.inv_mass * inv_dt;
 
 						{
-							const float rotation_force_friction = tangent.cross2d(rel_pos_a);
-							const float rotation_force_linear = soft_impact_force.cross2d(rel_pos_a);
+							const float rotation_force_friction = friction_linear_force.cross2d(rel_pos_a);
+							const float rotation_force_linear = impact_linear_force.cross2d(rel_pos_a);
 							motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia * inv_dt;
 						}
 
 						{
-							const float rotation_force_friction = tangent.cross2d(rel_pos_b);
-							const float rotation_force_linear = soft_impact_force.cross2d(rel_pos_b);
+							const float rotation_force_friction = friction_linear_force.cross2d(rel_pos_b);
+							const float rotation_force_linear = impact_linear_force.cross2d(rel_pos_b);
 							motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia * inv_dt;
 						}
 					});

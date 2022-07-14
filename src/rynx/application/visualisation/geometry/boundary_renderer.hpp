@@ -29,7 +29,8 @@ namespace rynx {
 					ctx->add_task("fetch polygon boundaries", [this](const rynx::ecs& ecs, rynx::scheduler::task& task_context) {
 						m_edges->clear();
 						
-						auto query_conf = ecs.query().notIn<components::frustum_culled, rynx::components::invisible>();
+						auto query_conf = ecs.query();
+						query_conf.notIn<components::frustum_culled, rynx::components::invisible>();
 						if(m_enabled && !m_enabled->is_enabled()) {
 							query_conf.notIn<rynx::components::mesh>();
 						}

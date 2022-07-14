@@ -3,7 +3,7 @@
 
 #include <rynx/tech/unordered_map.hpp>
 #include <rynx/filesystem/virtual_filesystem.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/tech/serialization_declares.hpp>
 
 namespace rynx {
 	namespace filesystem {
@@ -96,7 +96,7 @@ namespace rynx {
 		
 		void save_scene(
 			rynx::filesystem::vfs& fs,
-			rynx::serialization::vector_writer& serialized_scene,
+			std::vector<char>& serialized_scene,
 			rynx::string ui_path,
 			rynx::string scene_name,
 			rynx::string filepath

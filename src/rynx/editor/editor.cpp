@@ -605,7 +605,7 @@ void rynx::editor_rules::save_scene_to_path(rynx::string path) {
 	
 	auto pos = path.find_last_of('/');
 	rynx::string scene_name = ((pos != rynx::string::npos) ? path.substr(pos + 1) : path);
-	scenes.save_scene(vfs, vector_writer, path, scene_name, path);
+	scenes.save_scene(vfs, vector_writer.data(), path, scene_name, path);
 	meshes.save_all_meshes_to_disk("../meshes");
 	// rynx::filesystem::write_file(path, vector_writer.data());
 }

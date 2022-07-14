@@ -1267,25 +1267,24 @@ namespace rynx {
 			return out;
 		}
 
-		// a range of entities with consecutive id values.
-		// can be guaranteed for example when deserializing.
-		struct entity_range_t {
-			struct iterator {
-				rynx::ecs::id current;
-				rynx::ecs::id operator *() const { return current; }
-				iterator operator++() { ++current.value; return *this; }
-				iterator operator++(int) { iterator copy = *this; ++current.value; return copy; }
-				bool operator == (const iterator& other) { return current == other.current; }
-				bool operator != (const iterator& other) { return !(operator==(other)); }
-			};
-
-			iterator begin() { return iterator{ m_begin }; }
-			iterator end() { return iterator{ m_end }; }
-			size_t size() const { return m_end.value - m_begin.value; }
-
-			rynx::ecs::id m_begin;
-			rynx::ecs::id m_end;
-		};
+		// serializes the top-most scene to memory.
+		void serialize_scene(rynx::reflection::reflections& reflections, rynx::serialization::vector_writer& out) {
+			// make a copy of ecs
+			rynx::ecs copy; // = *this;
+			
+			// transform id references to global id chains. (???)
+			
+			// for the copy, remove all sub-scene content
+			auto res = copy.query().gather<rynx::components::ecs::scene::children>();
+			for (auto [children_component] : res) {
+				for (auto id : children_component.entities) {
+					copy.erase(id);
+				}
+			}
+			
+			// serialize as is.
+			copy.serialize(reflections, out);
+		}
 		
 		entity_range_t deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
 			
@@ -1829,16 +1828,16 @@ namespace rynx {
 		}
 
 		template<typename... Components>
-		edit_t attachToEntity(entity_id_t id, Components&& ... components) {
+		edit_t& attachToEntity(entity_id_t id, Components&& ... components) {
 			return edit_t(*this).attachToEntity(id, std::forward<Components>(components)...);
 		}
 
 		template<typename... Components>
-		edit_t removeFromEntity(entity_id_t id) {
+		edit_t& removeFromEntity(entity_id_t id) {
 			return edit_t(*this).removeFromEntity<Components...>(id);
 		}
 
-		edit_t removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
+		edit_t& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
 			return edit_t(*this).removeFromEntity(id, t);
 		}
 

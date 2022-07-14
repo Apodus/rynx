@@ -2,7 +2,7 @@
 #pragma once
 
 #include <rynx/system/assert.hpp>
-
+#include <rynx/tech/ecs/scenes.hpp>
 #include <cstdint>
 
 namespace rynx {
@@ -50,6 +50,42 @@ namespace rynx {
 
 			entity_id_t value;
 		};
+	}
+
+	// a range of entities with consecutive id values.
+	// can be guaranteed for example when deserializing.
+	struct entity_range_t {
+		struct iterator {
+			rynx::ecs_internal::id current;
+			rynx::ecs_internal::id operator *() const { return current; }
+			iterator operator++() { ++current.value; return *this; }
+			iterator operator++(int) { iterator copy = *this; ++current.value; return copy; }
+			bool operator == (const iterator& other) { return current == other.current; }
+			bool operator != (const iterator& other) { return !(operator==(other)); }
+		};
+
+		iterator begin() { return iterator{ m_begin }; }
+		iterator end() { return iterator{ m_end }; }
+		size_t size() const { return m_end.value - m_begin.value; }
+
+		rynx::ecs_internal::id m_begin;
+		rynx::ecs_internal::id m_end;
+	};
+
+	namespace components {
+		namespace ecs {
+			namespace scene {
+				struct link {
+					rynx::scene_id id;
+				};
+
+				// need some way to figure out which entities belong to some scene,
+				// so we don't serialize those entities when saving active scene.
+				struct children : public rynx::ecs_no_serialize_tag {
+					rynx::entity_range_t entities;
+				};
+			}
+		}
 	}
 
 	using id = rynx::ecs_internal::id;

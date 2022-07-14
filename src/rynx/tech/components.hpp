@@ -12,19 +12,6 @@
 namespace rynx {
 	namespace components {
 		
-		namespace scene {
-			struct link {
-				// path where scene should be? is this ok or should have some scene_id type?
-				rynx::string path;
-			};
-
-			// need some way to figure out which entities belong to some scene,
-			// so we don't serialize those entities when saving active scene.
-			struct children : public rynx::ecs_no_serialize_tag {
-				std::vector<rynx::id> entities;
-			};
-		}
-		
 		// TODO TODO TODO: Move to sample code :S
 		struct player {
 			bool touching_ground = false;

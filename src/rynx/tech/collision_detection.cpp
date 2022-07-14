@@ -54,7 +54,8 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 			const rynx::components::position,
 			const rynx::components::radius> ecs) {
 		{
-			auto spheres = ecs.query()
+			// spheres
+			ecs.query()
 				.in<rynx::components::physical_body>()
 				.notIn<rynx::components::projectile, rynx::components::boundary, tracked_by_collisions>()
 				.for_each([&detection](
@@ -68,7 +69,8 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 			});
 
-			auto boundaries = ecs.query()
+			// boundaries
+			ecs.query()
 				.in<rynx::components::physical_body, rynx::components::radius, rynx::components::position, rynx::components::boundary>()
 				.notIn<rynx::components::projectile, tracked_by_collisions>()
 				.for_each([&detection](
@@ -81,7 +83,8 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
 			});
 
-			auto projectiles = ecs.query()
+			// projectiles
+			ecs.query()
 				.in<rynx::components::physical_body, rynx::components::projectile>()
 				.notIn<tracked_by_collisions>()
 				.for_each([&detection](
