@@ -5,6 +5,7 @@
 #include <rynx/tech/ecs/id.hpp>
 #include <rynx/tech/std/memory.hpp>
 #include <rynx/system/assert.hpp>
+#include <rynx/system/typeid.hpp>
 #include <vector>
 #include <numeric>
 
@@ -14,6 +15,8 @@ namespace rynx {
 		public:
 			itable(uint64_t type_id) : m_type_id(type_id) {}
 			virtual ~itable() {}
+			virtual rynx::unique_ptr<itable> clone_ptr() const = 0;
+			
 			virtual void erase(entity_id_t entityId) = 0;
 			virtual void insert(opaque_unique_ptr<void> data) = 0;
 
@@ -44,8 +47,15 @@ namespace rynx {
 		class component_table : public itable {
 		public:
 			component_table(uint64_t type_id) : itable(type_id) {}
+			component_table(const component_table& other) : itable(other.m_type_id) {
+				m_data = other.m_data; // to support cloning.
+			}
 
 			virtual ~component_table() {}
+
+			virtual rynx::unique_ptr<itable> clone_ptr() const {
+				return rynx::make_unique<component_table<T>>(component_table<T>(*this));
+			}
 
 			virtual void insert(opaque_unique_ptr<void> data) override {
 				m_data.emplace_back(std::move(*static_cast<T*>(data.get())));
@@ -109,7 +119,7 @@ namespace rynx {
 
 			virtual void* get(index_t i) override { return &m_data[i]; }
 			virtual rynx::string type_name() const {
-				return typeid(T).name();
+				return rynx::traits::template type_name<T>();
 			}
 			virtual bool is_type_segregated() const {
 				return std::is_base_of_v<rynx::ecs_value_segregated_component_tag, T>;
@@ -172,6 +182,7 @@ namespace rynx {
 			virtual bool contains(void*) = 0;
 			virtual void emplace(void* data, rynx::type_index::virtual_type type) = 0;
 			virtual rynx::type_index::virtual_type get_type_id_for(void* data) = 0;
+			virtual ivalue_segregation_map* clone_ptr() const = 0;
 		};
 
 		template<typename T>
@@ -193,6 +204,12 @@ namespace rynx {
 
 			virtual rynx::type_index::virtual_type get_type_id_for(void* data) {
 				return m_map.find(*static_cast<T*>(data))->second;
+			}
+
+			virtual ivalue_segregation_map* clone_ptr() const {
+				auto* ptr = new value_segregation_map();
+				ptr->m_map = m_map;
+				return ptr;
 			}
 
 			void emplace(const T& t, rynx::type_index::virtual_type type) {

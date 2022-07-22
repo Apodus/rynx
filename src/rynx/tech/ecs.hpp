@@ -99,12 +99,46 @@ namespace rynx {
 	public:
 		using id = rynx::id;
 
+
+		ecs(ecs&& other) = default;
+		ecs& operator = (ecs&& other) = default;
+
+		ecs clone() const {
+			ecs copy;
+			copy.m_entities = this->m_entities;
+			copy.m_idCategoryMap = this->m_idCategoryMap;
+
+			for (auto&& entry : m_categories) {
+				copy.m_categories.emplace(entry.first, rynx::make_unique<entity_category>(entry.second->clone()));
+			}
+
+			for (auto&& entry : m_value_segregated_types_maps) {
+				auto* copy_ptr = entry.second->clone_ptr();
+				copy.m_value_segregated_types_maps.emplace(
+					entry.first,
+					rynx::opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(copy_ptr, entry.second.get_deleter())
+				);
+			}
+
+			copy.m_virtual_types_released = m_virtual_types_released;
+			return copy;
+		}
+
 		class entity_category {
 		public:
 			entity_category(dynamic_bitset types) : m_types(std::move(types)) {}
 
 			bool includesAll(const dynamic_bitset& types) const { return m_types.includes(types); }
 			bool includesNone(const dynamic_bitset& types) const { return m_types.excludes(types); }
+
+			entity_category clone() const {
+				entity_category copy(m_types);
+				copy.m_ids = m_ids;
+				for (auto& itable_ptr : m_tables) {
+					copy.m_tables.emplace_back(itable_ptr->clone_ptr());
+				}
+				return copy;
+			}
 
 			void createNewTable(uint64_t typeId, rynx::unique_ptr<rynx::ecs_internal::itable> tablePtr) {
 				if (typeId >= m_tables.size()) {
@@ -1037,6 +1071,14 @@ namespace rynx {
 			bool m_consumed = false;
 
 		public:
+			// no copy
+			query_t(const query_t& other) = delete;
+			query_t& operator = (const query_t& other) = delete;
+
+			// allow moving
+			query_t(query_t&& other) = default;
+			query_t& operator = (query_t&& other) = default;
+
 			query_t(category_source& ecs) : m_ecs(ecs) {}
 			query_t(const category_source& ecs_) : m_ecs(const_cast<category_source&>(ecs_)) {}
 			~query_t() {}
@@ -1270,11 +1312,13 @@ namespace rynx {
 		// serializes the top-most scene to memory.
 		void serialize_scene(rynx::reflection::reflections& reflections, rynx::serialization::vector_writer& out) {
 			// make a copy of ecs
-			rynx::ecs copy; // = *this;
+			rynx::ecs copy = this->clone();
 			
-			// transform id references to global id chains. (???)
-			
-			// for the copy, remove all sub-scene content
+			// construct mapping from id references to global id chains (for the top-most scene?).
+			// serialize global id chains vector
+			// replace id references with global id chain (for the top-most scene)
+
+			// remove all sub-scene content
 			auto res = copy.query().gather<rynx::components::ecs::scene::children>();
 			for (auto [children_component] : res) {
 				for (auto id : children_component.entities) {
@@ -1282,8 +1326,29 @@ namespace rynx {
 				}
 			}
 			
-			// serialize as is.
+			// serialize as is. (TODO: not allowed to perform the id-link remapping in this case)
 			copy.serialize(reflections, out);
+		}
+
+		// deserializes a scene and any sub-scenes referenced in it.
+		void deserialize_scene(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
+			
+			// deserialize global id chains vector
+
+			// deserialize ecs as-is (TODO: not allowed to perform the id-link remapping in this case)
+			
+			// for any sub-scene link deserialized, deserialize the content of the subscene (recursive call)
+			
+			// for each id link in current deserialized scene,
+			//   look at corresponding chain in chains,
+			//     track the chain down the scenes and find the entity pointed to by the chain
+			
+			// TODO:
+			// for every override component in current scene
+			//   follow chain, apply changes to memory.
+
+			deserialize(reflections, in);
+
 		}
 		
 		entity_range_t deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
@@ -1426,12 +1491,6 @@ namespace rynx {
 
 		query_t<DataAccess::Mutable, ecs_reference> query() { return query_t<DataAccess::Mutable, ecs_reference>(ecs_reference(this)); }
 		query_t<DataAccess::Const, ecs_reference> query() const { return query_t<DataAccess::Const, ecs_reference>(ecs_reference(this)); }
-
-		/*
-		// todo: offering these short-hands is probably detrimental to clarity.
-		template<typename...Ts> std::vector<rynx::ecs::id> ids() const { return query().in<Ts...>().ids(); }
-		template<typename...Ts> index_t count() const { return query().in<Ts...>().count(); }
-		*/
 
 		std::pair<entity_category*, index_t> category_and_index_for(entity_id_t id) const {
 			auto it = m_idCategoryMap.find(id);

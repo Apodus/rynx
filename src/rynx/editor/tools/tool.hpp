@@ -119,7 +119,7 @@ namespace rynx {
 
 				template<typename T>
 				error& component_missing(rynx::id entity, rynx::string whyRequired) {
-					rynx::string error_str = "^g" + rynx::traits::template type_name<T>() + "^w, " + whyRequired;
+					rynx::string error_str = rynx::string("^g") + rynx::traits::template type_name<T>() + "^w, " + whyRequired;
 					m_errors.emplace_back(error{ error_str, entity });
 					add_goto_option(entity);
 					m_errors.back().add_option("Add component", [entity, ctx = m_context]() {

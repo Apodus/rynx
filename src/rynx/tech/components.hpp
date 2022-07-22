@@ -22,14 +22,14 @@ namespace rynx {
 
 		struct position {
 			position() = default;
-			position(vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
-			vec3<float> value;
+			position(rynx::vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
+			rynx::vec3<float> value;
 			float angle = 0;
 		};
 
 		struct position_relative {
 			rynx::id id;
-			vec3f pos;
+			rynx::vec3f pos;
 		};
 
 		struct scale {
@@ -107,27 +107,25 @@ namespace rynx {
 		};
 
 		struct constant_force {
-			vec3f force;
+			rynx::vec3f force;
 		};
 
 		struct motion {
 			motion() = default;
-			motion(vec3<float> v, float av) : velocity(v), angularVelocity(av) {}
+			motion(rynx::vec3<float> v, float av) : velocity(v), angularVelocity(av) {}
 
-			vec3<float> velocity;
+			rynx::vec3<float> velocity;
 			float angularVelocity = 0;
 
-			vec3<float> acceleration;
+			rynx::vec3<float> acceleration;
 			float angularAcceleration = 0;
 
-			vec3<float> velocity_at_point(vec3<float> relative_point) const {
-				// return velocity + angularVelocity * relative_point.length() * vec3<float>(-relative_point.y, +relative_point.x, 0).normalize();
+			rynx::vec3<float> velocity_at_point(rynx::vec3<float> relative_point) const {
 				return velocity + angularVelocity * vec3<float>(-relative_point.y, +relative_point.x, 0);
 			}
 
-			vec3<float> velocity_at_point_predict(vec3<float> relative_point, float dt) const {
-				// return velocity + angularVelocity * relative_point.length() * vec3<float>(-relative_point.y, +relative_point.x, 0).normalize();
-				return velocity + acceleration * dt + (angularVelocity + dt * angularAcceleration) * vec3<float>(-relative_point.y, +relative_point.x, 0);
+			rynx::vec3<float> velocity_at_point_predict(rynx::vec3<float> relative_point, float dt) const {
+				return velocity + acceleration * dt + (angularVelocity + dt * angularAcceleration) * rynx::vec3<float>(-relative_point.y, +relative_point.x, 0);
 			}
 		};
 
@@ -212,7 +210,7 @@ namespace rynx {
 
 		struct boundary {
 			boundary() {}
-			boundary(rynx::polygon b, vec3f pos = vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
+			boundary(rynx::polygon b, rynx::vec3f pos = rynx::vec3f(), float angle = 0.0f) : segments_local(std::move(b)) {
 				segments_world = segments_local;
 				update_world_positions(pos, angle);
 			}
@@ -220,10 +218,13 @@ namespace rynx {
 			boundary(boundary&& other) = default;
 			boundary& operator=(boundary&& other) = default;
 
-			boundary(const boundary& other) = delete;
-			boundary& operator=(const boundary& other) = delete;
+			// to support ecs cloning, copying components must be allowed.
+			// boundary(const boundary& other) = delete;
+			// boundary& operator=(const boundary& other) = delete;
+			boundary(const boundary& other) = default;
+			boundary& operator=(const boundary& other) = default;
 
-			void update_world_positions(vec3f pos, float angle) {
+			void update_world_positions(rynx::vec3f pos, float angle) {
 				const float sin_v = math::sin(angle);
 				const float cos_v = math::cos(angle);
 				const size_t num_segments = segments_local.size();
@@ -285,8 +286,8 @@ namespace rynx {
 			struct event {
 				rynx::id id; // collided with what
 				rynx::components::physical_body body;
-				vec3f relative_velocity;
-				vec3f normal;
+				rynx::vec3f relative_velocity;
+				rynx::vec3f normal;
 			};
 			std::vector<event> events;
 		};

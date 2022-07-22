@@ -31,6 +31,10 @@ namespace rynx {
 				return m_nextId + 1;
 			}
 
+			entity_index() = default;
+			entity_index(const entity_index& other) = default;
+			entity_index& operator =(const entity_index& other) = default;
+
 			void clear() {
 				m_nextId = 0; // reset id space.
 			}
