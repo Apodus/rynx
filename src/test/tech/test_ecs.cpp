@@ -2,15 +2,9 @@
 
 #include <catch.hpp>
 
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 
-namespace rynx {
-	namespace components {
-		struct position {};
-	}
-}
-
-#include <rynx/tech/serialization.hpp>
+#include <rynx/std/serialization.hpp>
 // #include <rynx/generated/serialization.hpp>
 
 TEST_CASE("serialization", "strings & vectors")

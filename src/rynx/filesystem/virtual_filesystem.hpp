@@ -2,11 +2,15 @@
 
 #include <rynx/filesystem/filetree/node.hpp>
 #include <rynx/filesystem/filekinds/file.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
+
+#ifndef FileSystemDLL
+#define FileSystemDLL
+#endif
 
 namespace rynx {
 	namespace filesystem {
-		class vfs {
+		class FileSystemDLL vfs {
 		public:
 			class vfs_directory_handle {
 				vfs& m_host;

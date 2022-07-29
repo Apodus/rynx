@@ -3,7 +3,7 @@
 
 #include <rynx/menu/Component.hpp>
 #include <rynx/math/matrix.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 
 namespace rynx {
 	namespace graphics {
@@ -12,7 +12,7 @@ namespace rynx {
 	namespace menu {
 		class Div;
 		
-		class SlideBarVertical : public Component {
+		class MenuDLL SlideBarVertical : public Component {
 			
 			rynx::function<void(float)> m_callback;
 			rynx::function<void(float)> m_on_drag_end;

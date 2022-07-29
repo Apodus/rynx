@@ -2,8 +2,8 @@
 
 #include <rynx/math/vector.hpp>
 #include <rynx/math/geometry/bounding_sphere.hpp>
-#include <rynx/tech/profiling.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/profiling/profiling.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/tech/parallel/accumulator.hpp>
 
 #include <vector>

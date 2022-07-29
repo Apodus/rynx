@@ -6,7 +6,7 @@
 namespace rynx {
 	class plane;
 	class sphere;
-	class ray {
+	class MathDLL ray {
 		vec3f m_origin;
 		vec3f m_direction;
 

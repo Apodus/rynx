@@ -2,9 +2,10 @@
 #include <rynx/editor/tools/polygon_tool.hpp>
 #include <rynx/math/geometry/ray.hpp>
 #include <rynx/tech/collision_detection.hpp>
-#include <rynx/graphics/mesh/collection.hpp>
 #include <rynx/application/components.hpp>
 #include <rynx/graphics/camera/camera.hpp>
+#include <rynx/graphics/mesh/collection.hpp>
+#include <rynx/graphics/mesh/polygon_triangulation.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/system/typeid.hpp>
 

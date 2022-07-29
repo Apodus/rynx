@@ -10,7 +10,7 @@
 #include <rynx/application/visualisation/lights/directed_lights_effect.hpp>
 #include <rynx/application/visualisation/lights/ambient_light_effect.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 rynx::unique_ptr<rynx::application::graphics_step> rynx::application::visualisation::default_geometry_pass(rynx::graphics::renderer* pRenderer) {
 	rynx::graphics::mesh_id tube_mesh_id = pRenderer->meshes()->create_transient(rynx::Shape::makeBox(1.0f));

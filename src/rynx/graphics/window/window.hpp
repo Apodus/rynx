@@ -1,12 +1,12 @@
 
 #pragma once
 
-#include <rynx/tech/std/memory.hpp> // include rynx::function
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp> // include rynx::function
+#include <rynx/std/string.hpp>
 
 struct GLFWwindow;
 
-class Window {
+class GraphicsDLL Window {
 public:
 	Window();
 	~Window();

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <rynx/system/intrinsics.hpp>
-#include <rynx/tech/dynamic_buffer.hpp>
+#include <rynx/std/dynamic_buffer.hpp>
 #include <cstdint>
 
 namespace rynx {
 	// todo: allow sizes of not-64-multiples to work correctly on nextOne / nextZero
-	class dynamic_bitset {
+	class RynxStdDLL dynamic_bitset {
 	public:
 		static const uint64_t npos = ~uint64_t(0);
 

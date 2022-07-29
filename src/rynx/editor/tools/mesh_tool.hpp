@@ -12,7 +12,7 @@ namespace rynx {
 	namespace editor {
 		namespace tools {
 
-			class mesh_tool : public itool {
+			class EditorDLL mesh_tool : public itool {
 			public:
 				mesh_tool(rynx::scheduler::context& ctx);
 

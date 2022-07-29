@@ -3,8 +3,8 @@
 
 #include <array>
 #include <cstdlib>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/input/key_types.hpp>
 
@@ -16,7 +16,7 @@ namespace rynx {
 
 	class scoped_input_inhibitor;
 
-	class input
+	class InputDLL input
 	{
 		friend class scoped_input_inhibitor;
 

@@ -285,7 +285,7 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 					auto [id, distance] = find_nearest_entity(game_ecs, mouse_z_plane);
 
 					if (m_mode == Mode::IdField_Pick) {
-						if (id != 0) {
+						if (id) {
 							auto* data = reinterpret_cast<rynx::id*>(address_of_operand());
 							*data = id;
 							operand_value_changed(data);
@@ -341,8 +341,8 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 							for (auto id : ids) {
 								auto entity = game_ecs[id];
 								auto& entity_pos = entity.get<rynx::components::position>();
-								auto& entity_radius = entity.get<rynx::components::radius>();
-								bounds.emplace_back(entity_pos.value, entity_radius.r);
+								auto* entity_radius = entity.try_get<rynx::components::radius>();
+								bounds.emplace_back(entity_pos.value, entity_radius ? entity_radius->r : 0);
 							}
 
 							auto [point, radius] = rynx::math::bounding_sphere(bounds);

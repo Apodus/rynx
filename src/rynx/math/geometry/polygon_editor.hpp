@@ -3,7 +3,7 @@
 #include <rynx/math/geometry/polygon.hpp>
 
 namespace rynx {
-	class polygon_editor {
+	class MathDLL polygon_editor {
 		rynx::polygon& polygon;
 
 	public:

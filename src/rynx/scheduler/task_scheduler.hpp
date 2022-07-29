@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <rynx/scheduler/barrier.hpp>
@@ -19,7 +19,7 @@ namespace rynx {
 		class task_thread;
 		class task;
 
-		class task_scheduler {
+		class SchedulerDLL task_scheduler {
 		public:
 			friend class scheduler::context;
 			friend class scheduler::task_thread;

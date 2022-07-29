@@ -3,7 +3,7 @@
 #include <rynx/math/vector.hpp>
 
 namespace rynx {
-	class sphere {
+	class MathDLL sphere {
 	public:
 		vec3f pos;
 		float radius;

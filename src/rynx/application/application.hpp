@@ -3,7 +3,7 @@
 #include <rynx/application/simulation.hpp>
 #include <rynx/application/render.hpp>
 #include <rynx/math/matrix.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 
 #include <vector>
@@ -24,7 +24,7 @@ namespace rynx {
 
 	namespace application {
 		class DebugVisualization;
-		class Application {
+		class ApplicationDLL Application {
 		public:
 			Application();
 

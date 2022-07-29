@@ -1,7 +1,7 @@
 
 #include <rynx/application/simulation.hpp>
 #include <rynx/filesystem/virtual_filesystem.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 
 rynx::application::simulation::simulation(rynx::scheduler::task_scheduler& scheduler) : m_context(scheduler.make_context()) {
 	m_ecs = rynx::make_shared<rynx::ecs>();

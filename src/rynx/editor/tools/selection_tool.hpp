@@ -11,7 +11,7 @@
 namespace rynx {
 	namespace editor {
 		namespace tools {
-			class selection_tool : public itool {
+			class EditorDLL selection_tool : public itool {
 			public:
 				selection_tool(rynx::scheduler::context& ctx);
 

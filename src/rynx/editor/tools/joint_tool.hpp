@@ -13,7 +13,7 @@
 namespace rynx {
 	namespace editor {
 		namespace tools {
-			class joint_tool : public itool {
+			class EditorDLL joint_tool : public itool {
 			public:
 				joint_tool(rynx::scheduler::context& ctx);
 

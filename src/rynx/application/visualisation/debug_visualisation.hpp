@@ -2,7 +2,7 @@
 
 #include <rynx/math/matrix.hpp>
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 
 #include <rynx/application/render.hpp>
 #include <rynx/graphics/mesh/id.hpp>
@@ -20,7 +20,7 @@ namespace rynx {
 	}
 
 	namespace application {
-		class DebugVisualization : public igraphics_step {
+		class ApplicationDLL DebugVisualization : public igraphics_step {
 		public:
 			DebugVisualization(rynx::shared_ptr<rynx::graphics::renderer> meshRenderer);
 

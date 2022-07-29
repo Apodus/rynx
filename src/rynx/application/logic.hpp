@@ -1,20 +1,17 @@
 #pragma once
 
-#include <rynx/tech/ecs/id.hpp>
+#include <rynx/ecs/id.hpp>
 #include <rynx/tech/binary_config.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 #include <vector>
+#include <queue>
 
 namespace rynx {
-	class object_storage;
-	class mapped_input;
-
 	namespace scheduler {
 		struct barrier;
 		class context;
-		class task_scheduler;
 	}
 
 	namespace serialization {
@@ -23,10 +20,10 @@ namespace rynx {
 	}
 
 	namespace application {
-		class logic {
+		class ApplicationDLL logic {
 		public:
 
-			class iruleset {
+			class ApplicationDLL iruleset {
 			public:
 				struct unique_name_setter {
 					void operator()(iruleset& ruleset, rynx::string name) {
@@ -35,8 +32,9 @@ namespace rynx {
 				};
 
 				iruleset();
-				virtual ~iruleset() {}
-				
+				virtual ~iruleset() noexcept {}
+				iruleset& operator = (iruleset&& other) noexcept = default;
+
 				void process(rynx::scheduler::context& scheduler, float dt);
 				rynx::scheduler::barrier barrier() const;
 
@@ -58,7 +56,7 @@ namespace rynx {
 				virtual void serialize(rynx::scheduler::context&, rynx::serialization::vector_writer&) {}
 				virtual void deserialize(rynx::scheduler::context&, rynx::serialization::vector_reader&) {}
 				
-				struct apply_to_all {
+				struct ApplicationDLL apply_to_all {
 				public:
 					apply_to_all(iruleset* host) : m_host(host) {}
 

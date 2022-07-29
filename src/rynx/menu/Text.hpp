@@ -16,7 +16,7 @@ namespace rynx {
 
 	namespace menu {
 
-		class Text : public Component {
+		class MenuDLL Text : public Component {
 		public:
 			struct Config {
 				bool allow_input = false;

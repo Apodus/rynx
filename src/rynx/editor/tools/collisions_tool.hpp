@@ -9,7 +9,7 @@ namespace rynx {
 	namespace editor {
 		namespace tools {
 
-			class collisions_tool : public itool {
+			class EditorDLL collisions_tool : public itool {
 			public:
 				collisions_tool(rynx::scheduler::context& ctx);
 

@@ -6,7 +6,7 @@
 #include <rynx/filesystem/filetree/memory_file_node.hpp>
 
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/std/memory.hpp> // todo - should include rynx::function
+#include <rynx/std/memory.hpp> // todo - should include rynx::function
 
 rynx::filesystem::vfs::~vfs() {
 }

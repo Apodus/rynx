@@ -6,7 +6,7 @@
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 #include <rynx/editor/tools/selection_tool.hpp>
 #include <rynx/graphics/camera/camera.hpp>
-#include <rynx/tech/ecs/scenes.hpp>
+#include <rynx/ecs/scenes.hpp>
 
 #include <sstream>
 
@@ -599,7 +599,7 @@ void rynx::editor_rules::save_scene_to_path(rynx::string path) {
 	auto& vfs = m_context->get_resource<rynx::filesystem::vfs>();
 
 	logmsg("saving active scene to '%s'", path.c_str());
-	auto vector_writer = ecs.serialize(m_reflections);
+	auto vector_writer = ecs.serialize_scene(m_reflections);
 	rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
 	rynx::serialize(system_writer.data(), vector_writer);
 	
@@ -627,7 +627,7 @@ void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	ecs.clear();
 	all_rulesets().clear(*m_context);
 
-	ecs.deserialize(m_reflections, reader);
+	ecs.deserialize_scene(m_reflections, vfs, scenes, rynx::components::position{}, reader);
 	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
 	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
@@ -646,6 +646,8 @@ rynx::editor_rules::editor_rules(
 	m_context = &ctx;
 	m_font = font;
 	m_game_running_state = game_running_state;
+
+	ctx.get_resource<rynx::graphics::mesh_collection>().load_all_meshes_from_disk("../meshes");
 
 	struct tool_api_impl : public rynx::editor::editor_shared_state::tool_api {
 	private:
@@ -795,7 +797,7 @@ rynx::editor_rules::editor_rules(
 			fileSelectDialog->configure().m_allowNewDir = false;
 			fileSelectDialog->file_type(".rynxscene");
 			fileSelectDialog->filepath_to_display_name([vfs, scenes](rynx::string path) {
-				return  scenes->filepath_to_info(path).name;
+				return scenes->filepath_to_info(path).name;
 			});
 			fileSelectDialog->display("/scenes/",
 				// on file selected

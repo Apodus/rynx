@@ -1,5 +1,5 @@
 
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 #include <ostream>
 #include <istream>
 
@@ -251,8 +251,10 @@ rynx::std_replacements::string& rynx::std_replacements::string::clear() noexcept
 void rynx::std_replacements::string::insert(char* where, char what) {
 	ensure_capacity_copy(size() + 2);
 	char* it = data() + size() + 1;
-	while (it != where)
+	while (it != where) {
 		*it = *(it - 1);
+		--it;
+	}
 	*it = what;
 	
 	if (!is_small_space())

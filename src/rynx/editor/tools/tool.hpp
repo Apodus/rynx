@@ -1,11 +1,11 @@
 
 #pragma once
 
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/ecs/id.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/ecs/id.hpp>
 #include <rynx/graphics/texture/id.hpp>
-#include <rynx/tech/reflection.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/reflection/reflection.hpp>
+#include <rynx/ecs/ecs.hpp>
 
 #include <rynx/scheduler/context.hpp>
 #include <rynx/system/typeid.hpp>
@@ -42,7 +42,7 @@ namespace rynx {
 			}
 		};
 
-		struct component_recursion_info_t {
+		struct EditorDLL component_recursion_info_t {
 			rynx::ecs* ecs = nullptr;
 			const rynx::reflection::reflections* reflections = nullptr;
 			rynx::menu::Component* component_sheet = nullptr;
@@ -66,8 +66,8 @@ namespace rynx {
 				std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>)> gen_type_editor;
 		};
 
-		struct editor_shared_state {
-			struct tool_api {
+		struct EditorDLL editor_shared_state {
+			struct EditorDLL tool_api {
 				virtual void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) = 0;
 				virtual void pop_popup() = 0;
 				virtual void enable_tools() = 0;
@@ -84,7 +84,7 @@ namespace rynx {
 			rynx::function<void(rynx::id)> m_on_entity_selected;
 		};
 
-		class itool {
+		class EditorDLL itool {
 		public:
 			struct action {
 				action() = default;
@@ -98,7 +98,7 @@ namespace rynx {
 				rynx::function<void(rynx::scheduler::context*)> m_action;
 			};
 
-			struct error {
+			struct EditorDLL error {
 				struct option {
 					rynx::string name;
 					rynx::function<void()> op;
@@ -114,7 +114,7 @@ namespace rynx {
 				std::vector<option> options;
 			};
 
-			struct error_emitter {
+			struct EditorDLL error_emitter {
 				error_emitter(rynx::scheduler::context* context) : m_context(context) {}
 
 				template<typename T>

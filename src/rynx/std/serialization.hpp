@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <rynx/tech/ecs/id.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/ecs/id.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <type_traits>
@@ -22,7 +22,7 @@ namespace rynx {
 					writer(&t, sizeof(t));
 				}
 			}
-
+			
 			template<typename IOStream>
 			void deserialize(T& t, IOStream& reader) {
 				if constexpr (std::is_trivially_constructible_v<T> && std::is_trivially_copyable_v<T>) {

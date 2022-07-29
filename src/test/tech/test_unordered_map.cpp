@@ -4,7 +4,7 @@
 
 #include <catch.hpp>
 
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 
 namespace rynx {
 	namespace components {

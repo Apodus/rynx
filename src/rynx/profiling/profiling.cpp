@@ -1,7 +1,6 @@
 
-#include <rynx/tech/profiling.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/filesystem/filesystem.hpp>
+#include <rynx/profiling/profiling.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/thread/this_thread.hpp>
 
 #include <array>
@@ -10,6 +9,7 @@
 #include <sstream>
 #include <chrono>
 #include <sstream>
+#include <fstream>
 
 namespace rynx {
 	namespace profiling {
@@ -118,7 +118,9 @@ namespace rynx {
 
 				out << "]}";
 
-				rynx::filesystem::write_file("profile.json", out.str());
+				std::ofstream outfile("profile.json");
+				std::string s = out.str();
+				outfile.write(s.c_str(), s.length());
 			}
 		}
 	}

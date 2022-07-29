@@ -14,7 +14,7 @@ namespace rynx {
 	namespace editor {
 		namespace tools {
 
-			class polygon_tool : public itool {
+			class EditorDLL polygon_tool : public itool {
 			public:
 				polygon_tool(rynx::scheduler::context& ctx);
 				virtual void update(rynx::scheduler::context& ctx) override;

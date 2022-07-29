@@ -3,7 +3,7 @@
 
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <rynx/application/logic.hpp>
-#include <rynx/tech/ecs/scenes.hpp>
+#include <rynx/ecs/scenes.hpp>
 
 namespace rynx {
 	namespace filesystem {

@@ -5,7 +5,7 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/graphics/color.hpp>
 #include <rynx/graphics/text/font.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 #include <vector>
 #include <string_view>
@@ -25,7 +25,7 @@ namespace rynx {
 
 namespace rynx {
 	namespace graphics {
-		class renderable_text {
+		class GraphicsDLL renderable_text {
 		public:
 			enum class align {
 				Left,

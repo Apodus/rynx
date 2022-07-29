@@ -1,5 +1,5 @@
 
-#include <rynx/math/geometry/polygon_triangulation.hpp>
+#include <rynx/graphics/mesh/polygon_triangulation.hpp>
 #include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/geometry/math.hpp>
 #include <rynx/math/geometry/triangle.hpp>

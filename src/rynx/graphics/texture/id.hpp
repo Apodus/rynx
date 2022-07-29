@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include <rynx/tech/serialization_declares.hpp>
-#include <rynx/tech/ecs/id.hpp>
+#include <rynx/std/serialization_declares.hpp>
+#include <rynx/ecs/id.hpp>
 #include <rynx/system/annotate.hpp>
 #include <cstdint>
 #include <utility>

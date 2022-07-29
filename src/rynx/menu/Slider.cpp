@@ -2,7 +2,7 @@
 #include <rynx/menu/Slider.hpp>
 
 #include <rynx/graphics/mesh/mesh.hpp>
-#include <rynx/math/geometry/polygon_triangulation.hpp>
+#include <rynx/graphics/mesh/polygon_triangulation.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/graphics/mesh/shape.hpp>
 #include <rynx/graphics/renderer/meshrenderer.hpp>

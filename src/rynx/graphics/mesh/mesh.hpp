@@ -4,16 +4,16 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/graphics/mesh/id.hpp>
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/serialization_declares.hpp>
 #include <rynx/math/vector.hpp>
 #include <vector>
 
 namespace rynx {
 	namespace graphics {
 
-		class mesh {
+		class GraphicsDLL mesh {
 		public:
 			mesh();
 			~mesh();

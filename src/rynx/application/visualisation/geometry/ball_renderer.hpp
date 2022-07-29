@@ -5,8 +5,8 @@
 #include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 
-#include <rynx/tech/profiling.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/profiling/profiling.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/scheduler/context.hpp>
 
 namespace rynx {

@@ -1,5 +1,5 @@
 
-#include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/std/dynamic_bitset.hpp>
 
 rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() { return m_index_data; }
 const rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() const { return m_index_data; }

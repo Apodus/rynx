@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdio.h>
+#include <cstdio>
 
 #ifdef RYNX_ASSERTS_ENABLED_
 
 #define DEBUG_LEVEL 2
 
 #ifdef _WIN32
-void windowsDebugOut(const char* logBuffer);
+void SystemDLL windowsDebugOut(const char* logBuffer);
 #ifdef APIENTRY // glfw definition collides with winapi definition. they both define it as __stdcall
 #undef APIENTRY
 #endif

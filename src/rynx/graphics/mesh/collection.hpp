@@ -1,10 +1,10 @@
 #pragma once
 
 #include <rynx/graphics/mesh/id.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/math/geometry/polygon.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 namespace rynx {
 	namespace graphics {
@@ -16,7 +16,7 @@ namespace rynx {
 			rynx::graphics::mesh_id id;
 		};
 
-		class mesh_collection {
+		class GraphicsDLL mesh_collection {
 		public:
 			mesh_collection(rynx::shared_ptr<rynx::graphics::GPUTextures> gpuTextures);
 

@@ -2,9 +2,9 @@
 #pragma once
 
 #include <rynx/scheduler/barrier.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/object_storage.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/thread/object_storage.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/math/random.hpp>
 
 #include <rynx/tech/parallel/queue.hpp>
@@ -25,7 +25,7 @@ namespace rynx {
 		class scoped_barrier_after;
 		class scoped_barrier_before;
 
-		class context {
+		class SchedulerDLL context {
 			friend class rynx::scheduler::task_token;
 			friend class rynx::scheduler::task_scheduler;
 			friend class rynx::scheduler::task;

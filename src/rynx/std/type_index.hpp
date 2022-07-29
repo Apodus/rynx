@@ -14,7 +14,8 @@ namespace rynx {
 		};
 		
 		namespace internal {
-			extern used_type* used_type_list;
+			RynxStdDLL used_type* get_used_type_list();
+			RynxStdDLL void set_used_type_list(used_type*);
 		}
 #ifndef _WIN64
 		template<typename T> static char const* const unique_str_for_t() { return __PRETTY_FUNCTION__; }
@@ -27,8 +28,8 @@ namespace rynx {
 		};
 
 		template<typename T> uint64_t mark_type_is_used(id_for_type<T> t) {
-			static used_type used_type_v { rynx::type_index::internal::used_type_list, unique_str_for_t<T>(), &t.id };
-			rynx::type_index::internal::used_type_list = &used_type_v;
+			static used_type used_type_v { rynx::type_index::internal::get_used_type_list(), unique_str_for_t<T>(), &t.id};
+			rynx::type_index::internal::set_used_type_list(&used_type_v);
 			return ~uint64_t(0);
 		}
 
@@ -38,9 +39,8 @@ namespace rynx {
 			bool operator == (uint64_t other) const noexcept { return other == type_value; }
 		};
 
-
-		void initialize();
-		virtual_type create_virtual_type();
+		RynxStdDLL void initialize();
+		RynxStdDLL virtual_type create_virtual_type();
 
 		template<typename T> uint64_t id() {
 			using naked_t = std::remove_cv_t<std::remove_reference_t<T>>;

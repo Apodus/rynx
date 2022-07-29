@@ -57,7 +57,7 @@ bool isCursorFromCurrentFile(CXCursor cursor) {
 	const char* cstr = clang_getCString(fileName);
 	if (cstr != nullptr) {
 		bool retVal = (g_currentlyWorkedOnFile == cstr);
-		std::cout << g_currentlyWorkedOnFile << " vs " << std::string(cstr) << " - " << (retVal ? "true" : "false") << std::endl;
+		// std::cout << g_currentlyWorkedOnFile << " vs " << std::string(cstr) << " - " << (retVal ? "true" : "false") << std::endl;
 		clang_disposeString(fileName);
 		return retVal;
 	}
@@ -72,11 +72,12 @@ std::vector<std::string> getAnnotations(CXCursor cursor) {
 			if (clang_getCursorKind(cursor) == CXCursorKind::CXCursor_AnnotateAttr) {
 				auto* outputPtr = static_cast<std::vector<std::string>*>(client_data);
 				outputPtr->emplace_back(getString(clang_getCursorDisplayName(cursor)));
+				std::cerr << "annotation: " << outputPtr->back() << std::endl;
 			}
 			return CXChildVisitResult::CXChildVisit_Continue;
 		},
 		&output
-			);
+	);
 	return output;
 }
 
@@ -169,8 +170,9 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 
 		// serialization only generated for types declared in processed file.
 		if (canonicalType.empty()) {
-			std::cout << "canonType: " << canonicalType << ", targetType: " << targetTypeName << std::endl;
+			// std::cout << "canonType: " << canonicalType << ", targetType: " << targetTypeName << std::endl;
 			g_reflected_types["::" + targetTypeName].generate_serialization = isCursorFromCurrentFile(clang_getCursorDefinition(cursor));
+			std::cout << targetTypeName << ", generate serialization: " << g_reflected_types["::" + targetTypeName].generate_serialization << std::endl;
 		}
 
 		// handle inheritance - visit through base classes recursively.
@@ -191,12 +193,12 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 							return CXVisitorResult::CXVisit_Continue;
 						},
 						data
-							);
+					);
 				}
 				return CXChildVisit_Continue;
 			},
 			&targetTypeName
-				);
+		);
 
 		CXType type = clang_getCursorType(cursor);
 		auto typeSizeOf = clang_Type_getSizeOf(type);
@@ -320,7 +322,7 @@ void write_results(std::string source_file) {
 			// for (auto&& path : compiledHeaderFiles) {
 			output << "#include <" << includeSourceFile << ">" << std::endl;
 			// }
-			output << "#include <rynx/tech/reflection.hpp>" << std::endl;
+			output << "#include <rynx/reflection/reflection.hpp>" << std::endl;
 
 			output << std::endl;
 			output << "namespace rynx {" << std::endl;
@@ -384,7 +386,7 @@ void write_results(std::string source_file) {
 			// for (auto&& path : compiledHeaderFiles) {
 			output << "#include <" << includeSourceFile << ">" << std::endl;
 			// }
-			output << "#include <rynx/tech/serialization.hpp>" << std::endl;
+			output << "#include <rynx/std/serialization.hpp>" << std::endl;
 
 			output << std::endl;
 			output << "namespace rynx {" << std::endl;
@@ -477,7 +479,6 @@ int main(int argc, char** argv) {
 		}
 		else if (std::string(argv[i]).starts_with("-D")) {
 			g_clangOptions.emplace_back(argv[i]);
-			g_clangOptions.emplace_back(argv[++i]);
 		}
 		else if (std::string(argv[i]).find(std::string("--std")) != std::string::npos) {
 			g_clangOptions.emplace_back(argv[i]);
@@ -499,6 +500,7 @@ int main(int argc, char** argv) {
 	}
 
 	g_clangOptions.emplace_back("-DRYNX_CODEGEN");
+	g_clangOptions.emplace_back("-DANNOTATE(s)=__attribute__((annotate(s)))");
 
 	CXIndex index = clang_createIndex(0, 0);
 	std::filesystem::path wd_path(".");
@@ -506,7 +508,7 @@ int main(int argc, char** argv) {
 
 	for (auto& p : std::filesystem::recursive_directory_iterator(source_code_scan_path)) {
 		if (p.is_regular_file()) {
-			std::string path_string = p.path().string();
+			std::string path_string = std::filesystem::absolute(p.path()).string();
 
 			bool matchesAny = fileMatchers.empty();
 			for (auto&& matcher : fileMatchers)
@@ -532,10 +534,11 @@ int main(int argc, char** argv) {
 }
 
 void compile(CXIndex& index, std::string path) {
-	std::cout << "processing " << path << " ..." << std::endl;
+	std::cout << std::endl << std::endl << "processing " << path << " ..." << std::endl;
 
 	CXTranslationUnit unit;
 	[[maybe_unused]] CXErrorCode error = clang_parseTranslationUnit2(index, path.c_str(), g_clangOptions.data(), int(g_clangOptions.size()), nullptr, 0, 0, &unit);
+	std::cout << "compile result " << error << std::endl;
 
 	std::vector<std::string> includeNamespace = { "" };
 	g_currentlyWorkedOnFile = path;
@@ -557,7 +560,7 @@ void compile(CXIndex& index, std::string path) {
 			return CXChildVisitResult::CXChildVisit_Recurse;
 		},
 		nullptr
-			);
+	);
 
 	clang_disposeTranslationUnit(unit);
 

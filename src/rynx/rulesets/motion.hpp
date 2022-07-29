@@ -5,7 +5,7 @@
 
 namespace rynx {
 	namespace ruleset {
-		class motion_updates : public application::logic::iruleset {
+		class RuleSetsDLL motion_updates : public application::logic::iruleset {
 			vec3<float> m_gravity;
 		public:
 			motion_updates(vec3<float> gravity = vec3<float>(0, 0, 0)) : m_gravity(gravity) {}

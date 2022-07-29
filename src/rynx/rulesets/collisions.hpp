@@ -1,11 +1,11 @@
 #pragma once
 
 #include <rynx/application/logic.hpp>
-#include <rynx/tech/ecs/id.hpp>
+#include <rynx/ecs/id.hpp>
 
 namespace rynx {
 	namespace ruleset {
-		class physics_2d : public application::logic::iruleset {
+		class RuleSetsDLL physics_2d : public application::logic::iruleset {
 		public:
 			physics_2d() = default;
 			virtual ~physics_2d() {}

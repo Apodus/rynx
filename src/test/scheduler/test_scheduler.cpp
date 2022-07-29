@@ -4,7 +4,7 @@
 
 #include <catch.hpp>
 
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
 #include <thread>
 

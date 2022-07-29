@@ -28,6 +28,7 @@
 #include <rynx/editor/tools/texture_selection_tool.hpp>
 
 #include <rynx/application/visualisation/debug_visualisation.hpp>
+#include <rynx/filesystem/virtual_filesystem.hpp>
 
 SampleApplication::SampleApplication() {
 	m_reflections.load_generated_reflections();

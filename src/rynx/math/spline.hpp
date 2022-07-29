@@ -6,7 +6,7 @@
 
 namespace rynx {
 	namespace math {
-		class spline {
+		class MathDLL spline {
 		public:
 			struct control_point {
 				control_point() = default;

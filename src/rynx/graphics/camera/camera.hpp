@@ -6,7 +6,7 @@
 
 namespace rynx {
 	class ray;
-	class camera {
+	class GraphicsDLL camera {
 	public:
 		camera();
 		~camera();

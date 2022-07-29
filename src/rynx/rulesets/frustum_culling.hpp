@@ -3,14 +3,14 @@
 
 #include <rynx/application/logic.hpp>
 #include <rynx/tech/sphere_tree.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 namespace rynx {
 	class ecs;
 	class camera;
 
 	namespace ruleset {
-		class frustum_culling : public application::logic::iruleset {
+		class RuleSetsDLL frustum_culling : public application::logic::iruleset {
 			struct entity_tracked_by_frustum_culling {};
 		
 		public:

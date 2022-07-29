@@ -4,20 +4,20 @@
 typedef int GLint;
 typedef unsigned GLuint;
 
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/graphics/texture/id.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 #include <vector>
 
 namespace rynx {
 	namespace graphics {
 		class GPUTextures;
-		class framebuffer {
+		class GraphicsDLL framebuffer {
 		public:
 			framebuffer(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, const rynx::string& name);
 			~framebuffer();
 
-			class config {
+			class GraphicsDLL config {
 			public:
 				rynx::shared_ptr<framebuffer> construct(rynx::shared_ptr<rynx::graphics::GPUTextures> textures, rynx::string name);
 

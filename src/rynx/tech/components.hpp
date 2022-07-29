@@ -1,13 +1,12 @@
 #pragma once
 
+#include <rynx/system/annotate.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/math/math.hpp>
 #include <rynx/math/geometry/polygon.hpp>
 #include <rynx/math/geometry/polygon_editor.hpp>
-#include <rynx/math/geometry/polygon_triangulation.hpp>
 #include <rynx/math/geometry/triangle.hpp>
-#include <rynx/system/annotate.hpp>
-#include <rynx/tech/ecs/id.hpp>
+#include <rynx/ecs/id.hpp>
 
 namespace rynx {
 	namespace components {
@@ -20,32 +19,9 @@ namespace rynx {
 			float jump_power = 10.0f;
 		};
 
-		struct position {
-			position() = default;
-			position(rynx::vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
-			rynx::vec3<float> value;
-			float angle = 0;
-		};
-
 		struct position_relative {
 			rynx::id id;
 			rynx::vec3f pos;
-		};
-
-		struct scale {
-			operator float() const {
-				return value;
-			}
-
-			scale() : value(1.0f) {}
-			scale(float v) : value(v) {}
-			float ANNOTATE(">=0") value;
-		};
-
-		struct radius {
-			radius() = default;
-			radius(float r) : r(r) {}
-			float r = 0;
 		};
 
 		struct color {
@@ -161,6 +137,8 @@ namespace rynx {
 				return *this;
 			}
 
+			// TODO
+			/*
 			physical_body& moment_of_inertia(rynx::polygon& p, float scale = 1.0f) {
 				rynx_assert(scale > 0.0f, "scale must be positive non-zero value");
 				auto ext = p.extents();
@@ -199,6 +177,7 @@ namespace rynx {
 					initial_scale *= 0.5f;
 				}
 			}
+			*/
 
 			float ANNOTATE(">=0") bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
 			float ANNOTATE(">=0") inv_mass = 0.001f; // 1000 grams default

@@ -5,7 +5,7 @@
 #include <rynx/math/vector.hpp>
 
 namespace rynx {
-	class line_segment {
+	class MathDLL line_segment {
 	public:
 		line_segment();
 		line_segment(vec3f a, vec3f b);

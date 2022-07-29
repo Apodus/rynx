@@ -5,9 +5,9 @@
 #include <rynx/graphics/texture/texturehandler.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 #include <rynx/graphics/mesh/collection.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/math/geometry/polygon_triangulation.hpp>
+#include <rynx/graphics/mesh/polygon_triangulation.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/memory.hpp>
 #include <rynx/math/matrix.hpp>
 
 namespace rynx {
@@ -18,7 +18,7 @@ namespace rynx {
 		class text_renderer;
 		class renderable_text;
 
-		class renderer {
+		class GraphicsDLL renderer {
 			mesh_id m_rectangle;
 			rynx::unique_ptr<rynx::graphics::text_renderer> m_pTextRenderer;
 

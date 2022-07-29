@@ -6,5 +6,5 @@
 class FontData;
 
 namespace Fonts {
-	FontData setFontConsolaMono(rynx::graphics::texture_id);
+	GraphicsDLL FontData setFontConsolaMono(rynx::graphics::texture_id);
 }

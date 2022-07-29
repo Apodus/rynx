@@ -2,15 +2,15 @@
 #pragma once
 
 #include <rynx/graphics/shader/shader.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/string.hpp>
 
 typedef int GLint;
 typedef unsigned GLuint;
 
 namespace rynx {
 	namespace graphics {
-		class shaders
+		class GraphicsDLL shaders
 		{
 		public:
 			shaders();

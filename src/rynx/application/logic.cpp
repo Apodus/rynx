@@ -2,7 +2,7 @@
 #include <rynx/application/logic.hpp>
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/scheduler/context.hpp>
-#include <rynx/tech/serialization.hpp>
+#include <rynx/std/serialization.hpp>
 
 rynx::application::logic::iruleset::iruleset() {
 	m_barrier = rynx::make_unique<rynx::scheduler::barrier>("SystemBarrier");

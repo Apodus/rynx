@@ -6,7 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include <rynx/tech/std/memory.hpp> // todo: include function
+#include <rynx/std/function.hpp>
 
 namespace {
 	rynx::function<void(int, int, int, int)> g_keyboardKeyEventHandler;

@@ -5,19 +5,20 @@
 #include <rynx/math/geometry/plane.hpp>
 
 #include <rynx/filesystem/virtual_filesystem.hpp>
-#include <rynx/tech/ecs.hpp>
-#include <rynx/tech/ecs/scenes.hpp>
+#include <rynx/ecs/ecs.hpp>
+#include <rynx/ecs/scenes.hpp>
 
 #include <rynx/graphics/texture/texturehandler.hpp>
 
 rynx::editor::tools::instantiation_tool::instantiation_tool(rynx::scheduler::context& ctx) {
 	m_frame_tex_id = ctx.get_resource<rynx::graphics::GPUTextures>().findTextureByName("frame");
 	m_vfs = ctx.get_resource_ptr<rynx::filesystem::vfs>();
+	m_scenes = ctx.get_resource_ptr<rynx::scenes>();
 }
 
 void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& ctx) {
 	auto& input = ctx.get_resource<rynx::mapped_input>();
-
+	auto& scenes = ctx.get_resource<rynx::scenes>();
 	if (input.isKeyClicked(input.getMouseKeyPhysical(0))) {
 		auto& gameCam = ctx.get_resource<rynx::camera>();
 		auto& ecs = ctx.get_resource<rynx::ecs>();
@@ -27,23 +28,15 @@ void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& c
 		// if mouse clicked the z-plane
 		if (hit) {
 			point.z = 0; // the floating point calculations are not 100% accurate, so fix the z value.
+			auto scene_id = scenes.filepath_to_info(m_selectedScene).id;
+			rynx::id new_scene = ecs.create(rynx::components::position{ point, 0 }, rynx::components::scene::link{ scene_id });
+			rynx::entity_range_t deserialized_entities = ecs.load_subscenes(reflections, *m_vfs, scenes);
 
-			auto fileIn = m_vfs->open_read(m_selectedScene);
-			rynx::serialization::vector_reader reader(
-				ctx.get_resource<rynx::scenes>().read_payload(*fileIn).second
-			);
-			auto ids = ecs.deserialize(reflections, reader);
-
-			// translate to cursor
-			for (auto id : ids) {
-				auto* pos = ecs[id].try_get<rynx::components::position>();
-				if (pos) {
-					pos->value += point;
-
-					auto* boundary = ecs[id].try_get<rynx::components::boundary>();
-					if (boundary) {
-						boundary->update_world_positions(pos->value, pos->angle);
-					}
+			for (rynx::id child_entity : deserialized_entities) {
+				auto* pos = ecs[child_entity].try_get<rynx::components::position>();
+				auto* boundary = ecs[child_entity].try_get<rynx::components::boundary>();
+				if (pos && boundary) {
+					boundary->update_world_positions(pos->value, pos->angle);
 				}
 			}
 		}
@@ -56,7 +49,10 @@ void rynx::editor::tools::instantiation_tool::on_tool_selected() {
 		fileselector->file_type(".rynxscene");
 		fileselector->configure().m_allowNewFile = false;
 		fileselector->configure().m_allowNewDir = false;
-	
+		fileselector->filepath_to_display_name([this](rynx::string path) {
+			return  this->m_scenes->filepath_to_info(path).name;
+		});
+
 		m_editor_state->m_editor->push_popup(fileselector);
 		fileselector->display(
 			"/scenes/",

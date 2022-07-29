@@ -2,9 +2,9 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 
-struct Image {
+struct GraphicsDLL Image {
 	Image() {}
 	~Image() {
 		if(data)

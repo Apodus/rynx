@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 #include <utility>
 #include <vector>
 

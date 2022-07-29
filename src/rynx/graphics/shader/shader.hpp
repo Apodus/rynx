@@ -2,8 +2,8 @@
 #pragma once
 
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/string.hpp>
 
 typedef int GLint;
 typedef unsigned GLuint;
@@ -13,7 +13,7 @@ namespace rynx {
 	class matrix4;
 	namespace graphics {
 		class shaders;
-		class shader
+		class GraphicsDLL shader
 		{
 		public:
 			shader(rynx::string name, const rynx::string& vertex, const rynx::string& fragment);

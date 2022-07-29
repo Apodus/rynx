@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 
 namespace rynx {
 	namespace traits {

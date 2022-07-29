@@ -31,6 +31,7 @@ class Math : RynxProject
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
         conf.AddPublicDependency<RynxSystem>(target);
+		conf.AddPublicDependency<RynxStd>(target);
     }
 }
 
@@ -48,6 +49,9 @@ class Editor : RynxProject
         conf.AddPublicDependency<Menu>(target);
         conf.AddPublicDependency<Tech>(target);
         conf.AddPublicDependency<Scheduler>(target);
+		conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<Application>(target);
+		conf.AddPublicDependency<Graphics>(target);
     }
 }
 
@@ -64,6 +68,8 @@ class Input : RynxProject
     {
         conf.AddPublicDependency<Tech>(target);
         conf.AddPublicDependency<GLFW>(target);
+		conf.AddPublicDependency<Graphics>(target); // because graphics is responsible for opening window, and input comes from the native window.
+		// TODO: Create a new "NativeWindow" project, so input doesnt depend on graphics?
     }
 }
 
@@ -99,6 +105,7 @@ class Menu : RynxProject
     {
         conf.AddPublicDependency<Tech>(target);
         conf.AddPublicDependency<Input>(target);
+		conf.AddPublicDependency<Graphics>(target);
     }
 }
 
@@ -115,7 +122,9 @@ class Application : RynxProject
     {
         conf.AddPublicDependency<Audio>(target);
         conf.AddPublicDependency<Tech>(target);
-        conf.AddPublicDependency<Editor>(target);
+		conf.AddPublicDependency<Graphics>(target);
+		conf.AddPublicDependency<Input>(target);
+		conf.AddPublicDependency<Menu>(target);
     }
 }
 
@@ -147,7 +156,7 @@ class Thread : RynxProject
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
         conf.AddPublicDependency<RynxSystem>(target);
-        conf.AddPublicDependency<Tech>(target);
+        conf.AddPublicDependency<RynxStd>(target);
     }
 }
 
@@ -163,7 +172,45 @@ class Scheduler : RynxProject
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
         conf.AddPublicDependency<Thread>(target);
-        conf.AddPublicDependency<Tech>(target);
+        conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<Profiling>(target);
+        conf.AddPublicDependency<Math>(target);
+		conf.AddPublicDependency<Reflection>(target);
+		conf.AddPublicDependency<Ecs>(target);
+    }
+}
+
+[Generate]
+class Ecs : RynxProject
+{
+    public Ecs()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\ecs\";
+    }
+
+    [Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<Profiling>(target);
+        conf.AddPublicDependency<Math>(target);
+		conf.AddPublicDependency<Reflection>(target);
+    }
+}
+
+[Generate]
+class Reflection : RynxProject
+{
+    public Reflection()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\reflection\";
+    }
+
+    [Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<Profiling>(target);
     }
 }
 
@@ -182,6 +229,44 @@ class Tech : RynxProject
         conf.AddPublicDependency<RynxSystem>(target);
         conf.AddPublicDependency<Math>(target);
 		conf.AddPublicDependency<FileSystem>(target);
+		conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<Profiling>(target);
+		conf.AddPublicDependency<Scheduler>(target);
+		conf.AddPublicDependency<Ecs>(target);
+    }
+}
+
+[Generate]
+class RynxStd : RynxProject
+{
+    public RynxStd()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\std\";
+        AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
+    }
+
+    [Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        conf.AddPublicDependency<RynxSystem>(target);
+    }
+}
+
+[Generate]
+class Profiling : RynxProject
+{
+    public Profiling()
+    {
+        SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\profiling\";
+        AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
+    }
+
+    [Configure]
+    public void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        conf.AddPublicDependency<RynxStd>(target);
+		conf.AddPublicDependency<FileSystem>(target);
+		conf.AddPublicDependency<Thread>(target);
     }
 }
 
@@ -192,11 +277,12 @@ class FileSystem : RynxProject
     {
         SourceRootPath = @"[project.SharpmakeCsPath]\..\src\rynx\filesystem\";
         AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]/../tools/natvis/");
-    }
+	}
 
     [Configure]
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
+		conf.AddPublicDependency<RynxStd>(target);
     }
 }
 

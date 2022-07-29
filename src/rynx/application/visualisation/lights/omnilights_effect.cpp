@@ -7,8 +7,8 @@
 
 #include <rynx/application/components.hpp>
 #include <rynx/scheduler/context.hpp>
-#include <rynx/tech/profiling.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/profiling/profiling.hpp>
+#include <rynx/ecs/ecs.hpp>
 
 #include <rynx/system/assert.hpp>
 

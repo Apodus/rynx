@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/std/dynamic_bitset.hpp>
 #include <rynx/tech/sphere_tree.hpp>
 #include <rynx/tech/components.hpp>
 #include <rynx/math/vector.hpp>
@@ -14,7 +14,7 @@ namespace rynx {
 		class task;
 	}
 	
-	class collision_detection {
+	class TechDLL collision_detection {
 	private:
 		struct tracked_by_collisions {};
 
@@ -31,7 +31,7 @@ namespace rynx {
 			check_type type;
 		};
 
-		std::vector<rynx::unique_ptr<rynx::sphere_tree>> m_sphere_trees;
+		std::vector<rynx::shared_ptr<rynx::sphere_tree>> m_sphere_trees; // TODO: change back to unique_ptr
 		std::vector<collision_check> m_collision_checks;
 		
 	public:
@@ -101,7 +101,7 @@ namespace rynx {
 		void update_entities(rynx::scheduler::task& task_context, float dt);
 		
 		// api for slow operations that are only supposed to be used from an editor context
-		struct editor_api_t {
+		struct TechDLL editor_api_t {
 			editor_api_t(rynx::collision_detection* host) : m_host(host) {}
 			
 			void update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id);

@@ -7,13 +7,12 @@
 
 #include <rynx/system/assert.hpp>
 #include <rynx/math/math.hpp>
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/serialization_declares.hpp>
 
 #include <cinttypes>
 #include <cmath>
 #include <limits>
 
-#pragma warning (disable : 4201) // language extension used, anonymous structs
 #define RYNX_VECTOR_SIMD 0
 
 namespace rynx {
@@ -191,7 +190,6 @@ namespace rynx {
 
 	// not simd representation of four consecutive float values.
 	struct floats4 {
-#pragma warning (disable : 4201)
 		float x, y, z, w;
 
 		floats4(float x, const vec3<float>& other) : x(x), y(other.x), z(other.y), w(other.z) {}
@@ -213,18 +211,6 @@ namespace rynx {
 
 		floats4& operator+=(const floats4& other) { x += other.x; y += other.y; z += other.z; w += other.w; return *this; }
 		floats4& operator-=(const floats4& other) { x -= other.x; y -= other.y; z -= other.z; w -= other.w; return *this; }
-
-		/*
-		const float& operator [](int index) const {
-			rynx_assert(index >= 0 && index < 4, "index out of bounds");
-			return data[index];
-		}
-
-		float& operator [](int index) {
-			rynx_assert(index >= 0 && index < 4, "index out of bounds");
-			return data[index];
-		}
-		*/
 	};
 
 	namespace serialization {

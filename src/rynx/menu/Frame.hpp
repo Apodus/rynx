@@ -18,7 +18,7 @@ namespace rynx {
 	}
 
 	namespace menu {
-		class Frame : public Component {
+		class MenuDLL Frame : public Component {
 			vec3<float> m_prevScale;
 			matrix4 m_modelMatrix;
 			rynx::unique_ptr<rynx::graphics::mesh> m_backgroundMesh;

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/function.hpp>
 
 #ifndef _WIN32
 #include <ucontext.h>

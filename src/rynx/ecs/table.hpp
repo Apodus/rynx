@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include <rynx/tech/serialization.hpp>
-#include <rynx/tech/ecs/id.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/serialization.hpp>
+#include <rynx/ecs/id.hpp>
+#include <rynx/std/memory.hpp>
 #include <rynx/system/assert.hpp>
 #include <rynx/system/typeid.hpp>
 #include <vector>
@@ -24,6 +24,10 @@ namespace rynx {
 			virtual void deserialize(rynx::serialization::vector_reader& reader) = 0;
 			virtual void for_each_id_field(rynx::function<void(rynx::id&)>) = 0;
 
+			// serialization, only top-most level scene entities should be touched. and their id links need to be transformed
+			// to persistent scene id chains.
+			virtual void for_each_id_field_for_single_index(index_t index, rynx::function<void(rynx::id&)> op) = 0;
+			
 			// when we already have content in ecs, and we deserialize (load) more content in,
 			// we need to operate over all deserialized entities but to not touch pre-existing data.
 			virtual void for_each_id_field_from_index(size_t startingIndex, rynx::function<void(rynx::id&)>) = 0;
@@ -103,6 +107,10 @@ namespace rynx {
 				for (auto& entry : m_data) {
 					rynx::for_each_id_field(entry, op);
 				}
+			}
+
+			virtual void for_each_id_field_for_single_index(index_t index, rynx::function<void(rynx::id&)> op) {
+				rynx::for_each_id_field(m_data[index], op);
 			}
 
 			// TODO: skip iterating over data if no types in hierarchy have id members.
@@ -234,8 +242,10 @@ namespace rynx {
 	ecs_table_create_func make_ecs_table_create_func(type_id_t type_id) {
 		return [type_id]() {
 			if constexpr (std::is_empty_v<T>) {
-				return rynx::unique_ptr<rynx::ecs_internal::component_table<T>>(nullptr); // don't create tables for empty types (tag types)
+				return rynx::unique_ptr<rynx::ecs_internal::itable>(nullptr); // don't create tables for empty types (tag types)
 			}
+			else if constexpr(std::is_base_of_v<rynx::ecs_no_component_tag, T>)
+				return rynx::unique_ptr<rynx::ecs_internal::itable>(nullptr); // don't create tables for types that user has promised to not use as components
 			else {
 				return rynx::make_unique<rynx::ecs_internal::component_table<T>>(type_id);
 			}

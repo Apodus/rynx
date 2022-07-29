@@ -3,8 +3,8 @@
 
 #include <rynx/menu/Component.hpp>
 #include <rynx/math/vector.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 namespace rynx {
 	class mapped_input;
@@ -15,7 +15,7 @@ namespace rynx {
 
 	namespace menu {
 
-		class FileSelector : public Component {
+		class MenuDLL FileSelector : public Component {
 		protected:
 			
 		public:

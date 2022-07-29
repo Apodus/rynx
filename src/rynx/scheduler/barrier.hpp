@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <atomic>
@@ -11,7 +11,7 @@ namespace rynx {
 	namespace scheduler {
 		class context;
 
-		struct barrier {
+		struct SchedulerDLL barrier {
 			barrier() : barrier("anon") {}
 			barrier(rynx::string name) : name(std::move(name)), counter(rynx::make_shared<std::atomic<int32_t>>(0)) {}
 			barrier(const barrier& other) = default;
@@ -25,7 +25,7 @@ namespace rynx {
 			rynx::shared_ptr<std::atomic<int32_t>> counter; // counter object is shared by all copies of the same barrier.
 		};
 
-		class operation_barriers {
+		class SchedulerDLL operation_barriers {
 		public:
 			operation_barriers() = default;
 			operation_barriers(operation_barriers&&) = default;
@@ -105,7 +105,7 @@ namespace rynx {
 			std::vector<rynx::weak_ptr<operation_barriers>> m_extensions; // operations that extend this operation instance.
 		};
 
-		class operation_resources {
+		class SchedulerDLL operation_resources {
 			std::vector<uint64_t> m_writeAccess;
 			std::vector<uint64_t> m_readAccess;
 
@@ -128,7 +128,7 @@ namespace rynx {
 
 		// this barrier is attached to end of any new task added to scheduler while in scope.
 		// this barrier depends on tasks created.
-		class scoped_barrier_after {
+		class SchedulerDLL scoped_barrier_after {
 		public:
 			scoped_barrier_after(scheduler::context& context, rynx::scheduler::barrier bar);
 			~scoped_barrier_after();
@@ -138,7 +138,7 @@ namespace rynx {
 
 		// this barrier is attached to front of any new task added to scheduler while in scope.
 		// created tasks depend on this barrier.
-		class scoped_barrier_before {
+		class SchedulerDLL scoped_barrier_before {
 		public:
 			scoped_barrier_before(scheduler::context& context) : m_context(&context) {}
 

@@ -2,7 +2,7 @@
 
 #include "rynx/filesystem/filekinds/file.hpp"
 #include "rynx/filesystem/native_fs.hpp"
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 #include <iosfwd>
 
 namespace rynx {

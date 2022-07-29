@@ -15,7 +15,7 @@ namespace rynx {
 
 	namespace menu {
 
-		class List : public Component {
+		class MenuDLL List : public Component {
 		protected:
 			
 

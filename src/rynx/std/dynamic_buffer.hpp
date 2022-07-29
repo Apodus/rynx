@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/serialization_declares.hpp>
 #include <rynx/system/assert.hpp>
 #include <type_traits>
 #include <cstring>

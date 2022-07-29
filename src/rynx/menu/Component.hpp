@@ -5,8 +5,8 @@
 #include <rynx/graphics/texture/id.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/tech/smooth_value.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 #include <vector>
 
@@ -39,7 +39,7 @@ namespace rynx {
 
 		class System;
 
-		class Component {
+		class MenuDLL Component {
 			friend class rynx::menu::System;
 
 		private:
@@ -283,7 +283,7 @@ namespace rynx {
 		// TODO: naming is too vague. this is an instance of a menu tree.
 		//       contains the menu root component, which may have child components.
 		//       a menu "System" is guaranteed to not have a parent menu element.
-		class System {
+		class MenuDLL System {
 			rynx::unique_ptr<Component> m_root;
 
 			// some components require dedicated focus state to function correctly.

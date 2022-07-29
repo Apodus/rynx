@@ -18,7 +18,7 @@ namespace rynx {
 		}
 		
 		class string;
-		class string_view {
+		class RynxStdDLL string_view {
 			char const* m_data = nullptr;
 			size_t m_length = 0;
 
@@ -38,7 +38,7 @@ namespace rynx {
 			char operator[](size_t i) const noexcept;
 		};
 
-		class string {
+		class RynxStdDLL string {
 		public:
 			static constexpr uint64_t npos = ~uint64_t(0);
 
@@ -222,16 +222,15 @@ namespace rynx {
 		return rynx::to_string(static_cast<double>(v));
 	}
 
-	float stof(rynx::std_replacements::string_view str);
+	float RynxStdDLL stof(rynx::std_replacements::string_view str);
+	bool RynxStdDLL is_small_space(const rynx::std_replacements::string& str);
 
 	using string = rynx::std_replacements::string;
 	using string_view = rynx::std_replacements::string_view;
-
-	bool is_small_space(const rynx::string& str);
 }
 
-rynx::string operator + (char const* const other, const rynx::string& str);
-rynx::string operator + (char const* const other, rynx::string&& str);
+RynxStdDLL rynx::string operator + (char const* const other, const rynx::string& str);
+RynxStdDLL rynx::string operator + (char const* const other, rynx::string&& str);
 
 // todo: use some actual string hash
 namespace std {
@@ -249,8 +248,8 @@ namespace std {
 	};
 }
 
-bool operator == (rynx::std_replacements::string_view a, const rynx::std_replacements::string& b);
-bool operator == (const rynx::std_replacements::string& b, rynx::std_replacements::string_view a);
+RynxStdDLL bool operator == (rynx::std_replacements::string_view a, const rynx::std_replacements::string& b);
+RynxStdDLL bool operator == (const rynx::std_replacements::string& b, rynx::std_replacements::string_view a);
 
-std::ostream& operator << (std::ostream& out, const rynx::string& str);
-std::istream& operator >> (std::istream& in, rynx::string& str);
+RynxStdDLL std::ostream& operator << (std::ostream& out, const rynx::string& str);
+RynxStdDLL std::istream& operator >> (std::istream& in, rynx::string& str);

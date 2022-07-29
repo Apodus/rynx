@@ -1,6 +1,6 @@
 
 #include "window.hpp"
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -10,7 +10,7 @@
 #include <iostream>
 
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/std/memory.hpp> // todo: include rynx::function
+#include <rynx/std/memory.hpp> // todo: include rynx::function
 
 using ResizeEventMapper = rynx::unordered_map<GLFWwindow*, rynx::function<void(int, int)>>;
 

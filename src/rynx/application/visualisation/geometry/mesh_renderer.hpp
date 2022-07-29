@@ -5,11 +5,11 @@
 #include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
 
-#include <rynx/tech/profiling.hpp>
+#include <rynx/profiling/profiling.hpp>
 
 
 // required for implementation
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/math/matrix.hpp>
 #include <rynx/math/vector.hpp>
 

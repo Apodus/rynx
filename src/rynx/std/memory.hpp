@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/std/function.hpp> // for opaque_unique_ptr deleter. maybe just allow dynamic deleter for unique ptr?
+#include <rynx/std/function.hpp> // for opaque_unique_ptr deleter. maybe just allow dynamic deleter for unique ptr?
 
 #include <cstddef>
 #include <type_traits>
@@ -103,7 +103,7 @@ namespace rynx {
                 std::enable_if_t<std::conjunction_v<std::is_reference<convertible_element_deleter_t>, std::is_constructible<deleter_t, std::remove_reference_t<convertible_element_deleter_t>>>, int> = 0>
             unique_ptr(pointer, std::remove_reference_t<convertible_element_deleter_t>&&) = delete;
 
-            unique_ptr(unique_ptr&& other) {
+            unique_ptr(unique_ptr&& other) noexcept {
                 m_deleter = other.m_deleter;
                 m_ptr = other.release();
             }

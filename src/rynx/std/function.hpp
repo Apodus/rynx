@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <rynx/system/assert.hpp>
 #include <cstddef>
 #include <type_traits>
 
@@ -151,8 +152,9 @@ namespace rynx {
 
             void swap(function& other) noexcept
             {
-                using std::swap;
-                swap(func, other.func);
+                auto* self = func;
+                func = other.func;
+                other.func = self;
             }
 
             explicit operator bool() const noexcept

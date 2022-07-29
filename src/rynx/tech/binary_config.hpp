@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/std/dynamic_bitset.hpp>
 #include <atomic>
 #include <cstdint>
 #include <vector>

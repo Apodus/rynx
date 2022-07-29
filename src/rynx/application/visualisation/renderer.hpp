@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <vector>
 
 namespace rynx {
@@ -10,7 +10,7 @@ namespace rynx {
 	}
 
 	namespace application {
-		class igraphics_step {
+		class ApplicationDLL igraphics_step {
 		public:
 			virtual ~igraphics_step() {}
 			virtual void execute() = 0;

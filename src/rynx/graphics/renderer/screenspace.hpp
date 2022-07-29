@@ -2,7 +2,7 @@
 
 namespace rynx {
 	namespace graphics {
-		class screenspace_draws {
+		class GraphicsDLL screenspace_draws {
 		public:
 			screenspace_draws();
 			static void draw_fullscreen();

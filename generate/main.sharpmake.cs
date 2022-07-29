@@ -23,6 +23,7 @@ class Game : RynxProject
         conf.AddPublicDependency<Graphics>(target);
         conf.AddPublicDependency<Tech>(target);
         conf.AddPublicDependency<Scheduler>(target);
+		conf.AddPublicDependency<Editor>(target);
 
         conf.TargetFileName = Name;
         conf.SolutionFolder = ""; // game is not part of rynx. should not be rynxproject.

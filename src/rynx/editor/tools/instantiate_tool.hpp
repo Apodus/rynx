@@ -9,12 +9,13 @@
 #include <rynx/graphics/texture/id.hpp>
 
 namespace rynx {
+	class scenes;
 	namespace filesystem {
 		class vfs;
 	}
 	namespace editor {
 		namespace tools {
-			class instantiation_tool : public itool {
+			class EditorDLL instantiation_tool : public itool {
 			public:
 				instantiation_tool(rynx::scheduler::context& ctx);
 
@@ -44,6 +45,7 @@ namespace rynx {
 
 				rynx::graphics::texture_id m_frame_tex_id;
 				rynx::observer_ptr<rynx::filesystem::vfs> m_vfs;
+				rynx::observer_ptr<rynx::scenes> m_scenes;
 			};
 		}
 	}

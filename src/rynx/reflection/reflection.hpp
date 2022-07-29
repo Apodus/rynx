@@ -1,9 +1,9 @@
 #pragma once
 
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/type_index.hpp>
-#include <rynx/tech/ecs/table.hpp>
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/type_index.hpp>
+#include <rynx/ecs/table.hpp>
+#include <rynx/std/serialization_declares.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -128,7 +128,7 @@ namespace rynx {
 		namespace internal {
 			struct registration_object;
 
-			extern registration_object* global_linked_list_initializer_head;
+			ReflectionDLL extern registration_object* global_linked_list_initializer_head;
 
 			struct registration_object {
 				registration_object(rynx::function<void(rynx::reflection::reflections&)> op) {
@@ -142,7 +142,7 @@ namespace rynx {
 			};
 		}
 
-		class reflections {
+		class ReflectionDLL reflections {
 		public:
 			reflections() = default;
 
@@ -165,6 +165,12 @@ namespace rynx {
 
 			template<typename T>
 			rynx::reflection::type& create() {
+				{
+					auto it = m_reflections.find(rynx::string(typeid(T).name()));
+					if (it != m_reflections.end())
+						return it->second;
+				}
+				
 				rynx::reflection::type result;
 				result.m_type_name = rynx::string(typeid(T).name());
 				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
@@ -187,8 +193,10 @@ namespace rynx {
 					if constexpr (std::is_base_of_v<tag_t, type_t> && !std::is_same_v<tag_t, type_t>) {
 						return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(new rynx::ecs_internal::value_segregation_map<T>());
 					}
-					rynx_assert(false, "calling map create for a type that has no map type");
-					return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
+					else {
+						rynx_assert(false, "calling map create for a type that has no map type");
+						return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
+					}
 				};
 
 				m_reflections.emplace(rynx::string(typeid(T).name()), std::move(result));

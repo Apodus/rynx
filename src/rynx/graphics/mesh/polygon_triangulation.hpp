@@ -4,7 +4,7 @@
 #include <rynx/math/vector.hpp>
 #include <rynx/graphics/mesh/mesh.hpp>
 #include <rynx/math/geometry/polygon.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 #include <vector>
 
@@ -14,7 +14,7 @@ namespace rynx {
 	}
 	class triangles;
 	class polygon;
-	class polygon_triangulation {
+	class GraphicsDLL polygon_triangulation {
 	public:
 		struct triangle {
 			int a, b, c;

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <rynx/audio/dsp/signal.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/math/random.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 #include <vector>
 #include <cstdint>
@@ -15,7 +15,7 @@ namespace rynx {
     namespace sound {
         class audio_system;
 
-        struct buffer {
+        struct AudioDLL buffer {
             std::vector<float> left;
             std::vector<float> right;
             
@@ -28,7 +28,7 @@ namespace rynx {
             float tempo_shift = 0.0f;
         };
 
-        struct source_instance {
+        struct AudioDLL source_instance {
             source_instance();
 
             struct {
@@ -50,7 +50,7 @@ namespace rynx {
             std::valarray<std::complex<float>> prev_right;
         };
 
-        struct configuration {
+        struct AudioDLL configuration {
         private:
             audio_system* m_rynxAudio = nullptr;
             source_instance* m_soundData = nullptr;
@@ -79,7 +79,7 @@ namespace rynx {
         };
 
         // TODO: Should enforce that all loads are done before output is opened.
-        class audio_system {
+        class AudioDLL audio_system {
         public:
             enum class format {
                 int16,

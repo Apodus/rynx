@@ -14,11 +14,11 @@
 #include <rynx/application/logic.hpp>
 #include <rynx/application/render.hpp>
 
-#include <rynx/tech/profiling.hpp>
+#include <rynx/profiling/profiling.hpp>
 
 // For default processing only
 #include <rynx/menu/Component.hpp>
-#include <rynx/tech/timer.hpp>
+#include <rynx/std/timer.hpp>
 #include <rynx/graphics/renderer/screenspace.hpp>
 
 using DefaultProcessingFunctionality = rynx::application::Application::default_frame_processing_functionality;

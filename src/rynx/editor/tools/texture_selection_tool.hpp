@@ -12,7 +12,7 @@ namespace rynx {
 	namespace editor {
 		namespace tools {
 
-			class texture_selection : public itool {
+			class EditorDLL texture_selection : public itool {
 			public:
 				texture_selection(rynx::scheduler::context& ctx);
 

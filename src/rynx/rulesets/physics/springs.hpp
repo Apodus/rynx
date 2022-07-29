@@ -5,7 +5,7 @@
 namespace rynx {
 	namespace ruleset {
 		namespace physics {
-			class springs : public application::logic::iruleset {
+			class RuleSetsDLL springs : public application::logic::iruleset {
 			public:
 				springs() = default;
 				virtual ~springs() {}

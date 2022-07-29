@@ -1,14 +1,14 @@
 
 #pragma once
 
-#include <rynx/tech/profiling.hpp>
+#include <rynx/profiling/profiling.hpp>
 
 namespace rynx {
 
 	namespace scheduler {
 		class task_scheduler;
 		
-		struct dead_lock_detector {
+		struct SchedulerDLL dead_lock_detector {
 			
 			struct data;
 			data* m_data = nullptr;

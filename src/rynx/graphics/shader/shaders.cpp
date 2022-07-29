@@ -1,7 +1,7 @@
 
 #include <rynx/graphics/shader/shaders.hpp>
 #include <rynx/graphics/internal/includes.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 rynx::graphics::shaders::shaders() {

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <rynx/tech/dynamic_buffer.hpp>
-#include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/std/dynamic_buffer.hpp>
+#include <rynx/std/dynamic_bitset.hpp>
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 #include <utility> // for std::pair ..
 
@@ -317,10 +317,16 @@ namespace rynx {
 		}
 
 		unordered_map& operator = (const unordered_map& other) {
-			clear();
-			for (const auto& entry : other)
-				emplace(entry);
-			return *this;
+			if constexpr (std::is_copy_assignable_v<T> && std::is_copy_assignable_v<U>) {
+				clear();
+				for (const auto& entry : other)
+					emplace(entry);
+				return *this;
+			}
+			else {
+				rynx_assert(false, "todo fix");
+				return *this;
+			}
 		}
 
 		unordered_map& operator = (unordered_map&& other) noexcept {
@@ -638,7 +644,7 @@ namespace rynx {
 }
 
 
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/serialization_declares.hpp>
 
 namespace rynx {
 	namespace serialization {

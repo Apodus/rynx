@@ -5,9 +5,9 @@
 #include <rynx/filesystem/filekinds/memoryfile.hpp>
 #include <rynx/filesystem/filekinds/nativefile.hpp>
 #include <rynx/filesystem/native_fs.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/std/memory.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/memory.hpp>
+#include <rynx/std/string.hpp>
 
 #include <algorithm>
 

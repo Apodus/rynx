@@ -1,16 +1,17 @@
 
 #pragma once
 
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/filesystem/virtual_filesystem.hpp>
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/serialization_declares.hpp>
+#include <rynx/std/string.hpp>
+#include <vector>
 
 namespace rynx {
 	namespace filesystem {
 		class vfs;
 	}
 
-	struct scene_id {
+	struct EcsDLL scene_id {
 		uint64_t m_random_1 = 0;
 		uint64_t m_random_2 = 0;
 		
@@ -66,7 +67,7 @@ namespace rynx {
 		};
 	}
 
-	class scenes {
+	class EcsDLL scenes {
 	public:
 		const uint64_t serialized_scene_marker = 0x1234567812345678ull;
 		

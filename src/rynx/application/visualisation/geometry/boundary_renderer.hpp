@@ -6,8 +6,8 @@
 #include <rynx/application/components.hpp>
 #include <rynx/tech/binary_config.hpp>
 
-#include <rynx/tech/profiling.hpp>
-#include <rynx/tech/ecs.hpp>
+#include <rynx/profiling/profiling.hpp>
+#include <rynx/ecs/ecs.hpp>
 
 namespace rynx {
 	namespace application {

@@ -8,7 +8,7 @@
 
 #include <rynx/input/mapped_input.hpp>
 
-#include <rynx/tech/timer.hpp>
+#include <rynx/std/timer.hpp>
 #include <rynx/tech/collision_detection.hpp>
 
 #include <rynx/scheduler/task_scheduler.hpp>

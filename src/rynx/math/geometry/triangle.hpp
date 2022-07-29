@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace rynx {
-	class triangle {
+	class MathDLL triangle {
 	public:
 		triangle(rynx::vec3f a, rynx::vec3f b, rynx::vec3f c) : a(a), b(b), c(c) {}
 		
@@ -18,7 +18,7 @@ namespace rynx {
 		rynx::vec3f a, b, c;
 	};
 
-	class triangles {
+	class MathDLL triangles {
 	public:
 		bool point_in_polygon(rynx::vec3f point) const;
 		rynx::vec3f centre_of_mass() const;

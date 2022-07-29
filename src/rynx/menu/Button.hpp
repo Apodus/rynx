@@ -9,7 +9,7 @@ namespace rynx {
 	class mapped_input;
 	
 	namespace menu {
-		class Button : public Component {
+		class MenuDLL Button : public Component {
 		protected:
 			vec3<float> m_defaultScale;
 			rynx::shared_ptr<rynx::menu::Text> m_textField;

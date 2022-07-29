@@ -44,6 +44,7 @@ public class RynxProject : Project
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.CppLanguageStandard.Latest);
 
 			conf.Options.Add(new Sharpmake.Options.Vc.Compiler.DisableSpecificWarnings("4324")); // 'struct_name' : structure was padded due to __declspec(align())
+			conf.Options.Add(new Sharpmake.Options.Vc.Compiler.DisableSpecificWarnings("4251")); // 'class member': class 'type' needs to have dll-interface to be used by clients of class
 
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.MultiProcessorCompilation.Enable);
 			conf.Options.Add(Sharpmake.Options.Vc.Compiler.FiberSafe.Enable);
@@ -77,7 +78,6 @@ public class RynxProject : Project
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.Optimization.Disable);
 				conf.Options.Add(Sharpmake.Options.Vc.Compiler.BufferSecurityCheck.Enable);
 			}
-			conf.AdditionalCompilerOptions.Add("/experimental:module");
 
 			if (target.Optimization == Optimization.Retail)
 			{
@@ -102,7 +102,17 @@ public class RynxProject : Project
 
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\src\");
 
-		conf.Output = Project.Configuration.OutputType.Lib;
+		if(false) {
+			conf.Output = Project.Configuration.OutputType.Dll;
+			conf.ExportDefines.Add("[project.Name]DLL=__declspec(dllimport)");
+			conf.Defines.Add("[project.Name]DLL=__declspec(dllexport)");
+		}
+		else {
+			conf.Output = Project.Configuration.OutputType.Lib;
+			conf.ExportDefines.Add("[project.Name]DLL=");
+			conf.Defines.Add("[project.Name]DLL=");
+		}
+		
 		conf.ProjectPath = @"[project.SharpmakeCsPath]/../generate/build/projects/";
 
 		conf.IntermediatePath = @"[conf.ProjectPath]/intermediate/[project.Name]_[target.Name]";
@@ -140,6 +150,7 @@ class ExternalProject : RynxProject
 	[Configure()]
 	public void conf_external(Project.Configuration conf, Target target)
 	{
+		conf.Output = Project.Configuration.OutputType.Lib;
 		if (target.Platform == Platform.win64)
 			conf.Options.Add(Options.Vc.General.WarningLevel.Level0); // don't care about external warnings
 		conf.SolutionFolder = "External";

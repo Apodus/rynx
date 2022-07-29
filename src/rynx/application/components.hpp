@@ -1,17 +1,13 @@
 
 #pragma once
 
-#include <rynx/tech/ecs.hpp>
-#include <rynx/tech/object_storage.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/math/geometry/polygon.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/math/random.hpp>
-// #include <rynx/tech/collision_detection.hpp>
 #include <rynx/system/annotate.hpp>
-
-#ifndef RYNX_CODEGEN
+#include <rynx/graphics/mesh/id.hpp>
 #include <rynx/tech/components.hpp>
-#endif
 
 namespace rynx {
 	namespace graphics {
@@ -191,7 +187,6 @@ namespace rynx {
 				joint_type m_joint;
 			};
 
-#ifndef RYNX_CODEGEN
 			inline float compute_current_joint_length(const joint& rope, rynx::ecs::view<const rynx::components::position> ecs) {
 				if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id)))
 					return 0;
@@ -208,7 +203,6 @@ namespace rynx {
 				auto world_pos_b = pos_b.value + relative_pos_b;
 				return (world_pos_a - world_pos_b).length();
 			}
-#endif
 		}
 
 		struct mesh : public rynx::ecs_value_segregated_component_tag {

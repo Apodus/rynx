@@ -2,7 +2,7 @@
 #include <rynx/graphics/internal/includes.hpp>
 #include <rynx/graphics/framebuffer.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/system/assert.hpp>
 
 namespace {

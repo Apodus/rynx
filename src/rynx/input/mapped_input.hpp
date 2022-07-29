@@ -1,15 +1,15 @@
 #pragma once
 
 #include <rynx/input/userio.hpp>
-#include <rynx/tech/unordered_map.hpp>
-#include <rynx/tech/object_storage.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/std/unordered_map.hpp>
+#include <rynx/std/string.hpp>
+#include <vector>
 
 namespace rynx {
 	class ray;
 	class camera;
 
-	class mapped_input {
+	class InputDLL mapped_input {
 	public:
 		mapped_input(rynx::shared_ptr<rynx::input> physicalIO) {
 			userIO = physicalIO;

@@ -6,7 +6,7 @@
 
 namespace rynx {
 	class ray;
-	class plane {
+	class MathDLL plane {
 	public:
 		plane() = default;
 		plane(float a, float b, float c, float d) { set_coefficients(a, b, c, d); }

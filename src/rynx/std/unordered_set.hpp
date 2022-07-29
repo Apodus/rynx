@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rynx/tech/dynamic_buffer.hpp>
-#include <rynx/tech/dynamic_bitset.hpp>
+#include <rynx/std/dynamic_buffer.hpp>
+#include <rynx/std/dynamic_bitset.hpp>
 #include <rynx/system/assert.hpp>
 
 #include <utility>

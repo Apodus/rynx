@@ -4,7 +4,7 @@
 #include <rynx/thread/semaphore.hpp>
 #include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/task.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 #include <atomic>
 
 namespace std {

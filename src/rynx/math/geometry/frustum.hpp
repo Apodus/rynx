@@ -8,7 +8,7 @@
 namespace rynx {
 	class matrix4;
 
-	class frustum
+	class MathDLL frustum
 	{
 	public:
 		void set_viewprojection(const rynx::matrix4& viewProjection);

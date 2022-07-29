@@ -1,5 +1,5 @@
 
-#include <rynx/tech/type_index.hpp>
+#include <rynx/std/type_index.hpp>
 #include <algorithm>
 #include <vector>
 
@@ -7,10 +7,18 @@ namespace {
 	uint64_t runningTypeIndex_global = 0;
 }
 
-rynx::type_index::used_type* rynx::type_index::internal::used_type_list = nullptr;
+rynx::type_index::used_type* used_type_list = nullptr;
+
+rynx::type_index::used_type* rynx::type_index::internal::get_used_type_list() {
+	return used_type_list;
+}
+
+void rynx::type_index::internal::set_used_type_list(rynx::type_index::used_type* v) {
+	used_type_list = v;
+}
 
 void rynx::type_index::initialize() {
-	used_type* current = rynx::type_index::internal::used_type_list;
+	used_type* current = used_type_list;
 	if (current == nullptr)
 		return;
 
@@ -28,7 +36,7 @@ void rynx::type_index::initialize() {
 	}
 
 	// prevent reinitialization of processed values
-	rynx::type_index::internal::used_type_list = nullptr;
+	used_type_list = nullptr;
 }
 
 

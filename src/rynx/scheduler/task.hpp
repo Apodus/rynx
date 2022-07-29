@@ -2,8 +2,8 @@
 #pragma once
 
 #include <rynx/tech/parallel/accumulator.hpp>
-#include <rynx/tech/ecs.hpp>
-#include <rynx/tech/std/string.hpp>
+#include <rynx/ecs/ecs.hpp>
+#include <rynx/std/string.hpp>
 #include <rynx/scheduler/barrier.hpp>
 #include <rynx/system/assert.hpp>
 
@@ -14,7 +14,7 @@ namespace rynx {
 		class task;
 		class task_token;
 
-		class task_token {
+		class SchedulerDLL task_token {
 		private:
 			// TODO get rid of this
 			template<typename RynxTask, typename F> static task_token silly_delayed_evaluate(rynx::string&& name, RynxTask& task, F&& f) {
@@ -56,7 +56,7 @@ namespace rynx {
 			rynx::unique_ptr<task> m_pTask;
 		};
 
-		class task {
+		class SchedulerDLL task {
 		private:
 			friend class rynx::scheduler::context;
 			friend class rynx::scheduler::task_token;
@@ -421,7 +421,7 @@ namespace rynx {
 		private:
 			void notify_work_available() const;
 			
-			struct task_resources : public operation_resources {
+			struct SchedulerDLL task_resources : public operation_resources {
 				task_resources(context* ctx) : m_context(ctx) {}
 				~task_resources();
 

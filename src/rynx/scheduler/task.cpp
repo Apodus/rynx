@@ -2,7 +2,7 @@
 #include <rynx/scheduler/context.hpp>
 #include <rynx/scheduler/task.hpp>
 #include <rynx/scheduler/task_scheduler.hpp>
-#include <rynx/tech/profiling.hpp>
+#include <rynx/profiling/profiling.hpp>
 
 rynx::scheduler::task* rynx::scheduler::task_token::operator -> () { return m_pTask.get(); }
 rynx::scheduler::task_token::~task_token() {

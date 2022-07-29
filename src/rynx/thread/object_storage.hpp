@@ -1,8 +1,8 @@
 #pragma once
 
 #include <rynx/system/assert.hpp>
-#include <rynx/tech/type_index.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/type_index.hpp>
+#include <rynx/std/memory.hpp>
 
 #include <vector>
 #include <type_traits>

@@ -5,9 +5,9 @@
 
 namespace rynx {
 	namespace this_thread {
-		int64_t id();
+		ThreadDLL int64_t id();
 
-		struct rynx_thread_raii {
+		struct ThreadDLL rynx_thread_raii {
 			rynx_thread_raii();
 			~rynx_thread_raii();
 		};

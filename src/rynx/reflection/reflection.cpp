@@ -1,8 +1,8 @@
 
-#include <rynx/tech/reflection.hpp>
+#include <rynx/reflection/reflection.hpp>
 
 namespace rynx::reflection::internal {
-	registration_object* global_linked_list_initializer_head = nullptr;
+	ReflectionDLL registration_object* global_linked_list_initializer_head = nullptr;
 }
 
 

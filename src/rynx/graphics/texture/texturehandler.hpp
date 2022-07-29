@@ -1,10 +1,10 @@
 
 #pragma once
 
-#include <rynx/tech/serialization.hpp>
+#include <rynx/std/serialization.hpp>
 #include <rynx/graphics/texture/image.hpp>
 #include <rynx/graphics/texture/id.hpp>
-#include <rynx/tech/unordered_map.hpp>
+#include <rynx/std/unordered_map.hpp>
 #include <rynx/math/vector.hpp>
 
 #include <string_view>
@@ -12,7 +12,7 @@
 
 namespace rynx {
 	namespace graphics {
-		class GPUTextures {
+		class GraphicsDLL GPUTextures {
 		public:
 			struct tex_conf {
 				bool vertex_positions_as_uv = false;

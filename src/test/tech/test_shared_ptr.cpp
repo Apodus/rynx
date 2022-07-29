@@ -1,6 +1,6 @@
 
 #include <catch.hpp>
-#include <rynx/tech/std/memory.hpp>
+#include <rynx/std/memory.hpp>
 
 TEST_CASE("shared_ptr", "copying increments use count")
 {

@@ -4,8 +4,8 @@
 #include <rynx/math/geometry/line_segment.hpp>
 #include <rynx/math/geometry/math.hpp>
 
-#include <rynx/tech/dynamic_buffer.hpp>
-#include <rynx/tech/serialization_declares.hpp>
+#include <rynx/std/dynamic_buffer.hpp>
+#include <rynx/std/serialization_declares.hpp>
 
 #include <vector>
 
@@ -22,7 +22,7 @@ namespace rynx {
 
 	class polygon_editor;
 
-	class polygon {
+	class MathDLL polygon {
 	public:
 		friend class polygon_editor;
 

@@ -3,7 +3,7 @@
 #include <rynx/math/vector.hpp>
 
 namespace rynx {
-	class matrix4 {
+	class MathDLL matrix4 {
 	public:
 		union {
 			float m[16];

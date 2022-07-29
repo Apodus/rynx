@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <rynx/tech/ecs.hpp>
+#include <rynx/ecs/ecs.hpp>
 #include <rynx/graphics/texture/texturehandler.hpp>
 
 #include <rynx/menu/Div.hpp>
@@ -33,7 +33,7 @@ namespace rynx {
 		);
 	}
 
-	class editor_rules : public rynx::application::logic::iruleset {
+	class EditorDLL editor_rules : public rynx::application::logic::iruleset {
 	private:
 		rynx::editor::editor_shared_state m_state;
 
