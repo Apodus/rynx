@@ -79,10 +79,10 @@ namespace rynx {
             using deleter_type = deleter_t;
 
             template <class convertible_element_deleter_t = deleter_t, unique_ptr_enable_default_t<convertible_element_deleter_t> = 0>
-            constexpr unique_ptr() noexcept : m_deleter(), m_ptr(nullptr) {}
+            constexpr unique_ptr() noexcept {};
 
             template <class convertible_element_deleter_t = deleter_t, unique_ptr_enable_default_t<convertible_element_deleter_t> = 0>
-            constexpr unique_ptr(nullptr_t) noexcept : m_deleter(), m_ptr(nullptr) {}
+            constexpr unique_ptr(nullptr_t) noexcept : unique_ptr() {}
 
             unique_ptr& operator=(nullptr_t) noexcept {
                 reset();
@@ -203,7 +203,7 @@ namespace rynx {
             friend class unique_ptr;
 
             deleter_t m_deleter;
-            pointer m_ptr;
+            pointer m_ptr = nullptr;
         };
 
         template <class element_t, class deleter_t>
@@ -486,6 +486,7 @@ namespace rynx {
 
             shared_ptr& reset() noexcept {
                 release();
+                return *this;
             }
         };
 
