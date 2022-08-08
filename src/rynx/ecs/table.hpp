@@ -19,6 +19,7 @@ namespace rynx {
 			
 			virtual void erase(entity_id_t entityId) = 0;
 			virtual void insert(opaque_unique_ptr<void> data) = 0;
+			virtual bool equals(index_t index, const void* data) const = 0;
 
 			virtual void serialize(rynx::serialization::vector_writer& writer) = 0;
 			virtual void deserialize(rynx::serialization::vector_reader& reader) = 0;
@@ -38,6 +39,7 @@ namespace rynx {
 			virtual void replace_with_back_and_pop(index_t i) = 0;
 
 			virtual void* get(index_t) = 0;
+			virtual const void* get(index_t) const = 0;
 			virtual rynx::string type_name() const = 0;
 			virtual bool is_type_segregated() const = 0;
 
@@ -63,6 +65,10 @@ namespace rynx {
 
 			virtual void insert(opaque_unique_ptr<void> data) override {
 				m_data.emplace_back(std::move(*static_cast<T*>(data.get())));
+			}
+
+			virtual bool equals(index_t index, const void* data) const {
+				return m_data[index] == *static_cast<const T*>(data);
 			}
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) override {
@@ -126,6 +132,8 @@ namespace rynx {
 			}
 
 			virtual void* get(index_t i) override { return &m_data[i]; }
+			virtual const void* get(index_t i) const override { return &m_data[i]; }
+			
 			virtual rynx::string type_name() const {
 				return rynx::traits::template type_name<T>();
 			}

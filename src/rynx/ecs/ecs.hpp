@@ -1336,7 +1336,31 @@ namespace rynx {
 			return rynx::id();
 		}
 
-		std::vector<rynx::components::scene::persistent_id> find_persistent_id_path(rynx::id from, rynx::id to) {
+		std::vector<rynx::components::scene::persistent_id> persistent_id_path_create(rynx::id to) {
+			id to_scene = scene_parent_of(to);
+
+			// if entity is in root scene, just return the target entity persistent id as the path.
+			if (!to_scene)
+				return { this->operator[](to).get<rynx::components::scene::persistent_id>() };
+
+			std::vector<rynx::components::scene::persistent_id> path;
+			path.emplace_back(this->operator[](to).get<rynx::components::scene::persistent_id>());
+
+			id reverse_path_iteration = to_scene;
+			while (true) {
+				path.emplace_back(this->operator[](reverse_path_iteration).get<rynx::components::scene::persistent_id>());
+				reverse_path_iteration = scene_parent_of(reverse_path_iteration);
+				if (!reverse_path_iteration) {
+					std::reverse(path.begin(), path.end());
+					return path;
+				}
+				rynx_assert(reverse_path_iteration.operator bool(), "path not found. target is in wrong direction in the tree?");
+			}
+
+			rynx_assert(false, "unreachable");
+		}
+
+		std::vector<rynx::components::scene::persistent_id> persistent_id_path_create(rynx::id from, rynx::id to) {
 			id from_scene = scene_parent_of(from);
 			id to_scene = scene_parent_of(to);
 
@@ -1361,7 +1385,7 @@ namespace rynx {
 			rynx_assert(false, "unreachable");
 		}
 
-		rynx::id follow_persistent_id_path(rynx::entity_range_t range, rynx::id from, const std::vector<rynx::components::scene::persistent_id>& path) {
+		rynx::id persistent_id_path_find(rynx::entity_range_t range, rynx::id from, const std::vector<rynx::components::scene::persistent_id>& path) {
 			id from_scene = scene_parent_of(from);
 			
 			int32_t current_path_index = 0;
@@ -1402,9 +1426,43 @@ namespace rynx {
 			return current;
 		}
 
+		rynx::id persistent_id_path_find(const std::vector<rynx::components::scene::persistent_id>& path) {
+			rynx::id from_scene;
+
+			int32_t current_path_index = 0;
+			auto find_next_child = [this, &path](rynx::id current, int32_t current_path_index) {
+				const auto& children = operator[](current).get<rynx::components::scene::children>();
+				for (auto id : children.entities) {
+					if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[current_path_index].value) {
+						return id;
+					}
+				}
+				rynx_assert(false, "unreachable");
+				return id();
+			};
+
+			auto ids = query().notIn<rynx::components::scene::parent>().ids();
+			auto current = [this, &path, &ids]() {
+				for (auto id : ids) {
+					if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[0].value) {
+						return id;
+					}
+				}
+				rynx_assert(false, "unreachable");
+				return id();
+			}();
+			++current_path_index;
+
+			while (current_path_index < path.size()) {
+				current = find_next_child(current, current_path_index);
+				++current_path_index;
+			}
+			return current;
+		}
+
 		// serializes the top-most scene to memory.
-		void serialize_scene(rynx::reflection::reflections& reflections, rynx::serialization::vector_writer& out) {
-			
+		void serialize_scene(rynx::reflection::reflections& reflections, rynx::filesystem::vfs& vfs, rynx::scenes& scenes, rynx::serialization::vector_writer& out) {
+
 			// find current largest persistent id in root scene.
 			int32_t max_persistent_id_value = 0;
 			query()
@@ -1415,7 +1473,64 @@ namespace rynx {
 				}
 			);
 
+			// handle edits made to subscenes (their data is not serialized here so the edits must be stored separately)
+			{
+				// create a new empy ecs instance to describe how the sub scenes are expected to look like (for constructing a diff for serialization)
+				rynx::ecs expected;
+
+				// find all scene links without a parent in current scene (direct descendants of current scene)
+				auto top_most_child_scenes = query()
+					.notIn<rynx::components::scene::parent>()
+					.gather<rynx::components::position, rynx::components::scene::link>();
+
+				// copy the scene links into empty scene, and deserialize scenes there
+				for (auto [pos, link] : top_most_child_scenes)
+					expected.create(pos, link);
+				expected.load_subscenes(reflections, vfs, scenes);
+
+				// for every entity in current scene with a parent component:
+				auto subscene_entities = query().in<rynx::components::scene::parent>().ids();
+				for (auto id : subscene_entities) {
+					
+					// find the matching entity in the new ecs instance via persistent id paths
+					auto matching_entity = expected.persistent_id_path_find(persistent_id_path_create(id));
+					if (!matching_entity) {
+						// if matching component does not exist, serialize and add to "added components" struct
+						// TODO: implement.
+						continue;
+					}
+
+					// if matching entity is found, for each component check that they are the same
+					auto [actual_category_ptr, actual_category_index] = m_idCategoryMap.find(id)->second;
+					auto [expected_category_ptr, expected_category_index] = expected.m_idCategoryMap.find(matching_entity)->second;
+					
+					const auto& actual_types = actual_category_ptr->types();
+					const auto& expected_types = expected_category_ptr->types();
+
+					if (actual_types == expected_types) {
+						// default case, fast path. all components present in both categories.
+						actual_types.forEachOne([=](int64_t type_id_value) {
+							const auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
+							const auto& itable_expected = expected_category_ptr->table(rynx::type_id_t(type_id_value));
+							bool components_are_equal = itable_actual.equals(actual_category_index, itable_expected.get(expected_category_index));
+
+							// if component does not match, for_each_id_member, convert to persistent id path, link paths struct and replace value with index.
+							// serialize the component to memory and add it to a scene edits struct
+						});
+					}
+					else {
+						// TODO have to check everything. hehe.
+					}
+				}
+				
+				// TODO
+				// for every component in new ecs, verify that matching component exists in current ecs.
+				// if matching component not found, serialize component name and add to "erased components" struct.
+			}
+
 			// ensure all entities have a scene-persistent id
+			// NOTE: all entities in any subscene are guaranteed to have this id already (would not be serialized otherwise)
+			//       therefore, only entities in current root scene can possibly match this query.
 			{
 				auto ids = query().notIn<rynx::components::scene::persistent_id>().ids();
 				for (auto id : ids)
@@ -1438,7 +1553,7 @@ namespace rynx {
 					auto [category_ptr, entity_index] = copy.m_idCategoryMap[id.value];
 					category_ptr->forEachTable([&path_collection, &copy, id, entity_index](rynx::ecs_internal::itable* table_ptr) {
 						table_ptr->for_each_id_field_for_single_index(entity_index, [&path_collection, &copy, id](rynx::id& target) {
-							auto persistent_id_path = copy.find_persistent_id_path(id, target);
+							auto persistent_id_path = copy.persistent_id_path_create(id, target);
 							auto it = [&path_collection, &persistent_id_path]() {
 								for (auto it = path_collection.begin(); it != path_collection.end(); ++it) {
 									if (*it == persistent_id_path)
@@ -1471,7 +1586,7 @@ namespace rynx {
 				}
 			}
 			
-			// serialize as is. (TODO: not allowed to perform the id-link remapping in this case)
+			// serialize as is.
 			copy.serialize(reflections, out);
 		}
 
@@ -1545,7 +1660,7 @@ namespace rynx {
 				auto [category_ptr, category_index] = m_idCategoryMap.find(id)->second;
 				category_ptr->forEachTable([this, entity_id_range, &path_collection, id, category_index](rynx::ecs_internal::itable* table_ptr) {
 					table_ptr->for_each_id_field_for_single_index(category_index, [this, entity_id_range, &path_collection, id](rynx::id& target) {
-						target = follow_persistent_id_path(entity_id_range, id, path_collection[target.value]);
+						target = persistent_id_path_find(entity_id_range, id, path_collection[target.value]);
 					});
 				});
 			}
