@@ -4,3 +4,6 @@
 [submodule "external/jolt"]
 	path = external/jolt
 	url = https://github.com/jrouwe/JoltPhysics.git
+[submodule "external/zstd"]
+	path = external/zstd
+	url = https://github.com/facebook/zstd.git

@@ -348,6 +348,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
     m_outputFormat = outputFormat;
 
     {
+        Pa_Initialize();
         m_currentSampleRate = static_cast<float>(Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->defaultSampleRate);
         std::cerr << "sample rate for default device: " << m_currentSampleRate << std::endl;
 
@@ -374,7 +375,7 @@ void rynx::sound::audio_system::open_output_device(int numChannels, int samplesP
             m_outputFormat = format::undefined;
         }
     }
-
+    
     {
         PaError err = Pa_StartStream(stream);
         if (err != paNoError) {

@@ -98,11 +98,12 @@ class portaudio : ExternalProject
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\os");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\src\os\win");
 
-		conf.Defines.Add("PA_USE_WASAPI=1");
-		// conf.Defines.Add("PA_USE_ASIO=0");
-		// conf.Defines.Add("PA_USE_DS=0");
-		// conf.Defines.Add("PA_USE_WDMKS=0");
-		// conf.Defines.Add("PA_USE_SKELETON=0");
+		// conf.Defines.Add("PA_USE_WASAPI=1");
+		conf.Defines.Add("PA_USE_WMME=1");
+		// conf.Defines.Add("PA_USE_ASIO=1");
+		// conf.Defines.Add("PA_USE_DS=1");
+		// conf.Defines.Add("PA_USE_WDMKS=1");
+		// conf.Defines.Add("PA_USE_SKELETON=1");
 		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\portaudio\include");
 	}
 }
