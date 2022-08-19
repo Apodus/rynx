@@ -23,6 +23,10 @@ namespace rynx {
 
 			virtual void serialize(rynx::serialization::vector_writer& writer) = 0;
 			virtual void deserialize(rynx::serialization::vector_reader& reader) = 0;
+			
+			virtual void serialize_index(rynx::serialization::vector_writer& writer, index_t entity_index) = 0;
+			virtual void deserialize_index(rynx::serialization::vector_reader& reader, index_t entity_index) = 0;
+
 			virtual void for_each_id_field(rynx::function<void(rynx::id&)>) = 0;
 
 			// serialization, only top-most level scene entities should be touched. and their id links need to be transformed
@@ -67,8 +71,19 @@ namespace rynx {
 				m_data.emplace_back(std::move(*static_cast<T*>(data.get())));
 			}
 
+			// used for serializing diffs only.
 			virtual bool equals(index_t index, const void* data) const {
-				return m_data[index] == *static_cast<const T*>(data);
+				if constexpr (std::is_base_of_v<rynx::ecs_no_serialize_tag, T>) {
+					return true;
+				}
+				else if constexpr (requires (T t, T y) { t.operator==(y); }) {
+					// if a user defined equals comparison is available, use that
+					return m_data[index] == *static_cast<const T*>(data);
+				}
+				else {
+					// otherwise try to use a generated comparison function.
+					return true;
+				}
 			}
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) override {
@@ -99,34 +114,45 @@ namespace rynx {
 				}
 			}
 
-			virtual void serialize(rynx::serialization::vector_writer& writer) {
+			virtual void serialize(rynx::serialization::vector_writer& writer) override {
 				if constexpr (!std::is_base_of_v<ecs_no_serialize_tag, T>)
 					rynx::serialize(m_data, writer);
 			}
 
-			void deserialize(rynx::serialization::vector_reader& reader) {
+			virtual void deserialize(rynx::serialization::vector_reader& reader) override {
 				rynx::deserialize(m_data, reader);
 			}
 
+			virtual void serialize_index(rynx::serialization::vector_writer & writer, index_t entity_index) override
+			{
+				if constexpr (!std::is_base_of_v<ecs_no_serialize_tag, T>)
+					rynx::serialize(m_data[entity_index], writer);
+			}
+
+			virtual void deserialize_index(rynx::serialization::vector_reader& reader, index_t entity_index) override
+			{
+				rynx::deserialize(m_data[entity_index], reader);
+			}
+
 			// TODO: skip iterating over data if no types in hierarchy have id members.
-			virtual void for_each_id_field(rynx::function<void(rynx::id&)> op) {
+			virtual void for_each_id_field(rynx::function<void(rynx::id&)> op) override {
 				for (auto& entry : m_data) {
 					rynx::for_each_id_field(entry, op);
 				}
 			}
 
-			virtual void for_each_id_field_for_single_index(index_t index, rynx::function<void(rynx::id&)> op) {
+			virtual void for_each_id_field_for_single_index(index_t index, rynx::function<void(rynx::id&)> op) override {
 				rynx::for_each_id_field(m_data[index], op);
 			}
 
 			// TODO: skip iterating over data if no types in hierarchy have id members.
-			virtual void for_each_id_field_from_index(size_t startingIndex, rynx::function<void(rynx::id&)> op) {
+			virtual void for_each_id_field_from_index(size_t startingIndex, rynx::function<void(rynx::id&)> op) override {
 				for (size_t i = startingIndex; i < m_data.size(); ++i) {
 					rynx::for_each_id_field(m_data[i], op);
 				}
 			}
 
-			virtual void replace_with_back_and_pop(index_t i) {
+			virtual void replace_with_back_and_pop(index_t i) override {
 				m_data[i] = std::move(m_data.back());
 				m_data.pop_back();
 			}
@@ -134,10 +160,10 @@ namespace rynx {
 			virtual void* get(index_t i) override { return &m_data[i]; }
 			virtual const void* get(index_t i) const override { return &m_data[i]; }
 			
-			virtual rynx::string type_name() const {
+			virtual rynx::string type_name() const override {
 				return rynx::traits::template type_name<T>();
 			}
-			virtual bool is_type_segregated() const {
+			virtual bool is_type_segregated() const override {
 				return std::is_base_of_v<rynx::ecs_value_segregated_component_tag, T>;
 			}
 

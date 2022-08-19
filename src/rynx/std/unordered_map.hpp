@@ -122,9 +122,14 @@ namespace rynx {
 		using pointer = value_type *;
 		using const_pointer = const value_type*;
 
+		class storage_t {
+		private:
+			alignas(value_type) std::byte buffer[sizeof(value_type)];
+		};
+
 		class iterator {
 		private:
-			iterator(uint64_t index, dynamic_bitset* pPresence, std::aligned_storage_t<sizeof(std::pair<T, U>), alignof(std::pair<T, U>)>* pData) : m_index(index), m_pPresence(pPresence), m_pData(pData) {}
+			iterator(uint64_t index, dynamic_bitset* pPresence, storage_t* pData) : m_index(index), m_pPresence(pPresence), m_pData(pData) {}
 			friend class unordered_map;
 
 		public:
@@ -154,12 +159,12 @@ namespace rynx {
 		private:
 			uint64_t m_index;
 			dynamic_bitset* m_pPresence;
-			std::aligned_storage_t<sizeof(std::pair<T, U>), alignof(std::pair<T, U>)>* m_pData;
+			storage_t* m_pData;
 		};
 
 		class const_iterator {
 		private:
-			const_iterator(uint64_t index, const dynamic_bitset* pPresence, const std::aligned_storage_t<sizeof(std::pair<T, U>), alignof(std::pair<T, U>)>* pData) : m_index(index), m_pPresence(pPresence), m_pData(pData) {}
+			const_iterator(uint64_t index, const dynamic_bitset* pPresence, const storage_t* pData) : m_index(index), m_pPresence(pPresence), m_pData(pData) {}
 			friend class unordered_map;
 
 		public:
@@ -190,7 +195,7 @@ namespace rynx {
 		private:
 			uint64_t m_index;
 			const dynamic_bitset* m_pPresence;
-			const std::aligned_storage_t<sizeof(std::pair<T, U>), alignof(std::pair<T, U>)>* m_pData;
+			const storage_t* m_pData;
 		};
 
 	private:
@@ -607,7 +612,7 @@ namespace rynx {
 		}
 
 		void reserve_memory_internal(size_t s) {
-			m_data.reset(new std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[s + 1]); // +1 for end value.
+			m_data.reset(new storage_t[s + 1]); // +1 for end value.
 			m_info.resize_discard(4 * s, ~uint8_t(0));
 			m_presence.resize_bits(s);
 			
@@ -634,7 +639,7 @@ namespace rynx {
 			*this = std::move(other);
 		}
 
-		rynx::unique_ptr<std::aligned_storage_t<sizeof(value_type), alignof(value_type)>[]> m_data;
+		rynx::unique_ptr<storage_t[]> m_data;
 		dynamic_buffer<uint32_t> m_info;
 		dynamic_bitset m_presence;
 

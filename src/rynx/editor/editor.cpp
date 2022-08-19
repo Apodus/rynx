@@ -599,7 +599,7 @@ void rynx::editor_rules::save_scene_to_path(rynx::string path) {
 	auto& vfs = m_context->get_resource<rynx::filesystem::vfs>();
 
 	logmsg("saving active scene to '%s'", path.c_str());
-	auto vector_writer = ecs.serialize_scene(m_reflections);
+	auto vector_writer = ecs.serialize_scene(m_reflections, vfs, scenes);
 	rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
 	rynx::serialize(system_writer.data(), vector_writer);
 	

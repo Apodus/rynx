@@ -7,3 +7,6 @@
 [submodule "external/zstd"]
 	path = external/zstd
 	url = https://github.com/facebook/zstd.git
+[submodule "external/portaudio"]
+	path = external/portaudio
+	url = https://github.com/PortAudio/portaudio.git

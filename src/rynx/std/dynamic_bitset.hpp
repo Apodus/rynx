@@ -15,6 +15,31 @@ namespace rynx {
 			Invert
 		};
 
+		struct iterator {
+			uint64_t index;
+			const dynamic_bitset* host;
+
+			iterator& operator++() {
+				index = host->nextOne(index + 1);
+			}
+
+			bool operator == (const iterator& other) const {
+				rynx_assert(host == other.host, "comparing iterators from different bitsets");
+				return index == other.index;
+			}
+
+			bool operator != (const iterator& other) const {
+				return !operator==(other);
+			}
+
+			uint64_t operator*() const {
+				return index;
+			}
+		};
+
+		iterator begin() const { return iterator{ nextOne(0), this }; }
+		iterator end() const { return iterator{ npos, this }; }
+
 		dynamic_buffer<uint64_t>& data();
 		const dynamic_buffer<uint64_t>& data() const;
 
