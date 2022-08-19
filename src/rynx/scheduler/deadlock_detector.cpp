@@ -19,6 +19,7 @@ rynx::scheduler::dead_lock_detector::dead_lock_detector(rynx::scheduler::task_sc
 	m_data->detector_thread = std::thread([this, host]() {
 		uint64_t prev_tick = 994839589;
 		bool detector_triggered = false;
+		int retrigger_interval = 10;
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		while (m_data->dead_lock_detector_keepalive) {
 			uint64_t tickCounter = host->tick_counter();
@@ -29,15 +30,22 @@ rynx::scheduler::dead_lock_detector::dead_lock_detector(rynx::scheduler::task_sc
 					detector_triggered = true;
 				}
 			}
-			else if (prev_tick != tickCounter) {
-				detector_triggered = false;
-				print_error_recovery();
+			else {
+				if (--retrigger_interval == 0) {
+					retrigger_interval = 10;
+					detector_triggered = false;
+				}
+
+				if (prev_tick != tickCounter) {
+					detector_triggered = false;
+					print_error_recovery();
+				}
 			}
 
 			prev_tick = tickCounter;
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}
-		});
+	});
 }
 
 rynx::scheduler::dead_lock_detector::~dead_lock_detector() {

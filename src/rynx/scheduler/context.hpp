@@ -140,11 +140,8 @@ namespace rynx {
 			~context();
 
 			[[nodiscard]] bool isFinished() const {
-				// return m_tasks.empty() & m_tasks_parallel_for.empty();
 				return m_task_counter.load() == 0;
 			}
-
-
 
 			template<typename T> context& set_resource(T&& t) {
 				m_resources.set_and_discard(rynx::as_observer(t));

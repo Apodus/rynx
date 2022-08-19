@@ -20,14 +20,6 @@ bool rynx::scheduler::task_scheduler::find_work_for_thread_index(int threadIndex
 	return false;
 }
 
-void rynx::scheduler::task_scheduler::worker_activated() {
-	++m_active_workers;
-}
-
-void rynx::scheduler::task_scheduler::worker_deactivated() {
-	--m_active_workers;
-}
-
 void rynx::scheduler::task_scheduler::wake_up_sleeping_workers() {
 	rynx_profile("Profiler", "Wake up sleeping workers");
 	for (auto* thread_ptr : m_threads) {
@@ -69,20 +61,21 @@ bool rynx::scheduler::task_scheduler::checkComplete() {
 		contextsHaveNoQueuedTasks &= context.second->isFinished();
 	}
 
-	if (contextsHaveNoQueuedTasks) {
-		bool allWorkersAreFinished = true;
-		for (auto&& worker : m_threads) {
-			allWorkersAreFinished &= worker->is_sleeping();
-		}
+	if (!contextsHaveNoQueuedTasks)
+		return false;
 
-		if (allWorkersAreFinished) {
-			if (m_frameComplete.exchange(1) == 0) {
-				m_waitForComplete.signal();
-			}
-			return true;
-		}
+	bool allWorkersAreFinished = true;
+	for (auto&& worker : m_threads) {
+		allWorkersAreFinished &= worker->is_sleeping();
 	}
-	return false;
+
+	if (!allWorkersAreFinished)
+		return false;
+	
+	if (m_frameComplete.exchange(1) == 0) {
+		m_waitForComplete.signal();
+	}
+	return true;
 }
 
 
