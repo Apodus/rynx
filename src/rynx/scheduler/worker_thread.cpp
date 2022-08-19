@@ -50,7 +50,6 @@ void rynx::scheduler::task_thread::threadEntry(int myThreadIndex) {
 	while (m_alive) {
 		wait();
 
-		m_scheduler->worker_activated();
 		while (m_scheduler->find_work_for_thread_index(myThreadIndex)) {
 			m_scheduler->wake_up_sleeping_workers();
 			m_task.run();
@@ -59,7 +58,6 @@ void rynx::scheduler::task_thread::threadEntry(int myThreadIndex) {
 		
 		m_sleeping.store(true);
 		m_scheduler->checkComplete();
-		m_scheduler->worker_deactivated();
 	}
 	logmsg("task thread exit");
 }

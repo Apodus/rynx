@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rynx/thread/this_thread.hpp>
+#include <rynx/std/memory.hpp>
 
 #include <atomic>
 #include <array>

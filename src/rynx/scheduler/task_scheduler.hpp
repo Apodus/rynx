@@ -32,7 +32,6 @@ namespace rynx {
 			
 			uint64_t m_activeFrame = 0;
 			std::atomic<int32_t> m_frameComplete = 1; // initially the scheduler is in a "frame completed" state.
-			std::atomic<int32_t> m_active_workers = 0; // starting a new frame is not allowed until all workers are inactive.
 			semaphore m_waitForComplete;
 			
 			dead_lock_detector m_deadlock_detector;
@@ -68,14 +67,13 @@ namespace rynx {
 			// called once per frame.
 			void wait_until_complete() {
 				m_waitForComplete.wait();
-				rynx_assert(checkComplete(), "wait interrupted ahead of time!");
+				bool complete = checkComplete();
+				rynx_assert(complete, "wait interrupted ahead of time!");
 			}
 
 			// called once per frame.
 			void start_frame() {
 				// NOTE: Frame start/end should be property of a scheduling context.
-				// NOTE: Workers can be loaded by other scheduling contexts when another one starts, this assertion should be removed.
-				rynx_assert(m_active_workers.load() == 0, "workers are still active when starting frame");
 				rynx_assert(m_frameComplete.load() == 1, "mismatch with scheduler starts and waits");
 				m_frameComplete.store(0);
 				wake_up_sleeping_workers();
