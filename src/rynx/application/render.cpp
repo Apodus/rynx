@@ -164,9 +164,9 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 
 		// add missing matrix4 components
 		{
-			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::mesh>().notIn<rynx::matrix4>().ids();
+			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::position>().notIn<rynx::components::transform_matrix>().ids();
 			for (auto&& id : ids)
-				ecs[id].add(rynx::matrix4());
+				ecs[id].add(rynx::components::transform_matrix());
 		}
 
 		// convert human readable and storable texture info to runtime tex info.

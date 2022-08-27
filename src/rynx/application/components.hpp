@@ -48,7 +48,7 @@ namespace rynx {
 			rynx::vec3f get_constant_force() const { return constant_force(m_random()); }
 			rynx::math::rand64& get_random() const { return m_random; }
 
-			struct editor {
+			struct ANNOTATE("transient") editor : public ecs_no_serialize_tag {
 			private:
 				particle_emitter* host = nullptr;
 

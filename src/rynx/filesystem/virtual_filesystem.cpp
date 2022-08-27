@@ -4,6 +4,7 @@
 #include <rynx/filesystem/filetree/native_directory_node.hpp>
 #include <rynx/filesystem/filetree/native_file_node.hpp>
 #include <rynx/filesystem/filetree/memory_file_node.hpp>
+#include <rynx/filesystem/filekinds/compressedfile.hpp>
 
 #include <rynx/system/assert.hpp>
 #include <rynx/std/memory.hpp> // todo - should include rynx::function
@@ -152,7 +153,7 @@ std::vector<rynx::string> rynx::filesystem::vfs::enumerate(rynx::string virtual_
 rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::vfs::open_write(rynx::string virtual_path, filesystem::iwrite_file::mode mode) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
 	while (true) {
-		auto pFile = tree_node->open_write(remaining_path, mode);
+		auto pFile = tree_node->open_write_with_settings(remaining_path, mode);
 		if (pFile)
 			return pFile;
 
@@ -170,7 +171,7 @@ rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::vfs::open_writ
 rynx::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::vfs::open_read(rynx::string virtual_path) const {
 	auto [tree_node, remaining_path] = vfs_tree_access(std::move(virtual_path));
 	while (true) {
-		auto file = tree_node->open_read(remaining_path);
+		auto file = tree_node->open_read_with_settings(remaining_path);
 		if (file) {
 			return file;
 		}
@@ -235,11 +236,11 @@ void rynx::filesystem::vfs::unmount(rynx::string virtual_path) {
 }
 
 namespace {
-	void attach_to_filetree(rynx::shared_ptr<rynx::filesystem::filetree::node> node_replaced, rynx::shared_ptr<rynx::filesystem::filetree::node> node_replace_with) {
+	auto attach_to_filetree(rynx::shared_ptr<rynx::filesystem::filetree::node> node_replaced, rynx::shared_ptr<rynx::filesystem::filetree::node> node_replace_with) {
 		// first erase the node where we are about to mount.
 		auto parent = node_replaced->m_parent.lock();
 		if (!parent) {
-			return;
+			return rynx::shared_ptr<rynx::filesystem::filetree::node>();
 		}
 		
 		parent->m_children.erase(node_replaced->m_name);
@@ -255,39 +256,52 @@ namespace {
 		auto new_parent = parent->m_children[node_replaced->m_name];
 		for (auto&& replaced_node_child : node_replaced->m_children)
 			replaced_node_child.second->m_parent = new_parent;
+		return parent->m_children[node_replaced->m_name];
 	}
 }
 
-void rynx::filesystem::vfs::memory_file(rynx::string virtual_path) {
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::memory_file(rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
 	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, rynx::make_shared<filetree::memoryfile_node>(mountNode->m_name));
+	return attach_to_filetree(mountNode, rynx::make_shared<filetree::memoryfile_node>(mountNode->m_name));
 }
 
-void rynx::filesystem::vfs::memory_directory(rynx::string virtual_path) {
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::memory_directory(rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
 	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, rynx::make_shared<filetree::memory_directory_node>(mountNode->m_name));
+	return attach_to_filetree(mountNode, rynx::make_shared<filetree::memory_directory_node>(mountNode->m_name));
 }
 
-void rynx::filesystem::vfs::native_directory(rynx::string native_path, rynx::string virtual_path) {
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::native_directory(rynx::string native_path, rynx::string virtual_path) {
 	remove_backslashes_from_path(virtual_path);
 	if (native_path.back() != '/')
 		native_path += "/";
 
 	rynx_assert(rynx::filesystem::native::directory_exists(native_path), "mounting native directory '%s' - it does not exist.", native_path.c_str());
 	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode,rynx::make_shared<filetree::native_directory_node>(mountNode->m_name, native_path));
+	return attach_to_filetree(mountNode,rynx::make_shared<filetree::native_directory_node>(mountNode->m_name, native_path));
 }
 
-void rynx::filesystem::vfs::native_file(rynx::string native_path, rynx::string virtual_path) {
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::native_file(rynx::string native_path, rynx::string virtual_path) {
 	remove_backslashes_from_path(native_path);
 	if (native_path.back() == '/')
 		native_path.pop_back();
 
 	rynx_assert(rynx::filesystem::native::file_exists(native_path), "mounting native file '%s' - it does not exist.", native_path.c_str());
 	rynx::shared_ptr<filetree::node> mountNode = vfs_tree_mount(std::move(virtual_path));
-	attach_to_filetree(mountNode, rynx::make_shared<filetree::native_file_node>(mountNode->m_name, native_path));
+	return attach_to_filetree(mountNode, rynx::make_shared<filetree::native_file_node>(mountNode->m_name, native_path));
+}
+
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::memory_directory_compressed(rynx::string virtual_path) {
+	auto node = memory_directory(std::move(virtual_path));
+	node->m_compress_files = true;
+	return node;
+}
+
+rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::native_directory_compressed(rynx::string native_path, rynx::string virtual_path) {
+	auto node = native_directory(std::move(native_path), std::move(virtual_path));
+	node->m_compress_files = true;
+	return node;
 }
 
 namespace {

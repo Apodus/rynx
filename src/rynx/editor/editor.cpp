@@ -7,6 +7,7 @@
 #include <rynx/editor/tools/selection_tool.hpp>
 #include <rynx/graphics/camera/camera.hpp>
 #include <rynx/ecs/scenes.hpp>
+#include <rynx/ecs/scene_serialization.hpp>
 
 #include <sstream>
 
@@ -599,10 +600,10 @@ void rynx::editor_rules::save_scene_to_path(rynx::string path) {
 	auto& vfs = m_context->get_resource<rynx::filesystem::vfs>();
 
 	logmsg("saving active scene to '%s'", path.c_str());
-	auto vector_writer = ecs.serialize_scene(m_reflections, vfs, scenes);
+	auto vector_writer = rynx::ecs_detail::scene_serializer(ecs).serialize_scene(m_reflections, vfs, scenes);
 	rynx::serialization::vector_writer system_writer = all_rulesets().serialize(*m_context);
 	rynx::serialize(system_writer.data(), vector_writer);
-	
+
 	auto pos = path.find_last_of('/');
 	rynx::string scene_name = ((pos != rynx::string::npos) ? path.substr(pos + 1) : path);
 	scenes.save_scene(vfs, vector_writer.data(), path, scene_name, path);
@@ -627,7 +628,7 @@ void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	ecs.clear();
 	all_rulesets().clear(*m_context);
 
-	ecs.deserialize_scene(m_reflections, vfs, scenes, rynx::components::position{}, reader);
+	rynx::ecs_detail::scene_serializer(ecs).deserialize_scene(m_reflections, vfs, scenes, rynx::components::position{}, reader);
 	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
 	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
@@ -974,7 +975,23 @@ rynx::editor_rules::editor_rules(
 			m_components_list->align().bottom_inside().left_inside();
 			m_components_list->velocity_position(menuVelocityFast);
 			
-			auto add_component_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.0f, 0.05f, 0.0f));
+			auto delete_entity_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.5f, 0.05f, 0.0f));
+			auto add_component_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.5f, 0.05f, 0.0f));
+
+			delete_entity_button->velocity_position(menuVelocityFast);
+			delete_entity_button->align().top_inside().right_outside().target(add_component_button.get());
+			delete_entity_button->text().text("Add component");
+			delete_entity_button->on_click([this]() {
+				execute([this]() {
+					if (m_state.m_selected_ids.size() == 1) {
+						m_context->get_resource<rynx::ecs>().erase(m_state.m_selected_ids.front());
+						m_state.m_selected_ids.clear();
+						m_state.m_on_entity_selected({});
+					}
+				});
+			});
+			add_component_button->addChild(delete_entity_button);
+
 			add_component_button->velocity_position(menuVelocityFast);
 			add_component_button->align().top_inside().left_inside();
 			add_component_button->text().text("Add component");

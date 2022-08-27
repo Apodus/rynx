@@ -153,6 +153,10 @@ namespace rynx {
 		};
 
 
+		template<typename T> struct equals_op {
+			static bool execute(const T& a, const T& b) { return a == b; }
+		};
+
 		template<typename T> struct for_each_id_field_t {
 			template<typename Op> void execute(T&, Op&&) {}
 		};
@@ -186,5 +190,25 @@ namespace rynx {
 
 	template<typename T, typename Op> void for_each_id_field(T& t, Op&& op) {
 		rynx::serialization::for_each_id_field_t<T>().execute(t, std::forward<Op>(op));
+	}
+
+	template<typename T> bool component_equals(const T& a, const T& b) {
+		if constexpr (std::is_integral_v<T> || std::is_floating_point_v<T>) {
+			return a == b;
+		}
+		else if constexpr (std::is_trivially_copyable_v<T> && std::is_trivially_constructible_v<T>) {
+			return std::memcmp(&a, &b, sizeof(T)) == 0;
+		}
+		else if constexpr (std::is_base_of_v<rynx::ecs_no_serialize_tag, T>) {
+			return true;
+		}
+		else if constexpr (requires (const T& t, const T& y) { requires std::same_as<decltype(t == y), bool>; }) {
+			// if a user defined equals comparison is available, use that
+			return a == b;
+		}
+		else {
+			// otherwise try to use a generated comparison function.
+			return rynx::serialization::equals_op<T>::execute(a, b);
+		}
 	}
 }

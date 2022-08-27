@@ -249,6 +249,7 @@ class RynxStd : RynxProject
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
         conf.AddPublicDependency<RynxSystem>(target);
+		conf.AddPublicDependency<zstd>(target);
     }
 }
 

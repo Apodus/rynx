@@ -142,8 +142,6 @@ void rynx::scheduler::context::schedule_task(task task) {
 	++m_task_counter;
 	++m_tasks_per_frame;
 
-	logmsg("%s scheduled", task.name().c_str());
-
 	if (task.resources().empty() && task.barriers().can_start())
 	{
 		m_tasks_parallel_for.enque(std::move(task));

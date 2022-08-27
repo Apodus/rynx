@@ -222,7 +222,7 @@ namespace rynx {
 			}
 
 			rynx::polygon segments_local;
-			rynx::polygon segments_world;
+			rynx::polygon ANNOTATE("transient") segments_world;
 		};
 
 		struct draw_always {};
@@ -262,13 +262,17 @@ namespace rynx {
 		};
 
 		struct collision_custom_reaction {
-			struct event {
+			struct event : public ecs_no_serialize_tag {
+				bool operator ==(const event&) const { return true; }
+
 				rynx::id id; // collided with what
 				rynx::components::physical_body body;
 				rynx::vec3f relative_velocity;
 				rynx::vec3f normal;
 			};
-			std::vector<event> events;
+			
+			std::vector<event> ANNOTATE("transient") events;
+			bool operator ==(const collision_custom_reaction&) const { return true; }
 		};
 	}
 }

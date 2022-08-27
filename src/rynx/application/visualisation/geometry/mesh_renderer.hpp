@@ -18,13 +18,15 @@ namespace rynx {
 		namespace visualisation {
 			struct mesh_renderer : public rynx::application::graphics_step::igraphics_step {
 			private:
+				static_assert(sizeof(rynx::components::transform_matrix) == sizeof(rynx::matrix4), "matrices need to be in consecutive memory");
+
 				struct buffer {
 					size_t num;
 					const rynx::graphics::mesh* mesh;
 					const rynx::components::position* positions;
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
-					const rynx::matrix4* models;
+					const rynx::components::transform_matrix* models;
 					const rynx::graphics::texture_id* tex_ids;
 				};
 
@@ -49,7 +51,7 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models,
+								const rynx::components::transform_matrix* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
 									auto* mesh = m_meshes->get(meshes[0].m);
@@ -73,7 +75,7 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models,
+								const rynx::components::transform_matrix* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
 									auto* mesh = m_meshes->get(meshes[0].m);
@@ -91,8 +93,15 @@ namespace rynx {
 				}
 				
 				virtual void execute() override {
-					for(auto&& buf : m_bufs)
-						m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), buf.tex_ids);
+					for (auto&& buf : m_bufs) {
+						m_meshRenderer->drawMeshInstancedDeferred(
+							*buf.mesh,
+							buf.num,
+							reinterpret_cast<const rynx::matrix4*>(buf.models),
+							reinterpret_cast<const floats4*>(buf.colors),
+							buf.tex_ids
+						);
+					}
 				}
 
 			private:

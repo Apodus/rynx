@@ -1,5 +1,6 @@
 
 #include <rynx/filesystem/filetree/node.hpp>
+#include <rynx/filesystem/filekinds/compressedfile.hpp>
 
 rynx::filesystem::filetree::node::node(const rynx::string& name) {
 	m_name = name;
@@ -20,6 +21,20 @@ rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::filetree::node
 
 bool rynx::filesystem::filetree::node::remove(const rynx::string&) {
 	return false;
+}
+
+rynx::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::filetree::node::open_read_with_settings(const rynx::string& virtual_path) {
+	auto file_ptr = open_read(virtual_path);
+	if (!m_compress_files)
+		return file_ptr;
+	return rynx::make_shared<rynx::filesystem::compressedfile_read>(file_ptr);
+}
+
+rynx::shared_ptr<rynx::filesystem::iwrite_file> rynx::filesystem::filetree::node::open_write_with_settings(const rynx::string& virtual_path, rynx::filesystem::iwrite_file::mode mode) {
+	auto file_ptr = open_write(virtual_path, mode);
+	if (!m_compress_files)
+		return file_ptr;
+	return rynx::make_shared<rynx::filesystem::compressedfile_write>(file_ptr);
 }
 
 rynx::shared_ptr<rynx::filesystem::iread_file> rynx::filesystem::filetree::node::open_read(const rynx::string&) {

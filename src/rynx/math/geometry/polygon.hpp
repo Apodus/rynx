@@ -46,6 +46,9 @@ namespace rynx {
 			return *this;
 		}
 
+		// TODO: This is very wasteful. Do it without allocation.
+		bool operator ==(const polygon& other) const { return as_vertex_vector() == other.as_vertex_vector(); }
+
 		std::vector<rynx::vec3f> as_vertex_vector() const;
 		rynx::math::spline as_spline(float alpha = 1.0f) const;
 

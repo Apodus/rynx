@@ -21,6 +21,7 @@ namespace rynx {
 
 			iterator& operator++() {
 				index = host->nextOne(index + 1);
+				return *this;
 			}
 
 			bool operator == (const iterator& other) const {

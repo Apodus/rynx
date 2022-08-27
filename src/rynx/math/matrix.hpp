@@ -15,6 +15,7 @@ namespace rynx {
 		matrix4() {}
 		matrix4(const matrix4& other);
 
+		bool operator ==(const matrix4& other) const { return std::memcmp(m, other.m, sizeof(m)) == 0; }
 		matrix4& identity();
 		matrix4& invert();
 		matrix4 compute_inverse() const;

@@ -3,6 +3,7 @@
 #include <catch.hpp>
 
 #include <rynx/ecs/ecs.hpp>
+#include <rynx/ecs/raw_serialization.hpp>
 
 #include <rynx/std/serialization.hpp>
 // #include <rynx/generated/serialization.hpp>
@@ -24,6 +25,7 @@ TEST_CASE("serialization", "strings & vectors")
 }
 
 struct hubbabubba {
+	bool operator ==(const hubbabubba& other) const { return kekkonen == other.kekkonen && lol == other.lol; }
 	rynx::string kekkonen;
 	std::vector<rynx::string> lol;
 };
@@ -64,6 +66,12 @@ namespace rynx {
 			template<typename Op>
 			void execute(id_field_t& t, Op&& op) {
 				rynx::for_each_id_field(t.target, op);
+			}
+		};
+
+		template<> struct equals_op<id_field_t> {
+			static bool execute(const id_field_t& a, const id_field_t& b) {
+				return a.target == b.target; // 
 			}
 		};
 	}
@@ -108,13 +116,13 @@ TEST_CASE("serialize ecs with id field", "serialization")
 		});
 	}
 
-	rynx::serialization::vector_writer out = a.serialize(reflections);
+	rynx::serialization::vector_writer out = rynx::ecs_detail::raw_serializer(a).serialize(reflections);
 
 	rynx::ecs b;
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		REQUIRE(b.query().in<int>().count() == 5);
 		REQUIRE(b.query().in<id_field_t>().count() == 1);
@@ -127,7 +135,7 @@ TEST_CASE("serialize ecs with id field", "serialization")
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		rynx::id prev_target;
 		REQUIRE(b.query().in<int>().count() == 10);
@@ -151,13 +159,13 @@ TEST_CASE("serialize ecs with primitives", "serialization")
 
 	a.create(1);
 
-	rynx::serialization::vector_writer out = a.serialize(reflections);
+	rynx::serialization::vector_writer out = rynx::ecs_detail::raw_serializer(a).serialize(reflections);
 
 	rynx::ecs b;
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		REQUIRE(b.query().in<int>().count() == 1);
 		b.query().for_each([](int f) {
@@ -167,7 +175,7 @@ TEST_CASE("serialize ecs with primitives", "serialization")
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		REQUIRE(b.query().in<int>().count() == 2);
 		b.query().for_each([](int f) {
@@ -190,13 +198,13 @@ TEST_CASE("serialize ecs with structs", "serialization")
 	a.create(myHubbaBubba);
 	
 	rynx::serialization::vector_writer out;
-	a.serialize(reflections, out);
+	rynx::ecs_detail::raw_serializer(a).serialize(reflections, out);
 
 	rynx::ecs b;
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		REQUIRE(b.query().in<hubbabubba>().count() == 1);
 		b.query().for_each([](hubbabubba f) {
@@ -207,7 +215,7 @@ TEST_CASE("serialize ecs with structs", "serialization")
 
 	{
 		rynx::serialization::vector_reader reader(out.data());
-		b.deserialize(reflections, reader);
+		rynx::ecs_detail::raw_serializer(b).deserialize(reflections, reader);
 
 		REQUIRE(b.query().in<hubbabubba>().count() == 2);
 		b.query().for_each([](hubbabubba f) {

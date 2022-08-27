@@ -25,8 +25,9 @@ namespace rynx {
 							.for_each_parallel(task_context, [this](
 								rynx::components::position pos,
 								rynx::components::radius r,
-								rynx::matrix4& model)
+								rynx::components::transform_matrix& transform_matrix)
 								{
+									auto& model = reinterpret_cast<rynx::matrix4&>(transform_matrix);
 									model.discardSetTranslate(pos.value);
 									model.rotate_2d(pos.angle);
 									model.scale(r.r);

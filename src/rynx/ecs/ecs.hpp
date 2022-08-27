@@ -35,7 +35,14 @@ namespace rynx {
 	template<typename T, typename... Others> constexpr bool isAny() { return false || (std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<Others>> || ...); }
 	template<typename T, typename... Ts> constexpr T& first_of(T&& t, Ts&&...) { return t; }
 
+	namespace ecs_detail {
+		class raw_serializer;
+		class scene_serializer;
+	}
+
 	class ecs {
+		friend class rynx::ecs_detail::raw_serializer;
+		friend class rynx::ecs_detail::scene_serializer;
 	public:
 		struct range {
 			index_t begin = 0;
@@ -133,6 +140,8 @@ namespace rynx {
 		}
 
 		class entity_category {
+			friend class rynx::ecs_detail::raw_serializer;
+			friend class rynx::ecs_detail::scene_serializer;
 		public:
 			entity_category(dynamic_bitset types) : m_types(std::move(types)) {}
 
@@ -1241,703 +1250,6 @@ namespace rynx {
 			return m_idCategoryMap.size();
 		}
 
-		void serialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_writer& out) {
-			// first construct mapping from ecs ids to serialized ids.
-			rynx::unordered_map<uint64_t, uint64_t> idToSerializedId;
-			rynx::unordered_map<uint64_t, uint64_t> serializedIdToId;
-			uint64_t next = 1;
-			for (auto&& id : m_idCategoryMap) {
-				idToSerializedId[id.first] = next;
-				serializedIdToId[next] = id.first;
-				++next;
-			}
-
-			if constexpr (false) {
-				// replace id fields with serialized id values.
-				for (auto&& category : m_categories) {
-					category.second->forEachTable([&idToSerializedId](rynx::ecs_internal::itable* table) {
-						table->for_each_id_field([&idToSerializedId](rynx::id& id) { id.value = idToSerializedId.find(id.value)->second; });
-						});
-				}
-			}
-
-			// serialize everything as-is.
-			rynx::serialize(reflections, out); // include reflection of written data
-			rynx::serialize(m_idCategoryMap.size(), out);
-
-			size_t numNonEmptyCategories = 0;
-			for (auto&& category : m_categories) {
-				if (!category.second->ids().empty())
-					++numNonEmptyCategories;
-			}
-			rynx::serialize(numNonEmptyCategories, out);
-			// rynx::serialize(m_categories.size(), out);
-			for (auto&& category : m_categories) {
-				if (category.second->ids().empty())
-					continue;
-
-				std::vector<rynx::string> category_typenames;
-				category.first.forEachOne([&category, &reflections, &category_typenames](uint64_t type_id) {
-					auto* typeReflection = reflections.find(type_id);
-					auto* tablePtr = category.second->table_ptr(type_id);
-					if (tablePtr) {
-						logmsg("%s", tablePtr->type_name().c_str());
-					}
-					else {
-						if (typeReflection) {
-							logmsg("no table for type: %s", typeReflection->m_type_name.c_str());
-						}
-						else {
-							logmsg("no table for type %lld", type_id);
-						}
-					}
-					// rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
-					if (typeReflection && typeReflection->m_serialization_allowed)
-						category_typenames.emplace_back(typeReflection->m_type_name);
-					});
-
-				rynx::serialize(category_typenames, out);
-
-				// for each table in category - serialize table type name, serialize table data
-				category.second->forEachTable([&reflections, &out](rynx::ecs_internal::itable* table) {
-					// rynx::serialize(table->reflection(reflections).m_type_name);
-					logmsg("serializing table %s", table->type_name().c_str());
-					table->serialize(out);
-					});
-
-				// replace category id vector contents with serialized ids
-				std::vector<rynx::ecs::id> idListCopy = category.second->ids();
-				for (auto& id : idListCopy) {
-					id.value = idToSerializedId[id.value];
-				}
-
-				// serialize category id vector
-				rynx::serialize(idListCopy, out);
-			}
-
-			if constexpr (false) {
-				// restore serialized id values back to original run-time id values.
-				for (auto&& category : m_categories) {
-					category.second->forEachTable([&serializedIdToId](rynx::ecs_internal::itable* table) {
-						table->for_each_id_field([&serializedIdToId](rynx::id& id) { id.value = serializedIdToId.find(id.value)->second; });
-						});
-				}
-			}
-		}
-
-		rynx::serialization::vector_writer serialize(rynx::reflection::reflections& reflections) {
-			rynx::serialization::vector_writer out;
-			serialize(reflections, out);
-			return out;
-		}
-
-		// TODO: Move elsewhere
-		// finds the parent scene link of a given entity.
-		// if no scene parent is found, returns invalid id.
-		id scene_parent_of(id entity) {
-			auto entity_obj = this->operator[](entity);
-			if (entity_obj.has<rynx::components::scene::parent>()) {
-				return entity_obj.get<rynx::components::scene::parent>().entity;
-			}
-			return rynx::id();
-		}
-
-		std::vector<rynx::components::scene::persistent_id> persistent_id_path_create(rynx::id to) {
-			id to_scene = scene_parent_of(to);
-
-			// if entity is in root scene, just return the target entity persistent id as the path.
-			if (!to_scene)
-				return { this->operator[](to).get<rynx::components::scene::persistent_id>() };
-
-			std::vector<rynx::components::scene::persistent_id> path;
-			path.emplace_back(this->operator[](to).get<rynx::components::scene::persistent_id>());
-
-			id reverse_path_iteration = to_scene;
-			while (true) {
-				path.emplace_back(this->operator[](reverse_path_iteration).get<rynx::components::scene::persistent_id>());
-				reverse_path_iteration = scene_parent_of(reverse_path_iteration);
-				if (!reverse_path_iteration) {
-					std::reverse(path.begin(), path.end());
-					return path;
-				}
-				rynx_assert(reverse_path_iteration.operator bool(), "path not found. target is in wrong direction in the tree?");
-			}
-
-			rynx_assert(false, "unreachable");
-		}
-
-		std::vector<rynx::components::scene::persistent_id> persistent_id_path_create(rynx::id from, rynx::id to) {
-			id from_scene = scene_parent_of(from);
-			id to_scene = scene_parent_of(to);
-
-			// if entities are in the same scene, just return the target entity persistent id as the path.
-			if (from_scene == to_scene)
-				return { this->operator[](to).get<rynx::components::scene::persistent_id>() };
-
-			std::vector<rynx::components::scene::persistent_id> path;
-			path.emplace_back(this->operator[](to).get<rynx::components::scene::persistent_id>());
-
-			id reverse_path_iteration = to_scene;
-			while (true) {
-				path.emplace_back(this->operator[](reverse_path_iteration).get<rynx::components::scene::persistent_id>());
-				reverse_path_iteration = scene_parent_of(reverse_path_iteration);
-				if (reverse_path_iteration == from_scene) {
-					std::reverse(path.begin(), path.end());
-					return path;
-				}
-				rynx_assert(reverse_path_iteration.operator bool(), "path not found. target is in wrong direction in the tree?");
-			}
-
-			rynx_assert(false, "unreachable");
-		}
-
-		rynx::id persistent_id_path_find(rynx::entity_range_t range, rynx::id from, const std::vector<rynx::components::scene::persistent_id>& path) {
-			id from_scene = scene_parent_of(from);
-			
-			int32_t current_path_index = 0;
-			auto find_next_child = [this, &path](rynx::id current, int32_t current_path_index) {
-				const auto& children = operator[](current).get<rynx::components::scene::children>();
-				for (auto id : children.entities) {
-					if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[current_path_index].value) {
-						return id;
-					}
-				}
-				rynx_assert(false, "unreachable");
-				return id();
-			};
-
-			rynx::id current = from;
-			if (!from_scene) {
-				current = [this, range, path]() {
-					auto ids = query().notIn<rynx::components::scene::parent>().ids();
-					for (auto id : ids) {
-						// Only consider entities from currently deserialized scene.
-						if (!range.contains(id))
-							continue;
-						
-						if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[0].value) {
-							return id;
-						}
-					}
-					rynx_assert(false, "unreachable");
-					return id();
-				}();
-				++current_path_index;
-			}
-		
-			while (current_path_index < path.size()) {
-				current = find_next_child(current, current_path_index);
-				++current_path_index;
-			}
-			return current;
-		}
-
-		rynx::id persistent_id_path_find(const std::vector<rynx::components::scene::persistent_id>& path) {
-			rynx::id from_scene;
-
-			int32_t current_path_index = 0;
-			auto find_next_child = [this, &path](rynx::id current, int32_t current_path_index) {
-				const auto& children = operator[](current).get<rynx::components::scene::children>();
-				for (auto id : children.entities) {
-					if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[current_path_index].value) {
-						return id;
-					}
-				}
-				rynx_assert(false, "unreachable");
-				return id();
-			};
-
-			auto ids = query().notIn<rynx::components::scene::parent>().ids();
-			auto current = [this, &path, &ids]() {
-				for (auto id : ids) {
-					if (operator[](id).get<rynx::components::scene::persistent_id>().value == path[0].value) {
-						return id;
-					}
-				}
-				rynx_assert(false, "unreachable");
-				return id();
-			}();
-			++current_path_index;
-
-			while (current_path_index < path.size()) {
-				current = find_next_child(current, current_path_index);
-				++current_path_index;
-			}
-			return current;
-		}
-
-		// serializes the top-most scene to memory.
-		void serialize_scene(
-			rynx::reflection::reflections& reflections,
-			rynx::filesystem::vfs& vfs,
-			rynx::scenes& scenes,
-			rynx::serialization::vector_writer& out) {
-
-			// ensure all entities have a scene-persistent id
-			{
-				// find current largest persistent id in root scene.
-				int32_t max_persistent_id_value = 0;
-				query()
-					.in<rynx::components::scene::persistent_id>()
-					.notIn<rynx::components::scene::parent>()
-					.for_each([&max_persistent_id_value](rynx::components::scene::persistent_id id) {
-					max_persistent_id_value = id.value > max_persistent_id_value ? id.value : max_persistent_id_value;
-						});
-
-				// NOTE: all entities in any subscene are guaranteed to have this id already (would not be serialized otherwise)
-				//       therefore, only entities in current root scene can possibly match this query.
-				{
-					auto ids = query().notIn<rynx::components::scene::persistent_id>().ids();
-					for (auto id : ids)
-						this->attachToEntity(id, rynx::components::scene::persistent_id{ ++max_persistent_id_value });
-				}
-			}
-
-			std::vector<std::vector<rynx::components::scene::persistent_id>> path_collection;
-
-			// handle edits made to subscenes (their data is not serialized here so the edits must be stored separately)
-			{
-				struct subscene_edits {
-					struct component_add {
-						int32_t path_index;
-						std::vector<char> serialized_component;
-						rynx::string component_name;
-					};
-
-					struct component_erase {
-						int32_t path_index;
-						rynx::string component_name;
-					};
-					
-					struct component_edit {
-						int32_t path_index;
-						std::vector<char> serialized_component;
-						rynx::string component_name;
-					};
-
-					std::vector<int32_t> deleted_entities; // entity path indices for deleted entities
-					std::vector<component_add> added_components;
-					std::vector<component_erase> erased_components;
-					std::vector<component_edit> edited_components;
-				};
-
-				subscene_edits edits;
-
-				// create a new empty ecs instance to describe how the sub scenes are expected to look like (for constructing a diff for serialization)
-				rynx::ecs expected;
-
-				// find all scene links without a parent in current scene (direct descendants of current scene)
-				auto top_most_child_scenes = query()
-					.notIn<rynx::components::scene::parent>()
-					.gather<rynx::components::position, rynx::components::scene::link, rynx::components::scene::persistent_id>();
-
-				// copy the scene links into empty scene, and deserialize scenes there
-				for (auto [pos, link, persistent_id] : top_most_child_scenes)
-					expected.create(pos, link, persistent_id);
-				expected.load_subscenes(reflections, vfs, scenes);
-
-				// for every entity in current scene with a parent component:
-				auto subscene_entities = query().in<rynx::components::scene::parent>().ids();
-				for (auto id : subscene_entities) {
-					
-					// find the matching entity in the new ecs instance via persistent id paths
-					auto matching_entity = expected.persistent_id_path_find(persistent_id_path_create(id));
-					if (!matching_entity) {
-						// if matching component does not exist, serialize and add to "added components" struct
-						// NOTE: what the fuck is this supposed to mean? Entities are not added to subscenes.
-						//       if an entity is added, it is added to the root scene.
-						// TODO: implement.
-						continue;
-					}
-
-					// if matching entity is found, for each component check that they are the same
-					auto [actual_category_ptr, actual_category_index] = m_idCategoryMap.find(id)->second;
-					auto [expected_category_ptr, expected_category_index] = expected.m_idCategoryMap.find(matching_entity)->second;
-					
-					const auto& actual_types = actual_category_ptr->types();
-					const auto& expected_types = expected_category_ptr->types();
-
-					// removed components (in expected, not in actual)
-					for (uint64_t type_id_value : expected_types) {
-						if (!actual_types.test(type_id_value)) {
-							auto path_to_entity = persistent_id_path_create(id);
-							edits.erased_components.emplace_back(
-								subscene_edits::component_erase {
-									int32_t(path_collection.size()),
-									reflections.find(type_id_value)->m_type_name
-								}
-							);
-							path_collection.emplace_back(std::move(path_to_entity));
-						}
-					}
-
-					// added components (not in expected, in actual)
-					for (uint64_t type_id_value : actual_types) {
-						if (!expected_types.test(type_id_value)) {
-							auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
-							
-							auto path_to_entity = persistent_id_path_create(id);
-
-							// if edited component value has an id link, create a path to the new target
-							// save target to paths, replace value with index, serialize as is.
-							itable_actual.for_each_id_field_for_single_index(actual_category_index, [this, &path_collection](rynx::id& entity_link) mutable {
-								// TODO: path_collection uniqueness
-								auto path_to_target = persistent_id_path_create(entity_link);
-								entity_link.value = path_collection.size();
-								path_collection.emplace_back(std::move(path_to_target));
-								});
-
-							rynx::serialization::vector_writer memory_writer;
-							itable_actual.serialize_index(memory_writer, actual_category_index);
-							edits.added_components.emplace_back(
-								subscene_edits::component_add {
-									int32_t(path_collection.size()),
-									std::move(memory_writer.data()),
-									itable_actual.type_name()
-								}
-							);
-							path_collection.emplace_back(std::move(path_to_entity));
-						}
-					}
-
-					// edited components
-					for (uint64_t type_id_value : expected_types & actual_types) {
-						auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
-						const auto& itable_expected = expected_category_ptr->table(rynx::type_id_t(type_id_value));
-						bool components_are_equal = itable_actual.equals(actual_category_index, itable_expected.get(expected_category_index));
-
-						if (!components_are_equal) {
-							auto path_to_entity = persistent_id_path_create(id);
-
-							// if edited component value has an id link, create a path to the new target
-							// save target to paths, replace value with index, serialize as is.
-							itable_actual.for_each_id_field_for_single_index(actual_category_index, [this, &path_collection](rynx::id& entity_link) mutable {
-								// TODO: path_collection uniqueness
-								auto path_to_target = persistent_id_path_create(entity_link);
-								entity_link.value = path_collection.size();
-								path_collection.emplace_back(std::move(path_to_target));
-								});
-
-							rynx::serialization::vector_writer memory_writer;
-							itable_actual.serialize_index(memory_writer, actual_category_index);
-							edits.edited_components.emplace_back(
-								subscene_edits::component_edit{
-									int32_t(path_collection.size()),
-									std::move(memory_writer.data()),
-									itable_actual.type_name()
-								}
-							);
-							path_collection.emplace_back(std::move(path_to_entity));
-						}
-					}
-				}
-				
-				// removed entities
-				auto expected_entities = expected.query().in<rynx::components::scene::parent>().ids();
-				for (auto id : expected_entities) {
-
-					// find the matching entity in the new ecs instance via persistent id paths
-					auto entity_path = expected.persistent_id_path_create(id);
-					auto matching_entity = persistent_id_path_find(entity_path);
-					if (!matching_entity) {
-						// entity deleted
-						edits.deleted_entities.emplace_back(int32_t(path_collection.size()));
-						path_collection.emplace_back(std::move(entity_path));
-					}
-				}
-			}
-
-
-			
-			// make a copy of ecs
-			rynx::ecs copy = this->clone();
-			
-			{
-				auto ids = copy.query()
-					.notIn<rynx::components::scene::parent>() // only consider top level entities
-					.ids();
-
-				// construct mapping from id references to global id chains (for the top-most scene?).
-				// replace id references with global id chain (for the top-most scene)
-				for (auto id : ids) {
-					auto [category_ptr, entity_index] = copy.m_idCategoryMap[id.value];
-					category_ptr->forEachTable([&path_collection, &copy, id, entity_index](rynx::ecs_internal::itable* table_ptr) {
-						table_ptr->for_each_id_field_for_single_index(entity_index, [&path_collection, &copy, id](rynx::id& target) {
-							auto persistent_id_path = copy.persistent_id_path_create(id, target);
-							auto it = [&path_collection, &persistent_id_path]() {
-								for (auto it = path_collection.begin(); it != path_collection.end(); ++it) {
-									if (*it == persistent_id_path)
-										return it;
-								}
-								return path_collection.end();
-							}();
-							
-							if (it == path_collection.end()) {
-								target = path_collection.size();
-								path_collection.emplace_back(std::move(persistent_id_path));
-							}
-							else {
-								int32_t index = int32_t(it - path_collection.begin());
-								target = index;
-							}
-						});
-					});
-				}
-
-				// serialize global id chains vector
-				rynx::serialize(path_collection, out);
-			}
-
-			// remove all sub-scene content
-			auto res = copy.query().gather<rynx::components::scene::children>();
-			for (auto [children_component] : res) {
-				for (auto id : children_component.entities) {
-					copy.erase(id);
-				}
-			}
-			
-			// serialize as is.
-			copy.serialize(reflections, out);
-		}
-
-		rynx::serialization::vector_writer serialize_scene(rynx::reflection::reflections& reflections,
-			rynx::filesystem::vfs& vfs,
-			rynx::scenes& scenes) {
-			rynx::serialization::vector_writer out;
-			serialize_scene(reflections, vfs, scenes, out);
-			return out;
-		}
-
-		// deserializes a scene and any sub-scenes referenced in it.
-		// returns an entity range of ids in scene (excluding subscenes)
-		// and an entity range of all ids deserialized (including subscenes)
-		std::tuple<entity_range_t, entity_range_t> deserialize_scene(
-			rynx::reflection::reflections& reflections,
-			rynx::filesystem::vfs& vfs,
-			rynx::scenes& scenes,
-			rynx::components::position scene_pos,
-			rynx::serialization::vector_reader& in) {
-			
-			// deserialize global id chains vector
-			std::vector<std::vector<rynx::components::scene::persistent_id>> path_collection = rynx::deserialize<std::vector<std::vector<rynx::components::scene::persistent_id>>>(in);
-
-			// deserialize ecs as-is (TODO: not allowed to perform the id-link remapping in this case)
-			auto entity_id_range = deserialize(reflections, in);
-			entity_range_t all_entities_id_range = entity_id_range;
-
-			// transform all deserialized entities by scene root transform.
-			for (auto id : entity_id_range) {
-				auto& entity_pos = (*this)[id].get<rynx::components::position>();
-				entity_pos.value += scene_pos.value;
-				entity_pos.angle += scene_pos.angle;
-			}
-
-			// for any sub-scene link deserialized, deserialize the content of the subscene (recursive call)
-			{
-				std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::position>> sub_scenes;
-				query()
-					.notIn<rynx::components::scene::children>()
-					.for_each([entity_id_range, &sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::position pos) {
-					if (entity_id_range.contains(id)) {
-						sub_scenes.emplace_back(id, scene_link, pos);
-					}
-				});
-
-				for (auto [root_id, link, position] : sub_scenes) {
-					auto sub_scene_blob = scenes.get(vfs, link.id);
-					rynx::serialization::vector_reader sub_scene_in(std::move(sub_scene_blob));
-					auto [subscene_ids, subscene_all_ids] = deserialize_scene(reflections, vfs, scenes, position, sub_scene_in);
-
-					// update id range end.
-					all_entities_id_range.m_end = subscene_all_ids.m_end;
-
-					// add the children range to scene root
-					{
-						rynx::components::scene::children root_children;
-						root_children.entities = subscene_ids;
-						(*this)[root_id].add(root_children);
-					}
-
-					// add parent link to children.
-					for (auto id : subscene_ids) {
-						(*this)[id].add(rynx::components::scene::parent{ root_id });
-					}
-				}
-			}
-
-			// for each id link in current deserialized scene,
-			//   look at corresponding chain in chains,
-			//     track the chain down the scenes and find the entity pointed to by the chain
-			for (auto id : entity_id_range) {
-				auto [category_ptr, category_index] = m_idCategoryMap.find(id)->second;
-				category_ptr->forEachTable([this, entity_id_range, &path_collection, id, category_index](rynx::ecs_internal::itable* table_ptr) {
-					table_ptr->for_each_id_field_for_single_index(category_index, [this, entity_id_range, &path_collection, id](rynx::id& target) {
-						target = persistent_id_path_find(entity_id_range, id, path_collection[target.value]);
-					});
-				});
-			}
-
-			return { entity_id_range, all_entities_id_range };
-
-			// TODO:
-			// for every override component in current scene
-			//   follow chain, apply changes to memory.
-		}
-
-		entity_range_t load_subscenes(rynx::reflection::reflections& reflections, rynx::filesystem::vfs& vfs, rynx::scenes& scenes) {
-			std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::position>> sub_scenes;
-			query()
-				.notIn<rynx::components::scene::children>()
-				.for_each([&sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::position pos) {
-					sub_scenes.emplace_back(id, scene_link, pos);
-				});
-
-			rynx::entity_range_t all_entities { m_entities.peek_next_id(), m_entities.peek_next_id() };
-
-			for (auto [root_id, link, scene_pos] : sub_scenes) {
-				auto sub_scene_blob = scenes.get(vfs, link.id);
-				rynx::serialization::vector_reader sub_scene_in(std::move(sub_scene_blob));
-				auto [subscene_ids, subscene_ids_recursive] = deserialize_scene(reflections, vfs, scenes, scene_pos, sub_scene_in);
-
-				// update id range end.
-				all_entities.m_end = subscene_ids_recursive.m_end;
-
-				// add the children range to scene root
-				{
-					// TODO: child entities may die during simulation, this is not taken into account.
-					// is this an issue?
-					rynx::components::scene::children root_children;
-					root_children.entities = subscene_ids;
-					(*this)[root_id].add(root_children);
-				}
-
-				// add parent link to children.
-				for (auto id : subscene_ids) {
-					(*this)[id].add(rynx::components::scene::parent{root_id});
-				}
-			}
-
-			return all_entities;
-		}
-
-		entity_range_t deserialize(rynx::reflection::reflections& reflections, rynx::serialization::vector_reader& in) {
-			
-			size_t numEntities;
-			size_t numCategories;
-
-			auto id_range_begin = m_entities.peek_next_id();
-
-			rynx::reflection::reflections format;
-			rynx::deserialize(format, in); // reflection of loaded data
-			rynx::deserialize(numEntities, in);
-			rynx::deserialize(numCategories, in);
-
-			// construct mapping from serialized ids to ecs ids.
-			rynx::unordered_map<uint64_t, uint64_t> serializedIdToEcsId;
-			for (size_t i = 1; i <= numEntities; ++i) {
-				serializedIdToEcsId[i] = this->m_entities.generateOne();
-			}
-
-			for (size_t i = 0; i < numCategories; ++i) {
-				auto category_typenames = rynx::deserialize<std::vector<rynx::string>>(in);
-				
-				rynx::dynamic_bitset category_id;
-				for (auto&& name : category_typenames) {
-					auto* typeReflection = reflections.find(name);
-					rynx_assert(typeReflection != nullptr, "deserializing unknown type %s", name.c_str());
-					category_id.set(typeReflection->m_type_index_value);
-				}
-
-				// if category already does not exist - create category.
-				if (m_categories.find(category_id) == m_categories.end()) {
-					auto res = m_categories.emplace(category_id, rynx::make_unique<entity_category>(category_id));
-					category_id.forEachOne([&](uint64_t typeId) {
-						auto* typeReflection = reflections.find(typeId);
-						res.first->second->createNewTable(typeId, typeReflection->m_create_table_func());
-					});
-				}
-				auto category_it = m_categories.find(category_id);
-
-				// source category typenames is the correct order to deserialize in.
-				std::vector<type_id_t> additional_types;
-				for (auto&& name : category_typenames) {
-					auto reflection_ptr = reflections.find(name);
-					auto type_index_value = reflection_ptr->m_type_index_value;
-					auto* table_ptr = category_it->second->table(type_index_value, reflection_ptr->m_create_table_func);
-					if (table_ptr != nullptr) {
-						logmsg("deserializing table %s", name.c_str());
-						table_ptr->deserialize(in);
-						if (table_ptr->is_type_segregated()) {
-							auto& segregation_map = value_segregated_types_map(type_index_value, reflection_ptr->m_create_map_func);
-							void* segregated_data_ptr = table_ptr->get(0);
-							if (!segregation_map.contains(segregated_data_ptr)) {
-								segregation_map.emplace(segregated_data_ptr, create_virtual_type());
-							}
-							auto segregation_virtual_type = segregation_map.get_type_id_for(segregated_data_ptr);
-							additional_types.emplace_back(segregation_virtual_type.type_value);
-						}
-					}
-					else {
-						logmsg("deser skipping table %s", name.c_str());
-					}
-				}
-
-				// deserialize category ids and insert them to the category.
-				auto categoryIds = rynx::deserialize<std::vector<rynx::ecs::id>>(in);
-				for (auto& id : categoryIds) {
-					id.value = serializedIdToEcsId.find(id.value)->second;
-				}
-
-				auto idCount = category_it->second->m_ids.size();
-				category_it->second->m_ids.insert(category_it->second->m_ids.end(), categoryIds.begin(), categoryIds.end());
-				
-				// scene serialization does not allow touching the id links.
-				if constexpr (false) {
-					// restore correct runtime ids to deserialized entities id fields.
-					category_it->second->forEachTable([idCount, &serializedIdToEcsId](rynx::ecs_internal::itable* table) {
-						table->for_each_id_field_from_index(idCount, [&serializedIdToEcsId](rynx::id& id) {
-							id.value = serializedIdToEcsId.find(id.value)->second;
-							});
-						});
-				}
-
-				for (auto& id : categoryIds) {
-					m_idCategoryMap[id.value] = { category_it->second.get(), index_t(idCount++) };
-				}
-
-				// add missing segregation types.
-				if (!additional_types.empty()) {
-					for (auto&& segregation_virtual_type : additional_types) {
-						category_id.set(segregation_virtual_type);
-					}
-
-					// if category already does not exist - create category.
-					if (m_categories.find(category_id) == m_categories.end()) {
-						// if dst category does not previously exist, we can just move the current category in it's place.
-						rynx::dynamic_bitset prev_category_id = std::move(category_it->second->m_types);
-						category_it->second->m_types = category_id;
-						auto res = m_categories.emplace(category_id, std::move(category_it->second));
-						m_categories.erase(prev_category_id);
-					}
-					else {
-						// TODO: Increase perf by migrating all entities from category at once.
-						auto dst_category_it = m_categories.find(category_id);
-						while (!category_it->second->ids().empty()) {
-							dst_category_it->second->migrateEntityFrom(
-								category_id,
-								category_it->second.get(),
-								0,
-								this->m_idCategoryMap
-							);
-						}
-						m_categories.erase(category_it);
-					}
-				}
-			}
-
-			return { id_range_begin, id_range_begin + numEntities };
-		}
-
 		bool exists(entity_id_t id) const { return m_idCategoryMap.find(id) != m_idCategoryMap.end(); }
 		bool exists(id id) const { return exists(id.value); }
 
@@ -2102,6 +1414,9 @@ namespace rynx {
 				}
 			}
 
+			// resets the bit from type id bitset corresponding to a particular component value.
+			// correctly handles the case where component type is type segregated,
+			// and each component value must have a unique virtual type id in addition to the component type id itself.
 			template<typename T>
 			void reset_component(rynx::dynamic_bitset& dst, [[maybe_unused]] entity_id_t id) {
 				dst.reset(mapped_type_id(rynx::type_index::id<T>()));
@@ -2188,6 +1503,8 @@ namespace rynx {
 				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
 
 				const dynamic_bitset& initialTypes = source_category->types();
+				rynx_assert(!initialTypes.test(type_id), "adding a type that already exists in entity");
+				
 				dynamic_bitset resultTypes = initialTypes;
 				compute_type_category(resultTypes, type_id, is_value_segregated, map_create_func, component.get());
 
@@ -2196,8 +1513,6 @@ namespace rynx {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
-
-				rynx_assert(destinationCategoryIt->second->types() != source_category->types(), "attaching component to entity, but entity already has that component!");
 
 				// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
 				destinationCategoryIt->second->migrateEntityFrom(
@@ -2222,6 +1537,8 @@ namespace rynx {
 				rynx_assert(source_category->ids()[source_index] == id_value, "Entity mapping is broken");
 				
 				const dynamic_bitset& initialTypes = source_category->types();
+				rynx_assert(!initialTypes.test(rynx::type_index::id<Components>()) && ..., "adding a type that already exists in entity");
+				
 				dynamic_bitset resultTypes = initialTypes;
 				(compute_type_category(resultTypes, components), ...);
 				
@@ -2230,8 +1547,6 @@ namespace rynx {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category); // NOTE: Must make copies of table types for tables for which we don't know the type in this context.
 				}
-
-				rynx_assert(destinationCategoryIt->second->types() != source_category->types(), "attaching component to entity, but entity already has that component!");
 
 				// first migrate the old stuff, then apply on top of that what was given (in case these types overlap).
 				destinationCategoryIt->second->migrateEntityFrom(
@@ -2256,6 +1571,8 @@ namespace rynx {
 				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
 
 				const dynamic_bitset& initialTypes = source_category->types();
+				rynx_assert(initialTypes.test(rynx::type_index::id<Components>()) && ..., "attempting to remove a type from entity but it doesn't exist for entity");
+
 				dynamic_bitset resultTypes = initialTypes;
 
 				(reset_component<Components>(resultTypes, id), ...);
@@ -2286,18 +1603,26 @@ namespace rynx {
 				index_t source_index = it->second.second;
 
 				const dynamic_bitset& initialTypes = source_category->types();
+				rynx_assert(initialTypes.test(t), "attempting to remove a type from entity but it doesn't exist for entity");
 				dynamic_bitset resultTypes = initialTypes;
 				resultTypes.reset(t);
+
+				auto value_segregation_map_it = m_ecs.m_value_segregated_types_maps.find(t);
+				if (value_segregation_map_it != m_ecs.m_value_segregated_types_maps.end()) {
+					// if the type is segregated by value, find the corresponding virtual type and remove that as well
+					rynx::type_index::virtual_type segregation_virtual_type = value_segregation_map_it->second->get_type_id_for(source_category->table(t).get(source_index));
+					resultTypes.reset(segregation_virtual_type.type_value);
+				}
+				
+				// remove the erased component from the category.
+				source_category->eraseComponentFromIndex(m_typeAliases, source_index, t);
 
 				auto destinationCategoryIt = m_ecs.m_categories.find(resultTypes);
 				if (destinationCategoryIt == m_ecs.m_categories.end()) {
 					destinationCategoryIt = m_ecs.m_categories.emplace(resultTypes, rynx::make_unique<entity_category>(resultTypes)).first;
 					destinationCategoryIt->second->copyTypesFrom(source_category, resultTypes);
 				}
-
-				if (m_ecs.m_value_segregated_types_maps.find(t) == m_ecs.m_value_segregated_types_maps.end()) {
-					source_category->eraseComponentFromIndex(m_typeAliases, source_index, t);
-				}
+				
 				destinationCategoryIt->second->migrateEntityFrom(
 					resultTypes,
 					source_category,
@@ -2363,12 +1688,27 @@ namespace rynx {
 			return edit_t(*this).attachToEntity(id, std::forward<Components>(components)...);
 		}
 
+		edit_t& attachToEntity_typeErased(
+			entity_id_t id,
+			type_id_t type_id,
+			bool is_value_segregated,
+			rynx::ecs_table_create_func creator,
+			rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> map_create_func,
+			rynx::opaque_unique_ptr<void> data)
+		{
+			return edit_t(*this).attachToEntity_typeErased(id, type_id, is_value_segregated, creator, std::move(map_create_func), std::move(data));
+		}
+
 		template<typename... Components>
 		edit_t& removeFromEntity(entity_id_t id) {
 			return edit_t(*this).removeFromEntity<Components...>(id);
 		}
 
 		edit_t& removeFromEntity(entity_id_t id, rynx::type_index::virtual_type t) {
+			return edit_t(*this).removeFromEntity(id, t);
+		}
+
+		edit_t& removeFromEntity(entity_id_t id, rynx::type_id_t t) {
 			return edit_t(*this).removeFromEntity(id, t);
 		}
 

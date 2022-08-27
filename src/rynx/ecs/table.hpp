@@ -63,7 +63,7 @@ namespace rynx {
 
 			virtual ~component_table() {}
 
-			virtual rynx::unique_ptr<itable> clone_ptr() const {
+			virtual rynx::unique_ptr<itable> clone_ptr() const override {
 				return rynx::make_unique<component_table<T>>(component_table<T>(*this));
 			}
 
@@ -72,18 +72,8 @@ namespace rynx {
 			}
 
 			// used for serializing diffs only.
-			virtual bool equals(index_t index, const void* data) const {
-				if constexpr (std::is_base_of_v<rynx::ecs_no_serialize_tag, T>) {
-					return true;
-				}
-				else if constexpr (requires (T t, T y) { t.operator==(y); }) {
-					// if a user defined equals comparison is available, use that
-					return m_data[index] == *static_cast<const T*>(data);
-				}
-				else {
-					// otherwise try to use a generated comparison function.
-					return true;
-				}
+			virtual bool equals(index_t index, const void* data) const override {
+				return rynx::component_equals(m_data[index], *static_cast<const T*>(data));
 			}
 
 			virtual void swap_adjacent_indices_for(const std::vector<index_t>& index_points) override {
@@ -279,7 +269,7 @@ namespace rynx {
 				return rynx::unique_ptr<rynx::ecs_internal::itable>(nullptr); // don't create tables for empty types (tag types)
 			}
 			else if constexpr(std::is_base_of_v<rynx::ecs_no_component_tag, T>)
-				return rynx::unique_ptr<rynx::ecs_internal::itable>(nullptr); // don't create tables for types that user has promised to not use as components
+				return rynx::unique_ptr<rynx::ecs_internal::itable>(nullptr); // no need to be able to create tables for types that user has promised to not use as components
 			else {
 				return rynx::make_unique<rynx::ecs_internal::component_table<T>>(type_id);
 			}

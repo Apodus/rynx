@@ -266,8 +266,10 @@ void rynx::std_replacements::string::insert(char* where, char what) {
 void rynx::std_replacements::string::erase(char* where) noexcept {
 	rynx_assert(where >= begin() && where < end() && size() > 0, "erase requirements not met");
 	const char* end_it = end()-1;
-	while (where != end_it)
+	while (where != end_it) {
 		*where = *(where + 1);
+		++where;
+	}
 
 	if (!is_small_space())
 		--m_longform.m_size;

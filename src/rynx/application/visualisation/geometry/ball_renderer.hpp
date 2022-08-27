@@ -25,7 +25,7 @@ namespace rynx {
 					const rynx::components::position* positions;
 					const rynx::components::radius* radii;
 					const rynx::components::color* colors;
-					const rynx::matrix4* models;
+					const rynx::components::transform_matrix* models;
 					const rynx::graphics::texture_id* tex_ids;
 				};
 
@@ -44,7 +44,7 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models)
+								const rynx::components::transform_matrix* models)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
@@ -65,7 +65,7 @@ namespace rynx {
 								const rynx::components::position* positions,
 								const rynx::components::radius* radii,
 								const rynx::components::color* colors,
-								const rynx::matrix4* models)
+								const rynx::components::transform_matrix* models)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
@@ -124,7 +124,13 @@ namespace rynx {
 						for (auto&& buf : m_bufs) {
 							std::vector<rynx::graphics::texture_id> tex;
 							tex.resize(buf.num);
-							m_meshRenderer->drawMeshInstancedDeferred(*buf.mesh, buf.num, buf.models, reinterpret_cast<const floats4*>(buf.colors), tex.data());
+							m_meshRenderer->drawMeshInstancedDeferred(
+								*buf.mesh,
+								buf.num,
+								reinterpret_cast<const rynx::matrix4*>(buf.models),
+								reinterpret_cast<const floats4*>(buf.colors),
+								tex.data()
+							);
 						}
 					}
 

@@ -228,7 +228,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 		auto field_div = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 		field_div->velocity_position(200.0f); // TODO
 
-		auto id_pick_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(1.0f, 1.0f, 0.0f));
+		auto id_pick_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.7f, 1.0f, 0.0f));
 		id_pick_button->velocity_position(200.0f); // TODO
 		id_pick_button->on_click([this, field_type, info, self = id_pick_button.get()]() {
 			this->source_data([this, info]() {
@@ -242,7 +242,18 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			});
 		});
 
-		id_pick_button->text().text(field_type.m_field_name + ": Pick entity");
+		char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+		auto* value = reinterpret_cast<rynx::id*>(data + info.cumulative_offset);
+		id_pick_button->text().text(field_type.m_field_name + ": ^g" + rynx::to_string(value->value));
+		id_pick_button->align().left_inside().top_inside();
+
+		auto select_pointed_entity_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.3f, 1.0f, 0.0f));
+		select_pointed_entity_button->align().target(id_pick_button.get()).right_outside().top_inside();
+		select_pointed_entity_button->text().text("goto");
+		select_pointed_entity_button->velocity_position(200.0f);
+		select_pointed_entity_button->on_click([this, target_id = *value]() {
+			execute([=]() { this->m_editor_state->m_on_entity_selected(target_id); });
+		});
 
 		field_div->align()
 			.target(info.component_sheet->last_child())
@@ -250,6 +261,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			.left_inside();
 
 		field_div->addChild(id_pick_button);
+		field_div->addChild(select_pointed_entity_button);
 		info.component_sheet->addChild(field_div);
 		return true;
 	}

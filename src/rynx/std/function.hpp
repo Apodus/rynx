@@ -243,8 +243,8 @@ namespace rynx {
             template <typename G, typename R, typename... Args> struct deduce_function<R(G::*)(Args...) const volatile& noexcept> { using type = R(Args...); };
         }
 
-        template <size_t size, bool alloc, class R, class... Args> function_inplace(R(*)(Args...))->function_inplace<size, alloc, R(Args...)>;
-        template <size_t size, bool alloc, class F, class Op = decltype(&F::operator())> function_inplace(F)->function_inplace<size, alloc, detail::deduce_function_t<Op>>;
+        // template <size_t size, bool alloc, class R, class... Args> function_inplace(R(*)(Args...))->function_inplace<size, alloc, R(Args...)>;
+        // template <size_t size, bool alloc, class F, class Op = decltype(&F::operator())> function_inplace(F)->function_inplace<size, alloc, detail::deduce_function_t<Op>>;
         template <size_t size, bool alloc, class R, class... Args> bool operator==(const function_inplace<size, alloc, R(Args...)>& f, nullptr_t) noexcept { return !f; }
         template <size_t size, bool alloc, class R, class... Args> bool operator==(nullptr_t, const function_inplace<size, alloc, R(Args...)>& f) noexcept { return !f; }
         template <size_t size, bool alloc, class R, class... Args> bool operator!=(const function_inplace<size, alloc, R(Args...)>& f, nullptr_t) noexcept { return static_cast<bool>(f); }

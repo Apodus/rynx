@@ -1,6 +1,5 @@
 
 #include <rynx/std/frame_allocator.hpp>
-#include <rynx/tech/parallel/queue.hpp>
 #include <atomic>
 
 namespace {
@@ -31,15 +30,16 @@ namespace {
 
 	namespace frame_allocator_impl {
 		::frame_allocator_block<block_size>* frame_allocator_blocks[1024] = {0,};
+		void* large_allocs[128] = {0,};
 		std::atomic<int32_t> m_active_block = 0;
-		rynx::parallel::queue<void*, 1024> large_allocs;
-		
+		std::atomic<int32_t> m_active_large_alloc = 0;
+
 		void next_block() {
 			if (thread_block)
 				thread_block->in_use = false;
 			
 			while (true) {
-				int32_t block_index = m_active_block.fetch_add(1);
+				int32_t block_index = m_active_block.fetch_add(1, std::memory_order_relaxed);
 				::frame_allocator_block<::block_size>* block_to_try = frame_allocator_blocks[block_index];
 				if (block_to_try) {
 					if (block_to_try->m_head == 0 && !block_to_try->in_use) {
@@ -66,7 +66,7 @@ void* rynx::memory::frame_allocator::detail::allocate(size_t bytes, size_t align
 		// alloc is larger than our blocks.
 		// perform a direct alloc instead, and store it in large allocs table.
 		auto* result = new std::byte[bytes + align];
-		::frame_allocator_impl::large_allocs.enque(static_cast<void*>(result));
+		::frame_allocator_impl::large_allocs[::frame_allocator_impl::m_active_large_alloc.fetch_add(1, std::memory_order_relaxed)] = static_cast<void*>(result);
 		if (uint64_t(result) % align != 0)
 			return result + align - (uint64_t(result) % align);
 		return result;
@@ -94,11 +94,13 @@ void rynx::memory::frame_allocator::start_frame() {
 	
 	// free large allocs
 	{
-		void* ptr;
-		while (::frame_allocator_impl::large_allocs.deque(ptr)) {
-			delete[] static_cast<std::byte*>(ptr);
+		int32_t end = ::frame_allocator_impl::m_active_large_alloc.load();
+		int32_t begin = 0;
+		while (begin != end) {
+			delete[] static_cast<std::byte*>(::frame_allocator_impl::large_allocs[begin++]);
 		}
 	}
 
 	::frame_allocator_impl::m_active_block.store(0);
+	::frame_allocator_impl::m_active_large_alloc.store(0);
 }

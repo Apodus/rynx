@@ -124,6 +124,21 @@ class libogg : ExternalProject
 }
 
 [Generate]
+class zstd : ExternalProject
+{
+	public zstd()
+	{
+		SourceRootPath = @"[project.SharpmakeCsPath]\..\external\zstd\lib";
+	}
+
+	[Configure]
+	public void ConfigureAll(Project.Configuration conf, Target target)
+	{
+		conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\external\zstd\lib");
+	}
+}
+
+[Generate]
 class libvorbis : ExternalProject
 {
 	public libvorbis()

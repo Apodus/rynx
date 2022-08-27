@@ -49,8 +49,8 @@ namespace rynx {
 		vec3 operator/(const T & scalar) const { return vec3(x / scalar, y / scalar, z / scalar); }
 		vec3 operator-() const { return vec3(-x, -y, -z); }
 
-		bool operator != (const vec3 & other) { return (x != other.x) | (y != other.y) | (z != other.z); }
-		bool operator == (const vec3 & other) { return !((*this) != other); }
+		bool operator != (const vec3 & other) const { return (x != other.x) | (y != other.y) | (z != other.z); }
+		bool operator == (const vec3 & other) const { return !((*this) != other); }
 
 		vec3& set(T xx, T yy, T zz) { x = xx; y = yy; z = zz; return *this; }
 		vec3 cross(const vec3 & other) const { return vec3(y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x); }
@@ -87,6 +87,12 @@ namespace rynx {
 				reader(s.x);
 				reader(s.y);
 				reader(s.z);
+			}
+		};
+
+		template<typename T> struct equals_op<rynx::vec3<T>> {
+			static bool execute(const rynx::vec3<T>& a, const rynx::vec3<T>& b) {
+				return (a.x == b.x) & (a.y == b.y) & (a.z == b.z);
 			}
 		};
 	}
@@ -198,6 +204,7 @@ namespace rynx {
 		constexpr floats4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 		floats4() : x(0), y(0), z(0), w(0) {}
 
+		bool operator == (const floats4& other) const { return (x == other.x) & (y == other.y) & (z == other.z) & (w == other.w); }
 		floats4 operator*(float scalar) const { return floats4(x * scalar, y * scalar, z * scalar, w * scalar); }
 		floats4 operator/(float scalar) const { return operator*(1.0f / scalar); }
 		floats4 operator+(float scalar) const { return floats4(x + scalar, y + scalar, z + scalar, w + scalar); }
@@ -229,6 +236,12 @@ namespace rynx {
 				reader(s.y);
 				reader(s.z);
 				reader(s.w);
+			}
+		};
+
+		template<> struct equals_op<rynx::floats4> {
+			static bool execute(const rynx::floats4& a, const rynx::floats4& b) {
+				return (a.x == b.x) & (a.y == b.y) & (a.z == b.z) & (a.w == b.w);
 			}
 		};
 	}
@@ -300,6 +313,12 @@ namespace rynx {
 				reader(s.y);
 				reader(s.z);
 				reader(s.w);
+			}
+		};
+
+		template<typename T> struct equals_op<rynx::vec4<T>> {
+			static bool execute(const rynx::vec4<T>& a, const rynx::vec4<T>& b) {
+				return (a.x == b.x) & (a.y == b.y) & (a.z == b.z) & (a.w == b.w);
 			}
 		};
 	}

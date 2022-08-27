@@ -455,7 +455,7 @@ namespace rynx {
 			std::vector<rynx::shared_ptr<parallel_for_each_data>> m_for_each;
 
 			context* m_context = nullptr;
-			bool m_enable_logging = true;
+			bool m_enable_logging = false;
 		};
 	}
 }

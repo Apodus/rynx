@@ -9,6 +9,7 @@
 #include <rynx/ecs/scenes.hpp>
 
 #include <rynx/graphics/texture/texturehandler.hpp>
+#include <rynx/ecs/scene_serialization.hpp>
 
 rynx::editor::tools::instantiation_tool::instantiation_tool(rynx::scheduler::context& ctx) {
 	m_frame_tex_id = ctx.get_resource<rynx::graphics::GPUTextures>().findTextureByName("frame");
@@ -30,7 +31,7 @@ void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& c
 			point.z = 0; // the floating point calculations are not 100% accurate, so fix the z value.
 			auto scene_id = scenes.filepath_to_info(m_selectedScene).id;
 			rynx::id new_scene = ecs.create(rynx::components::position{ point, 0 }, rynx::components::scene::link{ scene_id });
-			rynx::entity_range_t deserialized_entities = ecs.load_subscenes(reflections, *m_vfs, scenes);
+			rynx::entity_range_t deserialized_entities = rynx::ecs_detail::scene_serializer(ecs).load_subscenes(reflections, *m_vfs, scenes);
 
 			for (rynx::id child_entity : deserialized_entities) {
 				auto* pos = ecs[child_entity].try_get<rynx::components::position>();

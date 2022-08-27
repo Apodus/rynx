@@ -72,6 +72,7 @@ namespace rynx {
 			
 			rynx::ecs_table_create_func m_create_table_func;
 			rynx::function<opaque_unique_ptr<void>()> m_create_instance_func;
+			rynx::function<opaque_unique_ptr<void>(const std::vector<char>&)> m_deserialize_instance_func;
 			rynx::function<rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>()> m_create_map_func;
 
 			template<typename MemberType, typename ObjectType>
@@ -89,6 +90,10 @@ namespace rynx {
 
 			template<typename MemberType, typename ObjectType>
 			type& add_field(rynx::string fieldName, MemberType ObjectType::* ptr, std::vector<rynx::string> fieldAnnotations) {
+				for (auto&& field : m_fields)
+					if (field.m_field_name == fieldName)
+						return *this;
+				
 				m_fields.emplace_back(rynx::reflection::field::construct(fieldName, ptr, fieldAnnotations));
 				return *this;
 			}
@@ -197,6 +202,13 @@ namespace rynx {
 						rynx_assert(false, "calling map create for a type that has no map type");
 						return rynx::unique_ptr<rynx::ecs_internal::ivalue_segregation_map>(nullptr);
 					}
+				};
+
+				result.m_deserialize_instance_func = [](const std::vector<char>& serialized) {
+					rynx::serialization::vector_reader in(serialized);
+					T* obj = new T();
+					rynx::deserialize(*obj, in);
+					return opaque_unique_ptr<void>(obj, [](void* t) { if (t) delete static_cast<T*>(t); });
 				};
 
 				m_reflections.emplace(rynx::string(typeid(T).name()), std::move(result));

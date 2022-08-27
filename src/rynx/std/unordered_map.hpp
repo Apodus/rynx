@@ -307,7 +307,7 @@ namespace rynx {
 	public:
 		unordered_map() {}
 		
-		template<typename T = std::enable_if_t< std::is_copy_constructible_v<U> > >
+		template<typename EnableType = std::enable_if_t< std::is_copy_constructible_v<U> > >
 		unordered_map(const unordered_map& other) {
 			for (const auto& entry : other)
 				emplace(entry);

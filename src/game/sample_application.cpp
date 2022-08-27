@@ -83,7 +83,7 @@ void SampleApplication::set_simulation_rules() {
 	auto program_state_editor_running = context->access_state().generate_state_id();
 
 	auto& vfs = context->get_resource<rynx::filesystem::vfs>();
-	vfs.mount().native_directory("../scenes/", "/scenes/");
+	vfs.mount().native_directory_compressed("../scenes/", "/scenes/");
 	vfs.mount().native_directory("../textures/", "/textures/");
 	
 	auto& scenes = context->get_resource<rynx::scenes>();

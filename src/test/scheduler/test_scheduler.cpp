@@ -75,6 +75,7 @@ TEST_CASE("ecs component resource accesses respected", "scheduler")
 	rynx::this_thread::rynx_thread_raii obj;
 	
 	struct component {
+		bool operator == (const component& other) const { return a == other.a; }
 		int a;
 	};
 	
@@ -155,6 +156,7 @@ TEST_CASE("task extensions respected", "scheduler")
 {
 	rynx::this_thread::rynx_thread_raii obj;
 	struct component {
+		bool operator == (const component& other) const { return a == other.a; }
 		int a;
 	};
 
@@ -186,6 +188,7 @@ TEST_CASE("task extensions respected nested", "scheduler")
 {
 	rynx::this_thread::rynx_thread_raii obj;
 	struct component {
+		bool operator == (const component& other) const { return a == other.a; }
 		int a;
 	};
 
@@ -243,6 +246,7 @@ TEST_CASE("ecs parallel for dependencies to outside task", "scheduler")
 	rynx::this_thread::rynx_thread_raii obj;
 
 	struct component {
+		bool operator == (const component& other) const { return a == other.a; }
 		int a;
 	};
 

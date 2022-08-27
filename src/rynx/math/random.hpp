@@ -22,6 +22,8 @@ namespace rynx {
 			rand64(uint64_t seed = 0x75892735A374E381);
 			uint64_t m_state;
 
+			bool operator == (const rand64& other) const { return m_state == other.m_state; }
+
 			float operator()();
 			float operator()(float from, float to);
 			float operator()(float to);
@@ -44,6 +46,10 @@ namespace rynx {
 
 			T begin;
 			T end;
+
+			bool operator == (const value_range& other) const {
+				return begin == other.begin && end == other.end;
+			}
 
 			T operator()(float v) const {
 				return static_cast<T>(begin * (1.0f - v) + end * v);

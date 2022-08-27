@@ -38,7 +38,7 @@ void rynx::ruleset::particle_system::onFrameProcess(rynx::scheduler::context& co
 				rynx::components::translucent,
 				rynx::components::ignore_gravity,
 				rynx::components::constant_force,
-				rynx::matrix4> ecs) {
+				rynx::components::transform_matrix> ecs) {
 			ecs.query().for_each([&ecs, dt](rynx::components::position pos, const rynx::components::particle_emitter& emitter) {
 				int count = emitter.get_spawn_count(dt);
 
@@ -75,7 +75,7 @@ void rynx::ruleset::particle_system::onFrameProcess(rynx::scheduler::context& co
 						rynx::components::dampening{ emitter.get_linear_damping() },
 						rynx::components::translucent(),
 						rynx::components::ignore_gravity(),
-						rynx::matrix4(),
+						rynx::components::transform_matrix(),
 						rynx::components::constant_force{ target_direction * upness }
 					);
 				}

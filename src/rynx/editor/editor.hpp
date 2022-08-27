@@ -127,7 +127,7 @@ namespace rynx {
 				rynx::components::position(pos),
 				rynx::components::radius(1.0f),
 				rynx::components::color({ 1, 1, 1, 1 }),
-				rynx::matrix4()
+				rynx::components::transform_matrix()
 			);
 
 			on_entity_selected(id);

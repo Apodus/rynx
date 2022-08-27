@@ -33,6 +33,9 @@ namespace rynx::filesystem {
 		public:
 			node(const rynx::string& name);
 
+			rynx::shared_ptr<rynx::filesystem::iread_file> open_read_with_settings(const rynx::string&);
+			rynx::shared_ptr<rynx::filesystem::iwrite_file> open_write_with_settings(const rynx::string&, rynx::filesystem::iwrite_file::mode);
+
 			virtual rynx::shared_ptr<rynx::filesystem::iread_file> open_read(const rynx::string&);
 			virtual rynx::shared_ptr<rynx::filesystem::iwrite_file> open_write(
 				const rynx::string&, // path
@@ -54,6 +57,7 @@ namespace rynx::filesystem {
 			rynx::string name() const { return m_name; }
 			rynx::weak_ptr<node> parent() const { return m_parent; }
 
+			bool m_compress_files = false;
 			rynx::string m_name;
 			rynx::weak_ptr<node> m_parent;
 			rynx::unordered_map<rynx::string, rynx::shared_ptr<node>> m_children;

@@ -11,6 +11,13 @@
 
 #include <clang-c/Index.h>
 
+bool annotations_match(const std::vector<std::string>& annotations, std::function<bool(const std::string)> check) {
+	for (const std::string& ann : annotations)
+		if (check(ann))
+			return true;
+	return false;
+}
+
 std::string getString(CXString str) {
 	std::string cStr(clang_getCString(str));
 	clang_disposeString(str);
@@ -31,7 +38,7 @@ std::string getNamespace(CXCursor cursor) {
 	return getNamespace(semParent);
 }
 
-std::string getFullQualifiedName(CXCursor cursor) {
+std::string getFullQualifiedNameOfSemanticParent(CXCursor cursor) {
 	CXCursor semParent = clang_getCursorSemanticParent(cursor);
 	auto kind = clang_getCursorKind(semParent);
 	if (kind == CXCursorKind::CXCursor_FirstInvalid ||
@@ -40,8 +47,21 @@ std::string getFullQualifiedName(CXCursor cursor) {
 
 	std::string currentLayerName = getString(clang_getCursorSpelling(semParent));
 	if (currentLayerName.empty())
-		return getFullQualifiedName(semParent);
-	return getFullQualifiedName(semParent) + "::" + currentLayerName;
+		return getFullQualifiedNameOfSemanticParent(semParent);
+	return getFullQualifiedNameOfSemanticParent(semParent) + "::" + currentLayerName;
+}
+
+std::string getFullQualifiedNameOfType(CXType type) {
+	CXCursor semParent = clang_getTypeDeclaration(type);
+	auto kind = clang_getCursorKind(semParent);
+	if (kind == CXCursorKind::CXCursor_FirstInvalid ||
+		kind == CXCursorKind::CXCursor_TranslationUnit)
+		return {};
+
+	std::string currentLayerName = getString(clang_getCursorSpelling(semParent));
+	if (currentLayerName.empty())
+		return getFullQualifiedNameOfSemanticParent(semParent);
+	return getFullQualifiedNameOfSemanticParent(semParent) + "::" + currentLayerName;
 }
 
 std::string g_currentlyWorkedOnFile;
@@ -118,6 +138,8 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 	if (kind == CXCursorKind::CXCursor_FieldDecl) {
 		std::string spelling = getString(clang_getCursorSpelling(cursor));
 		std::string displayName = getString(clang_getCursorDisplayName(cursor));
+		if (spelling.empty())
+			return false;
 
 		if (clang_getCXXAccessSpecifier(cursor) != CX_CXXAccessSpecifier::CX_CXXPublic) {
 			return false;
@@ -134,7 +156,7 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 
 		userData data;
 		data.field_type_spelling = field_type_spelling;
-		std::cout << "checking: " << getString(clang_getCursorSpelling(clang_getCursorDefinition(cursor))) << std::endl;
+		// std::cout << "checking: " << getString(clang_getCursorSpelling(clang_getCursorDefinition(cursor))) << std::endl;
 		data.generate_serialization = isCursorFromCurrentFile(clang_getTypeDeclaration(clang_getCursorType(cursor)));
 
 		clang_Type_visitFields(
@@ -144,7 +166,7 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 				return CXVisitorResult::CXVisit_Continue;
 			},
 			&data
-				);
+		);
 
 		field currentField;
 		currentField.spelling = spelling;
@@ -152,12 +174,22 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 		currentField.annotations = getAnnotations(cursor);
 
 		if (canonicalType.empty()) {
-			std::string fullTypeName = getFullQualifiedName(cursor);
-			g_reflected_types[fullTypeName].m_fields.emplace(currentField);
+			std::string containingClassType = getFullQualifiedNameOfSemanticParent(cursor);
+			g_reflected_types[containingClassType].m_fields.emplace(currentField);
 		}
 		else {
-			g_reflected_types["::" + canonicalType].m_fields.emplace(currentField);
-			g_reflected_types["::" + canonicalType].generate_serialization = generate_serialization;
+			std::string fieldTypeSpelling = "::" + canonicalType;
+			if (!fieldTypeSpelling.contains(" ")) {
+				g_reflected_types[fieldTypeSpelling].m_fields.emplace(currentField);
+				g_reflected_types[fieldTypeSpelling].generate_serialization = generate_serialization;
+			}
+		}
+		std::string fieldTypeSpelling = field_type_spelling;
+		
+		// '::' excludes builtin types such as bool and int.
+		if (fieldTypeSpelling.starts_with("::")) {
+			std::cout << "field type '" << fieldTypeSpelling << "', serialize: " << data.generate_serialization << std::endl;
+			g_reflected_types[fieldTypeSpelling].generate_serialization = data.generate_serialization;
 		}
 	}
 
@@ -208,7 +240,9 @@ bool handleInterestingCursor(CXCursor cursor, std::string canonicalType = "", bo
 
 		if (!spelling.empty()) {
 			// ensures the type is created (operator []), and also stores annotations if present.
-			g_reflected_types[getFullQualifiedName(cursor) + "::" + spelling].annotations = getAnnotations(cursor);
+			std::string reflectedType = getFullQualifiedNameOfSemanticParent(cursor) + "::" + spelling;
+			g_reflected_types[reflectedType].annotations = getAnnotations(cursor);
+			g_reflected_types[reflectedType].generate_serialization = isCursorFromCurrentFile(clang_getCursorDefinition(cursor));
 		}
 	}
 
@@ -405,25 +439,58 @@ void write_results(std::string source_file) {
 				if (skipType)
 					continue;
 
+				if (type.first == "::rynx::components::scene::parent") {
+					std::cout << "hello" << std::endl;
+				}
+
 				if (!type.second.generate_serialization) {
 					std::cout << "serialization not generated for " << type.first << std::endl;
 					continue;
 				}
 
 				output << "template<> struct Serialize<" + type.first + "> {\n";
-				output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "& t, IOStream& writer) {\n";
-				for (auto&& field : type.second.m_fields) {
+
+				{
+					std::stringstream ss;
+					int fields_processed = 0;
+					for (auto&& field : type.second.m_fields) {
+						if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
+							continue;
+						ss << "\t\t" << "rynx::serialize(t." << field.spelling << ", writer);\n";
+						++fields_processed;
+					}
+
+					if (fields_processed == 0) {
+						output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "&, IOStream&) {\n";
+					}
+					else {
+						output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "& t, IOStream& writer) {\n";
+					}
 					if (true || !compiler_is_forced_to_evaluate_reflection_loader_obj) {
 						output << "\t\t++rynx::reflection::generated::" << (functionRandomName + "_i;\n");
 						compiler_is_forced_to_evaluate_reflection_loader_obj = true;
 					}
-					output << "\t\t" << "rynx::serialize(t." << field.spelling << ", writer);\n";
+
+					output << ss.str();
 				}
 				output << "\t}" << std::endl;
 
-				output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "& t, IOStream& reader) {\n";
-				for (auto&& field : type.second.m_fields) {
-					output << "\t\t" << "rynx::deserialize(t." << field.spelling << ", reader);\n";
+				
+				{
+					std::stringstream ss;
+					int fields_processed = 0;
+					for (auto&& field : type.second.m_fields) {
+						if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
+							continue;
+						ss << "\t\t" << "rynx::deserialize(t." << field.spelling << ", reader);\n";
+						++fields_processed;
+					}
+
+					if(fields_processed == 0)
+						output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "&, IOStream&) {\n";
+					else
+						output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "& t, IOStream& reader) {\n";
+					output << ss.str();
 				}
 				output << "\t}" << std::endl;
 
@@ -443,6 +510,35 @@ void write_results(std::string source_file) {
 					}
 					for (auto&& field : type.second.m_fields) {
 						output << "\t\trynx::for_each_id_field(t." << field.spelling << ", std::forward<Op>(op));\n";
+					}
+					output << "\t}" << std::endl; // end function
+					output << "};" << std::endl << std::endl; // end struct
+				}
+
+				{
+					output << "template<> struct equals_op<" << type.first << "> {\n";
+					{
+						std::stringstream ss;
+						int fields_processed = 0;
+						if (!compiler_is_forced_to_evaluate_reflection_loader_obj) {
+							ss << "\t\t++rynx::reflection::generated::" << (functionRandomName + "_i;\n");
+							compiler_is_forced_to_evaluate_reflection_loader_obj = true;
+						}
+						ss << "\t\tbool result = true;\n";
+						for (auto&& field : type.second.m_fields) {
+							if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
+								continue;
+							ss << "\t\tresult &= rynx::component_equals(a." << field.spelling << ", b." << field.spelling << ");\n";
+							++fields_processed;
+						}
+						ss << "\t\treturn result;\n";
+
+						
+						if (fields_processed == 0)
+							output << "\tstatic bool execute(const " << type.first << "&, const " << type.first << "&) {\n";
+						else
+							output << "\tstatic bool execute(const " << type.first << "& a, const " << type.first << "& b) {\n";
+						output << ss.str();
 					}
 					output << "\t}" << std::endl; // end function
 					output << "};" << std::endl << std::endl; // end struct
@@ -500,6 +596,7 @@ int main(int argc, char** argv) {
 	}
 
 	g_clangOptions.emplace_back("-DRYNX_CODEGEN");
+	g_clangOptions.emplace_back("-Wno-assume");
 	g_clangOptions.emplace_back("-DANNOTATE(s)=__attribute__((annotate(s)))");
 
 	CXIndex index = clang_createIndex(0, 0);
@@ -533,12 +630,34 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
+void printDiagnostics(CXTranslationUnit translationUnit) {
+	int nbDiag = clang_getNumDiagnostics(translationUnit);
+	printf("There are %i diagnostics:\n", nbDiag);
+
+	bool foundError = false;
+	for (unsigned int currentDiag = 0; currentDiag < nbDiag; ++currentDiag) {
+		CXDiagnostic diagnotic = clang_getDiagnostic(translationUnit, currentDiag);
+		CXString errorString = clang_formatDiagnostic(diagnotic, clang_defaultDiagnosticDisplayOptions());
+		std::string tmp{ clang_getCString(errorString) };
+		clang_disposeString(errorString);
+		if (tmp.find("error:") != std::string::npos) {
+			foundError = true;
+		}
+		std::cerr << tmp << std::endl;
+	}
+	if (foundError) {
+		std::cerr << "Please resolve these issues" << std::endl << std::endl;
+		// exit(-1);
+	}
+}
+
 void compile(CXIndex& index, std::string path) {
 	std::cout << std::endl << std::endl << "processing " << path << " ..." << std::endl;
 
 	CXTranslationUnit unit;
 	[[maybe_unused]] CXErrorCode error = clang_parseTranslationUnit2(index, path.c_str(), g_clangOptions.data(), int(g_clangOptions.size()), nullptr, 0, 0, &unit);
 	std::cout << "compile result " << error << std::endl;
+	printDiagnostics(unit);
 
 	std::vector<std::string> includeNamespace = { "" };
 	g_currentlyWorkedOnFile = path;

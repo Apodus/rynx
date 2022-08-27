@@ -10,6 +10,11 @@
 
 namespace rynx {
 	namespace filesystem {
+		enum class compression {
+			None,
+			ZStd
+		};
+
 		class FileSystemDLL vfs {
 		public:
 			class vfs_directory_handle {
@@ -29,6 +34,8 @@ namespace rynx {
 				void memory_directory(rynx::string virtual_path) { m_host.memory_directory(std::move(virtual_path)); }
 				void native_directory(rynx::string native_path, rynx::string virtual_path) { m_host.native_directory(std::move(native_path), std::move(virtual_path)); }
 				void native_file(rynx::string native_path, rynx::string virtual_path) { m_host.native_file(std::move(native_path), std::move(virtual_path)); }
+				void memory_directory_compressed(rynx::string virtual_path) { m_host.memory_directory_compressed(std::move(virtual_path)); }
+				void native_directory_compressed(rynx::string native_path, rynx::string virtual_path) { m_host.native_directory_compressed(std::move(native_path), std::move(virtual_path)); }
 			};
 
 			vfs();
@@ -50,6 +57,7 @@ namespace rynx {
 			
 			rynx::shared_ptr<rynx::filesystem::iwrite_file> open_write(rynx::string virtual_path, filesystem::iwrite_file::mode mode = filesystem::iwrite_file::mode::Overwrite) const;
 			rynx::shared_ptr<rynx::filesystem::iread_file> open_read(rynx::string virtual_path) const;
+			
 			bool remove(rynx::string virtual_path) const;
 			
 			std::vector<rynx::string> enumerate(rynx::string virtual_path, rynx::filesystem::recursive recurse = rynx::filesystem::recursive::no) const;
@@ -60,10 +68,12 @@ namespace rynx {
 			void unmount(rynx::string virtual_path);
 
 		private:
-			void memory_file(rynx::string virtual_path);
-			void memory_directory(rynx::string virtual_path);
-			void native_directory(rynx::string native_path, rynx::string virtual_path);
-			void native_file(rynx::string native_path, rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> memory_file(rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> memory_directory(rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> native_directory(rynx::string native_path, rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> native_file(rynx::string native_path, rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> memory_directory_compressed(rynx::string virtual_path);
+			rynx::shared_ptr<rynx::filesystem::filetree::node> native_directory_compressed(rynx::string native_path, rynx::string virtual_path);
 
 			std::vector<rynx::string> enumerate_vfs_content(rynx::string virtual_path, rynx::filesystem::recursive recurse, filetree::detail::enumerate_flags) const;
 

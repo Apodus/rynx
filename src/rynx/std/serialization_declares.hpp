@@ -8,5 +8,6 @@ namespace rynx {
 
 	namespace serialization {
 		template<typename T> struct Serialize;
+		template<typename T> struct equals_op;
 	}
 }
