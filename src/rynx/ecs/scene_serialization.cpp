@@ -312,36 +312,51 @@ void rynx::ecs_detail::scene_serializer::serialize_scene(
 						if (!type_reflection) {
 							continue;
 						}
+						if (!type_reflection->m_serialization_allowed) {
+							continue;
+						}
 
-						logmsg("subscene entity component ADDED: '%s' for entity %d", reflections.find(type_id_value)->m_type_name.c_str(), int32_t(id.value));
+						logmsg("subscene entity component ADDED: '%s' for entity %d", type_reflection->m_type_name.c_str(), int32_t(id.value));
 
-						auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
-						int32_t path_collection_index = add_path_to_collection_and_get_index(persistent_id_path_create(id));
+						if (type_reflection->m_fields.empty()) {
+							int32_t path_collection_index = add_path_to_collection_and_get_index(persistent_id_path_create(id));
+							edits.added_components.emplace_back(
+								subscene_edits::component_edit{
+									path_collection_index,
+									{},
+									type_reflection->m_type_name
+								}
+							);
+						}
+						else {
+							auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
+							int32_t path_collection_index = add_path_to_collection_and_get_index(persistent_id_path_create(id));
 
-						// if edited component value has an id link, create a path to the new target
-						// save target to paths, replace value with index, serialize as is.
-						std::vector<rynx::id> original_id_link_values;
-						itable_actual.for_each_id_field_for_single_index(actual_category_index, [this, &path_collection, &add_path_to_collection_and_get_index, &original_id_link_values](rynx::id& entity_link) mutable {
-							original_id_link_values.emplace_back(entity_link);
-							entity_link.value = add_path_to_collection_and_get_index(persistent_id_path_create(entity_link));
-							rynx_assert(persistent_id_path_find(path_collection[entity_link.value]) == original_id_link_values.back(), "saved path does not point back");
-						});
+							// if edited component value has an id link, create a path to the new target
+							// save target to paths, replace value with index, serialize as is.
+							std::vector<rynx::id> original_id_link_values;
+							itable_actual.for_each_id_field_for_single_index(actual_category_index, [this, &path_collection, &add_path_to_collection_and_get_index, &original_id_link_values](rynx::id& entity_link) mutable {
+								original_id_link_values.emplace_back(entity_link);
+								entity_link.value = add_path_to_collection_and_get_index(persistent_id_path_create(entity_link));
+								rynx_assert(persistent_id_path_find(path_collection[entity_link.value]) == original_id_link_values.back(), "saved path does not point back");
+							});
 
-						rynx::serialization::vector_writer memory_writer;
-						itable_actual.serialize_index(memory_writer, actual_category_index);
-						edits.added_components.emplace_back(
-							subscene_edits::component_edit{
-								path_collection_index,
-								std::move(memory_writer.data()),
-								itable_actual.type_name()
-							}
-						);
+							rynx::serialization::vector_writer memory_writer;
+							itable_actual.serialize_index(memory_writer, actual_category_index);
+							edits.added_components.emplace_back(
+								subscene_edits::component_edit{
+									path_collection_index,
+									std::move(memory_writer.data()),
+									itable_actual.type_name()
+								}
+							);
 
-						auto original_values_iterator = original_id_link_values.begin();
-						itable_actual.for_each_id_field_for_single_index(actual_category_index, [&original_values_iterator](rynx::id& entity_link) mutable {
-							entity_link.value = *original_values_iterator;
-							++original_values_iterator;
-						});
+							auto original_values_iterator = original_id_link_values.begin();
+							itable_actual.for_each_id_field_for_single_index(actual_category_index, [&original_values_iterator](rynx::id& entity_link) mutable {
+								entity_link.value = *original_values_iterator;
+								++original_values_iterator;
+								});
+						}
 					}
 				}
 
@@ -567,7 +582,7 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 				logmsg("subscene edit: 'component add' failed; no type reflection available for '%s'", added_component.component_name.c_str());
 				continue;
 			}
-			
+
 			logmsg("apply subscene component add for '%s'", added_component.component_name.c_str());
 			host->attachToEntity_typeErased(
 				entity_id,
@@ -578,11 +593,13 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 				type_reflection->m_deserialize_instance_func(added_component.serialized_component)
 			);
 
-			auto [category_ptr, category_index] = host->m_idCategoryMap.find(entity_id)->second;
-			auto& itable = category_ptr->table(type_reflection->m_type_index_value);
-			itable.for_each_id_field_for_single_index(category_index, [this, &path_collection](rynx::id& target) {
-				target = persistent_id_path_find(path_collection[target.value]);
-			});
+			if (!type_reflection->m_fields.empty()) {
+				auto [category_ptr, category_index] = host->m_idCategoryMap.find(entity_id)->second;
+				auto& itable = category_ptr->table(type_reflection->m_type_index_value);
+				itable.for_each_id_field_for_single_index(category_index, [this, &path_collection](rynx::id& target) {
+					target = persistent_id_path_find(path_collection[target.value]);
+				});
+			}
 		}
 	}
 

@@ -205,10 +205,15 @@ namespace rynx {
 				};
 
 				result.m_deserialize_instance_func = [](const std::vector<char>& serialized) {
-					rynx::serialization::vector_reader in(serialized);
-					T* obj = new T();
-					rynx::deserialize(*obj, in);
-					return opaque_unique_ptr<void>(obj, [](void* t) { if (t) delete static_cast<T*>(t); });
+					if constexpr (std::is_empty_v<T>) {
+						return opaque_unique_ptr<void>(new T(), [](void* t) { if (t) delete static_cast<T*>(t); });
+					}
+					else {
+						rynx::serialization::vector_reader in(serialized);
+						T* obj = new T();
+						rynx::deserialize(*obj, in);
+						return opaque_unique_ptr<void>(obj, [](void* t) { if (t) delete static_cast<T*>(t); });
+					}
 				};
 
 				m_reflections.emplace(rynx::string(typeid(T).name()), std::move(result));
