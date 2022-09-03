@@ -13,15 +13,15 @@
 
 namespace {
 
-	rynx::components::motion g_dummy_motion;
+	rynx::components::transform::motion g_dummy_motion;
 
 	struct collision_event {
 		uint64_t a_id;
 		uint64_t b_id;
-		rynx::components::physical_body a_body;
-		rynx::components::physical_body b_body;
-		rynx::components::motion* a_motion;
-		rynx::components::motion* b_motion;
+		rynx::components::phys::body a_body;
+		rynx::components::phys::body b_body;
+		rynx::components::transform::motion* a_motion;
+		rynx::components::transform::motion* b_motion;
 		rynx::vec3<float> a_pos;
 		rynx::vec3<float> b_pos;
 		rynx::vec3<float> c_pos; // collision point in world space
@@ -30,12 +30,12 @@ namespace {
 	};
 
 	using ecs_view = rynx::ecs::view<
-		const rynx::components::position,
-		const rynx::components::radius,
-		const rynx::components::boundary,
+		const rynx::components::transform::position,
+		const rynx::components::transform::radius,
 		const rynx::components::projectile,
-		const rynx::components::motion,
-		const rynx::components::physical_body>;
+		const rynx::components::transform::motion,
+		const rynx::components::phys::boundary,
+		const rynx::components::phys::body>;
 
 	void create_collision_event(
 		std::vector<collision_event>& storage,
@@ -52,8 +52,8 @@ namespace {
 
 		collision_event event;
 
-		event.a_body = a.get<const rynx::components::physical_body>();
-		event.b_body = b.get<const rynx::components::physical_body>();
+		event.a_body = a.get<const rynx::components::phys::body>();
+		event.b_body = b.get<const rynx::components::phys::body>();
 
 		if (
 			(event.a_body.collision_id == event.b_body.collision_id) &
@@ -81,7 +81,7 @@ namespace {
 		const rynx::vec3f polygon_position,
 		const float ball_radius
 	) {
-		const auto& boundaryA = polygon.get<const rynx::components::boundary>();
+		const auto& boundaryA = polygon.get<const rynx::components::phys::boundary>();
 		const float radiusSqr = ball_radius * ball_radius;
 		
 		int collisions_detected = 0;
@@ -127,8 +127,8 @@ namespace {
 		float radius_a,
 		float radius_b
 	) {
-		const auto& boundaryA = poly1.get<const rynx::components::boundary>();
-		const auto& boundaryB = poly2.get<const rynx::components::boundary>();
+		const auto& boundaryA = poly1.get<const rynx::components::phys::boundary>();
+		const auto& boundaryB = poly2.get<const rynx::components::phys::boundary>();
 
 		// this probably wont work but lets try
 		int collisions_detected = 0;
@@ -213,13 +213,13 @@ namespace {
 		rynx::ecs::entity<ecs_view>& bulletEntity,
 		rynx::ecs::entity<ecs_view>& dynamicEntity
 	) {
-		const auto& bulletPos = bulletEntity.get<const rynx::components::position>();
-		const auto& bulletMotion = bulletEntity.get<const rynx::components::motion>();
+		const auto& bulletPos = bulletEntity.get<const rynx::components::transform::position>();
+		const auto& bulletMotion = bulletEntity.get<const rynx::components::transform::motion>();
 
-		auto ballPos = dynamicEntity.get<const rynx::components::position>().value;
+		auto ballPos = dynamicEntity.get<const rynx::components::transform::position>().value;
 		auto pointDistanceResult = rynx::math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, ballPos);
 
-		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
+		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::transform::radius>().r + bulletEntity.get<const rynx::components::transform::radius>().r) {
 			create_collision_event(
 				collisions_accumulator,
 				bulletEntity,
@@ -240,15 +240,15 @@ namespace {
 		rynx::ecs::entity<ecs_view>& dynamicEntity,
 		uint32_t partIndex
 	) {
-		const auto& bulletPos = bulletEntity.get<const rynx::components::position>();
-		const auto& bulletMotion = bulletEntity.get<const rynx::components::motion>();
+		const auto& bulletPos = bulletEntity.get<const rynx::components::transform::position>();
+		const auto& bulletMotion = bulletEntity.get<const rynx::components::transform::motion>();
 
-		const auto& polygonPositionComponent = dynamicEntity.get<const rynx::components::position>();
+		const auto& polygonPositionComponent = dynamicEntity.get<const rynx::components::transform::position>();
 		auto polyPos = polygonPositionComponent.value;
 		auto pointDistanceResult = rynx::math::pointDistanceLineSegment(bulletPos.value, bulletPos.value - bulletMotion.velocity, polyPos);
 
-		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::radius>().r + bulletEntity.get<const rynx::components::radius>().r) {
-			const auto& boundary = dynamicEntity.get<const rynx::components::boundary>();
+		if (pointDistanceResult.first < dynamicEntity.get<const rynx::components::transform::radius>().r + bulletEntity.get<const rynx::components::transform::radius>().r) {
+			const auto& boundary = dynamicEntity.get<const rynx::components::phys::boundary>();
 			const auto segment = boundary.segments_world.segment(partIndex);
 			
 			float sin_v = rynx::math::sin(polygonPositionComponent.angle);
@@ -367,8 +367,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	rynx::scheduler::barrier collisions_find_barrier("find collisions prereq");
 
 	{
-		context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::collision_custom_reaction> ecs) {
-			ecs.query().for_each([](rynx::components::collision_custom_reaction& collisions) {
+		context.add_task("Remove frame prev frame collisions", [](rynx::ecs::view<rynx::components::phys::collision_events> ecs) {
+			ecs.query().for_each([](rynx::components::phys::collision_events& collisions) {
 				collisions.events.clear();
 			});
 		});
@@ -396,8 +396,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 	auto updateBoundaryWorld = context.add_task(
 		"Update boundary local -> boundary world",
-		[](rynx::ecs::view<const components::position, components::boundary> ecs, rynx::scheduler::task& task_context) {
-			ecs.query().in<components::motion>().for_each_parallel(task_context, [](components::position pos, components::boundary& boundary) {
+		[](rynx::ecs::view<const components::transform::position, rynx::components::phys::boundary> ecs, rynx::scheduler::task& task_context) {
+			ecs.query().in<components::transform::motion>().for_each_parallel(task_context, [](components::transform::position pos, components::phys::boundary& boundary) {
 				boundary.update_world_positions(pos.value, pos.angle);
 			});
 		}
@@ -406,12 +406,12 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	rynx::shared_ptr<rynx::parallel_accumulator<collision_event>> collisions_accumulator = rynx::make_shared<rynx::parallel_accumulator<collision_event>>();
 	auto findCollisionsTask = context.add_task("Find collisions", [collisions_accumulator](
 		rynx::ecs::view<
-		const components::position,
-		const components::radius,
-		const components::boundary,
+		const components::transform::position,
+		const components::transform::radius,
 		const components::projectile,
-		const components::motion,
-		const components::physical_body> ecs,
+		const components::transform::motion,
+		const components::phys::boundary,
+		const components::phys::body> ecs,
 		collision_detection& detection,
 		rynx::scheduler::task& this_task) mutable
 		{
@@ -429,7 +429,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 	findCollisionsTask.depends_on(updateBoundaryWorld);
 
 	auto collision_resolution_first_stage = [dt = dt, collisions_accumulator](
-		rynx::ecs::view<components::motion, rynx::components::collision_custom_reaction> ecs,
+		rynx::ecs::view<components::transform::motion, rynx::components::phys::collision_events> ecs,
 		rynx::scheduler::task& task)
 	{
 		struct event_extra_info {
@@ -452,7 +452,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 			extra_infos->operator[](i)->resize(overlaps_vector->operator[](i)->size());
 		}
 
-		g_dummy_motion = rynx::components::motion{};
+		g_dummy_motion = rynx::components::transform::motion{};
 		std::vector<rynx::scheduler::barrier> barriers;
 		{
 			rynx_profile("collisions", "fetch motion components");
@@ -464,8 +464,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 
 					parallel_ops.range(0, overlaps->size(), 64).execute([overlaps, extras, ecs](int64_t index) mutable {
 						auto& collision = overlaps->operator[](index);
-						collision.a_motion = ecs[collision.a_id].try_get<components::motion>();
-						collision.b_motion = ecs[collision.b_id].try_get<components::motion>();
+						collision.a_motion = ecs[collision.a_id].try_get<components::transform::motion>();
+						collision.b_motion = ecs[collision.b_id].try_get<components::transform::motion>();
 
 						if (collision.a_motion == nullptr) {
 							collision.a_motion = &g_dummy_motion;
@@ -486,13 +486,13 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						extra.relative_position_tangent_a = rel_pos_a.normal2d() / (rel_pos_len_a + std::numeric_limits<float>::epsilon());
 						extra.relative_position_tangent_b = rel_pos_b.normal2d() / (rel_pos_len_b + std::numeric_limits<float>::epsilon());
 
-						if (auto* storage = ecs[collision.a_id].try_get<rynx::components::collision_custom_reaction>()) {
-							rynx::components::collision_custom_reaction::event e;
+						if (auto* storage = ecs[collision.a_id].try_get<rynx::components::phys::collision_events>()) {
+							rynx::components::phys::collision_events::event e;
 							e.body = collision.b_body;
 							e.id = collision.b_id;
 							e.normal = collision.normal;
 
-							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m) {
 								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
 							};
 
@@ -503,13 +503,13 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 							storage->events.emplace_back(e);
 						}
 
-						if (auto* storage = ecs[collision.b_id].try_get<rynx::components::collision_custom_reaction>()) {
-							rynx::components::collision_custom_reaction::event e;
+						if (auto* storage = ecs[collision.b_id].try_get<rynx::components::phys::collision_events>()) {
+							rynx::components::phys::collision_events::event e;
 							e.body = collision.a_body;
 							e.id = collision.a_id;
 							e.normal = -collision.normal;
 
-							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m) {
+							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m) {
 								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
 							};
 
@@ -537,10 +537,10 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 					auto& extras = extra_infos->operator[](k);
 					task.parallel().range(0, overlaps->size(), 2048).deferred_work().execute([overlaps, extras, ecs, dt](int64_t index) mutable {
 						const auto& collision = overlaps->operator[](index);
-						components::motion& motion_a = *collision.a_motion;
-						components::motion& motion_b = *collision.b_motion;
+						components::transform::motion& motion_a = *collision.a_motion;
+						components::transform::motion& motion_b = *collision.b_motion;
 
-						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::motion& m, float dt) {
+						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m, float dt) {
 							return m.velocity + m.acceleration * dt - rel_pos_len * (m.angularVelocity + m.angularAcceleration * dt) * rel_pos_tangent;
 						};
 
@@ -625,8 +625,8 @@ void rynx::ruleset::physics_2d::on_entities_erased(rynx::scheduler::context& con
 	auto& ecs = context.get_resource<rynx::ecs>();
 	auto& collision_detection = context.get_resource<rynx::collision_detection>();
 	for (auto id : ids) {
-		if (ecs[id].has<rynx::components::collisions>()) {
-			auto collisions = ecs[id].get<rynx::components::collisions>();
+		if (ecs[id].has<rynx::components::phys::collisions>()) {
+			auto collisions = ecs[id].get<rynx::components::phys::collisions>();
 			collision_detection.erase(ecs, id.value, collisions.category);
 		}
 	}

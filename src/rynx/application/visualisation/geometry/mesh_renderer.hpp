@@ -18,15 +18,15 @@ namespace rynx {
 		namespace visualisation {
 			struct mesh_renderer : public rynx::application::graphics_step::igraphics_step {
 			private:
-				static_assert(sizeof(rynx::components::transform_matrix) == sizeof(rynx::matrix4), "matrices need to be in consecutive memory");
+				static_assert(sizeof(rynx::components::transform::matrix) == sizeof(rynx::matrix4), "matrices need to be in consecutive memory");
 
 				struct buffer {
 					size_t num;
 					const rynx::graphics::mesh* mesh;
-					const rynx::components::position* positions;
-					const rynx::components::radius* radii;
-					const rynx::components::color* colors;
-					const rynx::components::transform_matrix* models;
+					const rynx::components::transform::position* positions;
+					const rynx::components::transform::radius* radii;
+					const rynx::components::graphics::color* colors;
+					const rynx::components::transform::matrix* models;
 					const rynx::graphics::texture_id* tex_ids;
 				};
 
@@ -44,14 +44,14 @@ namespace rynx {
 						
 						// collect buffers for drawing, first solids, then translucents.
 						ecs.query()
-							.notIn<rynx::components::translucent, components::frustum_culled, rynx::components::invisible>()
+							.notIn<rynx::components::graphics::translucent, components::graphics::frustum_culled, rynx::components::graphics::invisible>()
 							.for_each_buffer([this](
 								size_t num_entities,
-								const rynx::components::mesh* meshes,
-								const rynx::components::position* positions,
-								const rynx::components::radius* radii,
-								const rynx::components::color* colors,
-								const rynx::components::transform_matrix* models,
+								const rynx::components::graphics::mesh* meshes,
+								const rynx::components::transform::position* positions,
+								const rynx::components::transform::radius* radii,
+								const rynx::components::graphics::color* colors,
+								const rynx::components::transform::matrix* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
 									auto* mesh = m_meshes->get(meshes[0].m);
@@ -67,15 +67,15 @@ namespace rynx {
 								});
 
 						ecs.query()
-							.notIn<components::frustum_culled, rynx::components::invisible>()
-							.in<rynx::components::translucent>()
+							.notIn<components::graphics::frustum_culled, rynx::components::graphics::invisible>()
+							.in<rynx::components::graphics::translucent>()
 							.for_each_buffer([this](
 								size_t num_entities,
-								const rynx::components::mesh* meshes,
-								const rynx::components::position* positions,
-								const rynx::components::radius* radii,
-								const rynx::components::color* colors,
-								const rynx::components::transform_matrix* models,
+								const rynx::components::graphics::mesh* meshes,
+								const rynx::components::transform::position* positions,
+								const rynx::components::transform::radius* radii,
+								const rynx::components::graphics::color* colors,
+								const rynx::components::transform::matrix* models,
 								const rynx::graphics::texture_id* tex_ids)
 								{
 									auto* mesh = m_meshes->get(meshes[0].m);

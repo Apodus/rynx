@@ -30,12 +30,12 @@ void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& c
 		if (hit) {
 			point.z = 0; // the floating point calculations are not 100% accurate, so fix the z value.
 			auto scene_id = scenes.filepath_to_info(m_selectedScene).id;
-			rynx::id new_scene = ecs.create(rynx::components::position{ point, 0 }, rynx::components::scene::link{ scene_id });
+			rynx::id new_scene = ecs.create(rynx::components::transform::position{ point, 0 }, rynx::components::scene::link{ scene_id });
 			rynx::entity_range_t deserialized_entities = rynx::ecs_detail::scene_serializer(ecs).load_subscenes(reflections, *m_vfs, scenes);
 
 			for (rynx::id child_entity : deserialized_entities) {
-				auto* pos = ecs[child_entity].try_get<rynx::components::position>();
-				auto* boundary = ecs[child_entity].try_get<rynx::components::boundary>();
+				auto* pos = ecs[child_entity].try_get<rynx::components::transform::position>();
+				auto* boundary = ecs[child_entity].try_get<rynx::components::phys::boundary>();
 				if (pos && boundary) {
 					boundary->update_world_positions(pos->value, pos->angle);
 				}

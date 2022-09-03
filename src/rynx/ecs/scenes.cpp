@@ -41,6 +41,11 @@ void rynx::scenes::scan_directory(rynx::filesystem::vfs& fs, const rynx::string&
 		std::vector<char> data;
 		{
 			auto reader = fs.open_read(filepath);
+			if (reader->size() == 0) {
+				logmsg("file '%s' appears to be corrupted", filepath.c_str());
+				continue;
+			}
+			
 			auto result = read_definition(*reader);
 			success = result.first;
 			if (result.first) {
@@ -95,11 +100,15 @@ void rynx::scenes::save_scene(
 	rynx::string scene_name,
 	rynx::string filepath
 ) {
-	if (fs.file_exists(filepath)) {
+	auto save_over_existing_scenefile = [&]() {
 		// overwrite existing scene
 		rynx::scene_info info;
 		{
 			auto old_file = fs.open_read(filepath);
+			if (old_file->size() == 0) {
+				return false;
+			}
+
 			auto def = read_definition(*old_file);
 			if (def.first) {
 				info = def.second;
@@ -113,12 +122,20 @@ void rynx::scenes::save_scene(
 			rynx::serialize(serialized_scene, *file);
 
 			internal_update(info, filepath);
+			return true;
 		}
 		else {
 			// uh oh.. save failed. should probably communicate this back to user hehe.
+			return false;
 		}
-	}
-	else {
+	};
+	
+	bool fileExists = fs.file_exists(filepath);
+	if (fileExists && save_over_existing_scenefile())
+		return;
+
+	// save a new file.
+	{
 		// create a new scene
 		auto id = scene_id::generate();
 		rynx::scene_info info;
@@ -127,6 +144,9 @@ void rynx::scenes::save_scene(
 		info.name = scene_name;
 
 		auto storageFilePath = filepath + "_" + id.operator rynx::string() + ".rynxscene";
+		if (fileExists)
+			storageFilePath = filepath;
+
 		auto file = fs.open_write(storageFilePath);
 		rynx::serialize(serialized_scene_marker, *file);
 		rynx::serialize(info, *file);
@@ -144,6 +164,11 @@ rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path) {
 
 const rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path) const {
 	auto it = m_filepath_to_info.find(path);
+	if (it == m_filepath_to_info.end()) {
+		static rynx::scene_info error;
+		error.name = "<corrupted>";
+		return error;
+	}
 	rynx_assert(it != m_filepath_to_info.end(), "filepath to info must succeed");
 	return it->second;
 }
@@ -160,6 +185,10 @@ std::vector<std::pair<rynx::string, rynx::scene_id>> rynx::scenes::list_scenes()
 }
 
 void rynx::scenes::internal_update(rynx::scene_info& info, rynx::string filepath) {
+	rynx_assert(
+		m_infos.find(info.id) == m_infos.end() ||
+		m_filepaths[info.id] == filepath,
+		"adding a new scene file with identical id");
 	m_infos.emplace(info.id, info);
 	m_filepaths[info.id] = filepath;
 	m_filepath_to_info[filepath] = info;

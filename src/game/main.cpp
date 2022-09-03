@@ -155,7 +155,7 @@ int main(int /* argc */, char** /* argv */) {
 		
 		{
 			rynx_profile("Main", "Clean up dead entitites");
-			auto ids_dead = ecs.query().in<rynx::components::dead>().ids();
+			auto ids_dead = ecs.query().in<rynx::components::entity::dead>().ids();
 			base_simulation.m_logic.entities_erased(*base_simulation.m_context, ids_dead);
 			ecs.erase(ids_dead);
 		}

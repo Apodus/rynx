@@ -48,7 +48,7 @@ namespace rynx {
 			
 				virtual void on_entity_component_value_changed(
 					rynx::scheduler::context* ctx,
-					rynx::string componentTypeName,
+					rynx::type_index::type_id_t type_id,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 

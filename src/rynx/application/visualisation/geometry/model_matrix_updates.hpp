@@ -21,11 +21,11 @@ namespace rynx {
 					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
 
 						// update model matrices
-						ecs.query().notIn<components::frustum_culled, components::invisible>()
+						ecs.query().notIn<components::graphics::frustum_culled, components::graphics::invisible>()
 							.for_each_parallel(task_context, [this](
-								rynx::components::position pos,
-								rynx::components::radius r,
-								rynx::components::transform_matrix& transform_matrix)
+								rynx::components::transform::position pos,
+								rynx::components::transform::radius r,
+								rynx::components::transform::matrix& transform_matrix)
 								{
 									auto& model = reinterpret_cast<rynx::matrix4&>(transform_matrix);
 									model.discardSetTranslate(pos.value);

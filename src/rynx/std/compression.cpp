@@ -18,6 +18,8 @@ std::vector<char> compress(std::span<char> memory) {
 }
 
 std::vector<char> decompress(std::span<char> memory) {
+	if (memory.empty())
+		return {};
 	size_t expected_decompressed_size = ZSTD_getFrameContentSize(memory.data(), memory.size());
 	std::vector<char> result(expected_decompressed_size);
 	size_t actual_decompressed_size = ZSTD_decompress(result.data(), result.size(), memory.data(), memory.size());

@@ -60,6 +60,7 @@ namespace rynx {
 
 		rynx::editor::itool* m_active_tool = nullptr;
 		std::vector<rynx::unique_ptr<rynx::editor::itool>> m_tools;
+		std::vector<rynx::string> m_component_filters; // if any matches, component can be included
 
 		rynx::reflection::reflections& m_reflections;
 		rynx::scheduler::context* m_context = nullptr;
@@ -68,12 +69,14 @@ namespace rynx {
 		bool m_tools_enabled = true;
 
 		void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) {
-			if (!popup->parent()) {
-				m_editor_menu->addChild(popup);
-			}
-			popup->capture_dedicated_mouse_input();
-			popup->capture_dedicated_keyboard_input();
-			m_popups.emplace_back(popup);
+			execute([this, popup]() {
+				if (!popup->parent()) {
+					m_editor_menu->addChild(popup);
+				}
+				popup->capture_dedicated_mouse_input();
+				popup->capture_dedicated_keyboard_input();
+				m_popups.emplace_back(popup);
+			});
 		}
 
 		void pop_popup() {
@@ -111,6 +114,7 @@ namespace rynx {
 		void load_scene_from_path(rynx::string path);
 
 	public:
+		void add_component_include_filter(rynx::string match) { m_component_filters.emplace_back(std::move(match)); }
 		void add_tool(rynx::unique_ptr<rynx::editor::itool> tool);
 
 		template<typename ToolType, typename... ArgTypes>
@@ -124,10 +128,10 @@ namespace rynx {
 		void create_empty_entity(rynx::vec3f pos) {
 			rynx::ecs& ecs = m_context->get_resource<rynx::ecs>();
 			auto id = ecs.create(
-				rynx::components::position(pos),
-				rynx::components::radius(1.0f),
-				rynx::components::color({ 1, 1, 1, 1 }),
-				rynx::components::transform_matrix()
+				rynx::components::transform::position(pos),
+				rynx::components::transform::radius(1.0f),
+				rynx::components::graphics::color({ 1, 1, 1, 1 }),
+				rynx::components::transform::matrix()
 			);
 
 			on_entity_selected(id);

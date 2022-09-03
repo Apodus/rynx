@@ -142,7 +142,7 @@ namespace rynx {
 			private:
 				void add_goto_option(rynx::id entity) {
 					m_errors.back().add_option("Goto", [entity, ctx = m_context]() {
-						auto entity_pos = ctx->get_resource<rynx::ecs>()[entity].get<rynx::components::position>().value;
+						auto entity_pos = ctx->get_resource<rynx::ecs>()[entity].get<rynx::components::transform::position>().value;
 						auto& camera = ctx->get_resource<rynx::camera>();
 						auto cam_pos = camera.position();
 						camera.setPosition({ entity_pos.x, entity_pos.y, cam_pos.z });
@@ -175,7 +175,7 @@ namespace rynx {
 
 			virtual void on_entity_component_value_changed(
 				rynx::scheduler::context*,
-				rynx::string /* componentTypeName */,
+				rynx::type_index::type_id_t,
 				rynx::ecs&,
 				rynx::id) {}
 

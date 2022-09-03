@@ -22,10 +22,10 @@ namespace rynx {
 				struct buffer {
 					size_t num;
 					const rynx::graphics::mesh* mesh;
-					const rynx::components::position* positions;
-					const rynx::components::radius* radii;
-					const rynx::components::color* colors;
-					const rynx::components::transform_matrix* models;
+					const rynx::components::transform::position* positions;
+					const rynx::components::transform::radius* radii;
+					const rynx::components::graphics::color* colors;
+					const rynx::components::transform::matrix* models;
 					const rynx::graphics::texture_id* tex_ids;
 				};
 
@@ -38,13 +38,13 @@ namespace rynx {
 
 						// collect buffers for drawing
 						ecs.query()
-							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::translucent, rynx::components::frustum_culled, rynx::components::invisible>()
+							.notIn<rynx::components::graphics::mesh, rynx::components::phys::boundary, rynx::components::graphics::translucent, rynx::components::graphics::frustum_culled, rynx::components::graphics::invisible>()
 							.for_each_buffer([this](
 								size_t num_entities,
-								const rynx::components::position* positions,
-								const rynx::components::radius* radii,
-								const rynx::components::color* colors,
-								const rynx::components::transform_matrix* models)
+								const rynx::components::transform::position* positions,
+								const rynx::components::transform::radius* radii,
+								const rynx::components::graphics::color* colors,
+								const rynx::components::transform::matrix* models)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
@@ -58,14 +58,14 @@ namespace rynx {
 						);
 
 						ecs.query()
-							.notIn<rynx::components::mesh, rynx::components::boundary, rynx::components::frustum_culled, rynx::components::invisible>()
-							.in<rynx::components::translucent>()
+							.notIn<rynx::components::graphics::mesh, rynx::components::phys::boundary, rynx::components::graphics::frustum_culled, rynx::components::graphics::invisible>()
+							.in<rynx::components::graphics::translucent>()
 							.for_each_buffer([this](
 								size_t num_entities,
-								const rynx::components::position* positions,
-								const rynx::components::radius* radii,
-								const rynx::components::color* colors,
-								const rynx::components::transform_matrix* models)
+								const rynx::components::transform::position* positions,
+								const rynx::components::transform::radius* radii,
+								const rynx::components::graphics::color* colors,
+								const rynx::components::transform::matrix* models)
 								{
 									m_bufs.emplace_back(buffer{
 										num_entities,
@@ -83,7 +83,7 @@ namespace rynx {
 						{
 							rynx_profile("visualisation", "model matrices");
 							m_ropes->clear();
-							ecs.query().notIn<rynx::components::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
+							ecs.query().notIn<rynx::components::graphics::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
 								if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id))) {
 									return;
 								}
@@ -91,8 +91,8 @@ namespace rynx {
 								auto entity_a = ecs[rope.a.id];
 								auto entity_b = ecs[rope.b.id];
 
-								const auto& pos_a = entity_a.get<const components::position>();
-								const auto& pos_b = entity_b.get<const components::position>();
+								const auto& pos_a = entity_a.get<const components::transform::position>();
+								const auto& pos_b = entity_b.get<const components::transform::position>();
 								auto relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
 								auto relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
 								auto world_pos_a = pos_a.value + relative_pos_a;

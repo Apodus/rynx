@@ -51,7 +51,7 @@ namespace rynx {
 			};
 			
 			struct Attachment {
-				Component* attachedTo = nullptr;
+				const Component* attachedTo = nullptr;
 				vec3<float> align;
 				float offset = 0;
 				float innerOuterMultiplier = 1;
@@ -64,7 +64,7 @@ namespace rynx {
 			Attachment m_horizontalAttachment;
 
 			void privateAlign(Align sideOf, float mul);
-			void privateAttach(Component* other, Align align);
+			void privateAttach(const Component* other, Align align);
 
 			void updateAttachment();
 			void updatePosition();
@@ -172,7 +172,7 @@ namespace rynx {
 			class AlignConfig {
 			private:
 				Component* m_host;
-				Component* m_align_to;
+				const Component* m_align_to;
 
 				void private_do_align(rynx::menu::Align sideOf, float directionMultiplier) {
 					m_host->privateAttach(m_align_to, sideOf);
@@ -181,7 +181,7 @@ namespace rynx {
 
 			public:
 				AlignConfig(Component* host) { m_host = host; m_align_to = m_host->parent(); }
-				AlignConfig& target(Component* component) { m_align_to = component; return *this; }
+				AlignConfig& target(const Component* component) { m_align_to = component; return *this; }
 
 				AlignConfig& offset(float offset_v) {
 					m_host->m_horizontalAttachment.offset = offset_v;

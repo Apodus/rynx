@@ -30,6 +30,7 @@ rynx::string humanize(rynx::string s) {
 	replace_all(" ", "");
 	replace_all("rynx::math", "r::m");
 	replace_all("rynx::", "r::");
+	replace_all("components::", "comp::");
 	replace_all("vec3<float>", "vec3f");
 	replace_all("vec4<float>", "vec4f");
 	return s;
@@ -628,7 +629,7 @@ void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	ecs.clear();
 	all_rulesets().clear(*m_context);
 
-	rynx::ecs_detail::scene_serializer(ecs).deserialize_scene(m_reflections, vfs, scenes, rynx::components::position{}, reader);
+	rynx::ecs_detail::scene_serializer(ecs).deserialize_scene(m_reflections, vfs, scenes, rynx::components::transform::position{}, reader);
 	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
 	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
@@ -979,8 +980,8 @@ rynx::editor_rules::editor_rules(
 			auto add_component_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.5f, 0.05f, 0.0f));
 
 			delete_entity_button->velocity_position(menuVelocityFast);
-			delete_entity_button->align().top_inside().right_outside().target(add_component_button.get());
-			delete_entity_button->text().text("Add component");
+			delete_entity_button->align().target(add_component_button.get()).top_inside().right_outside();
+			delete_entity_button->text().text("Delete entity");
 			delete_entity_button->on_click([this]() {
 				execute([this]() {
 					if (m_state.m_selected_ids.size() == 1) {
@@ -990,7 +991,7 @@ rynx::editor_rules::editor_rules(
 					}
 				});
 			});
-			add_component_button->addChild(delete_entity_button);
+			// add_component_button->addChild(delete_entity_button);
 
 			add_component_button->velocity_position(menuVelocityFast);
 			add_component_button->align().top_inside().left_inside();
@@ -1019,11 +1020,21 @@ rynx::editor_rules::editor_rules(
 									continue;
 								}
 
+								// component type filtering
+								{
+									bool allowed = m_component_filters.empty();
+									for (auto&& component_filter : m_component_filters) {
+										allowed |= (type_reflection.m_type_name.find(component_filter) != rynx::string::npos);
+									}
+									if (!allowed)
+										continue;
+								}
+
 								auto button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(1.f, 0.05f, 0.0f));
 								menu_list->addChild(button);
 								button->align().center_x();
 								button->velocity_position(menuVelocityFast);
-								button->text().text(type_reflection.m_type_name);
+								button->text().text(humanize(type_reflection.m_type_name));
 								button->text().text_align_left();
 								button->on_click([this, selected_entity, type_reflection, &ecs]() mutable {
 									execute([this, selected_entity, type_reflection, &ecs]() mutable {
@@ -1059,6 +1070,7 @@ rynx::editor_rules::editor_rules(
 
 			m_entity_bar->addChild(m_components_list);
 			m_entity_bar->addChild(add_component_button);
+			m_entity_bar->addChild(delete_entity_button);
 		}
 	}
 
@@ -1113,13 +1125,34 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 			const auto& ids = m_state.m_selected_ids;
 			for (auto id : ids) {
 				if (game_ecs.exists(id)) {
-					auto* pos = game_ecs[id].try_get<rynx::components::position>();
-					auto* r = game_ecs[id].try_get<rynx::components::radius>();
+					auto entity = game_ecs[id];
+					auto* pos = entity.try_get<rynx::components::transform::position>();
+					auto* r = entity.try_get<rynx::components::transform::radius>();
 					if (r && pos) {
 						rynx::matrix4 m;
 						m.discardSetTranslate(pos->value);
 						m.scale(r->r * 1.01f);
 						debugVis.addDebugCircle(m, { 1, 1 ,1 ,1 }, 0.0f);
+					}
+
+					// draw line to parent entity if exists.
+					if (auto* parent_comp = entity.try_get<rynx::components::scene::parent>()) {
+						if (game_ecs.exists(parent_comp->entity)) {
+							auto parent_pos = game_ecs[parent_comp->entity].get<rynx::components::transform::position>();
+							debugVis.addDebugLine_world(parent_pos.value, pos->value, { 1.0f, 0.0f, 1.0f, 1.0f }, 0.2f);
+						}
+					}
+
+					// draw lines to child entities if exists
+					if (auto* children_comp = entity.try_get<rynx::components::scene::children>()) {
+						for (auto child_id : children_comp->entities) {
+							if (game_ecs.exists(child_id)) {
+								auto parent_pos = game_ecs[child_id].get<rynx::components::transform::position>();
+								float width = 1.0f * game_camera.position().z;
+								rynx::floats4 color{ 0.2f, 1.0f, 0.2f, 1.0f };
+								debugVis.addDebugLine_world(parent_pos.value, pos->value, color, width);
+							}
+						}
 					}
 				}
 			}

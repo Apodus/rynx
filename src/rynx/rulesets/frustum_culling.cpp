@@ -29,19 +29,19 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 	auto update_new_entities = context.add_task("frustum cull add new entities", [this](
 		rynx::ecs::edit_view<
 		entity_tracked_by_frustum_culling,
-		const components::draw_always,
-		const components::frustum_culled,
-		const components::radius,
-		const components::position> ecs)
+		const components::graphics::draw_always,
+		const components::graphics::frustum_culled,
+		const components::transform::radius,
+		const components::transform::position> ecs)
 		{
 			auto ids = ecs.query()
-				.notIn<entity_tracked_by_frustum_culling, components::draw_always>()
-				.in<components::position, components::radius>()
+				.notIn<entity_tracked_by_frustum_culling, components::graphics::draw_always>()
+				.in<components::transform::position, components::transform::radius>()
 				.ids();
 			
 			auto entity_data_vector = ecs.query()
-				.notIn<entity_tracked_by_frustum_culling, components::draw_always>()
-				.gather<rynx::ecs::id, components::position, components::radius>();
+				.notIn<entity_tracked_by_frustum_culling, components::graphics::draw_always>()
+				.gather<rynx::ecs::id, components::transform::position, components::transform::radius>();
 			
 			for (auto&& data : entity_data_vector) {
 				m_in_frustum.insert_entity(std::get<0>(data).value, std::get<1>(data).value, std::get<2>(data).r);
@@ -62,20 +62,20 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 				rynx::scheduler::task& task_context,
 				rynx::ecs::view<
 				const entity_tracked_by_frustum_culling,
-				const components::frustum_culled,
-				const rynx::components::position,
-				const rynx::components::radius> ecs)
+				const components::graphics::frustum_culled,
+				const rynx::components::transform::position,
+				const rynx::components::transform::radius> ecs)
 				{
 					ecs.query()
-						.in<entity_tracked_by_frustum_culling, components::motion>()
-						.notIn<components::frustum_culled>()
-						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
+						.in<entity_tracked_by_frustum_culling, components::transform::motion>()
+						.notIn<components::graphics::frustum_culled>()
+						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::transform::position pos, rynx::components::transform::radius r) {
 						m_in_frustum.update_entity(id.value, pos.value, r.r);
 					});
 
 					ecs.query()
-						.in<entity_tracked_by_frustum_culling, components::motion, components::frustum_culled>()
-						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::position pos, rynx::components::radius r) {
+						.in<entity_tracked_by_frustum_culling, components::transform::motion, components::graphics::frustum_culled>()
+						.for_each_parallel(task_context, [this](rynx::ecs::id id, rynx::components::transform::position pos, rynx::components::transform::radius r) {
 						m_out_frustum.update_entity(id.value, pos.value, r.r);
 					});
 				});
@@ -125,14 +125,14 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 						if (!move_to_inside.empty() || !move_to_outside.empty()) {
 							task_context.extend_task_independent(
 								"apply frustum migrates",
-								[this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](rynx::ecs::edit_view<components::frustum_culled> ecs) {
+								[this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](rynx::ecs::edit_view<components::graphics::frustum_culled> ecs) {
 								for (auto id : move_to_inside) {
-									ecs.removeFromEntity<components::frustum_culled>(id);
+									ecs.removeFromEntity<components::graphics::frustum_culled>(id);
 									auto id_data = m_out_frustum.eraseEntity(id);
 									m_in_frustum.insert_entity(id, id_data.first, id_data.second);
 								}
 								for (auto id : move_to_outside) {
-									ecs.attachToEntity(id, components::frustum_culled());
+									ecs.attachToEntity(id, components::graphics::frustum_culled());
 									auto id_data = m_in_frustum.eraseEntity(id);
 									m_out_frustum.insert_entity(id, id_data.first, id_data.second);
 								}

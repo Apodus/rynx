@@ -12,7 +12,9 @@ namespace rynx::components::scene {
 		rynx::scene_id id;
 	};
 
-	struct parent {
+	struct ANNOTATE("transient") parent : public rynx::ecs_no_serialize_tag{
+		parent() = default;
+		parent(rynx::ecs_internal::id id) : entity(id) {}
 		rynx::ecs_internal::id entity;
 	};
 
@@ -31,33 +33,35 @@ namespace rynx::components::scene {
 }
 
 namespace rynx::components {
-	struct position {
-		position() = default;
-		position(rynx::vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
-		rynx::vec3<float> value;
-		float angle = 0;
-	};
+	namespace transform {
+		struct position {
+			position() = default;
+			position(rynx::vec3<float> pos, float angle = 0) : value(pos), angle(angle) {}
+			rynx::vec3<float> value;
+			float angle = 0;
+		};
 
-	struct scale {
-		operator float() const {
-			return value;
-		}
+		struct scale {
+			operator float() const {
+				return value;
+			}
 
-		scale() : value(1.0f) {}
-		scale(float v) : value(v) {}
-		float ANNOTATE(">=0") value;
-	};
+			scale() : value(1.0f) {}
+			scale(float v) : value(v) {}
+			float ANNOTATE(">=0") value;
+		};
 
-	struct radius {
-		radius() = default;
-		radius(float r) : r(r) {}
-		float r = 0;
-	};
+		struct radius {
+			radius() = default;
+			radius(float r) : r(r) {}
+			float r = 0;
+		};
 
-	struct ANNOTATE("transient") ANNOTATE("hidden") transform_matrix : ecs_no_serialize_tag {
-		bool operator == (const transform_matrix & other) const { return m == other.m; }
-		rynx::matrix4 m;
-	};
+		struct ANNOTATE("transient") ANNOTATE("hidden") matrix : ecs_no_serialize_tag {
+			bool operator == (const matrix & other) const { return m == other.m; }
+			rynx::matrix4 m;
+		};
+	}
 }
 
 #ifndef RYNX_CODEGEN

@@ -157,6 +157,14 @@ namespace rynx {
 			static bool execute(const T& a, const T& b) { return a == b; }
 		};
 
+		// TODO: serialization compares id field values of two different ecs instances.
+		//       runtime ids can't be compared directly. should compare persistent id paths.
+		//       but that requires the host ecs instance where the id value is coming from.
+		//       As a "solution", will just always report id values as not same, forcing subscene serialization.
+		template<> struct equals_op<rynx::id> {
+			static bool execute(const rynx::id&, const rynx::id&) { return false; }
+		};
+
 		template<typename T> struct for_each_id_field_t {
 			template<typename Op> void execute(T&, Op&&) {}
 		};

@@ -319,8 +319,10 @@ namespace rynx {
 				if (it != typeAliases.end())
 					type_id_v = it->second;
 				
-				auto& t = table(static_cast<int32_t>(type_id_v));
-				t.replace_with_back_and_pop(index);
+				auto* t = table_ptr(static_cast<int32_t>(type_id_v));
+				if (t) {
+					t->replace_with_back_and_pop(index);
+				}
 			}
 
 			template<typename...Components> void eraseComponentsFromIndex(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, index_t index) { (eraseComponentFromIndex<Components>(typeAliases, index), ...); }
@@ -919,15 +921,22 @@ namespace rynx {
 
 			std::vector<rynx::reflection::type> reflections(rynx::reflection::reflections& reflections) const {
 				std::vector<rynx::reflection::type> result;
-				m_entity_category->forEachTable([&result, &reflections](rynx::ecs_internal::itable* tbl) {
-					auto* reflection_entry = reflections.find(tbl->m_type_id);
+				for (auto type_id : m_entity_category->types()) {
+					auto* reflection_entry = reflections.find(type_id);
 					if (reflection_entry) {
 						result.emplace_back(*reflection_entry);
 					}
 					else {
-						logmsg("WARNING: reflections undefined for type: '%s' which is used as an ecs component", tbl->type_name().c_str());
+						auto* table_ptr = m_entity_category->table_ptr(type_id);
+						if (table_ptr) {
+							logmsg("WARNING: reflections undefined for type: '%s' which is used as an ecs component", table_ptr->type_name().c_str());
+						}
+						else {
+							const char* name_of_type = rynx::type_index::name_of_type(type_id);
+							logmsg("WARNING: reflections undefined for type id '%s', no table available either", name_of_type);
+						}
 					}
-				});
+				}
 				return result;
 			}
 

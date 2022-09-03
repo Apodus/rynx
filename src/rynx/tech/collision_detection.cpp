@@ -49,20 +49,20 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 		rynx::collision_detection& detection,
 		rynx::ecs::edit_view<
 			const tracked_by_collisions,
-			const rynx::components::boundary,
-			const rynx::components::collisions,
-			const rynx::components::position,
-			const rynx::components::radius> ecs) {
+			const rynx::components::phys::boundary,
+			const rynx::components::phys::collisions,
+			const rynx::components::transform::position,
+			const rynx::components::transform::radius> ecs) {
 		{
 			// spheres
 			ecs.query()
-				.in<rynx::components::physical_body>()
-				.notIn<rynx::components::projectile, rynx::components::boundary, tracked_by_collisions>()
+				.in<rynx::components::phys::body>()
+				.notIn<rynx::components::projectile, rynx::components::phys::boundary, tracked_by_collisions>()
 				.for_each([&detection](
 					rynx::ecs::id id,
-					rynx::components::collisions col,
-					rynx::components::position pos,
-					rynx::components::radius r)
+					rynx::components::phys::collisions col,
+					rynx::components::transform::position pos,
+					rynx::components::transform::radius r)
 			{
 				rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 				uint64_t part_id = id.value | mask_kind_sphere;
@@ -71,13 +71,13 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 
 			// boundaries
 			ecs.query()
-				.in<rynx::components::physical_body, rynx::components::radius, rynx::components::position, rynx::components::boundary>()
+				.in<rynx::components::phys::body, rynx::components::transform::radius, rynx::components::transform::position, rynx::components::phys::boundary>()
 				.notIn<rynx::components::projectile, tracked_by_collisions>()
 				.for_each([&detection](
 					rynx::ecs::id id,
-					rynx::components::position pos,
-					rynx::components::radius r,
-					rynx::components::collisions col)
+					rynx::components::transform::position pos,
+					rynx::components::transform::radius r,
+					rynx::components::phys::collisions col)
 			{
 				const uint64_t part_id = id.value | mask_kind_boundary;
 				detection.m_sphere_trees[col.category]->insert_entity(part_id, pos.value, r.r);
@@ -85,13 +85,13 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 
 			// projectiles
 			ecs.query()
-				.in<rynx::components::physical_body, rynx::components::projectile>()
+				.in<rynx::components::phys::body, rynx::components::projectile>()
 				.notIn<tracked_by_collisions>()
 				.for_each([&detection](
 					rynx::ecs::id id,
-					rynx::components::collisions col,
-					rynx::components::position pos,
-					rynx::components::radius r)
+					rynx::components::phys::collisions col,
+					rynx::components::transform::position pos,
+					rynx::components::transform::radius r)
 			{
 				rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 				uint64_t part_id = id.value | mask_kind_projectile;
@@ -100,7 +100,7 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 
 
 			auto added_entities = ecs.query()
-				.in<rynx::components::physical_body, rynx::components::collisions, rynx::components::position, rynx::components::radius>()
+				.in<rynx::components::phys::body, rynx::components::phys::collisions, rynx::components::transform::position, rynx::components::transform::radius>()
 				.notIn<tracked_by_collisions>()
 				.ids();
 
@@ -113,15 +113,15 @@ void rynx::collision_detection::track_entities(rynx::scheduler::task& task_conte
 
 void rynx::collision_detection::editor_api_t::update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id) {
 	auto entity = ecs[id];
-	if (!entity.has<rynx::components::collisions, rynx::components::radius, rynx::components::position>())
+	if (!entity.has<rynx::components::phys::collisions, rynx::components::transform::radius, rynx::components::transform::position>())
 		return;
 
-	auto collisions = entity.get<const rynx::components::collisions>();
-	auto radius = entity.get<const rynx::components::radius>();
-	auto pos = entity.get<const rynx::components::position>();
+	auto collisions = entity.get<const rynx::components::phys::collisions>();
+	auto radius = entity.get<const rynx::components::transform::radius>();
+	auto pos = entity.get<const rynx::components::transform::position>();
 
 	bool projectile = entity.has<rynx::components::projectile>();
-	bool boundary = entity.has<rynx::components::boundary>();
+	bool boundary = entity.has<rynx::components::phys::boundary>();
 	bool sphere = !(projectile | boundary);
 
 	uint64_t part_id = projectile * mask_kind_projectile + boundary * mask_kind_boundary + sphere * mask_kind_sphere + id.value;
@@ -152,7 +152,7 @@ void rynx::collision_detection::editor_api_t::update_collider_kind_for_entity(ry
 
 
 void rynx::collision_detection::editor_api_t::remove_collision_from_entity(
-	rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::collisions> ecs,
+	rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::phys::collisions> ecs,
 	rynx::ecs::id id)
 {
 	for (auto& tree : m_host->m_sphere_trees) {
@@ -168,28 +168,28 @@ void rynx::collision_detection::editor_api_t::remove_collision_from_entity(
 	}
 	if (ecs[id].has<tracked_by_collisions>())
 		ecs[id].remove<tracked_by_collisions>();
-	if (ecs[id].has<rynx::components::collisions>())
-		ecs[id].remove<rynx::components::collisions>();
+	if (ecs[id].has<rynx::components::phys::collisions>())
+		ecs[id].remove<rynx::components::phys::collisions>();
 }
 
 void rynx::collision_detection::editor_api_t::set_collision_category_for_entity(rynx::ecs& ecs, rynx::ecs::id id, category_id category) {
 	remove_collision_from_entity(ecs, id);
-	rynx::components::collisions col(category.value);
+	rynx::components::phys::collisions col(category.value);
 	ecs[id].add(col);
 
 	bool prerequirements = ecs[id].has<
-		rynx::components::physical_body,
-		rynx::components::radius,
-		rynx::components::position>();
+		rynx::components::phys::body,
+		rynx::components::transform::radius,
+		rynx::components::transform::position>();
 
 	if (!prerequirements)
 		return;
 
 	bool projectile = ecs[id].has<rynx::components::projectile>();
-	bool boundary = ecs[id].has<rynx::components::boundary>();
+	bool boundary = ecs[id].has<rynx::components::phys::boundary>();
 
-	auto pos = ecs[id].get<const rynx::components::position>();
-	auto r = ecs[id].get<const rynx::components::radius>();
+	auto pos = ecs[id].get<const rynx::components::transform::position>();
+	auto r = ecs[id].get<const rynx::components::transform::radius>();
 
 	rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 	
@@ -215,22 +215,22 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 		rynx::scheduler::task& task_context,
 		rynx::collision_detection& detection,
 		rynx::ecs::view<
-			const rynx::components::collisions,
-			const rynx::components::position,
-			const rynx::components::motion,
-			const rynx::components::radius,
-			const rynx::components::physical_body,
+			const rynx::components::phys::collisions,
+			const rynx::components::transform::position,
+			const rynx::components::transform::motion,
+			const rynx::components::transform::radius,
 			const rynx::components::projectile,
-			const rynx::components::boundary> ecs)
+			const rynx::components::phys::body,
+			const rynx::components::phys::boundary> ecs)
 	{
 		auto spheres = ecs.query()
-			.in<rynx::components::physical_body, rynx::components::motion, tracked_by_collisions>()
-			.notIn<rynx::components::projectile, rynx::components::boundary>()
+			.in<rynx::components::phys::body, rynx::components::transform::motion, tracked_by_collisions>()
+			.notIn<rynx::components::projectile, rynx::components::phys::boundary>()
 			.for_each_parallel(task_context, [&detection](
 				rynx::ecs::id id,
-				rynx::components::collisions col,
-				rynx::components::position pos,
-				rynx::components::radius r)
+				rynx::components::phys::collisions col,
+				rynx::components::transform::position pos,
+				rynx::components::transform::radius r)
 		{
 			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 			uint64_t part_id = id.value | mask_kind_sphere;
@@ -239,12 +239,12 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 
 		auto boundaries = ecs.query()
 			.notIn<rynx::components::projectile>()
-			.in<rynx::components::physical_body, rynx::components::motion, rynx::components::radius, rynx::components::position, rynx::components::boundary, tracked_by_collisions>()
+			.in<rynx::components::phys::body, rynx::components::transform::motion, rynx::components::transform::radius, rynx::components::transform::position, rynx::components::phys::boundary, tracked_by_collisions>()
 			.for_each_parallel(task_context, [&detection](
 				rynx::ecs::id id,
-				rynx::components::position pos,
-				rynx::components::radius r,
-				rynx::components::collisions col)
+				rynx::components::transform::position pos,
+				rynx::components::transform::radius r,
+				rynx::components::phys::collisions col)
 		{
 			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 			uint64_t part_id = id.value | mask_kind_boundary;
@@ -252,13 +252,13 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 		});
 
 		auto projectiles = ecs.query()
-			.in<rynx::components::physical_body, rynx::components::projectile, tracked_by_collisions>()
+			.in<rynx::components::phys::body, rynx::components::projectile, tracked_by_collisions>()
 			.for_each_parallel(task_context, [&detection, dt](
 				rynx::ecs::id id,
-				rynx::components::collisions col,
-				rynx::components::position pos,
-				rynx::components::motion motion,
-				rynx::components::radius r)
+				rynx::components::phys::collisions col,
+				rynx::components::transform::position pos,
+				rynx::components::transform::motion motion,
+				rynx::components::transform::radius r)
 		{
 			rynx_assert((id.value & rynx::collision_detection::mask_id) == id.value, "id out of bounds");
 			uint64_t part_id = id.value | mask_kind_projectile;
@@ -269,11 +269,11 @@ void rynx::collision_detection::update_entities(rynx::scheduler::task& task_cont
 	task_context.completion_blocked_by(*update_task);
 }
 
-void rynx::collision_detection::erase(rynx::ecs::view<const rynx::components::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from) {
+void rynx::collision_detection::erase(rynx::ecs::view<const rynx::components::phys::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from) {
 	auto& sphere_tree = m_sphere_trees[from.value];
 	
 	auto entity = ecs[entityId];
-	if (const auto* boundary = entity.try_get<const rynx::components::boundary>()) {
+	if (const auto* boundary = entity.try_get<const rynx::components::phys::boundary>()) {
 		/*
 		for (uint32_t i = 0; i < boundary->segments_world.size(); ++i) {
 			uint64_t id = mask_kind_boundary | entityId | (uint64_t(i) << bits_id);

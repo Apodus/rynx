@@ -157,16 +157,16 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 		
 		// add missing texture components
 		{
-			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::mesh>().notIn<rynx::components::texture>().ids();
+			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::graphics::mesh>().notIn<rynx::components::graphics::texture>().ids();
 			for (auto&& id : ids)
-				ecs[id].add(rynx::components::texture{""});
+				ecs[id].add(rynx::components::graphics::texture{""});
 		}
 
 		// add missing matrix4 components
 		{
-			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::position>().notIn<rynx::components::transform_matrix>().ids();
+			std::vector<rynx::ecs::id> ids = ecs.query().in<rynx::components::transform::position>().notIn<rynx::components::transform::matrix>().ids();
 			for (auto&& id : ids)
-				ecs[id].add(rynx::components::transform_matrix());
+				ecs[id].add(rynx::components::transform::matrix());
 		}
 
 		// convert human readable and storable texture info to runtime tex info.
@@ -177,7 +177,7 @@ void rynx::application::renderer::prepare(rynx::scheduler::context* ctx) {
 			};
 
 			std::vector<unhandled_entity_tex> found;
-			ecs.query().notIn<rynx::graphics::texture_id>().for_each([this, &found](rynx::ecs::id id, rynx::components::texture tex) {
+			ecs.query().notIn<rynx::graphics::texture_id>().for_each([this, &found](rynx::ecs::id id, rynx::components::graphics::texture tex) {
 				found.emplace_back(id, gpu_textures->findTextureByName(tex.textureName));
 			});
 			for (auto&& missingEntityTex : found) {

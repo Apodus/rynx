@@ -38,9 +38,9 @@ void rynx::application::visualisation::directed_lights_effect::prepare(rynx::sch
 	m_light_settings.clear();
 
 	ctx->add_task("directed lights prepare", [this](rynx::ecs& ecs) {
-		ecs.query().notIn<rynx::components::frustum_culled>().for_each([this](
-			const rynx::components::position& pos,
-			const rynx::components::light_directed& light)
+		ecs.query().notIn<rynx::components::graphics::frustum_culled>().for_each([this](
+			const rynx::components::transform::position& pos,
+			const rynx::components::graphics::light_directed& light)
 		{
 			m_light_colors.emplace_back(light.color);
 			m_light_positions.emplace_back(pos.value);

@@ -330,6 +330,7 @@ void write_results(std::string source_file) {
 		std::ostream& output = fileOutput;
 
 		output << std::endl << "// This is a generated file. Not productive to modify by hand." << std::endl;
+		output << "#ifndef RYNX_CODEGEN" << std::endl;
 		output << std::endl;
 		output << "namespace rynx {" << std::endl;
 		output << "namespace reflection {" << std::endl;
@@ -340,6 +341,7 @@ void write_results(std::string source_file) {
 		output << "}" << std::endl;
 		output << "}" << std::endl;
 		output << "}" << std::endl;
+		output << "#endif" << std::endl;
 	}
 
 	// write reflection cpp
@@ -415,7 +417,8 @@ void write_results(std::string source_file) {
 
 		{
 			output << std::endl << "// This is a generated file. Not productive to modify by hand." << std::endl;
-
+			output << "#ifndef RYNX_CODEGEN" << std::endl;
+			
 			// include processed files.
 			// for (auto&& path : compiledHeaderFiles) {
 			output << "#include <" << includeSourceFile << ">" << std::endl;
@@ -547,6 +550,7 @@ void write_results(std::string source_file) {
 
 			output << std::endl << "} // namespace serialization"
 				<< std::endl << "} // namespace rynx"
+				<< std::endl << "#endif"
 				<< std::endl;
 		}
 	}

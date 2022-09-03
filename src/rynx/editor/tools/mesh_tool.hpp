@@ -27,7 +27,7 @@ namespace rynx {
 					std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack) override;
 
 				virtual bool operates_on(const rynx::string& type_name) override {
-					return type_name.find("rynx::components::mesh") != rynx::string::npos;
+					return type_name.find("rynx::components::graphics::mesh") != rynx::string::npos;
 				}
 
 				virtual rynx::string get_tool_name() override {

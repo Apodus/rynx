@@ -105,7 +105,7 @@ namespace rynx {
 			editor_api_t(rynx::collision_detection* host) : m_host(host) {}
 			
 			void update_entity_forced(rynx::ecs& ecs, rynx::ecs::id id);
-			void remove_collision_from_entity(rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::collisions> ecs, rynx::ecs::id id);
+			void remove_collision_from_entity(rynx::ecs::edit_view<const tracked_by_collisions, const rynx::components::phys::collisions> ecs, rynx::ecs::id id);
 			void set_collision_category_for_entity(rynx::ecs& ecs, rynx::ecs::id id, category_id collision_category);
 			void update_collider_kind_for_entity(rynx::ecs& ecs, rynx::ecs::id id);
 
@@ -116,7 +116,7 @@ namespace rynx {
 		editor_api_t editor_api() { return editor_api_t(this); }
 		
 
-		void erase(rynx::ecs::view<const rynx::components::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from);
+		void erase(rynx::ecs::view<const rynx::components::phys::boundary, const rynx::components::projectile> ecs, uint64_t entityId, category_id from);
 		const sphere_tree* get(category_id category) const;
 
 		template<typename F> void collisions_for(category_id category, F&& f) {

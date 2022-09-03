@@ -30,13 +30,13 @@ namespace rynx {
 						m_edges->clear();
 						
 						auto query_conf = ecs.query();
-						query_conf.notIn<components::frustum_culled, rynx::components::invisible>();
+						query_conf.notIn<components::graphics::frustum_culled, rynx::components::graphics::invisible>();
 						if(m_enabled && !m_enabled->is_enabled()) {
-							query_conf.notIn<rynx::components::mesh>();
+							query_conf.notIn<rynx::components::graphics::mesh>();
 						}
 						query_conf.for_each_parallel(task_context, [this, &ecs](
-							const rynx::components::boundary& m,
-							const rynx::components::color& color)
+							const rynx::components::phys::boundary& m,
+							const rynx::components::graphics::color& color)
 							{
 								for (size_t i = 0; i < m.segments_world.size(); ++i) {
 									auto p1 = m.segments_world.vertex_position(i);

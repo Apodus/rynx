@@ -21,7 +21,7 @@ rynx::editor::tools::mesh_tool::mesh_tool(rynx::scheduler::context& ctx)
 				return;
 			}
 
-			rynx::components::mesh* ptr_mesh = reinterpret_cast<rynx::components::mesh*>(ptr);
+			rynx::components::graphics::mesh* ptr_mesh = reinterpret_cast<rynx::components::graphics::mesh*>(ptr);
 
 			auto frame_tex = m_textures->findTextureByName("frame");
 			auto mesh_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
@@ -39,13 +39,13 @@ rynx::editor::tools::mesh_tool::mesh_tool(rynx::scheduler::context& ctx)
 						// before changing the texture id component, because texture could be a member field
 						// in some other component.
 						auto entity_id = selected_id();
-						if (m_ecs[entity_id].try_get<const rynx::components::mesh>() == ptr_mesh) {
+						if (m_ecs[entity_id].try_get<const rynx::components::graphics::mesh>() == ptr_mesh) {
 							if (m_ecs[entity_id].has<rynx::graphics::mesh_id>())
-								m_ecs.removeFromEntity<rynx::components::mesh, rynx::graphics::mesh_id>(entity_id);
+								m_ecs.removeFromEntity<rynx::components::graphics::mesh, rynx::graphics::mesh_id>(entity_id);
 							else
-								m_ecs.removeFromEntity<rynx::components::mesh>(entity_id);
+								m_ecs.removeFromEntity<rynx::components::graphics::mesh>(entity_id);
 							
-							m_ecs.attachToEntity(entity_id, rynx::components::mesh{ mesh_entry.id });
+							m_ecs.attachToEntity(entity_id, rynx::components::graphics::mesh{ mesh_entry.id });
 						}
 						else {
 							ptr_mesh->m = mesh_entry.id;
@@ -71,7 +71,7 @@ bool rynx::editor::tools::mesh_tool::try_generate_menu(
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
-	if (info.component_type_id == rynx::type_index::id<rynx::components::mesh>())
+	if (info.component_type_id == rynx::type_index::id<rynx::components::graphics::mesh>())
 	{
 		return false;
 	}

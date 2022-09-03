@@ -121,6 +121,7 @@ void SampleApplication::set_simulation_rules() {
 		ruleset_editor->add_tool<rynx::editor::tools::instantiation_tool>(*context);
 		ruleset_editor->add_tool<rynx::editor::tools::joint_tool>(*context);
 		ruleset_editor->add_tool<rynx::editor::tools::mesh_tool>(*context);
+		ruleset_editor->add_component_include_filter("::components::");
 
 		ruleset_physical_springs->depends_on(ruleset_motion_updates);
 		ruleset_collisionDetection->depends_on(ruleset_motion_updates);

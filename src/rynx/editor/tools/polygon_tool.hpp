@@ -27,7 +27,7 @@ namespace rynx {
 				}
 
 				virtual bool operates_on(const rynx::string& type_name) override {
-					return type_name.find("rynx::components::boundary") != rynx::string::npos;
+					return type_name.find("rynx::components::phys::boundary") != rynx::string::npos;
 				}
 
 				virtual rynx::string get_tool_name() override {
@@ -52,7 +52,7 @@ namespace rynx {
 				
 				virtual void on_entity_component_value_changed(
 					rynx::scheduler::context* ctx,
-					rynx::string componentTypeName,
+					rynx::type_index::type_id_t type_id,
 					rynx::ecs& ecs,
 					rynx::id id) override;
 

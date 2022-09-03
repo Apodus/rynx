@@ -9,21 +9,21 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 	context.add_task("physical springs", [dt](
 		rynx::ecs::view<
 		components::phys::joint,
-		const components::physical_body,
-		const components::position,
-		components::motion> ecs,
+		const components::phys::body,
+		const components::transform::position,
+		components::transform::motion> ecs,
 		rynx::scheduler::task& task)
 		{
 			struct common_values {
 
-				rynx::components::position pos_a;
-				rynx::components::position pos_b;
+				rynx::components::transform::position pos_a;
+				rynx::components::transform::position pos_b;
 
-				components::motion* mot_a;
-				components::motion* mot_b;
+				components::transform::motion* mot_a;
+				components::transform::motion* mot_b;
 
-				const components::physical_body* phys_a;
-				const components::physical_body* phys_b;
+				const components::phys::body* phys_a;
+				const components::phys::body* phys_b;
 
 				vec3f relative_pos_a;
 				vec3f relative_pos_b;
@@ -31,23 +31,23 @@ void rynx::ruleset::physics::springs::onFrameProcess(rynx::scheduler::context& c
 				vec3f world_pos_a;
 				vec3f world_pos_b;
 
-				void init(components::phys::joint& rope, rynx::ecs::view<const components::position, const components::physical_body, components::motion> ecs) {
+				void init(components::phys::joint& rope, rynx::ecs::view<const components::transform::position, const components::phys::body, components::transform::motion> ecs) {
 					auto entity_a = ecs[rope.a.id];
 					auto entity_b = ecs[rope.b.id];
 
-					pos_a = entity_a.get<const components::position>();
-					pos_b = entity_b.get<const components::position>();
+					pos_a = entity_a.get<const components::transform::position>();
+					pos_b = entity_b.get<const components::transform::position>();
 
 					relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
 					relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
 					world_pos_a = pos_a.value + relative_pos_a;
 					world_pos_b = pos_b.value + relative_pos_b;
 
-					mot_a = entity_a.try_get<components::motion>();
-					mot_b = entity_b.try_get<components::motion>();
+					mot_a = entity_a.try_get<components::transform::motion>();
+					mot_b = entity_b.try_get<components::transform::motion>();
 
-					phys_a = &entity_a.get<const components::physical_body>();
-					phys_b = &entity_b.get<const components::physical_body>();
+					phys_a = &entity_a.get<const components::phys::body>();
+					phys_b = &entity_b.get<const components::phys::body>();
 				}
 
 				void apply_force(vec3f force, components::phys::joint::joint_type joint_type) {

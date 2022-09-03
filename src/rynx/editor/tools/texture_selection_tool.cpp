@@ -22,7 +22,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 				return;
 			}
 
-			rynx::components::texture* ptr_tex = reinterpret_cast<rynx::components::texture*>(ptr);
+			rynx::components::graphics::texture* ptr_tex = reinterpret_cast<rynx::components::graphics::texture*>(ptr);
 
 			auto frame_tex = m_textures->findTextureByName("frame");
 			auto texture_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
@@ -44,7 +44,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 						// before changing the texture id component, because texture could be a member field
 						// in some other component.
 						auto entity_id = selected_id();
-						if (m_ecs[entity_id].try_get<rynx::components::texture>() == ptr_tex) {
+						if (m_ecs[entity_id].try_get<rynx::components::graphics::texture>() == ptr_tex) {
 							auto* tex_id_ptr = m_ecs[entity_id].try_get<rynx::graphics::texture_id>();
 							if (tex_id_ptr) {
 								*tex_id_ptr = tex_id;
@@ -71,7 +71,7 @@ bool rynx::editor::tools::texture_selection::try_generate_menu(
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
-	if (info.component_type_id == rynx::type_index::id<rynx::components::texture>())
+	if (info.component_type_id == rynx::type_index::id<rynx::components::graphics::texture>())
 	{
 		std::cout << "reflection stack size: " << reflection_stack.size() << std::endl;
 

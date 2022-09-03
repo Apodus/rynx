@@ -178,7 +178,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 						this->for_each_tool([this, type_ptr, info](rynx::editor::itool* tool) {
 							tool->on_entity_component_value_changed(
 								m_editor_state->m_editor->get_context(),
-								type_ptr->m_type_name,
+								type_ptr->m_type_index_value,
 								*info.ecs,
 								info.entity_id
 							);
@@ -201,7 +201,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 	};
 
 	rynx::reflection::type type = info.reflections->get(field_type);
-	if (type.m_type_name == rynx::traits::type_name<rynx::components::position_relative>()) {
+	if (type.m_type_name == rynx::traits::type_name<rynx::components::transform::position_relative>()) {
 		for (auto field : type.m_fields) {
 			if (field.m_field_name == "id") {
 				info.cumulative_offset += field.m_memory_offset;
@@ -210,7 +210,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 			}
 			if (field.m_field_name == "pos") {
 				auto local_position =
-					rynx::editor::ecs_value_editor().access<rynx::components::position_relative>(
+					rynx::editor::ecs_value_editor().access<rynx::components::transform::position_relative>(
 						*info.ecs,
 						info.entity_id,
 						info.component_type_id,
@@ -352,8 +352,8 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 							std::vector<rynx::sphere> bounds;
 							for (auto id : ids) {
 								auto entity = game_ecs[id];
-								auto& entity_pos = entity.get<rynx::components::position>();
-								auto* entity_radius = entity.try_get<rynx::components::radius>();
+								auto& entity_pos = entity.get<rynx::components::transform::position>();
+								auto* entity_radius = entity.try_get<rynx::components::transform::radius>();
 								bounds.emplace_back(entity_pos.value, entity_radius ? entity_radius->r : 0);
 							}
 
@@ -390,7 +390,7 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 
 							for (auto id : ids) {
 								auto entity = game_ecs[id];
-								auto& entity_pos = entity.get<rynx::components::position>();
+								auto& entity_pos = entity.get<rynx::components::transform::position>();
 
 								entity_pos.value = rynx::math::rotatedXY((entity_pos.value - m_drag.middle_point), delta_angle) + m_drag.middle_point;
 								entity_pos.angle += delta_angle;
@@ -399,7 +399,7 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 									for_each_tool([id, &game_ecs, &ctx](rynx::editor::itool* tool) {
 										tool->on_entity_component_value_changed(
 											&ctx,
-											rynx::traits::type_name<rynx::components::position>(),
+											rynx::type_index::id<rynx::components::transform::position>(),
 											game_ecs,
 											id);
 									});
@@ -411,14 +411,14 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 							const auto& ids = selected_id_vector();
 							for (auto id : ids) {
 								auto entity = game_ecs[id];
-								auto& entity_pos = entity.get<rynx::components::position>();
+								auto& entity_pos = entity.get<rynx::components::transform::position>();
 								entity_pos.value += position_delta;
 
 								execute([this, &game_ecs, &ctx, id]() {
 									for_each_tool([id, &game_ecs, &ctx](rynx::editor::itool* tool) {
 										tool->on_entity_component_value_changed(
 											&ctx,
-											rynx::traits::type_name<rynx::components::position>(),
+											rynx::type_index::id<rynx::components::transform::position>(),
 											game_ecs,
 											id);
 									});
@@ -430,7 +430,7 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 						auto* data = reinterpret_cast<rynx::vec3f*>(address_of_operand());
 						if (game_ecs.exists(m_mode_local_space_id)) {
 							auto entity = game_ecs[m_mode_local_space_id];
-							auto& entity_pos = entity.get<rynx::components::position>();
+							auto& entity_pos = entity.get<rynx::components::transform::position>();
 							position_delta = rynx::math::rotatedXY(position_delta, -entity_pos.angle);
 						}
 						*data += position_delta;
@@ -457,10 +457,10 @@ std::pair<rynx::ecs::id, float> rynx::editor::tools::selection_tool::find_neares
 	rynx::ecs::id best_id;
 
 	// find best selection
-	game_ecs.query().for_each([&, mouse_world_pos = cursorWorldPos](rynx::ecs::id id, rynx::components::position pos) {
+	game_ecs.query().for_each([&, mouse_world_pos = cursorWorldPos](rynx::ecs::id id, rynx::components::transform::position pos) {
 		float sqr_dist = (mouse_world_pos - pos.value).length_squared();
-		auto* boundary_ptr = game_ecs[id].try_get<rynx::components::boundary>();
-		auto* radius_ptr = game_ecs[id].try_get<rynx::components::radius>();
+		auto* boundary_ptr = game_ecs[id].try_get<rynx::components::phys::boundary>();
+		auto* radius_ptr = game_ecs[id].try_get<rynx::components::transform::radius>();
 
 		if (sqr_dist < best_distance) {
 			best_distance = sqr_dist;

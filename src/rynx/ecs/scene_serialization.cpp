@@ -192,7 +192,7 @@ rynx::id rynx::ecs_detail::scene_serializer::persistent_id_path_find(const std::
 		return id();
 	};
 
-	auto ids = host->query().notIn<rynx::components::scene::parent>().ids();
+	auto ids = host->query().notIn<rynx::components::scene::parent>().in<rynx::components::scene::persistent_id>().ids();
 	auto current = [this, &path, &ids]() {
 		for (auto id : ids) {
 			if (host->operator[](id).get<rynx::components::scene::persistent_id>().value == path[0].value) {
@@ -260,7 +260,7 @@ void rynx::ecs_detail::scene_serializer::serialize_scene(
 			// find all scene links without a parent in current scene (direct descendants of current scene)
 			auto top_most_child_scenes = host->query()
 				.notIn<rynx::components::scene::parent>()
-				.gather<rynx::components::position, rynx::components::scene::link, rynx::components::scene::persistent_id>();
+				.gather<rynx::components::transform::position, rynx::components::scene::link, rynx::components::scene::persistent_id>();
 
 			// copy the scene links into empty scene, and deserialize scenes there
 			for (auto [pos, link, persistent_id] : top_most_child_scenes)
@@ -362,6 +362,17 @@ void rynx::ecs_detail::scene_serializer::serialize_scene(
 
 				// edited components
 				for (uint64_t type_id_value : expected_types & actual_types) {
+					const auto* type_reflection = reflections.find(type_id_value);
+					
+					// virtual type - no table
+					if (!type_reflection)
+						continue;
+
+					// tag type - no table
+					if (type_reflection->m_fields.empty())
+						continue;
+					
+					logmsg("checking edit state of component '%s'", type_reflection->m_type_name.c_str());
 					auto& itable_actual = actual_category_ptr->table(rynx::type_id_t(type_id_value));
 					const auto& itable_expected = expected_category_ptr->table(rynx::type_id_t(type_id_value));
 					bool components_are_equal = itable_actual.equals(actual_category_index, itable_expected.get(expected_category_index));
@@ -485,7 +496,7 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 	rynx::reflection::reflections& reflections,
 	rynx::filesystem::vfs& vfs,
 	rynx::scenes& scenes,
-	rynx::components::position scene_pos,
+	rynx::components::transform::position scene_pos,
 	rynx::serialization::vector_reader& in) {
 
 	// deserialize global id chains vector
@@ -500,17 +511,17 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 
 	// transform all deserialized entities by scene root transform.
 	for (auto id : entity_id_range) {
-		auto& entity_pos = (*host)[id].get<rynx::components::position>();
+		auto& entity_pos = (*host)[id].get<rynx::components::transform::position>();
 		entity_pos.value += scene_pos.value;
 		entity_pos.angle += scene_pos.angle;
 	}
 
 	// for any sub-scene link deserialized, deserialize the content of the subscene (recursive call)
 	{
-		std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::position>> sub_scenes;
+		std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::transform::position>> sub_scenes;
 		host->query()
 			.notIn<rynx::components::scene::children>()
-			.for_each([entity_id_range, &sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::position pos) {
+			.for_each([entity_id_range, &sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::transform::position pos) {
 			if (entity_id_range.contains(id)) {
 				sub_scenes.emplace_back(id, scene_link, pos);
 			}
@@ -631,10 +642,10 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 }
 
 rynx::entity_range_t rynx::ecs_detail::scene_serializer::load_subscenes(rynx::reflection::reflections& reflections, rynx::filesystem::vfs& vfs, rynx::scenes& scenes) {
-	std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::position>> sub_scenes;
+	std::vector<std::tuple<rynx::id, rynx::components::scene::link, rynx::components::transform::position>> sub_scenes;
 	host->query()
 		.notIn<rynx::components::scene::children>()
-		.for_each([&sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::position pos) {
+		.for_each([&sub_scenes](rynx::id id, rynx::components::scene::link scene_link, rynx::components::transform::position pos) {
 		sub_scenes.emplace_back(id, scene_link, pos);
 	});
 

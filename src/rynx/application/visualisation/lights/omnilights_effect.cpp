@@ -35,9 +35,9 @@ void rynx::application::visualisation::omnilights_effect::prepare(rynx::schedule
 	m_light_settings.clear();
 
 	ctx->add_task("lights prepare", [this](rynx::ecs& ecs) {
-		ecs.query().notIn<rynx::components::frustum_culled>().for_each([this](
-			const rynx::components::position& pos,
-			const rynx::components::light_omni& light)
+		ecs.query().notIn<rynx::components::graphics::frustum_culled>().for_each([this](
+			const rynx::components::transform::position& pos,
+			const rynx::components::graphics::light_omni& light)
 		{
 			m_light_colors.emplace_back(light.color);
 			

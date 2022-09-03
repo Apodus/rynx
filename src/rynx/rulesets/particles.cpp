@@ -15,11 +15,12 @@ rynx::ruleset::particle_system::~particle_system() {}
 void rynx::ruleset::particle_system::onFrameProcess(rynx::scheduler::context& context, float dt) {
 		context.add_task("particle update",
 			[](rynx::ecs::view<
-				components::radius, components::color,
-				const components::particle_info,
-				const components::lifetime> ecs,
+				components::transform::radius,
+				components::graphics::color,
+				const components::graphics::particle_info,
+				const components::entity::lifetime> ecs,
 				rynx::scheduler::task& task_context) {
-			ecs.query().for_each_parallel(task_context, [](components::radius& r, components::color& c, components::lifetime lt, const components::particle_info& pi) {
+			ecs.query().for_each_parallel(task_context, [](components::transform::radius& r, components::graphics::color& c, components::entity::lifetime lt, const components::graphics::particle_info& pi) {
 				r.r = pi.radius_range(lt.quadratic());
 				c.value = pi.color_range(lt.quadratic());
 			});
@@ -27,23 +28,23 @@ void rynx::ruleset::particle_system::onFrameProcess(rynx::scheduler::context& co
 
 		context.add_task("particle emitter update",
 			[dt](rynx::ecs::edit_view<
-				const rynx::components::particle_emitter,
-				rynx::components::particle_info,
-				rynx::components::position,
-				rynx::components::radius,
-				rynx::components::motion,
-				rynx::components::lifetime,
-				rynx::components::color,
-				rynx::components::dampening,
-				rynx::components::translucent,
-				rynx::components::ignore_gravity,
-				rynx::components::constant_force,
-				rynx::components::transform_matrix> ecs) {
-			ecs.query().for_each([&ecs, dt](rynx::components::position pos, const rynx::components::particle_emitter& emitter) {
+				const rynx::components::graphics::particle_emitter,
+				rynx::components::graphics::particle_info,
+				rynx::components::transform::position,
+				rynx::components::transform::radius,
+				rynx::components::transform::motion,
+				rynx::components::entity::lifetime,
+				rynx::components::graphics::color,
+				rynx::components::transform::dampening,
+				rynx::components::graphics::translucent,
+				rynx::components::transform::ignore_gravity,
+				rynx::components::transform::constant_force,
+				rynx::components::transform::matrix> ecs) {
+			ecs.query().for_each([&ecs, dt](rynx::components::transform::position pos, const rynx::components::graphics::particle_emitter& emitter) {
 				int count = emitter.get_spawn_count(dt);
 
 				for (int i = 0; i < count; ++i) {
-					rynx::components::particle_info p_info;
+					rynx::components::graphics::particle_info p_info;
 					p_info.color_range.begin = emitter.get_start_color();
 					p_info.color_range.end = emitter.get_end_color();
 					p_info.radius_range.begin = emitter.get_start_radius();
@@ -68,15 +69,15 @@ void rynx::ruleset::particle_system::onFrameProcess(rynx::scheduler::context& co
 					ecs.create(
 						p_info,
 						particle_pos,
-						rynx::components::radius(p_info.radius_range.begin),
-						rynx::components::motion(velocity, emitter.get_random()(-1.0f, +1.0f)),
-						rynx::components::lifetime(emitter.get_lifetime()),
-						rynx::components::color(p_info.color_range.begin),
-						rynx::components::dampening{ emitter.get_linear_damping() },
-						rynx::components::translucent(),
-						rynx::components::ignore_gravity(),
-						rynx::components::transform_matrix(),
-						rynx::components::constant_force{ target_direction * upness }
+						rynx::components::transform::radius(p_info.radius_range.begin),
+						rynx::components::transform::motion(velocity, emitter.get_random()(-1.0f, +1.0f)),
+						rynx::components::entity::lifetime(emitter.get_lifetime()),
+						rynx::components::graphics::color(p_info.color_range.begin),
+						rynx::components::transform::dampening{ emitter.get_linear_damping() },
+						rynx::components::graphics::translucent(),
+						rynx::components::transform::ignore_gravity(),
+						rynx::components::transform::matrix(),
+						rynx::components::transform::constant_force{ target_direction * upness }
 					);
 				}
 				});

@@ -85,12 +85,12 @@ bool rynx::editor::tools::joint_tool::try_generate_menu(
 
 void rynx::editor::tools::joint_tool::on_entity_component_value_changed(
 	rynx::scheduler::context* /* ctx */,
-	rynx::string componentTypeName,
+	rynx::type_index::type_id_t type_id,
 	rynx::ecs& ecs,
 	rynx::id id)
 {
-	bool positionChanged = componentTypeName == rynx::traits::type_name<rynx::components::position>();
-	bool jointChanged = componentTypeName == rynx::traits::type_name<rynx::components::phys::joint>();
+	bool positionChanged = type_id == rynx::type_index::id<rynx::components::transform::position>();
+	bool jointChanged = type_id == rynx::type_index::id<rynx::components::phys::joint>();
 
 	if (positionChanged) {
 		ecs.query().for_each([this, id, &ecs](rynx::components::phys::joint& j) {
@@ -112,14 +112,14 @@ void rynx::editor::tools::joint_tool::update_nofocus(rynx::scheduler::context& c
 	auto& ecs = ctx.get_resource<rynx::ecs>();
 	auto& dbug = ctx.get_resource<rynx::application::DebugVisualization>();
 
-	ecs.query().for_each([&dbug, &ecs](const rynx::components::phys::joint& joint, rynx::components::position p) {
+	ecs.query().for_each([&dbug, &ecs](const rynx::components::phys::joint& joint, rynx::components::transform::position p) {
 		if (ecs.exists(joint.a.id)) {
-			auto pos_a = ecs[joint.a.id].get<rynx::components::position>();
+			auto pos_a = ecs[joint.a.id].get<rynx::components::transform::position>();
 			auto offset_a = rynx::math::rotatedXY(joint.a.pos, pos_a.angle);
 			dbug.addDebugLine(pos_a.value + offset_a, p.value, { 0.5f, 1.0f, 0.2f, 1.0f });
 		}
 		if (ecs.exists(joint.b.id)) {
-			auto pos_b = ecs[joint.b.id].get<rynx::components::position>();
+			auto pos_b = ecs[joint.b.id].get<rynx::components::transform::position>();
 			auto offset_b = rynx::math::rotatedXY(joint.b.pos, pos_b.angle);
 			dbug.addDebugLine(pos_b.value + offset_b, p.value, { 0.5f, 1.0f, 0.2f, 1.0f });
 		}
@@ -127,23 +127,23 @@ void rynx::editor::tools::joint_tool::update_nofocus(rynx::scheduler::context& c
 
 	auto id = selected_id();
 	if (ecs.exists(id)) {
-		auto joint_entity_pos = ecs[id].get<rynx::components::position>();
+		auto joint_entity_pos = ecs[id].get<rynx::components::transform::position>();
 		auto* joint = ecs[id].try_get<rynx::components::phys::joint>();
 		if (joint) {
 			if (ecs.exists(joint->a.id)) {
-				auto pos_a = ecs[joint->a.id].get<rynx::components::position>();
+				auto pos_a = ecs[joint->a.id].get<rynx::components::transform::position>();
 				auto offset_a = rynx::math::rotatedXY(joint->a.pos, pos_a.angle);
 				dbug.addDebugLine(pos_a.value + offset_a, joint_entity_pos.value, { 0.5f, 1.0f, 0.2f, 1.0f });
 			}
 			if (ecs.exists(joint->b.id)) {
-				auto pos_b = ecs[joint->b.id].get<rynx::components::position>();
+				auto pos_b = ecs[joint->b.id].get<rynx::components::transform::position>();
 				auto offset_b = rynx::math::rotatedXY(joint->b.pos, pos_b.angle);
 				dbug.addDebugLine(pos_b.value + offset_b, joint_entity_pos.value, { 1.0f, 0.5f, 0.2f, 1.0f });
 			}
 
 			if (ecs.exists(joint->a.id) & ecs.exists(joint->b.id)) {
-				auto pos_a = ecs[joint->a.id].get<rynx::components::position>();
-				auto pos_b = ecs[joint->b.id].get<rynx::components::position>();
+				auto pos_a = ecs[joint->a.id].get<rynx::components::transform::position>();
+				auto pos_b = ecs[joint->b.id].get<rynx::components::transform::position>();
 				auto offset_a = rynx::math::rotatedXY(joint->a.pos, pos_a.angle);
 				auto offset_b = rynx::math::rotatedXY(joint->b.pos, pos_b.angle);
 				dbug.addDebugLine(pos_a.value + offset_a, pos_b.value + offset_b, { 0.2f, 1.0f, 1.0f, 1.0f });
@@ -175,8 +175,9 @@ void rynx::editor::tools::joint_tool::verify(rynx::scheduler::context& ctx, erro
 			}
 			else {
 				auto is_valid_joint_target = [&](rynx::id entity) {
-					verify_has_component().check<rynx::components::physical_body>(emitter, ecs, entity);
-					verify_has_component().check<rynx::components::motion>(emitter, ecs, entity);
+					verify_has_component().check<rynx::components::phys::body>(emitter, ecs, entity);
+					verify_has_component().check<rynx::components::transform::motion>(emitter, ecs, entity);
+					verify_has_component().check<rynx::components::transform::position>(emitter, ecs, entity);
 				};
 			
 				is_valid_joint_target(joint.a.id);

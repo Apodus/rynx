@@ -253,18 +253,18 @@ TEST_CASE("ecs views usable", "verify compiles")
 	// these must compile. that is all.
 	{
 		rynx::ecs ecs;
-		rynx::ecs::view<rynx::components::position> view = ecs;
-		view.query().for_each([](const rynx::components::position&) {}); // is ok.
-		view.query().for_each([](rynx::components::position&) {}); // is ok.
+		rynx::ecs::view<rynx::components::transform::position> view = ecs;
+		view.query().for_each([](const rynx::components::transform::position&) {}); // is ok.
+		view.query().for_each([](rynx::components::transform::position&) {}); // is ok.
 	}
 
 	{
 		rynx::ecs ecs;
-		rynx::ecs::view<rynx::components::position> mutable_view = ecs;
-		rynx::ecs::view<const rynx::components::position> view = mutable_view; // more strict view can be constructed from another.
-		view.query().for_each([](const rynx::components::position&) {}); // is ok.
-		// view.query().for_each([](rynx::components::position&) {}); // error C2338:  You promised to access this type in only const mode!
-		// view.query().for_each([](rynx::components::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
+		rynx::ecs::view<rynx::components::transform::position> mutable_view = ecs;
+		rynx::ecs::view<const rynx::components::transform::position> view = mutable_view; // more strict view can be constructed from another.
+		view.query().for_each([](const rynx::components::transform::position&) {}); // is ok.
+		// view.query().for_each([](rynx::components::transform::position&) {}); // error C2338:  You promised to access this type in only const mode!
+		// view.query().for_each([](rynx::components::transform::radius&) {}); // error C2338:  You have promised to not access this type in your ecs view.
 	}
 }
 

@@ -33,7 +33,7 @@ void rynx::menu::Component::privateAlign(Align sideOf, float mul) {
 	}
 }
 
-void rynx::menu::Component::privateAttach(Component* other, Align align) {
+void rynx::menu::Component::privateAttach(const Component* other, Align align) {
 	if (align & (LEFT | RIGHT | CENTER_HORIZONTAL)) {
 		m_horizontalAttachment.attachedTo = other;
 		m_horizontalAttachment.is_attached = true;
@@ -47,7 +47,7 @@ void rynx::menu::Component::privateAttach(Component* other, Align align) {
 
 void rynx::menu::Component::updateAttachment() {
 	if (m_horizontalAttachment) {
-		Component* attached_to = ((m_horizontalAttachment.attachedTo == nullptr) ? m_pParent : m_horizontalAttachment.attachedTo);
+		const Component* attached_to = ((m_horizontalAttachment.attachedTo == nullptr) ? m_pParent : m_horizontalAttachment.attachedTo);
 
 		float offset_x_value = 0;
 		if (m_horizontalAttachment.offsetKind == offset_kind::RelativeToSelfScale) {
@@ -72,7 +72,7 @@ void rynx::menu::Component::updateAttachment() {
 		}
 	}
 	if (m_verticalAttachment) {
-		Component* attached_to = m_verticalAttachment.attachedTo == nullptr ? m_pParent : m_verticalAttachment.attachedTo;
+		const Component* attached_to = m_verticalAttachment.attachedTo == nullptr ? m_pParent : m_verticalAttachment.attachedTo;
 
 		float offset_y_value = 0;
 		if (m_horizontalAttachment.offsetKind == offset_kind::RelativeToSelfScale) {
