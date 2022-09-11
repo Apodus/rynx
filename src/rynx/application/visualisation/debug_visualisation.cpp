@@ -69,6 +69,7 @@ void rynx::application::DebugVisualization::addDebugLine(rynx::vec3f point_a, ry
 
 void rynx::application::DebugVisualization::addDebugLine_world(rynx::vec3f point_a, rynx::vec3f point_b, rynx::floats4 color, float width, float lifetime) {
 	auto* mesh = this->m_meshRenderer->meshes()->get(m_line_mesh);
+	mesh->lineWidth = width;
 	auto& obj = m_data[mesh];
 
 	rynx::vec3f mid = (point_a + point_b) * 0.5f;

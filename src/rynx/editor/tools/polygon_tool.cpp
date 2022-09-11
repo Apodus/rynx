@@ -69,7 +69,7 @@ void rynx::editor::tools::polygon_tool::action_smooth(rynx::ecs& ecs) {
 
 void rynx::editor::tools::polygon_tool::on_entity_component_added(
 	rynx::scheduler::context* ctx,
-	rynx::string componentTypeName,
+	[[maybe_unused]] rynx::string componentTypeName,
 	rynx::ecs& ecs,
 	rynx::id id)
 {

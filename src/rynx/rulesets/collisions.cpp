@@ -124,8 +124,8 @@ namespace {
 		rynx::ecs::entity<ecs_view> poly2,
 		rynx::vec3f pos_a,
 		rynx::vec3f pos_b,
-		float radius_a,
-		float radius_b
+		[[maybe_unused]] float radius_a,
+		[[maybe_unused]] float radius_b
 	) {
 		const auto& boundaryA = poly1.get<const rynx::components::phys::boundary>();
 		const auto& boundaryB = poly2.get<const rynx::components::phys::boundary>();
@@ -142,7 +142,7 @@ namespace {
 		for (size_t i = 0; i < boundaryA.segments_world.size(); ++i) {
 			const auto segmentA = boundaryA.segments_world.segment(i);
 			const rynx::vec3f segmentPos = (segmentA.p1 + segmentA.p2) * 0.5f;
-			const float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
+			[[maybe_unused]] const float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
 			
 			for (size_t k = 0; k < boundaryB.segments_world.size(); ++k) {
 				const auto segmentB = boundaryB.segments_world.segment(k);

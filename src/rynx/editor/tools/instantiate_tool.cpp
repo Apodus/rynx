@@ -61,7 +61,7 @@ void rynx::editor::tools::instantiation_tool::on_tool_selected() {
 				m_selectedScene = filePath;
 				execute([this]() { m_editor_state->m_editor->pop_popup(); });
 			},
-			[](rynx::string dirPath) {}
+			[](rynx::string /*dirPath*/) {}
 		);
 	});
 }

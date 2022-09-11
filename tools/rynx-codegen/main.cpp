@@ -435,69 +435,68 @@ void write_results(std::string source_file) {
 			output << "namespace serialization {" << std::endl;
 
 			for (auto&& type : g_reflected_types) {
-				bool skipType = false;
-				for (auto&& ann : type.second.annotations)
-					skipType |= (ann == "transient");
-
-				if (skipType)
-					continue;
-
-				if (type.first == "::rynx::components::scene::parent") {
-					std::cout << "hello" << std::endl;
-				}
-
 				if (!type.second.generate_serialization) {
-					std::cout << "serialization not generated for " << type.first << std::endl;
+					std::cout << "serialization not generated for " << type.first << " because it is defined in another source file." << std::endl;
 					continue;
 				}
 
-				output << "template<> struct Serialize<" + type.first + "> {\n";
-
-				{
-					std::stringstream ss;
-					int fields_processed = 0;
-					for (auto&& field : type.second.m_fields) {
-						if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
-							continue;
-						ss << "\t\t" << "rynx::serialize(t." << field.spelling << ", writer);\n";
-						++fields_processed;
-					}
-
-					if (fields_processed == 0) {
-						output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "&, IOStream&) {\n";
-					}
-					else {
-						output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "& t, IOStream& writer) {\n";
-					}
-					if (true || !compiler_is_forced_to_evaluate_reflection_loader_obj) {
-						output << "\t\t++rynx::reflection::generated::" << (functionRandomName + "_i;\n");
-						compiler_is_forced_to_evaluate_reflection_loader_obj = true;
-					}
-
-					output << ss.str();
+				bool is_transient = false;
+				for (auto&& ann : type.second.annotations) {
+					std::cerr << "skipping serialization generation for '" << type.first << "' because it is transient" << std::endl;
+					is_transient |= (ann == "transient");
 				}
-				output << "\t}" << std::endl;
+
+				// serialization code is not generated for transient types.
+				if (!is_transient)
+				{
+					output << "template<> struct Serialize<" + type.first + "> {\n";
+
+					{
+						std::stringstream ss;
+						int fields_processed = 0;
+						for (auto&& field : type.second.m_fields) {
+							if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
+								continue;
+							ss << "\t\t" << "rynx::serialize(t." << field.spelling << ", writer);\n";
+							++fields_processed;
+						}
+
+						if (fields_processed == 0) {
+							output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "&, IOStream&) {\n";
+						}
+						else {
+							output << "\ttemplate<typename IOStream> static void serialize(const " + type.first + "& t, IOStream& writer) {\n";
+						}
+						if (true || !compiler_is_forced_to_evaluate_reflection_loader_obj) {
+							output << "\t\t++rynx::reflection::generated::" << (functionRandomName + "_i;\n");
+							compiler_is_forced_to_evaluate_reflection_loader_obj = true;
+						}
+
+						output << ss.str();
+					}
+					output << "\t}" << std::endl;
 
 				
-				{
-					std::stringstream ss;
-					int fields_processed = 0;
-					for (auto&& field : type.second.m_fields) {
-						if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
-							continue;
-						ss << "\t\t" << "rynx::deserialize(t." << field.spelling << ", reader);\n";
-						++fields_processed;
+					{
+						std::stringstream ss;
+						int fields_processed = 0;
+						for (auto&& field : type.second.m_fields) {
+							if (annotations_match(field.annotations, [](const std::string& s) { return s == "transient"; }))
+								continue;
+							ss << "\t\t" << "rynx::deserialize(t." << field.spelling << ", reader);\n";
+							++fields_processed;
+						}
+
+						if(fields_processed == 0)
+							output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "&, IOStream&) {\n";
+						else
+							output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "& t, IOStream& reader) {\n";
+						output << ss.str();
 					}
+					output << "\t}" << std::endl;
 
-					if(fields_processed == 0)
-						output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "&, IOStream&) {\n";
-					else
-						output << "\ttemplate<typename IOStream> static void deserialize(" + type.first + "& t, IOStream& reader) {\n";
-					output << ss.str();
+					output << "};" << std::endl << std::endl;
 				}
-				output << "\t}" << std::endl;
-
-				output << "};" << std::endl << std::endl;
 
 
 				// also write definition for "for_each_id_field"
@@ -635,7 +634,7 @@ int main(int argc, char** argv) {
 }
 
 void printDiagnostics(CXTranslationUnit translationUnit) {
-	int nbDiag = clang_getNumDiagnostics(translationUnit);
+	unsigned nbDiag = clang_getNumDiagnostics(translationUnit);
 	printf("There are %i diagnostics:\n", nbDiag);
 
 	bool foundError = false;

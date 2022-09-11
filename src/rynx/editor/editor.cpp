@@ -36,6 +36,17 @@ rynx::string humanize(rynx::string s) {
 	return s;
 }
 
+void register_post_deserialize_operations(rynx::ecs& ecs) {
+	ecs.register_post_deserialize_init_function([](rynx::ecs& ecs, rynx::scheduler::context& ctx) {
+		ecs.query().for_each([](rynx::components::phys::boundary& boundary, rynx::components::transform::position pos) {
+			if (boundary.segments_local.size() != boundary.segments_world.size()) {
+				boundary.segments_world = boundary.segments_local;
+				boundary.update_world_positions(pos.value, pos.angle);
+			}
+		});
+	});
+}
+
 void rynx::editor::field_float(
 	const rynx::reflection::field& member,
 	rynx::editor::component_recursion_info_t info,
@@ -634,6 +645,7 @@ void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
 	all_rulesets().deserialize(*m_context, rulesets_reader);
+	ecs.post_deserialize_init(*m_context);
 }
 
 rynx::editor_rules::editor_rules(
@@ -650,6 +662,7 @@ rynx::editor_rules::editor_rules(
 	m_game_running_state = game_running_state;
 
 	ctx.get_resource<rynx::graphics::mesh_collection>().load_all_meshes_from_disk("../meshes");
+	register_post_deserialize_operations(m_context->get_resource<rynx::ecs>());
 
 	struct tool_api_impl : public rynx::editor::editor_shared_state::tool_api {
 	private:
@@ -702,7 +715,7 @@ rynx::editor_rules::editor_rules(
 
 	this->frame_tex = textures.findTextureByName("frame");
 	this->knob_tex = textures.findTextureByName("frame");
-
+	
 	rynx::observer_ptr<rynx::filesystem::vfs> vfs = ctx.get_resource_ptr<rynx::filesystem::vfs>();
 	rynx::observer_ptr<rynx::scenes> scenes = ctx.get_resource_ptr<rynx::scenes>();
 
@@ -1139,7 +1152,7 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 					if (auto* parent_comp = entity.try_get<rynx::components::scene::parent>()) {
 						if (game_ecs.exists(parent_comp->entity)) {
 							auto parent_pos = game_ecs[parent_comp->entity].get<rynx::components::transform::position>();
-							debugVis.addDebugLine_world(parent_pos.value, pos->value, { 1.0f, 0.0f, 1.0f, 1.0f }, 0.2f);
+							debugVis.addDebugLine(parent_pos.value, pos->value, { 1.0f, 0.0f, 1.0f, 1.0f });
 						}
 					}
 
@@ -1147,15 +1160,28 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 					if (auto* children_comp = entity.try_get<rynx::components::scene::children>()) {
 						for (auto child_id : children_comp->entities) {
 							if (game_ecs.exists(child_id)) {
-								auto parent_pos = game_ecs[child_id].get<rynx::components::transform::position>();
-								float width = 1.0f * game_camera.position().z;
+								auto child_pos = game_ecs[child_id].get<rynx::components::transform::position>();
 								rynx::floats4 color{ 0.2f, 1.0f, 0.2f, 1.0f };
-								debugVis.addDebugLine_world(parent_pos.value, pos->value, color, width);
+								debugVis.addDebugLine(child_pos.value, pos->value, color);
+
+								rynx::matrix4 circleMat;
+								circleMat.discardSetTranslate(child_pos.value);
+								circleMat.scale(game_ecs[child_id].get<rynx::components::transform::radius>().r);
+								debugVis.addDebugCircle(circleMat, {0.2f, 1.0f, 0.2f, 1.0f});
 							}
 						}
 					}
 				}
 			}
+
+			// draw scene roots (circle + name of scene) or something
+			game_ecs.query().for_each([&](rynx::components::scene::link subscene_link, rynx::components::transform::position pos) {
+				rynx::matrix4 circleMat;
+				circleMat.discardSetTranslate(pos.value);
+				circleMat.scale(10.0f);
+
+				debugVis.addDebugCircle(circleMat, {1.0f, 0.6f, 0.6f, 1.0f});
+			});
 
 			auto pos = game_camera.position();
 

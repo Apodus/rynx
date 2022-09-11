@@ -70,6 +70,10 @@ namespace rynx {
 			bool operator != (const iterator& other) const noexcept { return !(operator==(other)); }
 		};
 
+		bool operator == (const entity_range_t& other) const {
+			return (m_begin == other.m_begin) & (m_end == other.m_end);
+		}
+
 		entity_range_t() noexcept = default;
 		entity_range_t(rynx::ecs_internal::id begin, rynx::ecs_internal::id end) noexcept : m_begin(begin), m_end(end) {}
 		entity_range_t& operator =(const entity_range_t& other) noexcept = default;

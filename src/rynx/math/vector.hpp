@@ -19,7 +19,7 @@ namespace rynx {
 
 	// generic 3d vector template.
 	template <class T>
-	struct alignas(16) vec3 {
+	struct alignas(sizeof(T) * 4) vec3 {
 		vec3(T x = 0, T y = 0, T z = 0) : x(x), y(y), z(z) {}
 		
 		vec3(const vec3&) = default;
@@ -71,6 +71,7 @@ namespace rynx {
 		T x;
 		T y;
 		T z;
+		T padding_;
 	};
 
 	namespace serialization {

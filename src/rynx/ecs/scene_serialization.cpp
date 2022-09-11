@@ -3,6 +3,7 @@
 #include <rynx/ecs/scene_serialization.hpp>
 #include <rynx/ecs/raw_serialization.hpp>
 #include <rynx/ecs/ecs.hpp>
+#include <rynx/math/geometry/math.hpp>
 
 namespace {
 	struct subscene_edits {
@@ -510,10 +511,20 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 	entity_range_t all_entities_id_range = entity_id_range;
 
 	// transform all deserialized entities by scene root transform.
-	for (auto id : entity_id_range) {
-		auto& entity_pos = (*host)[id].get<rynx::components::transform::position>();
-		entity_pos.value += scene_pos.value;
-		entity_pos.angle += scene_pos.angle;
+	{
+		float sin_v = rynx::math::sin(scene_pos.angle);
+		float cos_v = rynx::math::cos(scene_pos.angle);
+		for (auto id : entity_id_range) {
+			auto entity = (*host)[id];
+			auto& entity_pos = entity.get<rynx::components::transform::position>();
+			const auto local_pos = entity_pos;
+
+			auto rotated_local_pos = rynx::math::rotatedXY(local_pos.value, sin_v, cos_v);
+			entity_pos.value = rotated_local_pos + scene_pos.value;
+			entity_pos.angle = scene_pos.angle + local_pos.angle;
+
+			entity.add(rynx::components::scene::local_position{ local_pos });
+		}
 	}
 
 	// for any sub-scene link deserialized, deserialize the content of the subscene (recursive call)

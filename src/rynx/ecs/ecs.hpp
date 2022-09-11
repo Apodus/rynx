@@ -20,6 +20,9 @@
 #include <numeric>
 
 namespace rynx {
+	namespace scheduler {
+		class context;
+	}
 
 	template<typename T> struct remove_first_type { using type = std::tuple<>; };
 	template<typename T, typename... Ts> struct remove_first_type<std::tuple<T, Ts...>> { using type = std::tuple<Ts...>; };
@@ -77,6 +80,7 @@ namespace rynx {
 		rynx::unordered_map<dynamic_bitset, rynx::unique_ptr<entity_category>, bitset_hash> m_categories;
 		rynx::unordered_map<type_id_t, opaque_unique_ptr<rynx::ecs_internal::ivalue_segregation_map>> m_value_segregated_types_maps;
 		std::vector<type_id_t> m_virtual_types_released;
+		std::vector<rynx::function<void(rynx::ecs&, rynx::scheduler::context&)>> m_post_deserialize_actions;
 
 		auto& categories() { return m_categories; }
 		const auto& categories() const { return m_categories; }
@@ -119,7 +123,6 @@ namespace rynx {
 				copy.m_categories.emplace(entry.first, rynx::make_unique<entity_category>(entry.second->clone()));
 			}
 
-			// copy.m_idCategoryMap = this->m_idCategoryMap;
 			// Rebuild id category map
 			for (auto&& category : copy.m_categories) {
 				for (index_t index_in_category = 0; index_in_category < category.second->m_ids.size(); ++index_in_category) {
@@ -137,6 +140,16 @@ namespace rynx {
 
 			copy.m_virtual_types_released = m_virtual_types_released;
 			return copy;
+		}
+
+		void register_post_deserialize_init_function(rynx::function<void(rynx::ecs&, rynx::scheduler::context&)> func) {
+			m_post_deserialize_actions.emplace_back(std::move(func));
+		}
+
+		void post_deserialize_init(rynx::scheduler::context& ctx) {
+			for (auto&& func : m_post_deserialize_actions) {
+				func(*this, ctx);
+			}
 		}
 
 		class entity_category {

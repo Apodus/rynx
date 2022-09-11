@@ -9,6 +9,8 @@ build/bin/
 *_reflection.cpp
 *_reflection.hpp
 *_serialization.hpp
+!*raw_serialization.*
+!*scene_serialization.*
 
 # ignore some build target items
 *.sln
