@@ -36,9 +36,9 @@ namespace rynx {
 					return "joint_tool";
 				}
 
-				virtual bool operates_on(const rynx::string& type_name) override {
-					return type_name == rynx::traits::type_name<rynx::components::phys::joint>() ||
-						type_name == rynx::traits::type_name<rynx::components::phys::joint::connector_type>();
+				virtual bool operates_on(rynx::type_id_t type_id) override {
+					return type_id == rynx::type_index::id<rynx::components::phys::joint>() ||
+						type_id == rynx::type_index::id<rynx::components::phys::joint::connector_type>();
 				}
 
 				virtual bool try_generate_menu(

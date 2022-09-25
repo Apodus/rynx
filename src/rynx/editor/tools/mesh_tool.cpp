@@ -13,7 +13,7 @@ rynx::editor::tools::mesh_tool::mesh_tool(rynx::scheduler::context& ctx)
 {
 	m_textures = &ctx.get_resource<rynx::graphics::GPUTextures>();
 
-	define_action_no_tool_activate("", "select mesh", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::graphics::mesh>(), "select mesh", [this](rynx::scheduler::context* ctx) {
 		m_editor_state->m_editor->disable_tools();
 		m_editor_state->m_editor->execute([this, ctx]() {
 			void* ptr = this->address_of_operand();

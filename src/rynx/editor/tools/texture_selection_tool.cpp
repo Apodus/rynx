@@ -14,7 +14,7 @@ rynx::editor::tools::texture_selection::texture_selection(rynx::scheduler::conte
 {
 	m_textures = &ctx.get_resource<rynx::graphics::GPUTextures>();
 
-	define_action_no_tool_activate("", "select texture", [this]([[maybe_unused]]rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::graphics::texture>(), "select texture", [this]([[maybe_unused]] rynx::scheduler::context* ctx) {
 		m_editor_state->m_editor->disable_tools();
 		m_editor_state->m_editor->execute([this]() {
 			void* ptr = this->address_of_operand();

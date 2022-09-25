@@ -36,7 +36,7 @@ namespace rynx {
 					return "selection_tool";
 				}
 
-				virtual bool operates_on(const rynx::string& type_name) override;
+				virtual bool operates_on(rynx::type_id_t type_id) override;
 				virtual bool try_generate_menu(
 					rynx::reflection::field type,
 					rynx::editor::component_recursion_info_t info,

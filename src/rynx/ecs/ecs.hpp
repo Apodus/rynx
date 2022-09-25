@@ -1559,7 +1559,7 @@ namespace rynx {
 				rynx_assert(source_category->ids()[source_index] == id_value, "Entity mapping is broken");
 				
 				const dynamic_bitset& initialTypes = source_category->types();
-				rynx_assert(!initialTypes.test(rynx::type_index::id<Components>()) && ..., "adding a type that already exists in entity");
+				// rynx_assert(!initialTypes.test(rynx::type_index::id<Components>()) && ..., "adding a type that already exists in entity");
 				
 				dynamic_bitset resultTypes = initialTypes;
 				(compute_type_category(resultTypes, components), ...);
@@ -1593,7 +1593,7 @@ namespace rynx {
 				rynx_assert(source_category->ids()[source_index] == id, "Entity mapping is broken");
 
 				const dynamic_bitset& initialTypes = source_category->types();
-				rynx_assert(initialTypes.test(rynx::type_index::id<Components>()) && ..., "attempting to remove a type from entity but it doesn't exist for entity");
+				// rynx_assert(initialTypes.test(rynx::type_index::id<Components>()) && ..., "attempting to remove a type from entity but it doesn't exist for entity");
 
 				dynamic_bitset resultTypes = initialTypes;
 

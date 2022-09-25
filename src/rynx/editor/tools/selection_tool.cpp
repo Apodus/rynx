@@ -13,13 +13,13 @@ rynx::editor::tools::selection_tool::selection_tool(rynx::scheduler::context& ct
 	auto& input = ctx.get_resource<rynx::mapped_input>();
 	m_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(0), "selection tool activate");
 
-	define_action(rynx::traits::type_name<rynx::id>(), "pick entity", [this](rynx::scheduler::context*) {
+	define_action(rynx::type_index::id<rynx::id>(), "pick entity", [this](rynx::scheduler::context*) {
 		m_mode = Mode::IdField_Pick;
 	});
 }
 
-bool rynx::editor::tools::selection_tool::operates_on(const rynx::string& type_name) {
-	return rynx::traits::type_name<rynx::id>() == type_name;
+bool rynx::editor::tools::selection_tool::operates_on(rynx::type_id_t type_id) {
+	return type_id == rynx::type_index::id<rynx::id>();
 }
 
 bool rynx::editor::tools::selection_tool::try_generate_menu(
@@ -182,7 +182,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 								*info.ecs,
 								info.entity_id
 							);
-							});
+						});
 					}
 					});
 				m_mode = Mode::Vec3fDrag;
@@ -230,7 +230,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 		auto id_pick_button = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.7f, 1.0f, 0.0f));
 		id_pick_button->velocity_position(200.0f); // TODO
-		id_pick_button->on_click([this, field_type, info, self = id_pick_button.get()]() {
+		id_pick_button->on_click([this, field_type, info, self = id_pick_button]() {
 			this->source_data([this, info]() {
 				char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
 				auto* value = reinterpret_cast<rynx::id*>(data + info.cumulative_offset);

@@ -7,6 +7,7 @@
 #include <rynx/math/geometry/polygon_editor.hpp>
 #include <rynx/math/geometry/triangle.hpp>
 #include <rynx/ecs/id.hpp>
+#include <rynx/ecs/scenes.hpp>
 
 namespace rynx {
 	namespace components {
@@ -18,6 +19,13 @@ namespace rynx {
 			float walk_speed = 1.0f;
 			float jump_power = 10.0f;
 		};
+
+		namespace logic {
+			struct interval_generator {
+				float time_until_next = 1.0f;
+				rynx::scene_id target;
+			};
+		}
 
 		namespace transform {
 			struct position_relative {

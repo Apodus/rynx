@@ -41,10 +41,10 @@ const std::vector<rynx::id>& rynx::editor::itool::selected_id_vector() const {
 	return m_editor_state->m_selected_ids;
 }
 
-void rynx::editor::itool::define_action(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op) {
+void rynx::editor::itool::define_action(rynx::type_index::type_id_t target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op) {
 	m_actions.emplace(name, action{ true, target_type, name, std::move(op) });
 }
 
-void rynx::editor::itool::define_action_no_tool_activate(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op) {
+void rynx::editor::itool::define_action_no_tool_activate(rynx::type_index::type_id_t target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op) {
 	m_actions.emplace(name, action{ false, target_type, name, std::move(op) });
 }

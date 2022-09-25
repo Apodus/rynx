@@ -31,6 +31,12 @@ namespace rynx {
 			rynx::editor::component_recursion_info_t info,
 			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
 		);
+
+		struct ipromise {
+			virtual ~ipromise() {}
+			virtual bool ready() const = 0;
+			virtual void execute() = 0;
+		};
 	}
 
 	class EditorDLL editor_rules : public rynx::application::logic::iruleset {
@@ -56,7 +62,9 @@ namespace rynx {
 		rynx::binary_config::id m_game_running_state;
 
 		std::vector<rynx::shared_ptr<rynx::menu::Component>> m_popups;
+		
 		std::vector<rynx::function<void()>> m_execute_in_main_stack;
+		std::vector<rynx::unique_ptr<rynx::editor::ipromise>> m_long_ops;
 
 		rynx::editor::itool* m_active_tool = nullptr;
 		std::vector<rynx::unique_ptr<rynx::editor::itool>> m_tools;

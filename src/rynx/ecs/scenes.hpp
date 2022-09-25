@@ -106,6 +106,9 @@ namespace rynx {
 		rynx::scene_info& filepath_to_info(const rynx::string& path);
 		const rynx::scene_info& filepath_to_info(const rynx::string& path) const;
 
+		rynx::scene_info& id_to_info(const rynx::scene_id& id);
+		const rynx::scene_info& id_to_info(const rynx::scene_id& id) const;
+
 		std::vector<std::pair<rynx::string, rynx::scene_id>> list_scenes() const;
 
 	private:

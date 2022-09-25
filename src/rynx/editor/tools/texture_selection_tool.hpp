@@ -2,6 +2,7 @@
 #pragma once
 
 #include <rynx/editor/tools/tool.hpp>
+#include <rynx/application/components.hpp>
 
 namespace rynx {
 	namespace graphics {
@@ -26,8 +27,8 @@ namespace rynx {
 					rynx::editor::component_recursion_info_t info,
 					std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack) override;
 
-				virtual bool operates_on(const rynx::string& type_name) override {
-					return type_name.find("rynx::components::graphics::texture") != rynx::string::npos;
+				virtual bool operates_on(rynx::type_id_t type_id) override {
+					return type_id == rynx::type_index::id<rynx::components::graphics::texture>();
 				}
 
 				virtual rynx::string get_tool_name() override {

@@ -47,6 +47,7 @@ namespace rynx {
 			const rynx::reflection::reflections* reflections = nullptr;
 			rynx::menu::Component* component_sheet = nullptr;
 			rynx::graphics::GPUTextures* textures = nullptr;
+			rynx::scheduler::context* ctx = nullptr;
 
 			// constant data per component
 			rynx::id entity_id = 0;
@@ -59,6 +60,12 @@ namespace rynx {
 			int32_t indent = 0;
 			rynx::graphics::texture_id frame_tex;
 			rynx::graphics::texture_id knob_tex;
+
+			int32_t offset_of(const rynx::reflection::field& f) const { return cumulative_offset + f.m_memory_offset; }
+			template<typename T> T& access(const rynx::reflection::field& f) {
+				// return rynx::editor::ecs_value_editor().access<rynx::scene_id>(*ecs, entity_id, component_type_id, offset_of(f));
+				return rynx::editor::ecs_value_editor().access<rynx::scene_id>(*ecs, entity_id, component_type_id, cumulative_offset);
+			}
 
 			rynx::function<void(
 				const rynx::reflection::type& type_reflection,
@@ -88,12 +95,12 @@ namespace rynx {
 		public:
 			struct action {
 				action() = default;
-				action(bool activate_tool, rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op)
+				action(bool activate_tool, rynx::type_index::type_id_t target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op)
 					: activate_tool(activate_tool), target_type(std::move(target_type)), name(std::move(name)), m_action(std::move(op))
 				{}
 
 				bool activate_tool = true;
-				rynx::string target_type;
+				rynx::type_index::type_id_t target_type;
 				rynx::string name;
 				rynx::function<void(rynx::scheduler::context*)> m_action;
 			};
@@ -163,13 +170,13 @@ namespace rynx {
 
 			virtual void on_entity_component_removed(
 				rynx::scheduler::context*,
-				rynx::string /* componentTypeName */,
+				rynx::type_index::type_id_t,
 				rynx::ecs&,
 				rynx::id) {}
 			
 			virtual void on_entity_component_added(
 				rynx::scheduler::context*,
-				rynx::string /* componentTypeName */,
+				rynx::type_index::type_id_t,
 				rynx::ecs&,
 				rynx::id) {}
 
@@ -191,8 +198,8 @@ namespace rynx {
 				return false;
 			}
 
-			virtual bool operates_on(const rynx::string& type_name) = 0;
-			virtual bool allow_component_remove(const rynx::string& /* type_name */) { return true; }
+			virtual bool operates_on(rynx::type_id_t type_id) = 0;
+			virtual bool allow_component_remove(rynx::type_id_t /* type_id */) { return true; }
 
 			// TODO: Wrap under some common namespace or struct
 			void source_data(rynx::function<void* ()> func);
@@ -212,8 +219,8 @@ namespace rynx {
 			editor_shared_state* m_editor_state = nullptr;
 
 		protected:
-			void define_action(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
-			void define_action_no_tool_activate(rynx::string target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
+			void define_action(rynx::type_index::type_id_t target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
+			void define_action_no_tool_activate(rynx::type_index::type_id_t target_type, rynx::string name, rynx::function<void(rynx::scheduler::context*)> op);
 
 		private:
 			rynx::function<void* ()> m_get_data;

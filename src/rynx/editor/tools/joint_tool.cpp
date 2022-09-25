@@ -7,7 +7,7 @@
 
 rynx::editor::tools::joint_tool::joint_tool([[maybe_unused]] rynx::scheduler::context& ctx) {
 	define_action_no_tool_activate(
-		rynx::traits::type_name<rynx::components::phys::joint>(),
+		rynx::type_index::id<rynx::components::phys::joint>(),
 		"recompute length",
 		[this](rynx::scheduler::context* ctx)
 		{

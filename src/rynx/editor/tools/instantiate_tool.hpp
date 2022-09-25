@@ -32,7 +32,7 @@ namespace rynx {
 					return "instantiation_tool";
 				}
 
-				virtual bool operates_on(const rynx::string& /* type_name */) override {
+				virtual bool operates_on(rynx::type_id_t /* type_id */) override {
 					return false;
 				}
 

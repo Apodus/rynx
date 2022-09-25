@@ -15,24 +15,24 @@ rynx::editor::tools::polygon_tool::polygon_tool(rynx::scheduler::context& ctx) {
 	m_secondary_activation_key = input.generateAndBindGameKey(input.getMouseKeyPhysical(1), "polygon tool activate");
 	m_key_smooth = input.generateAndBindGameKey(',', "polygon smooth op");
 
-	define_action(rynx::traits::type_name<rynx::components::phys::boundary>(), "vertices edit", [this](rynx::scheduler::context*) {
+	define_action(rynx::type_index::id<rynx::components::phys::boundary>(), "vertices edit", [this](rynx::scheduler::context*) {
 		// no action required, just a shorthand to activate the tool.
 	});
 
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::boundary>(), "vertices smooth", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::boundary>(), "vertices smooth", [this](rynx::scheduler::context* ctx) {
 		action_smooth(ctx->get_resource<rynx::ecs>());
 	});
 
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::boundary>(), "mesh rebuild", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::boundary>(), "mesh rebuild", [this](rynx::scheduler::context* ctx) {
 		action_rebuild_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
 	});
 	
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::boundary>(), "mesh rebuild boundary", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::boundary>(), "mesh rebuild boundary", [this](rynx::scheduler::context* ctx) {
 		action_rebuild_boundary_mesh(ctx->get_resource<rynx::ecs>(), ctx->get_resource<rynx::graphics::mesh_collection>());
 	});
 
 	// Note that this changes the centre of mass for the entity.
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::boundary>(), "opimize bounding sphere", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::boundary>(), "opimize bounding sphere", [this](rynx::scheduler::context* ctx) {
 		rynx::ecs& game_ecs = ctx->get_resource<rynx::ecs>();
 		auto entity = game_ecs[selected_id()];
 		auto& entity_pos = entity.get<rynx::components::transform::position>();
@@ -69,7 +69,7 @@ void rynx::editor::tools::polygon_tool::action_smooth(rynx::ecs& ecs) {
 
 void rynx::editor::tools::polygon_tool::on_entity_component_added(
 	rynx::scheduler::context* ctx,
-	[[maybe_unused]] rynx::string componentTypeName,
+	[[maybe_unused]] rynx::type_index::type_id_t componentType,
 	rynx::ecs& ecs,
 	rynx::id id)
 {
@@ -109,7 +109,7 @@ void rynx::editor::tools::polygon_tool::on_entity_component_value_changed(
 
 void rynx::editor::tools::polygon_tool::on_entity_component_removed(
 	rynx::scheduler::context* /* ctx */,
-	rynx::string /* componentTypeName */,
+	rynx::type_index::type_id_t /* componentType */,
 	rynx::ecs& /* ecs */,
 	rynx::id /* id */)
 {

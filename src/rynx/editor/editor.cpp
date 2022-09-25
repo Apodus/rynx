@@ -327,7 +327,7 @@ void rynx::editor_rules::generate_menu_for_reflection(
 
 			// Create tools buttons
 			for (auto&& tool : m_tools) {
-				if (tool->operates_on(member.m_type_name)) {
+				if (tool->operates_on(m_reflections.find(member.m_type_name)->m_type_index_value)) {
 					std::vector<rynx::string> actionNames = tool->get_editor_actions_list();
 					if (!actionNames.empty()) {
 						for (auto&& actionName : actionNames) {
@@ -461,14 +461,14 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 					parent->die();
 
 					m_state.m_editor->for_each_tool([this, reflection_entry, &ecs, id](rynx::editor::itool* tool_ptr) {
-						tool_ptr->on_entity_component_removed(m_context, reflection_entry.m_type_name, ecs, id);
+						tool_ptr->on_entity_component_removed(m_context, reflection_entry.m_type_index_value, ecs, id);
 					});
 				});
 			});
 
 			bool allowComponentRemove = true;
 			for (auto& tool : m_tools) {
-				allowComponentRemove &= tool->allow_component_remove(reflection_entry.m_type_name);
+				allowComponentRemove &= tool->allow_component_remove(reflection_entry.m_type_index_value);
 			}
 			if (allowComponentRemove) {
 				component_sheet->addChild(delete_component);
@@ -476,7 +476,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 			component_sheet->addChild(component_name);
 
 			for (auto&& tool : m_tools) {
-				if (tool->operates_on(reflection_entry.m_type_name)) {
+				if (tool->operates_on(reflection_entry.m_type_index_value)) {
 					std::vector<rynx::string> actionNames = tool->get_editor_actions_list();
 					if (!actionNames.empty()) {
 						for (auto&& actionName : actionNames) {
@@ -528,6 +528,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 		component_common_info.ecs = &ecs;
 		component_common_info.reflections = &m_reflections;
 		component_common_info.component_sheet = component_sheet.get();
+		component_common_info.ctx = m_context;
 
 		component_common_info.entity_id = id;
 		component_common_info.textures = &textures;
@@ -1064,7 +1065,7 @@ rynx::editor_rules::editor_rules(
 										m_state.m_editor->for_each_tool([this, type_reflection, &ecs, selected_entity](rynx::editor::itool* tool_ptr) {
 											tool_ptr->on_entity_component_added(
 												m_context,
-												type_reflection.m_type_name,
+												type_reflection.m_type_index_value,
 												ecs,
 												selected_entity
 											);
@@ -1110,6 +1111,16 @@ void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float
 	while (!m_execute_in_main_stack.empty()) {
 		m_execute_in_main_stack.front()();
 		m_execute_in_main_stack.erase(m_execute_in_main_stack.begin());
+	}
+
+	for (int32_t i = 0; i < int32_t(m_long_ops.size()); ++i) {
+		auto& promise = m_long_ops[i];
+		if (promise->ready()) {
+			promise->execute();
+			m_long_ops[i] = std::move(m_long_ops.back());
+			m_long_ops.pop_back();
+			--i;
+		}
 	}
 
 	{

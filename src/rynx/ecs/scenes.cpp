@@ -173,6 +173,18 @@ const rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path)
 	return it->second;
 }
 
+rynx::scene_info& rynx::scenes::id_to_info(const rynx::scene_id& id) {
+	auto it = m_infos.find(id);
+	rynx_assert(it != m_infos.end(), "scene by id not found");
+	return it->second;
+}
+
+const rynx::scene_info& rynx::scenes::id_to_info(const rynx::scene_id& id) const {
+	auto it = m_infos.find(id);
+	rynx_assert(it != m_infos.end(), "scene by id not found");
+	return it->second;
+}
+
 std::vector<std::pair<rynx::string, rynx::scene_id>> rynx::scenes::list_scenes() const {
 	std::vector<std::pair<rynx::string, rynx::scene_id>> result;
 	for (auto&& entry : m_filepaths) {

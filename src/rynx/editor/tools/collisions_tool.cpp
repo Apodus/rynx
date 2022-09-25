@@ -5,7 +5,7 @@
 #include <rynx/tech/collision_detection.hpp>
 
 rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& ctx) : m_ecs(ctx.get_resource<rynx::ecs>()) {
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::collisions>(), "remove collisions", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::collisions>(), "remove collisions", [this](rynx::scheduler::context* ctx) {
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto id = selected_id();
@@ -15,7 +15,7 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 		this->m_editor_state->m_on_entity_selected(id);
 	});
 
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::collisions>(), "set category dynamic", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::collisions>(), "set category dynamic", [this](rynx::scheduler::context* ctx) {
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto id = selected_id();
@@ -26,7 +26,7 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 		);
 	});
 
-	define_action_no_tool_activate(rynx::traits::type_name<rynx::components::phys::collisions>(), "set category world", [this](rynx::scheduler::context* ctx) {
+	define_action_no_tool_activate(rynx::type_index::id<rynx::components::phys::collisions>(), "set category world", [this](rynx::scheduler::context* ctx) {
 		auto& collision_detection_system = ctx->get_resource<rynx::collision_detection>();
 		auto& ecs = ctx->get_resource<rynx::ecs>();
 		auto id = selected_id();
@@ -40,11 +40,11 @@ rynx::editor::tools::collisions_tool::collisions_tool(rynx::scheduler::context& 
 
 void rynx::editor::tools::collisions_tool::on_entity_component_removed(
 	rynx::scheduler::context* ctx,
-	rynx::string componentTypeName,
+	rynx::type_index::type_id_t component_type,
 	rynx::ecs& ecs,
 	rynx::id id)
 {
-	if (componentTypeName == rynx::traits::type_name<rynx::components::phys::boundary>()) {
+	if (component_type == rynx::type_index::id<rynx::components::phys::boundary>()) {
 		logmsg("noticed removal of boundary");
 		if (ecs[id].has<rynx::components::phys::collisions>()) {
 			logmsg("updating collision kind");
