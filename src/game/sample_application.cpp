@@ -27,6 +27,7 @@
 #include <rynx/editor/tools/selection_tool.hpp>
 #include <rynx/editor/tools/texture_selection_tool.hpp>
 #include <rynx/editor/tools/subscene_tool.hpp>
+#include <rynx/editor/tools/physics_tool.hpp>
 
 #include <rynx/application/visualisation/debug_visualisation.hpp>
 #include <rynx/filesystem/virtual_filesystem.hpp>
@@ -116,6 +117,7 @@ void SampleApplication::set_simulation_rules() {
 			*textures()
 		);
 
+		ruleset_editor->add_tool<rynx::editor::tools::physics_tool>(*context);
 		ruleset_editor->add_tool<rynx::editor::tools::texture_selection>(*context);
 		ruleset_editor->add_tool<rynx::editor::tools::polygon_tool>(*context);
 		ruleset_editor->add_tool<rynx::editor::tools::collisions_tool>(*context);

@@ -1072,7 +1072,11 @@ rynx::editor_rules::editor_rules(
 										});
 
 										pop_popup();
-										on_entity_selected(selected_entity);
+										
+										execute([this, selected_entity]() {
+											on_entity_selected(selected_entity);
+										});
+										
 										enable_tools();
 									});
 								});

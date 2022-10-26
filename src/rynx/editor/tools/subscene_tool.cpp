@@ -26,7 +26,7 @@ void rynx::editor::tools::subscene_tool::gen_menu_field_scenelink(
 	variable_name_label->text_align_left();
 
 	auto variable_value_field = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
-	auto pick_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
+	auto pick_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 1.0f, 0.0f));
 	pick_scene->velocity_position(menuVelocityFast);
 	pick_scene->text().text("Pick");
 	pick_scene->align().target(field_container.get()).top_inside().right_inside().offset_x(0.1f);
@@ -85,7 +85,7 @@ void rynx::editor::tools::subscene_tool::gen_menu_field_scenelink(
 			.text_input_disable();
 	}
 
-	variable_value_field->align().right_inside().top_inside();
+	variable_value_field->align().target(variable_name_label.get()).right_outside().top_inside();
 	variable_name_label->align().left_inside().top_inside();
 
 	field_container->addChild(variable_name_label);

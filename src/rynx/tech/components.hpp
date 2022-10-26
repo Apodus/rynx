@@ -189,8 +189,8 @@ namespace rynx {
 				*/
 				
 				float ANNOTATE(">=0") bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
-				float ANNOTATE(">=0") inv_mass = 1.000f; // 1kg default
-				float ANNOTATE(">=0") inv_moment_of_inertia = 0.0002f; // Should be computed from mass + shape kgm^2 ?
+				float ANNOTATE(">=0") ANNOTATE("inverse") inv_mass = 1.000f; // 1kg default
+				float ANNOTATE(">=0") ANNOTATE("inverse") inv_moment_of_inertia = 0.0002f; // Should be computed from mass + shape kgm^2 ?
 				float ANNOTATE("range 0 1") collision_elasticity = 0.5f; // [0, 1[
 				float ANNOTATE(">=0") friction_multiplier = 1.0f; // [0, 1]
 				uint64_t collision_id = 0; // if two colliding objects have the same collision id (!= 0) then the collision is ignored.
