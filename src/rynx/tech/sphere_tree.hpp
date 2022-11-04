@@ -411,7 +411,7 @@ namespace rynx {
 				if (entryMap.empty())
 					return;
 
-				auto it = entryMap.iteratorAt(update_next_index);
+				auto it = entryMap.iterator_at(update_next_index);
 
 				// NOTE: we are updating 1/32 of all entries per iteration. this is because the update itself is really fucking expensive.
 				//       this update optimizes the parent node of the entities. skipping the update means that our sphere tree bottom level will be slightly

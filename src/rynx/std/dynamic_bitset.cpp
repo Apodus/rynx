@@ -1,10 +1,10 @@
 
 #include <rynx/std/dynamic_bitset.hpp>
 
-rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() { return m_index_data; }
-const rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() const { return m_index_data; }
+rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() noexcept { return m_index_data; }
+const rynx::dynamic_buffer<uint64_t>& rynx::dynamic_bitset::data() const noexcept { return m_index_data; }
 
-rynx::dynamic_bitset& rynx::dynamic_bitset::set(uint64_t id) {
+rynx::dynamic_bitset& rynx::dynamic_bitset::set(uint64_t id) noexcept {
 	uint64_t block = id >> 6;
 	uint8_t bit = id & 63;
 	if (block >= m_index_data.size())
@@ -14,7 +14,7 @@ rynx::dynamic_bitset& rynx::dynamic_bitset::set(uint64_t id) {
 	return *this;
 }
 
-rynx::dynamic_bitset& rynx::dynamic_bitset::reset(uint64_t id) {
+rynx::dynamic_bitset& rynx::dynamic_bitset::reset(uint64_t id) noexcept {
 	uint64_t block = id >> 6;
 	uint8_t bit = id & 63;
 	if (block >= m_index_data.size())
@@ -24,7 +24,7 @@ rynx::dynamic_bitset& rynx::dynamic_bitset::reset(uint64_t id) {
 	return *this;
 }
 
-bool rynx::dynamic_bitset::test(uint64_t id) const {
+bool rynx::dynamic_bitset::test(uint64_t id) const noexcept {
 	uint64_t block = id >> 6;
 	if (block >= m_index_data.size())
 		return false;
@@ -32,9 +32,9 @@ bool rynx::dynamic_bitset::test(uint64_t id) const {
 	return (m_index_data[block] & (uint64_t(1) << bit)) != 0;
 }
 
-rynx::dynamic_bitset& rynx::dynamic_bitset::clear() { m_index_data.fill_memset(uint8_t(0)); return *this; }
+rynx::dynamic_bitset& rynx::dynamic_bitset::clear() noexcept { m_index_data.fill_memset(uint8_t(0)); return *this; }
 
-bool rynx::dynamic_bitset::includes(const dynamic_bitset& other) const {
+bool rynx::dynamic_bitset::includes(const dynamic_bitset& other) const noexcept {
 	size_t mySize = m_index_data.size();
 	size_t otherSize = other.m_index_data.size();
 
@@ -58,7 +58,7 @@ bool rynx::dynamic_bitset::includes(const dynamic_bitset& other) const {
 	}
 }
 
-bool rynx::dynamic_bitset::excludes(const dynamic_bitset& other) const {
+bool rynx::dynamic_bitset::excludes(const dynamic_bitset& other) const noexcept {
 	size_t mySize = m_index_data.size();
 	size_t otherSize = other.m_index_data.size();
 
@@ -86,7 +86,7 @@ rynx::dynamic_bitset rynx::dynamic_bitset::operator & (const dynamic_bitset& oth
 	return result;
 }
 
-bool rynx::dynamic_bitset::operator ==(const dynamic_bitset& other) const {
+bool rynx::dynamic_bitset::operator ==(const dynamic_bitset& other) const noexcept {
 	auto compare = [](const dynamic_bitset& smaller, const dynamic_bitset& larger) {
 		bool ok = true;
 		for (size_t i = 0; i < smaller.m_index_data.size(); ++i) {
@@ -107,7 +107,7 @@ rynx::dynamic_bitset& rynx::dynamic_bitset::resize_bits(size_t bits) {
 	return *this;
 }
 
-uint64_t rynx::dynamic_bitset::nextOne(uint64_t firstAllowed) const {
+uint64_t rynx::dynamic_bitset::nextOne(uint64_t firstAllowed) const noexcept {
 	uint64_t block = firstAllowed >> 6;
 	uint8_t bit = firstAllowed & 63;
 
@@ -134,7 +134,7 @@ uint64_t rynx::dynamic_bitset::nextOne(uint64_t firstAllowed) const {
 	return npos;
 }
 
-uint64_t rynx::dynamic_bitset::nextZero(uint64_t firstAllowed) const {
+uint64_t rynx::dynamic_bitset::nextZero(uint64_t firstAllowed) const noexcept {
 	uint64_t block = firstAllowed >> 6;
 	uint8_t bit = firstAllowed & 63;
 

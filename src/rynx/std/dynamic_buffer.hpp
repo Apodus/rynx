@@ -17,6 +17,9 @@ namespace rynx {
 			buffer_ptr(T* t) noexcept : t(t) {}
 			buffer_ptr(buffer_ptr&& other) noexcept : t(other.t) { other.t = nullptr; }
 			buffer_ptr& operator = (buffer_ptr&& other) noexcept {
+				if (t) {
+					delete[] t;
+				}
 				t = other.t;
 				other.t = nullptr;
 				return *this;

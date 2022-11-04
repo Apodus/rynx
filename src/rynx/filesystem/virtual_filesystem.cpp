@@ -228,7 +228,7 @@ void rynx::filesystem::vfs::unmount(rynx::string virtual_path) {
 	parent->m_children.erase(mount_node->name());
 	auto new_child = rynx::make_shared<filetree::node>(mount_node->name());
 	new_child->m_parent = parent;
-	parent->m_children.emplace(std::make_pair(mount_node->name(), std::move(new_child)));
+	parent->m_children.emplace(mount_node->name(), std::move(new_child));
 	parent->m_children[mount_node->name()]->m_children = mount_node->m_children;
 	auto new_parent = parent->m_children[mount_node->name()];
 	for (auto&& mount_node_child : mount_node->m_children)
@@ -346,7 +346,7 @@ rynx::shared_ptr<rynx::filesystem::filetree::node> rynx::filesystem::vfs::vfs_tr
 			auto emptyNode = rynx::make_shared<rynx::filesystem::filetree::node>(currentTokenName);
 			emptyNode->m_parent = currentNode;
 			
-			currentNode->m_children.insert(std::make_pair(currentTokenName, std::move(emptyNode)));
+			currentNode->m_children.emplace(currentTokenName, std::move(emptyNode));
 			currentNode = currentNode->m_children[currentTokenName];
 		}
 

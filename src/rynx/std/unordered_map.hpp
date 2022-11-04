@@ -4,8 +4,7 @@
 #include <rynx/std/dynamic_bitset.hpp>
 #include <rynx/system/assert.hpp>
 #include <rynx/std/memory.hpp>
-
-#include <utility> // for std::pair ..
+#include <type_traits>
 
 namespace rynx {
 	template<typename T, typename U>
@@ -98,21 +97,21 @@ namespace rynx {
 		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[(slot << 2) + 3] = value; }
 #else	
 		// Structs of arrays layout. Better for find.
-		inline uint32_t next_of_slot(size_t slot) const { return m_info[slot + 0 * static_cast<uint64_t>(m_capacity)]; }
-		inline uint32_t next_of_item(size_t slot) const { return m_info[slot + 1 * static_cast<uint64_t>(m_capacity)]; }
-		inline uint32_t prev_of_item(size_t slot) const { return m_info[slot + 2 * static_cast<uint64_t>(m_capacity)]; }
-		inline uint32_t hash_of_item(size_t slot) const { return m_info[slot + 3 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t next_of_slot(size_t slot) const noexcept { return m_info[slot + 0 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t next_of_item(size_t slot) const noexcept { return m_info[slot + 1 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t prev_of_item(size_t slot) const noexcept { return m_info[slot + 2 * static_cast<uint64_t>(m_capacity)]; }
+		inline uint32_t hash_of_item(size_t slot) const noexcept { return m_info[slot + 3 * static_cast<uint64_t>(m_capacity)]; }
 
-		inline void update_next_of_slot(size_t slot, uint32_t value) { m_info[slot + 0 * static_cast<uint64_t>(m_capacity)] = value; }
-		inline void update_next_of_item(size_t slot, uint32_t value) { m_info[slot + 1 * static_cast<uint64_t>(m_capacity)] = value; }
-		inline void update_prev_of_item(size_t slot, uint32_t value) { m_info[slot + 2 * static_cast<uint64_t>(m_capacity)] = value; }
-		inline void update_hash_of_item(size_t slot, uint32_t value) { m_info[slot + 3 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_next_of_slot(size_t slot, uint32_t value) noexcept { m_info[slot + 0 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_next_of_item(size_t slot, uint32_t value) noexcept { m_info[slot + 1 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_prev_of_item(size_t slot, uint32_t value) noexcept { m_info[slot + 2 * static_cast<uint64_t>(m_capacity)] = value; }
+		inline void update_hash_of_item(size_t slot, uint32_t value) noexcept { m_info[slot + 3 * static_cast<uint64_t>(m_capacity)] = value; }
 #endif
 
 	public:
 		using key_type = T;
 		using mapped_type = U;
-		using value_type = std::pair<const key_type, mapped_type>;
+		using value_type = pair<const key_type, mapped_type>;
 		using size_type = uint64_t;
 		using difference_type = std::ptrdiff_t;
 		using hasher = Hash;
@@ -135,11 +134,11 @@ namespace rynx {
 		public:
 			iterator(const iterator& other) = default;
 
-			size_t index() const {
+			size_t index() const noexcept {
 				return m_index;
 			}
 
-			iterator& operator ++() {
+			iterator& operator ++() noexcept {
 				m_index = m_pPresence->nextOne(m_index + 1);
 				return *this;
 			}
@@ -150,10 +149,10 @@ namespace rynx {
 				return copy;
 			}
 
-			std::pair<T, U>& operator *() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return *reinterpret_cast<std::pair<T, U>*>(m_pData + m_index); }
-			std::pair<T, U>* operator ->() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return reinterpret_cast<std::pair<T, U>*>(m_pData + m_index); }
+			pair<T, U>& operator *() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return *reinterpret_cast<pair<T, U>*>(m_pData + m_index); }
+			pair<T, U>* operator ->() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return reinterpret_cast<pair<T, U>*>(m_pData + m_index); }
 
-			bool operator == (const iterator& other) const { return (m_index == other.m_index) & (m_pPresence == other.m_pPresence); }
+			bool operator == (const iterator& other) const { rynx_assert(m_pPresence == other.m_pPresence, "comparing iterators between different container instances"); return (m_index == other.m_index); }
 			bool operator != (const iterator& other) const { return !((*this) == other); }
 
 		private:
@@ -171,11 +170,11 @@ namespace rynx {
 			const_iterator(const const_iterator& other) = default;
 			const_iterator(const iterator& other) : m_index(other.m_index), m_pPresence(other.m_pPresence), m_pData(other.m_pData) {}
 
-			size_t index() const {
+			size_t index() const noexcept {
 				return m_index;
 			}
 
-			const_iterator& operator ++() {
+			const_iterator& operator ++() noexcept {
 				m_index = m_pPresence->nextOne(m_index + 1);
 				return *this;
 			}
@@ -186,10 +185,17 @@ namespace rynx {
 				return copy;
 			}
 
-			const value_type& operator *() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return *reinterpret_cast<const value_type*>(m_pData + m_index); }
-			const value_type* operator ->() const { rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference"); return reinterpret_cast<const value_type*>(m_pData + m_index); }
+			const value_type& operator *() const noexcept {
+				rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference");
+				return *reinterpret_cast<const value_type*>(m_pData + m_index);
+			}
+			
+			const value_type* operator ->() const noexcept {
+				rynx_assert(m_pPresence->test(m_index), "invalid iterator dereference");
+				return reinterpret_cast<const value_type*>(m_pData + m_index);
+			}
 
-			bool operator == (const const_iterator& other) const { return (m_index == other.m_index) & (m_pPresence == other.m_pPresence); }
+			bool operator == (const const_iterator& other) const { rynx_assert(m_pPresence == other.m_pPresence, "comparing iterators between different container instances"); return (m_index == other.m_index); }
 			bool operator != (const const_iterator& other) const { return !((*this) == other); }
 
 		private:
@@ -204,7 +210,7 @@ namespace rynx {
 		inline value_type& item_in_slot(size_t slot) { rynx_assert(slot < m_capacity, "index out of bounds"); return *reinterpret_cast<value_type*>(m_data.get() + slot); }
 
 		// assumes: entry is not stored prior to insert.
-		std::pair<iterator, bool> insert_unique_(value_type&& value, uint32_t hash) {
+		pair<iterator, bool> insert_unique_(value_type&& value, uint32_t hash) {
 			if (m_capacity - m_size <= m_capacity >> 3) {
 				if (m_capacity == 0)
 					grow_to(64);
@@ -219,7 +225,7 @@ namespace rynx {
 		// this version bumps to back of bucket.
 		// assumes: there is space for new entry.
 		// assumes: entry is not stored prior to this insert.
-		std::pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
+		pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
 			++m_size;
 			auto slot_forward = next_of_slot(hash);
 			if (slot_forward == m_capacity) {
@@ -267,7 +273,7 @@ namespace rynx {
 
 		/*
 		// this version bumps to front of bucket.
-		std::pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
+		pair<iterator, bool> unchecked_insert_(value_type&& value, uint32_t hash) {
 			++m_size;
 
 			auto place = m_presence.nextZero(hash);
@@ -290,9 +296,9 @@ namespace rynx {
 		}
 		*/
 
-		uint64_t find_index_(const T& key, size_t hash) const {
-			if (empty())
-				return dynamic_bitset::npos;
+		uint64_t find_index_(const T& key, size_t hash) const noexcept {
+			//if (empty())
+			//	return dynamic_bitset::npos;
 
 			auto first = next_of_slot(hash);
 			for (;;) {
@@ -305,12 +311,16 @@ namespace rynx {
 		}
 
 	public:
-		unordered_map() {}
+		unordered_map() {
+			reserve_memory_internal(64);
+		}
 		
 		template<typename EnableType = std::enable_if_t< std::is_copy_constructible_v<U> > >
 		unordered_map(const unordered_map& other) {
-			for (const auto& entry : other)
-				emplace(entry);
+			reserve_memory_internal(other.capacity());
+			for (auto it = other.begin(); it != other.end(); ++it) {
+				unchecked_insert_(it->second, it.m_index);
+			}
 		}
 
 		unordered_map(unordered_map&& other) {
@@ -345,13 +355,13 @@ namespace rynx {
 			return *this;
 		}
 
-		iterator iteratorAt(size_t index) {
+		iterator iterator_at(size_t index) {
 			if (index >= m_capacity)
 				return end();
 			return iterator(m_presence.nextOne(index), &m_presence, m_data.get());
 		}
 
-		const_iterator iteratorAt(uint64_t index) const { return const_cast<unordered_map*>(this)->iteratorAt(index); }
+		const_iterator iterator_at(uint64_t index) const { return const_cast<unordered_map*>(this)->iterator_at(index); }
 
 		/*
 		TODO:
@@ -405,8 +415,8 @@ namespace rynx {
 		template<class K> const_iterator find(const K& x) const { T t(x); return find(t); }
 		template<class K> const_iterator find(const K& x, size_t hash) const { T t(x); return find(t, hash); }
 
-		std::pair<iterator, bool> insert(const value_type& value) { return insert(value_type(value)); }
-		std::pair<iterator, bool> insert(value_type&& value) {
+		pair<iterator, bool> insert(const value_type& value) { return insert(value_type(value)); }
+		pair<iterator, bool> insert(value_type&& value) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(value.first) & (m_capacity - 1));
 			auto it = find(value.first, hash);
 			if (it.m_index != dynamic_bitset::npos) {
@@ -415,7 +425,7 @@ namespace rynx {
 			return insert_unique_(std::move(value), hash);
 		}
 
-		template<class P> std::pair<iterator, typename std::enable_if<std::is_constructible_v<value_type, P&&>, bool>::type> insert(P&& value) { return emplace(value_type(value)); }
+		template<class P> pair<iterator, typename std::enable_if<std::is_constructible_v<value_type, P&&>, bool>::type> insert(P&& value) { return emplace(value_type(value)); }
 		template<class P, typename std::enable_if<std::is_constructible_v<value_type, P&&>, void*>::type> iterator insert(const_iterator hint, P&& value) { return insert(std::forward<P>(value)).first; }
 
 		iterator insert(const_iterator hint, const value_type& value) { return insert(value).first; }
@@ -426,7 +436,7 @@ namespace rynx {
 
 		template <class M> iterator insert_or_assign(const_iterator, const key_type& k, M&& obj) { return insert_or_assign(k, U(std::forward<M>(obj))).first; }
 		template <class M> iterator insert_or_assign(const_iterator, key_type&& k, M&& obj) { return insert_or_assign(std::move(k), U(std::forward<M>(obj))).first; }
-		template <class M> std::pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj) {
+		template <class M> pair<iterator, bool> insert_or_assign(const key_type& k, M&& obj) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
 			auto it = find(k, hash);
 			if (it != end()) {
@@ -444,7 +454,7 @@ namespace rynx {
 			}
 		}
 		
-		template <class M> std::pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj) {
+		template <class M> pair<iterator, bool> insert_or_assign(key_type&& k, M&& obj) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
 			auto it = find(k, hash);
 			if (it != end()) {
@@ -463,7 +473,7 @@ namespace rynx {
 		}
 
 
-		template <class... Args> std::pair<iterator, bool> try_emplace(const key_type& k, Args&& ... args) {
+		template <class... Args> pair<iterator, bool> try_emplace(const key_type& k, Args&& ... args) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
 			auto it = find(k, hash);
 			if (it != end()) {
@@ -480,7 +490,7 @@ namespace rynx {
 			}
 		}
 
-		template <class... Args> std::pair<iterator, bool> try_emplace(key_type&& k, Args&& ... args) {
+		template <class... Args> pair<iterator, bool> try_emplace(key_type&& k, Args&& ... args) {
 			uint32_t hash = static_cast<uint32_t>(Hash()(k) & (m_capacity - 1));
 			auto it = find(k, hash);
 			if (it != end()) {
@@ -500,7 +510,7 @@ namespace rynx {
 		template <class... Args> iterator try_emplace(const_iterator, const key_type& k, Args&& ... args) { return try_emplace(k, std::forward<Args>(args)...).first; }
 		template <class... Args> iterator try_emplace(const_iterator, key_type&& k, Args&& ... args) { return try_emplace(std::move(k), std::forward<Args>(args)...).first; }
 
-		template<typename ... Args> std::pair<iterator, bool> emplace(Args&& ... args) { return insert(value_type(std::forward<Args>(args)...)); }
+		template<typename ... Args> pair<iterator, bool> emplace(Args&& ... args) { return insert(value_type(std::forward<Args>(args)...)); }
 		template <class... Args> iterator emplace_hint(const_iterator, Args&& ... args) { return emplace(std::forward<Args>(args)...).first; }
 
 		iterator erase(const_iterator pos) {
@@ -613,19 +623,11 @@ namespace rynx {
 
 		void reserve_memory_internal(size_t s) {
 			m_data.reset(new storage_t[s + 1]); // +1 for end value.
-			m_info.resize_discard(4 * s, ~uint8_t(0));
+			m_info.resize_discard(4 * s, static_cast<uint32_t>(s));
 			m_presence.resize_bits(s);
-			
 			rynx_assert(s < (1llu << 32), "unordered_map does not supports sizes greater than 2^32");
 			m_capacity = static_cast<uint32_t>(s);
 			new (m_data.get() + m_capacity) value_type();
-
-			for (uint32_t i = 0; i < m_capacity; ++i) {
-				update_next_of_slot(i, m_capacity);
-				update_next_of_item(i, m_capacity);
-				update_hash_of_item(i, m_capacity);
-				update_prev_of_item(i, m_capacity);
-			}
 		}
 
 		void grow_to(uint32_t s) {

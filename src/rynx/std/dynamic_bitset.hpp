@@ -19,39 +19,39 @@ namespace rynx {
 			uint64_t index;
 			const dynamic_bitset* host;
 
-			iterator& operator++() {
+			iterator& operator++() noexcept {
 				index = host->nextOne(index + 1);
 				return *this;
 			}
 
-			bool operator == (const iterator& other) const {
+			bool operator == (const iterator& other) const noexcept {
 				rynx_assert(host == other.host, "comparing iterators from different bitsets");
 				return index == other.index;
 			}
 
-			bool operator != (const iterator& other) const {
+			bool operator != (const iterator& other) const noexcept {
 				return !operator==(other);
 			}
 
-			uint64_t operator*() const {
+			uint64_t operator*() const noexcept {
 				return index;
 			}
 		};
 
-		iterator begin() const { return iterator{ nextOne(0), this }; }
-		iterator end() const { return iterator{ npos, this }; }
+		iterator begin() const noexcept { return iterator{ nextOne(0), this }; }
+		iterator end() const noexcept { return iterator{ npos, this }; }
 
-		dynamic_buffer<uint64_t>& data();
-		const dynamic_buffer<uint64_t>& data() const;
+		dynamic_buffer<uint64_t>& data() noexcept;
+		const dynamic_buffer<uint64_t>& data() const noexcept;
 
-		dynamic_bitset& set(uint64_t id);
-		dynamic_bitset& reset(uint64_t id);
+		dynamic_bitset& set(uint64_t id) noexcept;
+		dynamic_bitset& reset(uint64_t id) noexcept;
 
-		bool test(uint64_t id) const;
-		dynamic_bitset& clear();
+		bool test(uint64_t id) const noexcept;
+		dynamic_bitset& clear() noexcept;
 
-		bool includes(const dynamic_bitset& other) const;
-		bool excludes(const dynamic_bitset& other) const;
+		bool includes(const dynamic_bitset& other) const noexcept;
+		bool excludes(const dynamic_bitset& other) const noexcept;
 
 		// merge with operator AND
 		template<data_view view>
@@ -86,11 +86,11 @@ namespace rynx {
 		// NOTE: this requires creating a new bitset => reserves memory => slow.
 		dynamic_bitset operator & (const dynamic_bitset& other) const;
 
-		bool operator ==(const dynamic_bitset& other) const;
+		bool operator ==(const dynamic_bitset& other) const noexcept;
 		dynamic_bitset& resize_bits(size_t bits);
 
-		uint64_t nextOne(uint64_t firstAllowed = 0) const;
-		uint64_t nextZero(uint64_t firstAllowed = 0) const;
+		uint64_t nextOne(uint64_t firstAllowed = 0) const noexcept;
+		uint64_t nextZero(uint64_t firstAllowed = 0) const noexcept;
 
 		template<typename F>
 		const dynamic_bitset& forEachOne(F&& op) const {

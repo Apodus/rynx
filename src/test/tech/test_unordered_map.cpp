@@ -85,7 +85,6 @@ TEST_CASE("unordered_map", "verify insert/remove")
 	}
 }
 
-/*
 TEST_CASE("unordered_map benchmark", "std vs rynx") {
 
 	auto bench_insert = [](auto& map) {
@@ -167,4 +166,3 @@ TEST_CASE("unordered_map benchmark", "std vs rynx") {
 		};
 	}
 }
-*/
