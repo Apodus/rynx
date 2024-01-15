@@ -157,6 +157,14 @@ rynx::menu::Component::Component(
 	m_color.tick(1.0f);
 }
 
+rynx::menu::Component::~Component() {
+	if (has_dedicated_keyboard_input())
+		m_menuSystem->release_keyboard_input();
+	if (has_dedicated_mouse_input()) {
+		m_menuSystem->release_mouse_input();
+	}
+}
+
 void rynx::menu::Component::capture_dedicated_mouse_input() {
 	m_menuSystem->capture_mouse_input(this);
 }
@@ -171,11 +179,11 @@ void rynx::menu::Component::release_dedicated_keyboard_input() {
 }
 
 bool rynx::menu::Component::has_dedicated_mouse_input() const {
-	return m_menuSystem->has_dedicated_mouse_input(this);
+	return m_menuSystem && m_menuSystem->has_dedicated_mouse_input(this);
 }
 
 bool rynx::menu::Component::has_dedicated_keyboard_input() const {
-	return m_menuSystem->has_dedicated_keyboard_input(this);
+	return m_menuSystem && m_menuSystem->has_dedicated_keyboard_input(this);
 }
 
 void rynx::menu::Component::set_parent(Component* other) {

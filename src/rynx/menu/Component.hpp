@@ -114,6 +114,8 @@ namespace rynx {
 				vec3<float> position = vec3<float>(0, 0, 0)
 			);
 
+			virtual ~Component();
+
 			void disable_input() { m_active = false; }
 			void enable_input() { m_active = true; }
 			void set_input_enabled(bool enableInput) {
@@ -137,8 +139,6 @@ namespace rynx {
 			void release_dedicated_keyboard_input();
 			bool has_dedicated_mouse_input() const;
 			bool has_dedicated_keyboard_input() const;
-
-			virtual ~Component() {}
 
 			void on_hover(rynx::function<bool(rynx::vec3f, bool)> hover_func) { m_on_hover.emplace_back(std::move(hover_func)); }
 			void on_click(rynx::function<void()> click_func) { m_on_click.emplace_back(std::move(click_func)); }
