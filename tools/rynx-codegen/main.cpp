@@ -372,11 +372,15 @@ void write_results(std::string source_file) {
 					continue;
 
 				output << "{" << std::endl;
-				if (type.second.m_fields.empty()) {
+				if (type.second.m_fields.empty() && type.second.annotations.empty()) {
 					output << "\t" << "type_reflections.create<" << type.first << ">();" << std::endl;
 				}
 				else {
 					output << "\t" << "auto& reflection = type_reflections.create<" << type.first << ">();" << std::endl;
+				}
+
+				for (auto&& annotation : type.second.annotations) {
+					output << "\t" << "reflection.add_annotation(\"" << annotation << "\");" << std::endl;
 				}
 
 				for (auto&& field : type.second.m_fields) {
