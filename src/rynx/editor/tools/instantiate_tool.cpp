@@ -37,6 +37,7 @@ void rynx::editor::tools::instantiation_tool::update(rynx::scheduler::context& c
 				auto* pos = ecs[child_entity].try_get<rynx::components::transform::position>();
 				auto* boundary = ecs[child_entity].try_get<rynx::components::phys::boundary>();
 				if (pos && boundary) {
+					boundary->segments_world = boundary->segments_local;
 					boundary->update_world_positions(pos->value, pos->angle);
 				}
 			}
