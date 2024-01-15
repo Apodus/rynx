@@ -65,7 +65,7 @@ namespace rynx {
 		}
 
 		namespace entity {
-			struct dead {}; // mark entity for cleanup.
+			struct ANNOTATE("hidden") dead{}; // mark entity for cleanup.
 			struct lifetime {
 				lifetime() : value(0), max_value(0) {}
 				lifetime(float seconds) : value(seconds), max_value(seconds) {}
@@ -239,7 +239,7 @@ namespace rynx {
 			};
 
 			struct collision_events {
-				struct event : public ecs_no_serialize_tag {
+				struct ANNOTATE("hidden") event : public ecs_no_serialize_tag {
 					bool operator ==(const event&) const { return true; }
 
 					rynx::id id; // collided with what

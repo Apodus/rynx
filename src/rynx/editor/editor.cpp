@@ -1042,6 +1042,13 @@ rynx::editor_rules::editor_rules(
 									for (auto&& component_filter : m_component_filters) {
 										allowed |= (type_reflection.m_type_name.find(component_filter) != rynx::string::npos);
 									}
+									
+									for (auto&& annotation : type_reflection.m_annotations) {
+										if (annotation == "hidden" || annotation == "transient") {
+											allowed = false;
+										}
+									}
+
 									if (!allowed)
 										continue;
 								}

@@ -44,7 +44,7 @@ namespace rynx::components {
 }
 
 namespace rynx::components::scene {
-	struct link {
+	struct ANNOTATE("hidden") link {
 		rynx::scene_id id;
 	};
 

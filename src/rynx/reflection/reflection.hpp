@@ -71,6 +71,8 @@ namespace rynx {
 			bool m_is_type_segregated = false;
 			bool m_serialization_allowed = true;
 			
+			std::vector<rynx::string> m_annotations;
+
 			rynx::ecs_table_create_func m_create_table_func;
 			rynx::function<opaque_unique_ptr<void>()> m_create_instance_func;
 			rynx::function<opaque_unique_ptr<void>(const std::vector<char>&)> m_deserialize_instance_func;
@@ -96,6 +98,11 @@ namespace rynx {
 						return *this;
 				
 				m_fields.emplace_back(rynx::reflection::field::construct(fieldName, ptr, fieldAnnotations));
+				return *this;
+			}
+
+			type& add_annotation(rynx::string annotation) {
+				m_annotations.emplace_back(std::move(annotation));
 				return *this;
 			}
 		};

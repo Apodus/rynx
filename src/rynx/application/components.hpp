@@ -48,7 +48,7 @@ namespace rynx {
 				rynx::vec3f get_constant_force() const { return constant_force(m_random()); }
 				rynx::math::rand64& get_random() const { return m_random; }
 
-				struct ANNOTATE("transient") editor : public ecs_no_serialize_tag {
+				struct ANNOTATE("hidden") ANNOTATE("transient") editor : public ecs_no_serialize_tag {
 				private:
 					particle_emitter* host = nullptr;
 
@@ -122,7 +122,7 @@ namespace rynx {
 				}
 			};
 
-			struct particle_info {
+			struct ANNOTATE("hidden") particle_info {
 				rynx::math::value_range<floats4> ANNOTATE("range 0 1") color_range;
 				rynx::math::value_range<float> ANNOTATE(">=0") radius_range;
 			};
@@ -140,7 +140,7 @@ namespace rynx {
 			};
 
 			struct translucent {}; // tag for partially see-through objects. graphics needs to know.
-			struct frustum_culled : public rynx::ecs_no_serialize_tag {}; // object is not visible due to frustum culling.
+			struct ANNOTATE("hidden") frustum_culled : public rynx::ecs_no_serialize_tag {}; // object is not visible due to frustum culling.
 			struct invisible {}; // tag to prevent rendering of object.
 		}
 
