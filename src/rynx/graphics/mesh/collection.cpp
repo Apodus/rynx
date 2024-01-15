@@ -110,7 +110,13 @@ rynx::graphics::mesh_id rynx::graphics::mesh_collection::create_transient(rynx::
 }
 
 rynx::graphics::mesh_id rynx::graphics::mesh_collection::create_transient(rynx::polygon shape) {
-	auto id = create(std::move(shape));
+	auto id = create("transient", std::move(shape));
+	m_storage.find(id)->second->set_transient();
+	return id;
+}
+
+rynx::graphics::mesh_id rynx::graphics::mesh_collection::create_transient_boundary(rynx::polygon shape, float lineWidth) {
+	auto id = create_boundary("transient", std::move(shape), lineWidth);
 	m_storage.find(id)->second->set_transient();
 	return id;
 }
@@ -128,9 +134,17 @@ rynx::graphics::mesh_id rynx::graphics::mesh_collection::create(rynx::polygon sh
 	return create(rynx::polygon_triangulation().make_mesh(shape, { 0, 0, 1, 1 }));
 }
 
+rynx::graphics::mesh_id rynx::graphics::mesh_collection::create_boundary(rynx::polygon shape, float lineWidth) {
+	return create(rynx::polygon_triangulation().make_boundary_mesh(shape, lineWidth, { 0, 0, 1, 1 }));
+}
+
+rynx::graphics::mesh_id rynx::graphics::mesh_collection::create_boundary(rynx::string human_readable_name, rynx::polygon shape, float lineWidth) {
+	return create(std::move(human_readable_name), rynx::polygon_triangulation().make_boundary_mesh(shape, lineWidth, { 0, 0, 1, 1 }));
+}
+
 rynx::graphics::mesh_id rynx::graphics::mesh_collection::create(rynx::string human_readable_name, rynx::unique_ptr<rynx::graphics::mesh> mesh) {
 	auto id = create(std::move(mesh));
-	m_storage.find(id)->second->humanReadableId = human_readable_name;
+	m_storage.find(id)->second->humanReadableId = std::move(human_readable_name);
 	return id;
 }
 

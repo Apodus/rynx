@@ -11,6 +11,10 @@
 
 namespace rynx {
 	namespace ecs_internal {
+
+		struct ivalue_segregation_map;
+
+
 		class itable {
 		public:
 			itable(uint64_t type_id) : m_type_id(type_id) {}
@@ -21,6 +25,7 @@ namespace rynx {
 			virtual void insert(opaque_unique_ptr<void> data) = 0;
 			virtual bool equals(index_t index, const void* data) const = 0;
 
+			virtual bool can_serialize() const = 0;
 			virtual void serialize(rynx::serialization::vector_writer& writer) = 0;
 			virtual void deserialize(rynx::serialization::vector_reader& reader) = 0;
 			
@@ -46,7 +51,7 @@ namespace rynx {
 			virtual const void* get(index_t) const = 0;
 			virtual rynx::string type_name() const = 0;
 			virtual bool is_type_segregated() const = 0;
-
+			
 			virtual void copyTableTypeTo(type_id_t typeId, std::vector<rynx::unique_ptr<itable>>& targetTables) = 0;
 			virtual void moveFromIndexTo(index_t index, itable* dst) = 0;
 
@@ -102,6 +107,11 @@ namespace rynx {
 						);
 					}
 				}
+			}
+
+
+			virtual bool can_serialize() const override {
+				return !std::is_base_of_v<ecs_no_serialize_tag, T>;
 			}
 
 			virtual void serialize(rynx::serialization::vector_writer& writer) override {
@@ -177,7 +187,14 @@ namespace rynx {
 			}
 
 			void insert(T&& t) { m_data.emplace_back(std::forward<T>(t)); }
-			void insert(std::vector<T>& v) { m_data.insert(m_data.end(), v.begin(), v.end()); }
+			void insert(std::vector<T>&& v) {
+				if (m_data.empty()) {
+					m_data = std::move(v);
+				}
+				else {
+					m_data.insert(m_data.end(), v.begin(), v.end());
+				}
+			}
 			template<typename...Ts> void emplace_back(Ts&& ... ts) { m_data.emplace_back(std::forward<Ts>(ts)...); }
 
 			void insert_default(size_t n) {

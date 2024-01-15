@@ -17,13 +17,17 @@ namespace rynx::components {
 		};
 
 		struct scale {
-			operator float() const {
+			operator vec3f() const {
 				return value;
 			}
 
-			scale() : value(1.0f) {}
-			scale(float v) : value(v) {}
-			float ANNOTATE(">=0") value;
+			scale() : value(1.0f, 1.0f, 1.0f) {}
+			scale(float v) : value(v, v, v) {}
+			scale(float x, float y) : value(x, y, 1.0f) {}
+			scale(float x, float y, float z) : value(x, y, z) {}
+			scale(vec3f s) : value(s) {}
+
+			vec3f ANNOTATE(">=0") value;
 		};
 
 		struct radius {

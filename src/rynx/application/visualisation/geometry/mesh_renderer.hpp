@@ -93,6 +93,7 @@ namespace rynx {
 				}
 				
 				virtual void execute() override {
+					std::sort(m_bufs.begin(), m_bufs.end(), [](const auto& a, const auto& b) -> bool { return a.positions[0].value.z < b.positions[0].value.z; });
 					for (auto&& buf : m_bufs) {
 						m_meshRenderer->drawMeshInstancedDeferred(
 							*buf.mesh,

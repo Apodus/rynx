@@ -585,6 +585,9 @@ int main(int argc, char** argv) {
 		else if (std::string(argv[i]) == "-src_path") {
 			source_code_scan_path = argv[++i];
 		}
+		else if (std::string(argv[i]) == "-custom") {
+			g_clangOptions.emplace_back(argv[++i]);
+		}
 		else {
 			std::cerr << "unrecognized option '" << std::string(argv[i]) << "', commands are:\n"
 				"-filename-contains <partial matching string, for example \"-filename-contains components\">\n"

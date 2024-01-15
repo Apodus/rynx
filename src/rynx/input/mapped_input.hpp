@@ -29,6 +29,14 @@ namespace rynx {
 		auto inhibit_mouse_and_keyboard_scoped() { return this->userIO->inhibit_mouse_and_keyboard_scoped(); }
 		// TODO: support inhibit of logical keys?
 
+		[[nodiscard]] rynx::io::midi::device listenToMidiDeviceByIndex(int index) {
+			return this->userIO->listenToMidiDevice(index);
+		}
+
+		// just an alias for easier finding the device list
+		[[nodiscard]] static std::vector<rynx::string> listMidiDevices() {
+			return rynx::io::midi::list_devices();
+		}
 
 		mapped_input& mouseWorldPosition(vec3<float> worldPos) {
 			m_mouseWorldPos = worldPos;
@@ -55,6 +63,10 @@ namespace rynx {
 
 		rynx::key::physical getMouseKeyPhysical(int32_t mouseButton) const {
 			return userIO->getMouseKeyCode(mouseButton);
+		}
+
+		rynx::key::physical getMidiKeyPhysical(int32_t midiButton) const {
+			return userIO->getMidiKeyCode(midiButton);
 		}
 
 		// todo: should actions be bindable to scroll 'click' events? currently that is not possible.
@@ -86,7 +98,7 @@ namespace rynx {
 			reverseBindings[physicalKey].emplace_back(applicationKey);
 		}
 
-		rynx::key::logical applicationKeyByName(const rynx::string& actionName) const {
+		rynx::key::logical logicalKeyByName(const rynx::string& actionName) const {
 			return applicationKeyByName_map.find(actionName)->second;
 		}
 

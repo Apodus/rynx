@@ -20,7 +20,7 @@ namespace rynx {
 		struct physical {
 			struct hash { size_t operator()(const rynx::key::physical& key) const { return key.id; } };
 			bool operator == (const rynx::key::physical&) const = default;
-			operator bool() const { return id > 0; }
+			explicit operator bool() const { return id > 0; }
 			int32_t id = -1;
 		};
 

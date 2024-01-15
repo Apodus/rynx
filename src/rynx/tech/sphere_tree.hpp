@@ -47,7 +47,8 @@ namespace rynx {
 			int32_t parent_optimization_interleave = 0; // [0, 1] - each layer switches which children are updated
 
 			void remove_child(size_t index) {
-				m_children[index] = std::move(m_children.back());
+				if(m_children.size() - 1 != index)
+					m_children[index] = std::move(m_children.back());
 				m_children.pop_back();
 			}
 

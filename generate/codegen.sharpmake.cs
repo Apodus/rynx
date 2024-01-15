@@ -14,8 +14,8 @@ class Codegen : RynxProject
     [Configure]
     public void ConfigureAll(Project.Configuration conf, Target target)
     {
-        conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\tools\rynx-codegen\external\llvm-11.0.0\include\");
-        conf.LibraryFiles.Add(@"[project.SharpmakeCsPath]\..\tools\rynx-codegen\external\llvm-11.0.0\lib\libclang.lib");
+        conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\tools\rynx-codegen\external\llvm-17.0.1\include\");
+        conf.LibraryFiles.Add(@"[project.SharpmakeCsPath]\..\tools\rynx-codegen\external\llvm-17.0.1\lib\libclang.lib");
 
         conf.TargetFileName = "rynx-codegen";
         conf.SolutionFolder = "";

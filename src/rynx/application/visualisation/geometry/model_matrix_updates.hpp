@@ -21,7 +21,7 @@ namespace rynx {
 					ctx->add_task("model matrices", [this](rynx::scheduler::task& task_context, rynx::ecs& ecs) mutable {
 
 						// update model matrices
-						ecs.query().notIn<components::graphics::frustum_culled, components::graphics::invisible>()
+						ecs.query().notIn<components::graphics::frustum_culled, components::graphics::invisible, components::transform::scale>()
 							.for_each_parallel(task_context, [this](
 								rynx::components::transform::position pos,
 								rynx::components::transform::radius r,
@@ -31,6 +31,20 @@ namespace rynx {
 									model.discardSetTranslate(pos.value);
 									model.rotate_2d(pos.angle);
 									model.scale(r.r);
+								}
+						);
+
+						ecs.query().notIn<components::graphics::frustum_culled, components::graphics::invisible>()
+							.for_each_parallel(task_context, [this](
+								rynx::components::transform::position pos,
+								rynx::components::transform::radius r,
+								components::transform::scale s,
+								rynx::components::transform::matrix& transform_matrix)
+								{
+									auto& model = reinterpret_cast<rynx::matrix4&>(transform_matrix);
+									model.discardSetTranslate(pos.value);
+									model.rotate_2d(pos.angle);
+									model.scale(s.value * r.r);
 								}
 						);
 					});

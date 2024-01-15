@@ -7,6 +7,7 @@
 #include <rynx/std/string.hpp>
 #include <rynx/math/vector.hpp>
 #include <rynx/input/key_types.hpp>
+#include <rynx/input/midi_input.hpp>
 
 struct GLFWwindow;
 
@@ -26,7 +27,58 @@ namespace rynx {
 		void onMouseMoveEvent(double xpos, double ypos);
 		void onMouseEnterEvent(int entered);
 
+		struct midi_event {
+			uint8_t status;
+			uint8_t key;
+			uint8_t velocity;
+			uint8_t padding;
+		};
+
 		std::array<uint8_t, 512> m_buttonStates;
+		std::array<midi_event, 32> m_midiEventQueue;
+
+		int32_t m_midiEventQueueWrite = 1;
+		int32_t m_midiEventQueueRead = 0;
+
+		bool queueMidiEvent(uint8_t status, uint8_t key, uint8_t velocity) {
+			// if something other than note on/off, we don't care. just report success.
+			if (status > 0x90)
+				return true;
+			
+			/*
+			if (status >= 240) // system message
+				return;
+			if (status == 176) // control change message
+				return;
+			if (status == 224) // pitch bend message
+				return;
+			if (status == 192) // program change message
+				return;
+			*/
+
+			if (m_midiEventQueueWrite == m_midiEventQueueRead) {
+				// queue is full, ignore events
+				return false;
+			}
+
+			m_midiEventQueue[m_midiEventQueueWrite] = {status, key, velocity, uint8_t()};
+			m_midiEventQueueWrite = (m_midiEventQueueWrite + 1) % m_midiEventQueue.size();
+			return true;
+		}
+
+		void processMidiEventQueue() {
+			while ((m_midiEventQueueRead + 1) % m_midiEventQueue.size() != m_midiEventQueueWrite) {
+				m_midiEventQueueRead = (m_midiEventQueueRead + 1) % m_midiEventQueue.size();
+				auto midi_event = m_midiEventQueue[m_midiEventQueueRead];
+				if (midi_event.status == 0x90) {
+					m_buttonStates[getMidiKeyCode(midi_event.key).id] |= KEY_PRESSED | KEY_DOWN;
+				}
+				else if (midi_event.status == 0x80) {
+					m_buttonStates[getMidiKeyCode(midi_event.key).id] = KEY_RELEASED | KEY_CLICK;
+				}
+			}
+		}
+
 		vec3<float> m_mouseDelta;
 		vec3<float> m_mousePosition;
 		vec3<float> m_mousePosition_clickBegin;
@@ -99,9 +151,9 @@ namespace rynx {
 
 		modifiers_t modifiers() { return { this }; }
 
-		constexpr rynx::key::physical getMouseKeyCode(int mouseButton) const {
-			return { mouseButton + 400 };
-		}
+		constexpr rynx::key::physical getMouseKeyCode(int mouseButton) const;
+		constexpr rynx::key::physical getMidiKeyCode(int midiButton) const;
+
 
 		template<class T>
 		inline void getCursorPosition(T& t) const {
@@ -134,6 +186,8 @@ namespace rynx {
 
 		void update();
 
+		rynx::io::midi::device listenToMidiDevice(int index);
+		
 		static void keyCallbackDummy(GLFWwindow* window, int key, int scancode, int action, int mods);
 		static void mouseButtonCallbackDummy(GLFWwindow* window, int button, int action, int mods);
 		static void scrollCallbackDummy(GLFWwindow* window, double xoffset, double yoffset);

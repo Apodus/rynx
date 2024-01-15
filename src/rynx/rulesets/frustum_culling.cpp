@@ -127,14 +127,18 @@ void rynx::ruleset::frustum_culling::onFrameProcess(rynx::scheduler::context& co
 								"apply frustum migrates",
 								[this, move_to_inside = std::move(move_to_inside), move_to_outside = std::move(move_to_outside)](rynx::ecs::edit_view<components::graphics::frustum_culled> ecs) {
 								for (auto id : move_to_inside) {
-									ecs.removeFromEntity<components::graphics::frustum_culled>(id);
-									auto id_data = m_out_frustum.eraseEntity(id);
-									m_in_frustum.insert_entity(id, id_data.first, id_data.second);
+									if (ecs.exists(id)) {
+										ecs.removeFromEntity<components::graphics::frustum_culled>(id);
+										auto id_data = m_out_frustum.eraseEntity(id);
+										m_in_frustum.insert_entity(id, id_data.first, id_data.second);
+									}
 								}
 								for (auto id : move_to_outside) {
-									ecs.attachToEntity(id, components::graphics::frustum_culled());
-									auto id_data = m_in_frustum.eraseEntity(id);
-									m_out_frustum.insert_entity(id, id_data.first, id_data.second);
+									if (ecs.exists(id)) {
+										ecs.attachToEntity(id, components::graphics::frustum_culled());
+										auto id_data = m_in_frustum.eraseEntity(id);
+										m_out_frustum.insert_entity(id, id_data.first, id_data.second);
+									}
 								}
 							});
 						}

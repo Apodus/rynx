@@ -13,6 +13,9 @@ namespace rynx {
 	namespace application {
 		namespace visualisation {
 			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
+				
+				rynx::shared_ptr<rynx::binary_config::id> m_enabled;
+
 				ball_renderer(rynx::graphics::mesh* circleMesh, rynx::graphics::renderer* meshRenderer) {
 					m_circleMesh = circleMesh;
 					m_meshRenderer = meshRenderer;
@@ -32,9 +35,18 @@ namespace rynx {
 				virtual ~ball_renderer() {}
 				
 				virtual void prepare(rynx::scheduler::context* ctx) override {
+					
+					m_bufs.clear();
+					m_ropes->clear();
+
+					// only draw non-meshed objects when requested. debug feature.
+					if (m_enabled && !m_enabled->is_enabled()) {
+						return;
+					}
+
 					ctx->add_task("model matrices", [this](rynx::ecs& ecs) mutable {
 						// rynx_profile("visualisation", "mesh matrices");
-						m_bufs.clear();
+						// m_bufs.clear();
 
 						// collect buffers for drawing
 						ecs.query()
@@ -82,7 +94,7 @@ namespace rynx {
 					ctx->add_task("rope matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
 						{
 							rynx_profile("visualisation", "model matrices");
-							m_ropes->clear();
+							// m_ropes->clear();
 							ecs.query().notIn<rynx::components::graphics::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
 								if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id))) {
 									return;

@@ -280,17 +280,23 @@ namespace rynx {
 				}
 			}
 
-			template<typename T> void insertSingleComponentVector(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, std::vector<T>& component) {
+			template<typename T> void insertSingleComponentVector(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, std::vector<T>&& component) {
 				if constexpr (!std::is_same_v<std::remove_cvref_t<T>, rynx::type_index::virtual_type>) {
-					table<T>(typeAliases).insert(component);
+					table<T>(typeAliases).insert(std::move(component));
 				}
 			}
 
 		public:
-			template<typename...Components> size_t insertNew(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, const std::vector<entity_id_t>& ids, std::vector<Components>& ... components) {
-				(insertSingleComponentVector(typeAliases, components), ...);
+			template<typename...Components> size_t insertNew(const rynx::unordered_map<type_id_t, type_id_t>& typeAliases, std::vector<rynx::id>&& ids, std::vector<Components>&& ... components) {
+				(insertSingleComponentVector(typeAliases, std::move(components)), ...);
 				size_t index = m_ids.size();
-				m_ids.insert(m_ids.end(), ids.begin(), ids.end());
+				if (m_ids.empty()) {
+					m_ids = std::move(ids);
+				}
+				else {
+					m_ids.insert(m_ids.end(), ids.begin(), ids.end());
+				}
+
 				return index;
 			}
 
@@ -1474,14 +1480,14 @@ namespace rynx {
 			// TODO: The api for tags is super unclear for user. Should have some kind of ..
 			//       create_n(ids, vector<Ts>).with_tags<Tag1, Tag2...>(); // style format.
 			template<typename... Tags, typename... Components>
-			std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
+			rynx::ecs::range create_n(std::vector<Components>&& ... components) {
 				rynx_assert((components.size() & ...) == (components.size() | ...), "components vector sizes do not match!");
 				
 				if constexpr (true) {
-					std::vector<entity_id_t> ids(rynx::first_of(components...).size());
+					std::vector<rynx::id> ids(rynx::first_of(components...).size());
 
 					// TODO: generate_n might be more efficient. benchmark if this shows up in profiler.
-					for (entity_id_t& id : ids) {
+					for (rynx::id& id : ids) {
 						id = m_ecs.m_entities.generateOne();
 					}
 					rynx_assert(rynx::first_of(components...).size() == ids.size(), "ahaa");
@@ -1493,11 +1499,13 @@ namespace rynx {
 					auto category_it = m_ecs.m_categories.find(targetCategory);
 					if (category_it == m_ecs.m_categories.end()) { category_it = m_ecs.m_categories.emplace(targetCategory, rynx::make_unique<entity_category>(targetCategory)).first; }
 
-					auto first_index = category_it->second->insertNew(m_typeAliases, ids, components...);
+					auto first_index = category_it->second->ids().size();
 					for (size_t i = 0; i < ids.size(); ++i) {
-						m_ecs.m_idCategoryMap.emplace(ids[i], std::make_pair(category_it->second.get(), index_t(first_index + i)));
+						m_ecs.m_idCategoryMap.emplace(ids[i].value, std::make_pair(category_it->second.get(), index_t(first_index + i)));
 					}
-					return ids;
+					rynx::ecs::range ids_range{first_index, first_index + ids.size()};
+					category_it->second->insertNew(m_typeAliases, std::move(ids), std::move(components)...);
+					return ids_range;
 				}
 				else {
 					std::vector<entity_id_t> created_ids;
@@ -1701,8 +1709,8 @@ namespace rynx {
 		}
 
 		template<typename... Tags, typename... Components>
-		std::vector<entity_id_t> create_n(std::vector<Components>& ... components) {
-			return edit_t(*this).create_n<Tags..., Components...>(components...);
+		rynx::ecs::range create_n(std::vector<Components>&& ... components) {
+			return edit_t(*this).create_n<Tags..., Components...>(std::move(components)...);
 		}
 
 		template<typename... Components>
@@ -1755,6 +1763,8 @@ namespace rynx {
 			template<typename T, bool> friend class rynx::ecs::entity;
 			template<typename T> friend class rynx::ecs::const_entity;
 
+			using entity = rynx::ecs::entity<view, false>;
+
 			template<typename category_source> friend class rynx::ecs::gatherer;
 			template<DataAccess accessType, typename category_source> friend class rynx::ecs::query_t;
 			template<DataAccess accessType, typename category_source, typename F> friend class rynx::ecs::entity_iterator;
@@ -1800,8 +1810,8 @@ namespace rynx {
 			bool exists(entity_id_t id) const { return m_ecs->exists(id); }
 			bool exists(id id) const { return exists(id.value); }
 
-			entity<view, false> operator[](entity_id_t id) { return entity<view, false>(*this, id); }
-			entity<view, false> operator[](id id) { return entity<view, false>(*this, id.value); }
+			rynx::ecs::entity<view, false> operator[](entity_id_t id) { return rynx::ecs::entity<view, false>(*this, id); }
+			rynx::ecs::entity<view, false> operator[](id id) { return rynx::ecs::entity<view, false>(*this, id.value); }
 
 			const_entity<view> operator[](entity_id_t id) const { return const_entity<view>(*this, id); }
 			const_entity<view> operator[](id id) const { return const_entity<view>(*this, id.value); }
@@ -1843,8 +1853,10 @@ namespace rynx {
 		public:
 			edit_view(const rynx::ecs* ecs) : view<TypeConstraints...>(const_cast<rynx::ecs*>(ecs)) {}
 			
-			entity<edit_view, true> operator[](entity_id_t id) { return entity<edit_view, true>(*this, id); }
-			entity<edit_view, true> operator[](id id) { return entity<edit_view, true>(*this, id.value); }
+			using entity = rynx::ecs::entity<edit_view, true>;
+
+			rynx::ecs::entity<edit_view, true> operator[](entity_id_t id) { return rynx::ecs::entity<edit_view, true>(*this, id); }
+			rynx::ecs::entity<edit_view, true> operator[](id id) { return rynx::ecs::entity<edit_view, true>(*this, id.value); }
 
 			auto operator[](entity_id_t id) const { return const_entity<view<TypeConstraints...>>(*this, id); }
 			auto operator[](id id) const { return const_entity<view<TypeConstraints...>>(*this, id.value); }

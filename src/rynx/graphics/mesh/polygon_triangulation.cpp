@@ -57,7 +57,8 @@ rynx::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::buildMeshDat
 
 		float uvX = uvCenterX + scaled_x * uvHalfWidthX; // assumes [-1, +1] meshes
 		float uvY = uvCenterY + scaled_y * uvHalfHeightY; // assumes [-1, +1] meshes
-		polyMesh->putUVCoord(uvX * uv_multiplier, uvY * uv_multiplier);
+		// polyMesh->putUVCoord(uvX * uv_multiplier, uvY * uv_multiplier);
+		polyMesh->putUVCoord(uvX, uvY);
 	}
 
 
@@ -170,7 +171,8 @@ rynx::unique_ptr<rynx::graphics::mesh> rynx::polygon_triangulation::make_boundar
 	
 	rynx::unique_ptr<rynx::graphics::mesh> polyMesh = rynx::make_unique<rynx::graphics::mesh>();
 	rynx::polygon copy = polygon_;
-	float radius = copy.normalize();
+	copy.normalize();
+	float radius = copy.radius();
 
 	const float width = line_width / radius;
 

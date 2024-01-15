@@ -73,9 +73,11 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 			x_value->on_update([info, self = x_value.get()]() {
 				if (!self->text().has_dedicated_keyboard_input()) {
-					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
-					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
-					self->text().text(rynx::to_string(value->x));
+					if (info.ecs->exists(info.entity_id)) {
+						char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+						auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+						self->text().text(rynx::to_string(value->x));
+					}
 				}
 			});
 
@@ -108,9 +110,11 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 			y_value->on_update([info, self = y_value.get()]() {
 				if (!self->text().has_dedicated_keyboard_input()) {
-					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
-					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
-					self->text().text(rynx::to_string(value->y));
+					if (info.ecs->exists(info.entity_id)) {
+						char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+						auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+						self->text().text(rynx::to_string(value->y));
+					}
 				}
 			});
 
@@ -143,9 +147,11 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 			z_value->on_update([info, self = z_value.get()]() {
 				if (!self->text().has_dedicated_keyboard_input()) {
-					char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
-					auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
-					self->text().text(rynx::to_string(value->z));
+					if (info.ecs->exists(info.entity_id)) {
+						char* data = reinterpret_cast<char*>((*info.ecs)[info.entity_id].get(info.component_type_id));
+						auto* value = reinterpret_cast<rynx::vec3f*>(data + info.cumulative_offset);
+						self->text().text(rynx::to_string(value->z));
+					}
 				}
 			});
 
@@ -351,6 +357,10 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 						if (!ids.empty()) {
 							std::vector<rynx::sphere> bounds;
 							for (auto id : ids) {
+								if (!game_ecs.exists(id)) {
+									return;
+								}
+
 								auto entity = game_ecs[id];
 								auto& entity_pos = entity.get<rynx::components::transform::position>();
 								auto* entity_radius = entity.try_get<rynx::components::transform::radius>();

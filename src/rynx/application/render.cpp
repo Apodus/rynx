@@ -78,10 +78,13 @@ rynx::application::renderer::renderer(
 		geometry_pass->add_graphics_step(std::move(boundary_rendering));
 		
 		rynx::graphics::mesh_id circle_mesh_id = renderer.meshes()->create_transient(rynx::Shape::makeCircle(0.5f, 64));
-		geometry_pass->add_graphics_step(rynx::make_unique<rynx::application::visualisation::ball_renderer>(
+		
+		auto ball_rendering = rynx::make_unique<rynx::application::visualisation::ball_renderer>(
 			renderer.meshes()->get(circle_mesh_id),
 			&renderer
-		));
+		);
+		ball_rendering->m_enabled = m_debug_draw_config;
+		geometry_pass->add_graphics_step(std::move(ball_rendering));
 	}
 
 	current_internal_resolution_geometry = { 1.0f, 1.0f };

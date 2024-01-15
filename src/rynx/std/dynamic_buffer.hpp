@@ -9,7 +9,10 @@ namespace rynx {
 
 	template<typename T>
 	class dynamic_buffer {
-		static_assert(std::is_trivially_copyable<T>::value && std::is_standard_layout<T>::value, "dynamic buffer can only be used with pods");
+		static_assert(
+			std::is_trivially_copyable<T>::value && std::is_standard_layout<T>::value,
+			"dynamic buffer can only be used with pods"
+		);
 
 		class buffer_ptr {
 		public:

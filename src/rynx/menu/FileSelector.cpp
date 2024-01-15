@@ -46,7 +46,7 @@ void rynx::menu::FileSelector::display(
 	};
 
 	if (m_config.m_allowNewFile) {
-		createSelection("", "New file", {1.0f, 1.0f, 0.0f, 1.0f}, [this, on_select_file, on_select_directory](rynx::string) {
+		createSelection("", "New file", {1.0f, 1.0f, 0.0f, 1.0f}, [this, on_select_file](rynx::string) {
 			clear_children();
 			
 			auto popup_div = rynx::make_shared<rynx::menu::Div>(rynx::vec3f{ 1.0f, 0.2f, 0.0f });
@@ -61,7 +61,7 @@ void rynx::menu::FileSelector::display(
 			fileNameButton->no_focus_alpha(1.0f);
 			fileNameButton->align().bottom_inside();
 			fileNameButton->text().text_input_enable();
-			fileNameButton->text().on_value_changed([this, on_select_file, on_select_directory](rynx::string fileName) {
+			fileNameButton->text().on_value_changed([this, on_select_file](rynx::string fileName) {
 				rynx::string new_file_path = m_currentPath + "/" + fileName;
 				if (m_config.m_addFileExtensionToNewFiles) {
 					new_file_path += m_acceptedFileEnding;

@@ -28,7 +28,7 @@ float rynx::polygon::max_component_value() const {
 		if (p.x > max_d) {
 			max_d = p.x;
 		}
-		if (p.y> max_d) {
+		if (p.y > max_d) {
 			max_d = p.y;
 		}
 		if (p.z > max_d) {

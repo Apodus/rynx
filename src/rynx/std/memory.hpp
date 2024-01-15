@@ -69,7 +69,11 @@ namespace rynx {
 
         template <class convertible_element_deleter_t>
         using unique_ptr_enable_default_t =
-            std::enable_if_t<std::conjunction_v<std::negation<std::is_pointer<convertible_element_deleter_t>>, std::is_default_constructible<convertible_element_deleter_t>>, int>;
+            std::enable_if_t<
+                std::conjunction_v<
+                    std::negation<std::is_pointer<convertible_element_deleter_t>>,
+                    std::is_default_constructible<convertible_element_deleter_t>
+                >, int>;
 
         template <class element_t, class deleter_t = default_delete<element_t>>
         class unique_ptr {
@@ -78,9 +82,8 @@ namespace rynx {
             using element_type = element_t;
             using deleter_type = deleter_t;
 
-            template <class convertible_element_deleter_t = deleter_t, unique_ptr_enable_default_t<convertible_element_deleter_t> = 0>
-            constexpr unique_ptr() noexcept {};
-
+#pragma warning (suppress : 4702)
+            template <class convertible_element_deleter_t = deleter_t, unique_ptr_enable_default_t<convertible_element_deleter_t> = 0> constexpr unique_ptr() noexcept {};
             template <class convertible_element_deleter_t = deleter_t, unique_ptr_enable_default_t<convertible_element_deleter_t> = 0>
             constexpr unique_ptr(nullptr_t) noexcept : unique_ptr() {}
 
@@ -125,7 +128,10 @@ namespace rynx {
 
             template <class convertible_element_deleter_t = deleter_t, std::enable_if_t<std::is_move_assignable_v<convertible_element_deleter_t>, int> = 0>
             unique_ptr& operator=(unique_ptr<element_t, convertible_element_deleter_t>&& other) noexcept {
-                rynx_assert(this != &other, "move to self not allowed");
+                if (this == &other) {
+                    return *this;
+                }
+                // rynx_assert(this != &other, "move to self not allowed");
                 reset(other.release());
                 m_deleter = std::forward<deleter_t>(other.m_deleter);
                 return *this;

@@ -43,6 +43,11 @@ void rynx::ecs_detail::raw_serializer::serialize(rynx::reflection::reflections& 
 			auto* tablePtr = category.second->table_ptr(type_id);
 			if (tablePtr) {
 				logmsg("%s", tablePtr->type_name().c_str());
+
+				// reflection must exist for each existing table type. otherwise serialization will not work.
+				if (tablePtr->can_serialize()) {
+					rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
+				}
 			}
 			else {
 				if (typeReflection) {
@@ -52,10 +57,10 @@ void rynx::ecs_detail::raw_serializer::serialize(rynx::reflection::reflections& 
 					logmsg("no table for type %lld", type_id);
 				}
 			}
-			// rynx_assert(typeReflection != nullptr, "serializing type that does not have reflection");
+
 			if (typeReflection && typeReflection->m_serialization_allowed)
 				category_typenames.emplace_back(typeReflection->m_type_name);
-			});
+		});
 
 		rynx::serialize(category_typenames, out);
 
@@ -130,11 +135,14 @@ rynx::entity_range_t rynx::ecs_detail::raw_serializer::deserialize(rynx::reflect
 		for (auto&& name : category_typenames) {
 			auto reflection_ptr = reflections.find(name);
 			auto type_index_value = reflection_ptr->m_type_index_value;
+			
+			// TODO: create table func should be stored per type id on top of the ecs (not in category or table, directly in ecs)
 			auto* table_ptr = category_it->second->table(type_index_value, reflection_ptr->m_create_table_func);
 			if (table_ptr != nullptr) {
 				logmsg("deserializing table %s", name.c_str());
 				table_ptr->deserialize(in);
 				if (table_ptr->is_type_segregated()) {
+					// TODO: create map func should be stored per type id on top of the ecs (not in category or table, directly in ecs)
 					auto& segregation_map = host->value_segregated_types_map(type_index_value, reflection_ptr->m_create_map_func);
 					void* segregated_data_ptr = table_ptr->get(0);
 					if (!segregation_map.contains(segregated_data_ptr)) {

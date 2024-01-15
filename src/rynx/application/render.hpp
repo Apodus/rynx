@@ -38,7 +38,7 @@ namespace rynx {
 			void set_lights_resolution(float percentage_x, float percentage_y);
 			void on_resolution_change(size_t new_size_x, size_t new_size_y);
 
-			renderer& debug_draw_binary_config(rynx::binary_config::id& conf) {
+			renderer& debug_draw_binary_config(rynx::binary_config::id conf) {
 				m_debug_draw_config->include_id(conf);
 				return *this;
 			}

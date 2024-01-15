@@ -14,6 +14,8 @@ namespace {
 	rynx::function<void(double, double)> g_mouseMoveEventHandler;
 	rynx::function<void(int, int, int)> g_mouseKeyEventHandler;
 	rynx::function<void(int)> g_mouseEnteredHandler;
+
+	static constexpr int sMaxMouseButtons = 20;
 }
 
 bool rynx::input::modifiers_t::shift_left() { return m_host->isKeyDown(rynx::key::codes::shift_left(), true); }
@@ -134,6 +136,18 @@ void rynx::input::update() {
 	}
 	m_mouseScroll = 0;
 	m_mouseDelta = vec3f(0, 0, 0);
+	processMidiEventQueue();
+}
+
+rynx::io::midi::device rynx::input::listenToMidiDevice(int index) {
+	rynx::io::midi::device dev = rynx::io::midi::create_input_stream();
+	if (!dev.open(index, [this](uint8_t status, uint8_t key, uint8_t velocity) {
+		queueMidiEvent(status, key, velocity);
+	}))
+	{
+		logmsg("failed to open midi input device");
+	}
+	return dev;
 }
 
 void rynx::input::onKeyEvent(int key, int /* scancode */, int action, int /* mods */) {
@@ -148,6 +162,17 @@ void rynx::input::onKeyEvent(int key, int /* scancode */, int action, int /* mod
 	else if (action == GLFW_REPEAT) {
 		m_buttonStates[key] |= KEY_REPEAT;
 	}
+}
+
+constexpr rynx::key::physical rynx::input::getMouseKeyCode(int mouseButton) const {
+	rynx_assert(mouseButton < ::sMaxMouseButtons, "not that many mouse buttons are supported");
+	return { mouseButton + 1 + GLFW_KEY_LAST };
+}
+
+constexpr rynx::key::physical rynx::input::getMidiKeyCode(int midiButton) const {
+	static_assert(::sMaxMouseButtons + GLFW_KEY_LAST + 1 + 128 < 512, "not enough space for midi keys");
+	rynx_assert(midiButton + ::sMaxMouseButtons + GLFW_KEY_LAST + 1 < m_buttonStates.size(), "not that many midi buttons are supported");
+	return { midiButton + 1 + GLFW_KEY_LAST + ::sMaxMouseButtons };
 }
 
 void rynx::input::onMouseButtonEvent(int key, int action, int /* mods */) {
@@ -225,3 +250,4 @@ void rynx::input::cursorEnterCallbackDummy(GLFWwindow* /* window */, int entered
 rynx::scoped_input_inhibitor rynx::input::inhibit_mouse_scoped() { return scoped_input_inhibitor(&m_inhibited, false, true); }
 rynx::scoped_input_inhibitor rynx::input::inhibit_keyboard_scoped() { return scoped_input_inhibitor(&m_inhibited, true, false); }
 rynx::scoped_input_inhibitor rynx::input::inhibit_mouse_and_keyboard_scoped() { return scoped_input_inhibitor(&m_inhibited, true, true); }
+

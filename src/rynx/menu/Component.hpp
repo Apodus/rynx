@@ -285,6 +285,8 @@ namespace rynx {
 		//       a menu "System" is guaranteed to not have a parent menu element.
 		class MenuDLL System {
 			rynx::unique_ptr<Component> m_root;
+			std::vector<rynx::shared_ptr<rynx::menu::Component>> m_popups;
+			std::vector<rynx::function<void()>> m_delayed_ops;
 
 			// some components require dedicated focus state to function correctly.
 			// for example think of a text input box. clickin this will enable inputs
@@ -313,6 +315,35 @@ namespace rynx {
 			void input(rynx::mapped_input& input);
 			void update(float dt, float aspectRatio);
 			void draw(rynx::graphics::renderer& renderer);
+
+			
+			void execute(rynx::function<void()> op) {
+				m_delayed_ops.emplace_back(std::move(op));
+			}
+
+			void push_popup(rynx::shared_ptr<rynx::menu::Component> popup) {
+				execute([this, popup]() {
+					if (!popup->parent()) {
+						m_root->addChild(popup);
+					}
+					popup->capture_dedicated_mouse_input();
+					popup->capture_dedicated_keyboard_input();
+					m_popups.emplace_back(popup);
+				});
+			}
+
+			void pop_popup() {
+				if (!m_popups.empty()) {
+					m_popups.back()->release_dedicated_keyboard_input();
+					m_popups.back()->release_dedicated_mouse_input();
+					m_popups.back()->die();
+					m_popups.pop_back();
+					if (!m_popups.empty()) {
+						m_popups.back()->capture_dedicated_keyboard_input();
+						m_popups.back()->capture_dedicated_mouse_input();
+					}
+				}
+			}
 		};
 	}
 }

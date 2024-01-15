@@ -498,6 +498,11 @@ rynx::scoped_input_inhibitor rynx::menu::System::inhibit_dedicated_inputs(rynx::
 }
 
 void rynx::menu::System::update(float dt, float aspectRatio) {
+	for (auto& op : m_delayed_ops) {
+		op();
+	}
+	m_delayed_ops.clear();
+
 	m_root->tick(dt, aspectRatio);
 }
 

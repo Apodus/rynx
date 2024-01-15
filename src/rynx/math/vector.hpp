@@ -15,6 +15,8 @@
 
 #define RYNX_VECTOR_SIMD 0
 
+#pragma warning (disable : 4201)
+
 namespace rynx {
 
 	// generic 3d vector template.
@@ -29,8 +31,8 @@ namespace rynx {
 
 		template<typename U> explicit operator vec3<U>() const { return vec3<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z)); }
 
-		vec3 normal() { T l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }
-		vec3& normalize() { T l = length() + std::numeric_limits<float>::epsilon(); *this *= 1.0f / l; return *this; }
+		vec3 normal() { T l = length() + std::numeric_limits<float>::epsilon(); return *this / l; }
+		vec3& normalize() { T l = length() + std::numeric_limits<float>::epsilon(); *this /= l; return *this; }
 
 		vec3& operator*=(T scalar) { x *= scalar; y *= scalar; z *= scalar; return *this; }
 		vec3& operator/=(T scalar) { x /= scalar; y /= scalar; z /= scalar; return *this; }
@@ -105,6 +107,7 @@ namespace rynx {
 		vec3(__m128 vec) : xmm(vec) {}
 		vec3(const vec3& other) : xmm(other.xmm) {}
 		vec3(float x = 0, float y = 0, float z = 0) { set(x, y, z); }
+		vec3() {}
 
 		template<typename U> explicit operator vec3<U>() const { return vec3<U>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z)); }
 
@@ -151,9 +154,11 @@ namespace rynx {
 			return _mm_sub_ps(t5, t6);
 		}
 
+		/*
 		operator rynx::string() const {
 			return rynx::string("(") + rynx::to_string(x) + ", " + rynx::to_string(y) + ", " + rynx::to_string(z) + ")";
 		}
+		*/
 
 		vec3 normal() { w = 0; float l = length() + std::numeric_limits<float>::epsilon(); return *this * (1.0f / l); }
 		vec3& normalize() { w = 0; float l = length() + std::numeric_limits<float>::epsilon(); *this *= 1.0f / l; return *this; }
@@ -360,7 +365,7 @@ namespace rynx {
 
 		floats4 to_floats() const {
 			floats4 result;
-			_mm_storeu_ps(result.data, xmm);
+			_mm_storeu_ps(&result.x, xmm);
 			return result;
 		}
 

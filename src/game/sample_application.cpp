@@ -34,7 +34,6 @@
 
 SampleApplication::SampleApplication() {
 	m_reflections.load_generated_reflections();
-	m_reflections.create<rynx::matrix4>().add_field("m", &rynx::matrix4::m);
 }
 
 void SampleApplication::startup_load() {
@@ -83,6 +82,9 @@ void SampleApplication::set_simulation_rules() {
 	auto* context = simulation_context();
 	auto program_state_game_running = context->access_state().generate_state_id();
 	auto program_state_editor_running = context->access_state().generate_state_id();
+
+	m_editorRunning = program_state_editor_running;
+	m_gameRunning = program_state_game_running;
 
 	auto& vfs = context->get_resource<rynx::filesystem::vfs>();
 	vfs.mount().native_directory_compressed("../scenes/", "/scenes/");

@@ -4,6 +4,7 @@
 #include <rynx/std/type_index.hpp>
 #include <rynx/ecs/table.hpp>
 #include <rynx/std/serialization_declares.hpp>
+#include <rynx/std/string.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -180,10 +181,6 @@ namespace rynx {
 				result.m_type_name = rynx::string(typeid(T).name());
 				result.m_type_index_value = static_cast<int32_t>(rynx::type_index::id<T>());
 				result.m_serialization_allowed = !std::is_base_of_v<rynx::ecs_no_serialize_tag, T>;
-
-				rynx::unique_ptr<rynx::function<void(void*)>> a = rynx::make_unique<rynx::function<void(void*)>>([](void* a) { delete static_cast<int*>(a); });
-				rynx::unique_ptr<rynx::function<void(void*)>> b = rynx::make_unique<rynx::function<void(void*)>>([](void* b) { delete static_cast<int*>(b); });
-				a = std::move(b);
 
 				// TODO: Ecs utils should be tightly knit somewhere under ecs. It is wrong for reflection to make these assumptions.
 				result.m_is_type_segregated = std::is_base_of_v<rynx::ecs_value_segregated_component_tag, std::remove_cvref_t<T>>;

@@ -195,7 +195,7 @@ void rynx::editor::field_float(
 		});
 
 		value_slider->on_update([info, mem_offset, self = value_slider.get()]() {
-			if (!self->has_dedicated_mouse_input()) {
+			if (!self->has_dedicated_mouse_input() && info.valid()) {
 				float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 				self->setValue(field_value);
 			}
@@ -215,8 +215,10 @@ void rynx::editor::field_float(
 
 	variable_value_field->on_update([info, mem_offset, self = variable_value_field.get()]() {
 		if (!self->text().has_dedicated_keyboard_input()) {
-			float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
-			self->text().text(rynx::to_string(field_value));
+			if (info.valid()) {
+				float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+				self->text().text(rynx::to_string(field_value));
+			}
 		}
 	});
 
