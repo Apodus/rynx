@@ -773,11 +773,27 @@ rynx::editor_rules::editor_rules(
 		save_scene->align().top_left_inside();
 		save_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
+
+			auto popup_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 0.75f, 0.0f));
+			auto cancel_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.1f, 0.05f, 0.0f));
+			cancel_button->align().top_right_inside();
+			cancel_button->velocity_position(menuVelocityFast);
+			cancel_button->text().text("^rX");
+			cancel_button->no_focus_alpha(0.9f);
+			cancel_button->on_click([this]() mutable {
+				execute([this]() {
+					pop_popup();
+					enable_tools();
+					});
+				});
+
+			popup_container->addChild(cancel_button);
+
 			auto fileSelectDialog =
 				rynx::make_shared<rynx::menu::FileSelector>(
 					*vfs.get(),
 					frame_tex,
-					rynx::vec3f(0.3f, 0.6f, 0.0f)
+					rynx::vec3f(1.0f, 0.95f, 0.0f)
 				);
 			fileSelectDialog->configure().m_allowNewFile = true;
 			fileSelectDialog->configure().m_allowNewDir = true;
@@ -798,7 +814,10 @@ rynx::editor_rules::editor_rules(
 				[](rynx::string) {}
 			);
 
-			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
+			fileSelectDialog->align().bottom_inside();
+			popup_container->addChild(fileSelectDialog);
+
+			execute([this, popup_container]() { push_popup(popup_container); });
 			
 			auto tex_conf_data = m_context->get_resource<rynx::graphics::GPUTextures>().serialize();
 			rynx::filesystem::write_file("../configs/textures.dat", tex_conf_data.data());
@@ -810,7 +829,23 @@ rynx::editor_rules::editor_rules(
 		load_scene->align().target(save_scene.get()).top_inside().right_outside().offset_x(0.1f);
 		load_scene->on_click([this, vfs, scenes]() mutable {
 			disable_tools();
-			auto fileSelectDialog = rynx::make_shared<rynx::menu::FileSelector>(*vfs, frame_tex, rynx::vec3f(0.3f, 0.6f, 0.0f));
+			
+			auto popup_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 0.75f, 0.0f));
+			auto cancel_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.1f, 0.05f, 0.0f));
+			cancel_button->align().top_right_inside();
+			cancel_button->velocity_position(menuVelocityFast);
+			cancel_button->text().text("^rX");
+			cancel_button->no_focus_alpha(0.9f);
+			cancel_button->on_click([this]() mutable {
+				execute([this]() {
+					pop_popup();
+					enable_tools();
+					});
+				});
+
+			popup_container->addChild(cancel_button);
+			
+			auto fileSelectDialog = rynx::make_shared<rynx::menu::FileSelector>(*vfs, frame_tex, rynx::vec3f(1.0f, 0.95f, 0.0f));
 			fileSelectDialog->configure().m_allowNewFile = false;
 			fileSelectDialog->configure().m_allowNewDir = false;
 			fileSelectDialog->file_type(".rynxscene");
@@ -831,7 +866,10 @@ rynx::editor_rules::editor_rules(
 				[](rynx::string) {}
 			);
 
-			execute([this, fileSelectDialog]() { push_popup(fileSelectDialog); });
+			fileSelectDialog->align().bottom_inside();
+			popup_container->addChild(fileSelectDialog);
+
+			execute([this, popup_container]() { push_popup(popup_container); });
 		});
 
 		auto create_empty_scene = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.2f, 0.5f, 0.0f));
@@ -1019,11 +1057,30 @@ rynx::editor_rules::editor_rules(
 						if (ecs.exists(m_state.m_selected_ids.front())) {
 							auto reflection_data = m_reflections.get_reflection_data();
 							std::ranges::sort(reflection_data, [](auto& a, auto& b) {return a.first < b.first; });
-							auto menu_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(0.3f, 0.7f, 0.0f));
+							
+
+							auto menu_list = rynx::make_shared<rynx::menu::List>(frame_tex, rynx::vec3f(1.0f, 0.95f, 0.0f));
 							menu_list->list_element_velocity(menuVelocityFast);
 							menu_list->velocity_position(menuVelocityFast);
+							menu_list->align().bottom_inside();
 
-							push_popup(menu_list);
+							auto popup_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.3f, 0.75f, 0.0f));
+							auto cancel_button = rynx::make_shared<rynx::menu::Button>(frame_tex, rynx::vec3f(0.1f, 0.05f, 0.0f));
+							cancel_button->align().top_right_inside();
+							cancel_button->velocity_position(menuVelocityFast);
+							cancel_button->text().text("^rX");
+							cancel_button->no_focus_alpha(0.9f);
+							cancel_button->on_click([this]() mutable {
+								execute([this]() {
+									pop_popup();
+									enable_tools();
+								});
+							});
+
+							popup_container->addChild(cancel_button);
+							popup_container->addChild(menu_list);
+
+							push_popup(popup_container);
 							disable_tools();
 
 							auto selected_entity = m_state.m_selected_ids.front().value;
