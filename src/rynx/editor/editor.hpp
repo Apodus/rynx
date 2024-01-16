@@ -20,18 +20,6 @@
 
 namespace rynx {
 	namespace editor {
-		void field_float(
-			const rynx::reflection::field& member,
-			rynx::editor::component_recursion_info_t info,
-			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
-		);
-
-		void field_bool(
-			const rynx::reflection::field& member,
-			rynx::editor::component_recursion_info_t info,
-			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
-		);
-
 		struct ipromise {
 			virtual ~ipromise() {}
 			virtual bool ready() const = 0;
@@ -118,6 +106,18 @@ namespace rynx {
 			m_execute_in_main_stack.emplace_back(std::forward<Func>(f));
 		}
 
+		void on_value_changed(rynx::editor::component_recursion_info_t info) {
+			execute([this, game_ecs = info.ecs, type_id = info.component_type_id, id = info.entity_id]() {
+				m_state.m_editor->for_each_tool([type_id, id, &game_ecs, ctx = m_context](rynx::editor::itool* tool) {
+					tool->on_entity_component_value_changed(
+						ctx,
+						type_id,
+						*game_ecs,
+						id);
+					});
+				});
+		}
+
 		void save_scene_to_path(rynx::string path);
 		void load_scene_from_path(rynx::string path);
 
@@ -144,6 +144,18 @@ namespace rynx {
 
 			on_entity_selected(id);
 		}
+
+		void field_float(
+			const rynx::reflection::field& member,
+			rynx::editor::component_recursion_info_t info,
+			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
+		);
+
+		void field_bool(
+			const rynx::reflection::field& member,
+			rynx::editor::component_recursion_info_t info,
+			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>
+		);
 
 		void generate_menu_for_reflection(
 			const rynx::reflection::type& type_reflection,

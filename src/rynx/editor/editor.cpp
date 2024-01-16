@@ -47,13 +47,13 @@ void register_post_deserialize_operations(rynx::ecs& ecs) {
 	});
 }
 
-void rynx::editor::field_float(
+void rynx::editor_rules::field_float(
 	const rynx::reflection::field& member,
 	rynx::editor::component_recursion_info_t info,
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
-	float value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+	float value = rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 
 	auto field_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 	field_container->velocity_position(menuVelocityFast);
@@ -159,8 +159,8 @@ void rynx::editor::field_float(
 		value_slider = rynx::make_shared<rynx::menu::SlideBarVertical>(info.frame_tex, info.frame_tex, rynx::vec3f(0.2f, 1.0f, 0.0f), -1.0f, +1.0f);
 		value_slider->velocity_position(menuVelocityFast);
 		value_slider->setValue(0);
-		value_slider->on_active_tick([info, mem_offset, config, self = value_slider.get(), text_element = variable_value_field.get()](float /* input_v */, float dt) {
-			float& v = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+		value_slider->on_active_tick([this, info, mem_offset, config, self = value_slider.get(), text_element = variable_value_field.get()](float /* input_v */, float dt) {
+			float& v = rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 			float input_v = self->getValueCubic_AroundCenter();
 			float tmp = v + dt * input_v;
 			constexpr float value_modify_velocity = 3.0f;
@@ -172,6 +172,7 @@ void rynx::editor::field_float(
 			}
 			v = config.constrain(tmp);
 			text_element->text().text(rynx::to_string(v));
+			on_value_changed(info);
 		});
 
 		value_slider->on_drag_end([self = value_slider.get()](float /* v */) {
@@ -187,36 +188,38 @@ void rynx::editor::field_float(
 			config.max_value);
 
 		value_slider->velocity_position(menuVelocityFast);
-		value_slider->setValue(ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
-		value_slider->on_value_changed([info, mem_offset, text_element = variable_value_field.get()](float v) {
-			float& field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+		value_slider->setValue(rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
+		value_slider->on_value_changed([this, info, mem_offset, text_element = variable_value_field.get()](float v) {
+			float& field_value = rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 			field_value = v;
 			text_element->text().text(rynx::to_string(v));
+			on_value_changed(info);
 		});
 
 		value_slider->on_update([info, mem_offset, self = value_slider.get()]() {
 			if (!self->has_dedicated_mouse_input() && info.valid()) {
-				float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+				float field_value = rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 				self->setValue(field_value);
 			}
 		});
 	}
 
-	variable_value_field->text().on_value_changed([info, mem_offset, config, slider_ptr = value_slider.get()](const rynx::string& s) {
+	variable_value_field->text().on_value_changed([this, info, mem_offset, config, slider_ptr = value_slider.get()](const rynx::string& s) {
 		float new_value = 0.0f;
 		try { new_value = config.constrain(std::stof(s.c_str())); }
 		catch (...) { return; }
 
-		ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = new_value;
+		rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = new_value;
 		if (!config.slider_dynamic) {
 			slider_ptr->setValue(new_value);
 		}
+		on_value_changed(info);
 	});
 
 	variable_value_field->on_update([info, mem_offset, self = variable_value_field.get()]() {
 		if (!self->text().has_dedicated_keyboard_input()) {
 			if (info.valid()) {
-				float field_value = ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+				float field_value = rynx::editor::ecs_value_editor().access<float>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 				self->text().text(rynx::to_string(field_value));
 			}
 		}
@@ -238,13 +241,13 @@ void rynx::editor::field_float(
 	info.component_sheet->addChild(field_container);
 }
 
-void rynx::editor::field_bool(
+void rynx::editor_rules::field_bool(
 	const rynx::reflection::field& member,
 	rynx::editor::component_recursion_info_t info,
 	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 {
 	int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
-	bool value = ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+	bool value = rynx::editor::ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 
 	auto field_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 	auto variable_name_label = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
@@ -263,10 +266,11 @@ void rynx::editor::field_bool(
 		.text_align_center()
 		.text_input_disable();
 
-	variable_value_field->on_click([info, mem_offset, self = variable_value_field.get()]() {
-		bool& value = ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
+	variable_value_field->on_click([this, info, mem_offset, self = variable_value_field.get()]() {
+		bool& value = rynx::editor::ecs_value_editor().access<bool>(*info.ecs, info.entity_id, info.component_type_id, mem_offset);
 		value = !value;
 		self->text().text(value ? "^gYes" : "^rNo");
+		on_value_changed(info);
 	});
 
 	variable_value_field->align().right_inside().top_inside();
