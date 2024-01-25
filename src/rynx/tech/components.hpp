@@ -146,50 +146,9 @@ namespace rynx {
 					inv_moment_of_inertia = 1.0f / momentOfInertia;
 					return *this;
 				}
-
-				/*
-				body& moment_of_inertia(rynx::polygon& p, float scale = 1.0f) {
-					rynx_assert(scale > 0.0f, "scale must be positive non-zero value");
-					auto ext = p.extents();
-					rynx_assert(ext.z.second - ext.z.first == 0, "assuming 2d xy-plane polys");
-					float initial_scale = (ext.x.second - ext.x.first) * (ext.y.second - ext.y.first) / 10000.0f;
-
-					auto tris = rynx::polygon::().make_triangles(p);
-					auto centre_of_mass = tris.centre_of_mass();
-
-					std::vector<rynx::vec3f> points_in_p;
-					while (true) {
-						points_in_p.clear();
-
-						for (float x = ext.x.first; x <= ext.x.second; x += initial_scale) {
-							for (float y = ext.y.first; y <= ext.y.second; y += initial_scale) {
-								if (tris.point_in_polygon({ x, y, 0 })) {
-									points_in_p.emplace_back(rynx::vec3f(x, y, 0));
-								}
-							}
-						}
-
-						float obj_mass = 1.0f / inv_mass;
-						float cumulative_inertia = 0.0f;
-
-						if (points_in_p.size() > 10000) {
-							float point_mass = obj_mass / points_in_p.size();
-							for (auto point : points_in_p) {
-								float point_radius = (point - centre_of_mass).length();
-								cumulative_inertia += point_mass * point_radius * point_radius;
-							}
-
-							inv_moment_of_inertia = 1.0f / (cumulative_inertia * scale);
-							return *this;
-						}
-
-						initial_scale *= 0.5f;
-					}
-				}
-				*/
 				
 				float ANNOTATE(">=0") bias_multiply = 1.0f; // how strongly this body rejects other bodies. static terrain should have higher value than your basic dynamic object.
-				float ANNOTATE(">=0") ANNOTATE("inverse") inv_mass = 1.000f; // 1kg default
+				float ANNOTATE(">=0") ANNOTATE("inverse") inv_mass = 0.100f; // 10kg default
 				float ANNOTATE(">=0") ANNOTATE("inverse") inv_moment_of_inertia = 0.0002f; // Should be computed from mass + shape kgm^2 ?
 				float ANNOTATE("range 0 1") collision_elasticity = 0.5f; // [0, 1[
 				float ANNOTATE(">=0") friction_multiplier = 1.0f; // [0, 1]

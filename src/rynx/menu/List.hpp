@@ -24,7 +24,7 @@ namespace rynx {
 			Div m_scrolling_content_panel;
 
 			rynx::menu::Align m_current_align = rynx::menu::Align::LEFT;
-			float m_list_endpoint_margin = 0.0f;
+			float m_list_endpoint_margin = 0.1f;
 			float m_list_element_margin = 0.0f;
 			float m_list_elements_velocity = 5.0f;
 

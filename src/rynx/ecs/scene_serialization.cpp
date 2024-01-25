@@ -189,7 +189,7 @@ rynx::id rynx::ecs_detail::scene_serializer::persistent_id_path_find(const std::
 				return id;
 			}
 		}
-		rynx_assert(false, "unreachable");
+		logmsg("WARNING: requested id not found, edit of subscene can't be applied");
 		return id();
 	};
 
