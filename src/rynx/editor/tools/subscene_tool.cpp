@@ -78,11 +78,17 @@ void rynx::editor::tools::subscene_tool::gen_menu_field_scenelink(
 			.text_input_disable();
 	}
 	else {
-		const auto& scene_info = info.ctx->get_resource<rynx::scenes>().id_to_info(value);
-		variable_value_field->text()
-			.text(scene_info.name)
-			.text_align_center()
-			.text_input_disable();
+		auto& scenes = info.ctx->get_resource<rynx::scenes>();
+		if (scenes.id_exists(value)) {
+			const auto& scene_info = scenes.id_to_info(value);
+			variable_value_field->text()
+				.text(scene_info.name)
+				.text_align_center()
+				.text_input_disable();
+		}
+		else {
+			variable_value_field->text().text("<invalid>").text_align_center().text_input_disable();
+		}
 	}
 
 	variable_value_field->align().target(variable_name_label.get()).right_outside().top_inside();

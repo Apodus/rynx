@@ -77,6 +77,8 @@ void rynx::scenes::scan_directory(rynx::filesystem::vfs& fs, const rynx::string&
 
 std::vector<char> rynx::scenes::get(rynx::filesystem::vfs& fs, rynx::scene_id id) const {
 	auto it = m_filepaths.find(id);
+	if (it == m_filepaths.end())
+		return {};
 	auto file = fs.open_read(it->second);
 	read_definition(*file);
 	return rynx::deserialize<std::vector<char>>(*file);
@@ -171,6 +173,10 @@ const rynx::scene_info& rynx::scenes::filepath_to_info(const rynx::string& path)
 	}
 	rynx_assert(it != m_filepath_to_info.end(), "filepath to info must succeed");
 	return it->second;
+}
+
+bool rynx::scenes::id_exists(const rynx::scene_id& id) const {
+	return m_infos.find(id) != m_infos.end();
 }
 
 rynx::scene_info& rynx::scenes::id_to_info(const rynx::scene_id& id) {

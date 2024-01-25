@@ -103,6 +103,8 @@ namespace rynx {
 			rynx::string filepath
 		);
 
+		bool id_exists(const rynx::scene_id& id) const;
+
 		rynx::scene_info& filepath_to_info(const rynx::string& path);
 		const rynx::scene_info& filepath_to_info(const rynx::string& path) const;
 

@@ -183,12 +183,18 @@ rynx::id rynx::ecs_detail::scene_serializer::persistent_id_path_find(const std::
 
 	int32_t current_path_index = 0;
 	auto find_next_child = [this, &path](rynx::id current, int32_t current_path_index) {
-		const auto& children = host->operator[](current).get<rynx::components::scene::children>();
-		for (auto id : children.entities) {
+		const auto* children = host->operator[](current).try_get<rynx::components::scene::children>();
+		if (!children) {
+			logmsg("WARNING: Edit subscene path invalid, path entity has no children!");
+			return id();
+		}
+		
+		for (auto id : children->entities) {
 			if (host->operator[](id).get<rynx::components::scene::persistent_id>().value == path[current_path_index].value) {
 				return id;
 			}
 		}
+		
 		logmsg("WARNING: requested id not found, edit of subscene can't be applied");
 		return id();
 	};
@@ -540,6 +546,10 @@ std::tuple<rynx::entity_range_t, rynx::entity_range_t> rynx::ecs_detail::scene_s
 
 		for (auto [root_id, link, position] : sub_scenes) {
 			auto sub_scene_blob = scenes.get(vfs, link.id);
+			if (sub_scene_blob.empty()) {
+				logmsg("WARNING: Referenced subscene not found! %s", link.id.operator rynx::string().c_str());
+				continue;
+			}
 			rynx::serialization::vector_reader sub_scene_in(std::move(sub_scene_blob));
 			auto [subscene_ids, subscene_all_ids] = deserialize_scene(reflections, vfs, scenes, position, sub_scene_in);
 
