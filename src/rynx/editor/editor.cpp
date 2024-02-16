@@ -37,13 +37,19 @@ rynx::string humanize(rynx::string s) {
 }
 
 void register_post_deserialize_operations(rynx::ecs& ecs) {
-	ecs.register_post_deserialize_init_function([](rynx::ecs& ecs, rynx::scheduler::context& ctx) {
-		ecs.query().for_each([](rynx::components::phys::boundary& boundary, rynx::components::transform::position pos) {
-			if (boundary.segments_local.size() != boundary.segments_world.size()) {
-				boundary.segments_world = boundary.segments_local;
-				boundary.update_world_positions(pos.value, pos.angle);
+	ecs.register_post_deserialize_init_function([](rynx::ecs& ecs, rynx::entity_range_t range, rynx::scheduler::context& ctx) {
+		for (auto id : range) {
+			auto entity = ecs[id];
+			auto* boundary = entity.try_get<rynx::components::phys::boundary>();
+			auto position = entity.get<rynx::components::transform::position>();
+
+			if (boundary) {
+				if (boundary->segments_local.size() != boundary->segments_world.size()) {
+					boundary->segments_world = boundary->segments_local;
+					boundary->update_world_positions(position.value, position.angle);
+				}
 			}
-		});
+		}
 	});
 }
 
@@ -241,6 +247,184 @@ void rynx::editor_rules::field_float(
 	info.component_sheet->addChild(field_container);
 }
 
+void rynx::editor_rules::field_integer(
+	const rynx::reflection::field& member,
+	rynx::editor::component_recursion_info_t info,
+	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
+{
+	
+	auto get_current_value = [info, member]() {
+		int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
+		if (member.m_type_name == "unsigned __int64") {
+			return int64_t(rynx::editor::ecs_value_editor().access<uint64_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
+		}
+		if (member.m_type_name == "__int64") {
+			return int64_t(rynx::editor::ecs_value_editor().access<int64_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
+		}
+		if (member.m_type_name == "int") {
+			return int64_t(rynx::editor::ecs_value_editor().access<int32_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
+		}
+		if (member.m_type_name == "unsigned int") {
+			return int64_t(rynx::editor::ecs_value_editor().access<uint32_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset));
+		}
+		rynx_assert(false, "unhandled integer type");
+		return int64_t(0);
+	};
+
+	auto set_value = [info, member](int64_t v) {
+		int32_t mem_offset = info.cumulative_offset + member.m_memory_offset;
+		if (member.m_type_name == "unsigned __int64") {
+			rynx::editor::ecs_value_editor().access<uint64_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = uint64_t(v);
+			return;
+		}
+		if (member.m_type_name == "__int64") {
+			rynx::editor::ecs_value_editor().access<int64_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = v;
+			return;
+		}
+		if (member.m_type_name == "int") {
+			rynx::editor::ecs_value_editor().access<int32_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = int32_t(v);
+			return;
+		}
+		if (member.m_type_name == "unsigned int") {
+			rynx::editor::ecs_value_editor().access<uint32_t>(*info.ecs, info.entity_id, info.component_type_id, mem_offset) = uint32_t(v);
+			return;
+		}
+		rynx_assert(false, "unhandled integer type");
+	};
+	
+	bool is_unsigned = member.m_type_name == "unsigned int" || member.m_type_name == "unsigned __int64";
+
+	int64_t value = get_current_value();
+	auto field_container = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
+	field_container->velocity_position(menuVelocityFast);
+
+	auto variable_name_label = rynx::make_shared<rynx::menu::Text>(rynx::vec3f(0.4f, 1.0f, 0.0f));
+	variable_name_label->velocity_position(menuVelocityFast);
+	variable_name_label->text(rynx::string(info.indent, '-') + member.m_field_name);
+	variable_name_label->text_align_left();
+
+	auto variable_value_field = rynx::make_shared<rynx::menu::Button>(info.frame_tex, rynx::vec3f(0.4f, 1.0f, 0.0f));
+	variable_value_field->velocity_position(menuVelocityFast);
+
+	struct field_config {
+		int64_t min_value = std::numeric_limits<int64_t>::lowest();
+		int64_t max_value = std::numeric_limits<int64_t>::max();
+
+		int64_t constrain(int64_t v) const {
+			if (v < min_value) return min_value;
+			if (v > max_value) return max_value;
+			return v;
+		}
+	};
+
+	field_config config;
+
+	auto handle_annotations = [&variable_name_label, &info, &member, &config](
+		// const rynx::reflection::type& type,
+		const rynx::reflection::field& field)
+		{
+			bool skip_next = false;
+			for (auto&& annotation : field.m_annotations) {
+				if (annotation.starts_with("applies_to")) {
+					std::stringstream ss(annotation.c_str());
+					rynx::string v;
+					ss >> v;
+
+					bool self_found = false;
+					while (ss >> v) {
+						self_found |= (v == member.m_field_name);
+					}
+
+					skip_next = !self_found;
+				}
+
+				if (annotation == "applies_to_all") {
+					skip_next = false;
+				}
+
+				if (skip_next) {
+					continue;
+				}
+
+				if (annotation.starts_with("rename")) {
+					std::stringstream ss(annotation.c_str());
+					rynx::string v;
+					ss >> v >> v;
+					rynx::string source_name = v;
+					ss >> v;
+					if (source_name == member.m_field_name) {
+						variable_name_label->text(rynx::string(info.indent, '-') + v);
+					}
+				}
+				else if (annotation == ">=0") {
+					config.min_value = 0;
+				}
+				else if (annotation.starts_with("except")) {
+					std::stringstream ss(annotation.c_str());
+					rynx::string v;
+					ss >> v;
+
+					while (ss >> v) {
+						if (v == member.m_field_name) {
+							skip_next = true;
+						}
+					}
+				}
+				else if (annotation.starts_with("range")) {
+					std::stringstream ss(annotation.c_str());
+					rynx::string v;
+					ss >> v;
+					ss >> v;
+					config.min_value = rynx::str_to_int64(v);
+					ss >> v;
+					config.max_value = rynx::str_to_int64(v);
+				}
+			}
+		};
+
+	for (auto it = reflection_stack.rbegin(); it != reflection_stack.rend(); ++it)
+		handle_annotations(it->second);
+	handle_annotations(member);
+
+	if (is_unsigned)
+		config.min_value = std::max(config.min_value, int64_t(0));
+
+	variable_value_field->text()
+		.text(rynx::to_string(value))
+		.text_align_right()
+		.text_input_enable();
+
+	variable_value_field->text().on_value_changed([this, info, set_value, config](const rynx::string& s) {
+		int64_t new_value = 0;
+		try { new_value = config.constrain(rynx::str_to_int64(s)); }
+		catch (...) { return; }
+
+		set_value(new_value);
+		on_value_changed(info);
+	});
+
+	variable_value_field->on_update([info, get_current_value, self = variable_value_field.get()]() {
+		if (!self->text().has_dedicated_keyboard_input()) {
+			if (info.valid()) {
+				self->text().text(rynx::to_string(get_current_value()));
+			}
+		}
+	});
+
+	variable_value_field->align().right_inside().top_inside().offset_x(-0.10f);
+	variable_name_label->align().left_inside().top_inside();
+
+	field_container->addChild(variable_name_label);
+	field_container->addChild(variable_value_field);
+
+	field_container->align()
+		.target(info.component_sheet->last_child())
+		.bottom_outside()
+		.left_inside();
+
+	info.component_sheet->addChild(field_container);
+}
+
 void rynx::editor_rules::field_bool(
 	const rynx::reflection::field& member,
 	rynx::editor::component_recursion_info_t info,
@@ -311,6 +495,16 @@ void rynx::editor_rules::generate_menu_for_reflection(
 			rynx::editor::component_recursion_info_t field_info = info;
 			++field_info.indent;
 			field_float(member, field_info, reflection_stack);
+		}
+		else if (
+			member.m_type_name == "unsigned __int64" ||
+			member.m_type_name == "__int64" ||
+			member.m_type_name == "int" ||
+			member.m_type_name == "unsigned int")
+		{
+			rynx::editor::component_recursion_info_t field_info = info;
+			++field_info.indent;
+			field_integer(member, field_info, reflection_stack);
 		}
 		else if (member.m_type_name == "bool") {
 			rynx::editor::component_recursion_info_t field_info = info;
@@ -542,7 +736,7 @@ void rynx::editor_rules::on_entity_selected(rynx::id id) {
 		component_common_info.knob_tex = knob_tex;
 
 		component_common_info.gen_type_editor = [this](
-			const rynx::reflection::type& type_reflection,
+			rynx::reflection::type type_reflection,
 			rynx::editor::component_recursion_info_t info,
 			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
 		{
@@ -647,12 +841,12 @@ void rynx::editor_rules::load_scene_from_path(rynx::string scene_path) {
 	ecs.clear();
 	all_rulesets().clear(*m_context);
 
-	rynx::ecs_detail::scene_serializer(ecs).deserialize_scene(m_reflections, vfs, scenes, rynx::components::transform::position{}, reader);
+	auto [top_scene_ids, all_ids] = rynx::ecs_detail::scene_serializer(ecs).deserialize_scene(m_reflections, vfs, scenes, rynx::components::transform::position{}, reader);
 	auto serialized_rulesets_state = rynx::deserialize<std::vector<char>>(reader);
 	
 	rynx::serialization::vector_reader rulesets_reader(serialized_rulesets_state);
 	all_rulesets().deserialize(*m_context, rulesets_reader);
-	ecs.post_deserialize_init(*m_context);
+	ecs.post_deserialize_init(*m_context, all_ids);
 }
 
 rynx::editor_rules::editor_rules(
@@ -1040,9 +1234,10 @@ rynx::editor_rules::editor_rules(
 			delete_entity_button->velocity_position(menuVelocityFast);
 			delete_entity_button->align().target(add_component_button.get()).top_inside().right_outside();
 			delete_entity_button->text().text("Delete entity");
-			delete_entity_button->on_click([this]() {
-				execute([this]() {
+			delete_entity_button->on_click([this, &ctx]() mutable {
+				execute([this, &ctx]() mutable {
 					if (m_state.m_selected_ids.size() == 1) {
+						this->on_entities_erased(ctx, m_state.m_selected_ids);
 						m_context->get_resource<rynx::ecs>().erase(m_state.m_selected_ids.front());
 						m_state.m_selected_ids.clear();
 						m_state.m_on_entity_selected({});
@@ -1172,6 +1367,18 @@ rynx::editor_rules::editor_rules(
 	m_active_tool->on_tool_selected();
 }
 
+void rynx::editor_rules::on_entities_erased(rynx::scheduler::context& ctx, const std::vector<rynx::id>& ids) {
+	auto& ecs = ctx.get_resource<rynx::ecs>();
+
+	for (auto id : ids) {
+		auto* children_cmp = ecs[id].try_get<rynx::components::scene::children>();
+		if (children_cmp) {
+			for (auto child_id : children_cmp->entities) {
+				ecs.erase(child_id); // TODO: should notify of entity erase?
+			}
+		}
+	}
+}
 
 void rynx::editor_rules::onFrameProcess(rynx::scheduler::context& context, float dt) {
 

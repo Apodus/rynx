@@ -145,6 +145,11 @@ namespace rynx {
 			on_entity_selected(id);
 		}
 
+		void field_integer(
+			const rynx::reflection::field& member,
+			rynx::editor::component_recursion_info_t info,
+			std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack);
+
 		void field_float(
 			const rynx::reflection::field& member,
 			rynx::editor::component_recursion_info_t info,
@@ -185,6 +190,8 @@ namespace rynx {
 			tool.on_tool_selected();
 			m_active_tool = &tool;
 		}
+
+		virtual void on_entities_erased(rynx::scheduler::context&, const std::vector<rynx::id>&) override;
 
 	private:
 		virtual void onFrameProcess(rynx::scheduler::context& context, float /* dt */) override;

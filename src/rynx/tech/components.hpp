@@ -11,18 +11,14 @@
 
 namespace rynx {
 	namespace components {
-		
-		// TODO TODO TODO: Move to sample code :S
-		struct player {
-			bool touching_ground = false;
-			float jump_cooldown = 0.0f;
-			float walk_speed = 1.0f;
-			float jump_power = 10.0f;
-		};
 
 		namespace logic {
 			struct interval_generator {
 				float time_until_next = 1.0f;
+				rynx::scene_id target;
+			};
+
+			struct generate_on_start {
 				rynx::scene_id target;
 			};
 		}

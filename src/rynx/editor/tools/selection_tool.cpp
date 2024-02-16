@@ -416,6 +416,56 @@ void rynx::editor::tools::selection_tool::update(rynx::scheduler::context& ctx) 
 								});
 							}
 						}
+						else if (gameInput.isKeyDown(rynx::key::codes::control_left()) || gameInput.isKeyDown(rynx::key::codes::control_right())) {
+							// drag selection scale
+							if ((m_drag.prev_point - m_drag.start_point).length() > 0.5f && position_delta.length() > 1e-5f)
+							{
+								const auto& ids = selected_id_vector();
+								float rescale = 1.0f + 0.003f * position_delta.dot((m_drag.start_point - m_drag.middle_point).normal());
+								for (auto id : ids) {
+									auto entity = game_ecs[id];
+									auto& entity_pos = entity.get<rynx::components::transform::position>();
+
+									rynx::vec3f direction = (entity_pos.value - m_drag.middle_point).normal();
+									float length = (entity_pos.value - m_drag.middle_point).length();
+
+									rynx::vec3f scaled_pos = direction * length * rescale + m_drag.middle_point;
+									entity_pos.value = scaled_pos;
+
+									auto& entity_radius = entity.get<rynx::components::transform::radius>();
+									entity_radius.r *= rescale;
+
+									auto* entity_boundary = entity.try_get<rynx::components::phys::boundary>();
+									if (entity_boundary) {
+										entity_boundary->segments_local.edit().scale(rescale, rescale);
+									}
+
+									execute([this, entity_boundary, &game_ecs, &ctx, id]() {
+										for_each_tool([id, entity_boundary, &game_ecs, &ctx](rynx::editor::itool* tool) {
+											tool->on_entity_component_value_changed(
+												&ctx,
+												rynx::type_index::id<rynx::components::transform::position>(),
+												game_ecs,
+												id);
+											
+											tool->on_entity_component_value_changed(
+												&ctx,
+												rynx::type_index::id<rynx::components::transform::radius>(),
+												game_ecs,
+												id);
+
+											if (entity_boundary) {
+												tool->on_entity_component_value_changed(
+													&ctx,
+													rynx::type_index::id<rynx::components::phys::boundary>(),
+													game_ecs,
+													id);
+											}
+										});
+									});
+								}
+							}
+						}
 						else {
 							// drag entity position
 							const auto& ids = selected_id_vector();

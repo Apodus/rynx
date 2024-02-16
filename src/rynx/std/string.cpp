@@ -505,6 +505,12 @@ uint64_t rynx::std_replacements::string::length() const noexcept { return size()
 
 bool rynx::std_replacements::string::empty() const noexcept { return size() == 0; }
 
+int64_t rynx::str_to_int64(rynx::string_view str) {
+	int64_t v;
+	sscanf_s(str.data(), "%ll", &v);
+	return v;
+}
+
 float rynx::stof(rynx::string_view str) {
 	float v;
 	sscanf_s(str.data(), "%f", &v);

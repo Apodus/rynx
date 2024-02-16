@@ -222,6 +222,7 @@ namespace rynx {
 		return rynx::to_string(static_cast<double>(v));
 	}
 
+	int64_t RynxStdDLL str_to_int64(rynx::std_replacements::string_view str);
 	float RynxStdDLL stof(rynx::std_replacements::string_view str);
 	bool RynxStdDLL is_small_space(const rynx::std_replacements::string& str);
 

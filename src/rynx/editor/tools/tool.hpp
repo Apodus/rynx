@@ -66,13 +66,13 @@ namespace rynx {
 			}
 
 			int32_t offset_of(const rynx::reflection::field& f) const { return cumulative_offset + f.m_memory_offset; }
-			template<typename T> T& access(const rynx::reflection::field& f) {
+			template<typename T> T& access(const rynx::reflection::field&) {
 				// return rynx::editor::ecs_value_editor().access<rynx::scene_id>(*ecs, entity_id, component_type_id, offset_of(f));
 				return rynx::editor::ecs_value_editor().access<rynx::scene_id>(*ecs, entity_id, component_type_id, cumulative_offset);
 			}
 
 			rynx::function<void(
-				const rynx::reflection::type& type_reflection,
+				rynx::reflection::type type_reflection,
 				rynx::editor::component_recursion_info_t info,
 				std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>>)> gen_type_editor;
 		};

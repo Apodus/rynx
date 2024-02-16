@@ -22,10 +22,9 @@ void rynx::ruleset::lifetime_updates::onFrameProcess(rynx::scheduler::context& c
 
 
 
-	context.add_task("generators", [dt](rynx::scheduler::task& context, rynx::ecs::view<rynx::components::transform::position, rynx::components::logic::interval_generator> ecs) {
-		std::vector<std::tuple<rynx::vec3f, rynx::scene_id>> scenes_to_gen;
+	context.add_task("generators", [dt](rynx::scheduler::task& context, rynx::ecs::view<rynx::components::transform::position, rynx::components::logic::interval_generator, const rynx::components::logic::generate_on_start> ecs) {
+		std::vector<std::tuple<rynx::components::transform::position, rynx::scene_id>> scenes_to_gen;
 		ecs.query().for_each([&scenes_to_gen, dt](
-			rynx::id entity_id,
 			rynx::components::transform::position pos,
 			rynx::components::logic::interval_generator& generator)
 		{
@@ -33,24 +32,45 @@ void rynx::ruleset::lifetime_updates::onFrameProcess(rynx::scheduler::context& c
 				generator.time_until_next -= dt;
 				while (generator.time_until_next < 0.0f) {
 					generator.time_until_next += 0.3f;
-					scenes_to_gen.emplace_back(pos.value, generator.target);
+					scenes_to_gen.emplace_back(pos, generator.target);
 				}
 			}
 		});
 
+		ecs.query().for_each([&scenes_to_gen, dt](
+			rynx::id entity_id,
+			rynx::components::transform::position pos,
+			rynx::components::logic::generate_on_start generator)
+			{
+				if (generator.target) {
+					scenes_to_gen.emplace_back(pos, generator.target);
+				}
+			});
+
+		std::vector<rynx::id> on_start_generated = ecs.query().in<rynx::components::logic::generate_on_start>().ids();
+		if (!on_start_generated.empty()) {
+			context.extend_task_independent([entities_to_remove = std::move(on_start_generated)](rynx::ecs::edit_view<rynx::components::logic::generate_on_start> ecs) {
+				for (auto id : entities_to_remove) {
+					ecs[id].remove<rynx::components::logic::generate_on_start>();
+				}
+			});
+		}
+
 		if (!scenes_to_gen.empty()) {
 			context.extend_task_independent([scenes = std::move(scenes_to_gen)](
 				rynx::scheduler::task& context,
+				rynx::scheduler::context& ctx,
 				rynx::reflection::reflections& reflection,
 				rynx::filesystem::vfs& vfs,
 				rynx::scenes& scene_manager,
-				rynx::ecs& ecs)
+				rynx::ecs& ecs) mutable
 			{
 				for (auto[pos, scene_id] : scenes) {
-					ecs.create(rynx::components::transform::position(pos), rynx::components::scene::link(scene_id));
+					ecs.create(pos, rynx::components::scene::link(scene_id));
 				}
 
-				rynx::ecs_detail::scene_serializer(&ecs).load_subscenes(reflection, vfs, scene_manager);
+				auto all_ids = rynx::ecs_detail::scene_serializer(&ecs).load_subscenes(reflection, vfs, scene_manager);
+				ecs.post_deserialize_init(ctx, all_ids);
 			});
 		}
 	});

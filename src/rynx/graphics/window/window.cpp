@@ -12,6 +12,8 @@
 #include <rynx/system/assert.hpp>
 #include <rynx/std/memory.hpp> // todo: include rynx::function
 
+#include <rynx/graphics/texture/image.hpp> // for icon loading
+
 using ResizeEventMapper = rynx::unordered_map<GLFWwindow*, rynx::function<void(int, int)>>;
 
 static rynx::unique_ptr<ResizeEventMapper>  g_resizeEventMapper;
@@ -82,7 +84,21 @@ GLFWwindow* Window::createWindow(rynx::string name) {
 	m_pWindow = window;
 	getResizeEventMapper()[m_pWindow] = [this](int x, int y) { platformResizeEvent(x, y); };
 	glfwSetWindowSizeCallback(window, global_scope_windowResizeCallback);
+	
+	{
+		Image img;
+		img.loadImage("./icon.png");
+		img.rgb_to_rgba();
 
+		GLFWimage icon_img;
+		icon_img.height = img.sizeY;
+		icon_img.width = img.sizeY;
+		icon_img.pixels = img.data;
+		glfwSetWindowIcon(window, 1, &icon_img);
+	}
+	
+	// glfwCreateCursor(img, cursorHitPosX, cursorHitPosY);
+	
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);
 

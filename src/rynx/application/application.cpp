@@ -55,10 +55,14 @@ void DefaultProcessingFunctionality::logic_frame_start() {
 	auto& gameInput = m_host->simulation_context()->get_resource<rynx::mapped_input>();
 	auto& scheduler = m_host->scheduler();
 	
+	// clamp to 10000fps max tick rate, 60fps min tick rate.
+	m_dt = std::clamp(m_wall_clock_frame_timer.time_since_begin_us() * 0.001f * 0.001f, 0.0001f, 0.016f);
+	m_wall_clock_frame_timer.reset();
+
 	auto scoped_inhibitor = menuSystem.inhibit_dedicated_inputs(gameInput);
 	{
 		rynx_profile("Main", "Construct frame tasks");
-		m_host->simulation().generate_tasks(0.016f);
+		m_host->simulation().generate_tasks(m_dt);
 	}
 
 	{
@@ -87,7 +91,7 @@ void DefaultProcessingFunctionality::wait_gpu_done_and_swap() {
 
 void DefaultProcessingFunctionality::menu_frame_execute() {
 	auto& menuSystem = m_host->simulation_context()->get_resource<rynx::menu::System>();
-	menuSystem.update(dt, m_host->aspectRatio());
+	menuSystem.update(m_dt, m_host->aspectRatio());
 }
 
 void DefaultProcessingFunctionality::render() {

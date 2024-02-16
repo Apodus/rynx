@@ -5,6 +5,7 @@
 #include <rynx/math/matrix.hpp>
 #include <rynx/std/unordered_map.hpp>
 #include <rynx/graphics/camera/camera.hpp>
+#include <rynx/std/timer.hpp>
 
 #include <vector>
 
@@ -59,7 +60,9 @@ namespace rynx {
 				rynx::shared_ptr<rynx::graphics::framebuffer> m_fbo_menu;
 				rynx::shared_ptr<rynx::camera> m_menuCamera;
 
-				float dt = 0.016f;
+				rynx::timer m_wall_clock_frame_timer;
+				rynx::timer m_render_timer;
+				float m_dt = 0.016f;
 			};
 
 			frame_processing_functionality& user() {
