@@ -30,8 +30,9 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 	auto create_vec3f_menu = [this](
 		rynx::string field_name,
 		rynx::editor::component_recursion_info_t info,
-		rynx::id drag_in_local_space_of)
+		rynx::function<rynx::id()> entity_relative_space)
 	{
+		rynx::id drag_in_local_space_of = entity_relative_space();
 		auto field_div = rynx::make_shared<rynx::menu::Div>(rynx::vec3f(0.6f, 0.03f, 0.0f));
 		field_div->velocity_position(200.0f); // TODO
 
@@ -193,7 +194,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 					});
 				m_mode = Mode::Vec3fDrag;
 				m_mode_local_space_id = drag_in_local_space_of;
-				});
+			});
 
 			field_div->addChild(drag);
 		}
@@ -215,14 +216,16 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 				info.cumulative_offset -= field.m_memory_offset;
 			}
 			if (field.m_field_name == "pos") {
-				auto local_position =
-					rynx::editor::ecs_value_editor().access<rynx::components::transform::position_relative>(
-						*info.ecs,
-						info.entity_id,
-						info.component_type_id,
-						info.cumulative_offset);
 				info.cumulative_offset += field.m_memory_offset;
-				create_vec3f_menu("offset", info, local_position.id);
+				create_vec3f_menu("offset", info, [info]() {
+					auto local_position =
+						rynx::editor::ecs_value_editor().access<rynx::components::transform::position_relative>(
+							*info.ecs,
+							info.entity_id,
+							info.component_type_id,
+							info.cumulative_offset);
+					return local_position.id;
+					});
 				info.cumulative_offset -= field.m_memory_offset;
 			}
 		}
@@ -274,7 +277,7 @@ bool rynx::editor::tools::selection_tool::try_generate_menu(
 
 	if (type.m_type_name == rynx::traits::type_name<rynx::vec3f>())
 	{
-		create_vec3f_menu(field_type.m_field_name, info, 0);
+		create_vec3f_menu(field_type.m_field_name, info, []() { return rynx::id(); });
 		return true;
 	}
 
