@@ -17,8 +17,8 @@ rynx::application::visualisation::omnilights_effect::omnilights_effect(
 ) {
 	m_lights_shader = shader_manager->load_shader(
 		"fbo_lights",
-		"../shaders/screenspace.vs.glsl",
-		"../shaders/screenspace_lights.fs.glsl"
+		"/shaders/screenspace.vs.glsl",
+		"/shaders/screenspace_lights.fs.glsl"
 	);
 
 	m_lights_shader->activate();

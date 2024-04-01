@@ -12,16 +12,7 @@
 #include <iostream>
 
 namespace {
-	rynx::string readFile(const rynx::string& path)
-	{
-		std::vector<char> data = rynx::filesystem::read_file(path);
-		rynx_assert(data.size() > 0, "Shader source code length zero!");
-		rynx::string s;
-		s.resize(data.size());
-		memcpy(s.data(), data.data(), data.size());
-		return s;
-	}
-
+	
 	void printlogmsg(GLuint obj)
 	{
 		int infologLength = 0;
@@ -38,23 +29,16 @@ namespace {
 		}
 	}
 
-	GLuint loadVertexShader(const rynx::string& filename)
+	GLuint compileVertexShader(const char* data)
 	{
-		rynx::string str = readFile(filename);
-		const char* data = str.c_str();
-
 		GLuint ret = glCreateShader(GL_VERTEX_SHADER);
 		glShaderSource(ret, 1, &data, nullptr);
 		glCompileShader(ret);
-
 		return ret;
 	}
 
-	GLuint loadFragmentShader(const rynx::string& filename)
+	GLuint compileFragmentShader(const char* data)
 	{
-		rynx::string str = readFile(filename);
-		const char* data = str.c_str();
-
 		GLuint ret = glCreateShader(GL_FRAGMENT_SHADER);
 		glShaderSource(ret, 1, &data, nullptr);
 		glCompileShader(ret);
@@ -62,11 +46,8 @@ namespace {
 		return ret;
 	}
 
-	GLuint loadGeometryShader(const rynx::string& filename)
+	GLuint compileGeometryShader(const char* data)
 	{
-		rynx::string str = readFile(filename);
-		const char* data = str.c_str();
-
 		GLuint ret = glCreateShader(GL_GEOMETRY_SHADER);
 		glShaderSource(ret, 1, &data, nullptr);
 		glCompileShader(ret);
@@ -77,8 +58,8 @@ namespace {
 
 rynx::graphics::shader::shader(
 	rynx::string name,
-	const rynx::string& vert,
-	const rynx::string& frag)
+	const char* vertexShaderSource,
+	const char* fragmentShaderSource)
 	:
 	m_name(std::move(name)),
 	m_programID(0),
@@ -87,14 +68,11 @@ rynx::graphics::shader::shader(
 	m_fragmentID(0),
 	m_started(false)
 {
-	rynx_assert(!vert.empty(), "trying to open vertex shader file without name?");
-	rynx_assert(!frag.empty(), "trying to open fragment shader file without name?");
+	m_vertexID = compileVertexShader(vertexShaderSource); printlogmsg(m_vertexID);
+	m_fragmentID = compileFragmentShader(fragmentShaderSource); printlogmsg(m_fragmentID);
 
-	m_vertexID = loadVertexShader(vert); printlogmsg(m_vertexID);
-	m_fragmentID = loadFragmentShader(frag); printlogmsg(m_fragmentID);
-
-	rynx_assert(m_vertexID != 0, "Loading vertex shader failed: %s", vert.c_str());
-	rynx_assert(m_fragmentID != 0, "Loading fragment shader failed: %s", frag.c_str());
+	rynx_assert(m_vertexID != 0, "Compiling vertex shader failed: \n\n%s\n\n", vertexShaderSource);
+	rynx_assert(m_fragmentID != 0, "Compiling fragment shader failed: \n\n%s\n\n", fragmentShaderSource);
 
 	m_programID = glCreateProgram(); printlogmsg(m_programID);
 	rynx_assert(m_programID != 0, "Creating shader program failed");
@@ -114,9 +92,9 @@ rynx::graphics::shader::shader(
 
 rynx::graphics::shader::shader(
 	rynx::string name,
-	const rynx::string& vert,
-	const rynx::string& frag,
-	const rynx::string& geom,
+	const char* vert,
+	const char* frag,
+	const char* geom,
 	GLint input,
 	GLint output,
 	GLint vertices)
@@ -128,13 +106,9 @@ rynx::graphics::shader::shader(
 	m_fragmentID(0),
 	m_started(false)
 {
-	rynx_assert(!vert.empty(), "Creating shader: vertex program file name is empty");
-	rynx_assert(!geom.empty(), "Creating shader: geometry program file name is empty");
-	rynx_assert(!frag.empty(), "Creating shader: fragment program file name is empty");
-
-	m_vertexID = loadVertexShader(vert);
-	m_geometryID = loadGeometryShader(geom);
-	m_fragmentID = loadFragmentShader(frag);
+	m_vertexID = compileVertexShader(vert);
+	m_geometryID = compileGeometryShader(geom);
+	m_fragmentID = compileFragmentShader(frag);
 
 	rynx_assert(m_vertexID != 0, "creating vertex program failed");
 	rynx_assert(m_geometryID != 0, "creating geometry program failed");

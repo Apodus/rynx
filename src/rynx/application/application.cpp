@@ -177,7 +177,7 @@ void rynx::application::Application::openWindow(int width, int height, rynx::str
 	m_window->createWindow(width, height, name);
 	m_input = rynx::make_shared<rynx::input>(m_window);
 	m_textures = rynx::make_shared<rynx::graphics::GPUTextures>();
-	m_shaders = rynx::make_shared<rynx::graphics::shaders>();
+	m_shaders = rynx::make_shared<rynx::graphics::shaders>(m_simulation.m_vfs.get());
 	m_renderer = rynx::make_shared<rynx::graphics::renderer>(m_textures, m_shaders);
 	m_debugVisualization = rynx::make_shared<application::DebugVisualization>(m_renderer);
 

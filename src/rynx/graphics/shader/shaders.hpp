@@ -9,11 +9,15 @@ typedef int GLint;
 typedef unsigned GLuint;
 
 namespace rynx {
+	namespace filesystem {
+		class vfs;
+	}
+
 	namespace graphics {
 		class GraphicsDLL shaders
 		{
 		public:
-			shaders();
+			shaders(rynx::observer_ptr<rynx::filesystem::vfs> vfs);
 			~shaders();
 
 			void release();
@@ -24,6 +28,7 @@ namespace rynx {
 		private:
 			rynx::unordered_map<rynx::string, rynx::shared_ptr<shader>> m_shaders;
 
+			rynx::observer_ptr<rynx::filesystem::vfs> m_vfs;
 			rynx::shared_ptr<shader> m_activeShader;
 			rynx::string m_activeShaderName;
 		};

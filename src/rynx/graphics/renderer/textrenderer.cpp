@@ -51,7 +51,7 @@ rynx::graphics::text_renderer::text_renderer(rynx::shared_ptr<rynx::graphics::GP
 	m_textures(textures),
 	m_shaders(shaders)
 {
-	auto fontShader = m_shaders->load_shader("font", "../shaders/font.vs.glsl", "../shaders/font.fs.glsl");
+	auto fontShader = m_shaders->load_shader("font", "/shaders/font.vs.glsl", "/shaders/font.fs.glsl");
 	m_shaders->activate_shader("font");
 
 	glGenVertexArrays(1, &vao);

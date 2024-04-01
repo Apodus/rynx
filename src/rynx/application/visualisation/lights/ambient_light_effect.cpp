@@ -18,8 +18,8 @@ rynx::application::visualisation::ambient_light_effect::ambient_light_effect(
 ) {
 	m_lights_shader = shader_manager->load_shader(
 		"fbo_light_ambient",
-		"../shaders/screenspace.vs.glsl",
-		"../shaders/screenspace_lights_ambient.fs.glsl"
+		"/shaders/screenspace.vs.glsl",
+		"/shaders/screenspace_lights_ambient.fs.glsl"
 	);
 
 	m_lights_shader->activate();

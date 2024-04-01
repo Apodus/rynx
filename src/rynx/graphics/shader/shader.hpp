@@ -16,8 +16,8 @@ namespace rynx {
 		class GraphicsDLL shader
 		{
 		public:
-			shader(rynx::string name, const rynx::string& vertex, const rynx::string& fragment);
-			shader(rynx::string name, const rynx::string& vertex, const rynx::string& fragment, const rynx::string& geometry, GLint input, GLint output, GLint vertices);
+			shader(rynx::string name, const char* vertexSource, const char* fragmentSource);
+			shader(rynx::string name, const char* vertexSource, const char* fragmentSource, const char* geometrySource, GLint input, GLint output, GLint vertices);
 			~shader();
 
 			void activate();

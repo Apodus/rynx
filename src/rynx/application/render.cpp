@@ -30,8 +30,8 @@ rynx::application::renderer::renderer(
 
 	shader_copy_color = shaders->load_shader(
 		"fbo_color_to_bb",
-		"../shaders/screenspace.vs.glsl",
-		"../shaders/screenspace_color_passthrough.fs.glsl"
+		"/shaders/screenspace.vs.glsl",
+		"/shaders/screenspace_color_passthrough.fs.glsl"
 	);
 
 	shader_copy_color->activate();

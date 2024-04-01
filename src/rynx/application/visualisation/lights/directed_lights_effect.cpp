@@ -19,8 +19,8 @@ rynx::application::visualisation::directed_lights_effect::directed_lights_effect
 ) {
 	m_lights_shader = shader_manager->load_shader(
 		"fbo_lights_directed",
-		"../shaders/screenspace.vs.glsl",
-		"../shaders/screenspace_lights_directed.fs.glsl"
+		"/shaders/screenspace.vs.glsl",
+		"/shaders/screenspace_lights_directed.fs.glsl"
 	);
 
 	m_lights_shader->activate();

@@ -33,9 +33,9 @@ void rynx::graphics::renderer::init() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	{
-		shader_single = m_shaders->load_shader("renderer2d", "../shaders/2d_shader.vs.glsl", "../shaders/2d_shader.fs.glsl");
-		shader_instanced = m_shaders->load_shader("renderer2d_instanced", "../shaders/2d_shader_instanced.vs.glsl", "../shaders/2d_shader_instanced.fs.glsl");
-		shader_instanced_deferred = m_shaders->load_shader("renderer2d_instanced_deferred", "../shaders/2d_shader_instanced_deferred.vs.glsl", "../shaders/2d_shader_instanced_deferred.fs.glsl");
+		shader_single = m_shaders->load_shader("renderer2d", "/shaders/geometry_shader.vs.glsl", "/shaders/geometry_shader.fs.glsl");
+		shader_instanced = m_shaders->load_shader("renderer2d_instanced", "/shaders/geometry_shader_instanced.vs.glsl", "/shaders/geometry_shader_instanced.fs.glsl");
+		shader_instanced_deferred = m_shaders->load_shader("renderer2d_instanced_deferred", "/shaders/geometry_shader_instanced_deferred.vs.glsl", "/shaders/geometry_shader_instanced_deferred.fs.glsl");
 
 		shader_single->activate();
 		shader_single->uniform("tex", 0);
