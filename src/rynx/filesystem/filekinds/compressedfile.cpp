@@ -4,12 +4,12 @@
 
 rynx::filesystem::compressedfile_read::compressedfile_read(rynx::shared_ptr<rynx::filesystem::iread_file> backing_file) : m_decompressed_output(m_decompressed_file) {
 	auto compressed = backing_file->read_all();
-	auto result = decompress(compressed);
+	auto result = rynx::compression::decompress(compressed);
 	m_decompressed_file.filecontent = std::move(reinterpret_cast<std::vector<uint8_t>&>(result));
 }
 
 rynx::filesystem::compressedfile_write::~compressedfile_write() {
-	auto compressed = compress({ reinterpret_cast<char*>(m_temp_file.data()), m_temp_file.size() });
+	auto compressed = rynx::compression::compress({ reinterpret_cast<char*>(m_temp_file.data()), m_temp_file.size() });
 	m_backing_file->write(compressed.data(), compressed.size());
 }
 

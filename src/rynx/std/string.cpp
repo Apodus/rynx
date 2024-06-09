@@ -507,7 +507,7 @@ bool rynx::std_replacements::string::empty() const noexcept { return size() == 0
 
 int64_t rynx::str_to_int64(rynx::string_view str) {
 	int64_t v;
-	sscanf_s(str.data(), "%ll", &v);
+	sscanf_s(str.data(), "%llu", &v);
 	return v;
 }
 
