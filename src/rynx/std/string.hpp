@@ -18,7 +18,7 @@ namespace rynx {
 		}
 		
 		class string;
-		class RynxStdDLL string_view {
+		class string_view {
 			char const* m_data = nullptr;
 			size_t m_length = 0;
 
@@ -38,7 +38,7 @@ namespace rynx {
 			char operator[](size_t i) const noexcept;
 		};
 
-		class RynxStdDLL string {
+		class string {
 		public:
 			static constexpr uint64_t npos = ~uint64_t(0);
 

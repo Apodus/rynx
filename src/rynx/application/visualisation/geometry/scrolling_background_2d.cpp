@@ -10,13 +10,13 @@ void rynx::application::visualization::scrolling_background_2d::execute() {
 	rynx::matrix4 model;
 	model.discardSetTranslate(m_pos);
 	
-	
 	model.scale(m_scale * m_aspect_ratio, m_scale * m_aspect_ratio, 1.0f);
-
 	rynx::floats4 color{ 1, 1, 1, 1 };
+	uint8_t opaqueness = 0;
+	
 	m_bg_mesh->bind();
 	m_bg_mesh->rebuildTextureBuffer();
-	m_mesh_renderer.drawMeshInstancedDeferred(*m_bg_mesh, 1, &model, &color, &m_bg_texture);
+	m_mesh_renderer.drawMeshInstancedDeferred(*m_bg_mesh, 1, &model, &color, &m_bg_texture, &opaqueness);
 }
 
 void rynx::application::visualization::scrolling_background_2d::prepare(rynx::scheduler::context*) {

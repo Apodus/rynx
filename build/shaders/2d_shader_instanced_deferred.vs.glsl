@@ -6,6 +6,7 @@ layout(location = 2) in vec3 normal;
 layout(location = 3) in vec4 color;
 layout(location = 4) in int tex_id;
 layout(location = 5) in mat4 model;
+layout(location = 9) in float opaqueness;
 
 uniform int atlasBlocksPerRow;
 uniform mat4 view;
@@ -16,6 +17,7 @@ out vec2 uv_pass;
 out vec4 color_pass;
 out vec4 normal_pass;
 out vec4 position_pass;
+out float opaqueness_pass;
 
 out vec2 uv_min;
 out float uv_width;
@@ -25,7 +27,7 @@ void main()
 	mat4 model_view = view * model;
     
 	// todo: inverse should only be recalculated once per object instance. not once per vertex. :(
-	mat3 normal_rotation = transpose(inverse(mat3(model_view)));
+	mat3 normal_rotation = transpose(inverse(mat3(model)));
 	vec3 world_pos = (model * vec4(position, 1.0)).rgb;
 	position_pass = vec4(world_pos, 1.0);
 	gl_Position = projection * view * vec4(world_pos, 1);
@@ -47,6 +49,8 @@ void main()
 		uv_pass = uv * indirectionValues.w * 0.00001;
 	}
 	
+	
 	color_pass = color;
 	normal_pass = vec4(normalize(normal_rotation * normal), 0.0);
+	opaqueness_pass = opaqueness;
 }

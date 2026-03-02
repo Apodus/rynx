@@ -118,6 +118,22 @@ namespace {
 		}
 	}
 
+	int clip_segment_to_line(std::array<rynx::vec3f, 2>& vOut, const std::array<rynx::vec3f, 2>& vIn, rynx::vec3f normal, float offset) {
+		int numOut = 0;
+		float d0 = normal.dot(vIn[0]) - offset;
+		float d1 = normal.dot(vIn[1]) - offset;
+
+		if (d0 <= 0.0f) vOut[numOut++] = vIn[0];
+		if (d1 <= 0.0f) vOut[numOut++] = vIn[1];
+
+		if (d0 * d1 < 0.0f) {
+			float interp = d0 / (d0 - d1);
+			vOut[numOut++] = vIn[0] + (vIn[1] - vIn[0]) * interp;
+		}
+
+		return numOut;
+	}
+
 	void check_polygon_polygon(
 		std::vector<collision_event>& collisions_accumulator,
 		rynx::ecs::entity<ecs_view> poly1,
@@ -127,84 +143,126 @@ namespace {
 		[[maybe_unused]] float radius_a,
 		[[maybe_unused]] float radius_b
 	) {
-		const auto& boundaryA = poly1.get<const rynx::components::phys::boundary>();
-		const auto& boundaryB = poly2.get<const rynx::components::phys::boundary>();
+		const auto& boundaryA_comp = poly1.get<const rynx::components::phys::boundary>();
+		const auto& boundaryB_comp = poly2.get<const rynx::components::phys::boundary>();
 
-		// this probably wont work but lets try
-		int collisions_detected = 0;
-		rynx::vec3f collision_normal_a;
-		rynx::vec3f collision_normal_b;
-		rynx::vec3f collision_point;
-		float penetration = 0;
+		const rynx::polygon& polyA = boundaryA_comp.segments_world;
+		const rynx::polygon& polyB = boundaryB_comp.segments_world;
 
-		std::array<rynx::vec3f, 4> collision_points;
+		if (polyA.size() < 2 || polyB.size() < 2) return;
 
-		for (size_t i = 0; i < boundaryA.segments_world.size(); ++i) {
-			const auto segmentA = boundaryA.segments_world.segment(i);
-			const rynx::vec3f segmentPos = (segmentA.p1 + segmentA.p2) * 0.5f;
-			[[maybe_unused]] const float segmentRadiusSqr = (segmentA.p1 - segmentA.p2).length_squared();
-			
-			for (size_t k = 0; k < boundaryB.segments_world.size(); ++k) {
-				const auto segmentB = boundaryB.segments_world.segment(k);
+		struct EdgeInfo {
+			float pen;
+			rynx::vec3f normal;
+			int index;
+		};
 
-				const auto& p1 = segmentA.p1;
-				const auto& p2 = segmentA.p2;
+		auto find_min_penetration = [](const rynx::polygon& a, const rynx::polygon& b) -> EdgeInfo {
+			float min_pen = std::numeric_limits<float>::max();
+			int min_index = -1;
+			rynx::vec3f min_normal;
 
-				const auto& q1 = segmentB.p1;
-				const auto& q2 = segmentB.p2;
-
-				const auto collisionPoint = rynx::math::lineSegmentIntersectionPoint(p1, p2, q1, q2);
-
-				if (collisionPoint) {
-					// how to choose normal?
-					const float b1 = rynx::math::pointDistanceLineSegmentSquared(p1, p2, q1).first;
-					const float b2 = rynx::math::pointDistanceLineSegmentSquared(p1, p2, q2).first;
-
-					const float a1 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p1).first;
-					const float a2 = rynx::math::pointDistanceLineSegmentSquared(q1, q2, p2).first;
-
-					float penetration1 = a1 < a2 ? a1 : a2;
-					float penetration2 = b1 < b2 ? b1 : b2;
-					float penetration_single = penetration1 < penetration2 ? rynx::math::sqrt_approx(penetration1) : rynx::math::sqrt_approx(penetration2);
-
-					collision_normal_a += segmentA.normal;
-					collision_normal_b += segmentB.normal;
-
-					penetration = std::max(penetration, penetration_single);
-					collision_points[collisions_detected & 3] = collisionPoint.point();
-					collision_point += collisionPoint.point();
-					collisions_detected += 1;
+			for (size_t i = 0; i < a.size(); ++i) {
+				rynx::vec3f normal = a.segment_normal(i);
+				
+				float min_proj_b = std::numeric_limits<float>::max();
+				for (size_t j = 0; j < b.size(); ++j) {
+					float proj = b.vertex_position(j).dot(normal);
+					if (proj < min_proj_b) {
+						min_proj_b = proj;
+					}
 				}
+				
+				float max_proj_a = a.vertex_position(i).dot(normal);
+				
+				float penetration = max_proj_a - min_proj_b;
+				if (penetration <= 0) {
+					return {penetration, normal, static_cast<int>(i)}; // Separating axis
+				}
+				
+				if (penetration < min_pen) {
+					min_pen = penetration;
+					min_index = static_cast<int>(i);
+					min_normal = normal;
+				}
+			}
+			return {min_pen, min_normal, min_index};
+		};
+
+		EdgeInfo edgeA = find_min_penetration(polyA, polyB);
+		if (edgeA.pen <= 0.0f) return;
+
+		EdgeInfo edgeB = find_min_penetration(polyB, polyA);
+		if (edgeB.pen <= 0.0f) return;
+
+		bool flip = false;
+		float pen = edgeA.pen;
+		rynx::vec3f normal = edgeA.normal;
+		int refIndex = edgeA.index;
+		const rynx::polygon* refPoly = &polyA;
+		const rynx::polygon* incPoly = &polyB;
+
+		// We apply a slight bias to favor A to avoid flip-flopping edges
+		if (edgeB.pen < edgeA.pen * 0.95f) {
+			flip = true;
+			pen = edgeB.pen;
+			normal = edgeB.normal; // normal points OUT of B (towards A)
+			refIndex = edgeB.index;
+			refPoly = &polyB;
+			incPoly = &polyA;
+		}
+
+		// Find incident edge
+		int incIndex = 0;
+		float min_dot = std::numeric_limits<float>::max();
+		for (size_t i = 0; i < incPoly->size(); ++i) {
+			float d = incPoly->segment_normal(i).dot(normal);
+			if (d < min_dot) {
+				min_dot = d;
+				incIndex = static_cast<int>(i);
 			}
 		}
 
-		if (collisions_detected > 1) {
-			rynx::vec3f normal;
-			if (collisions_detected == 2) {
-				normal = (collision_points[0] - collision_points[1]).normal2d();
-			}
-			else {
-				normal = (collision_points[0] - collision_points[1]) + (collision_points[0] - collision_points[2]).normal2d();
-			}
+		std::array<rynx::vec3f, 2> incEdge = {
+			incPoly->vertex_position(incIndex),
+			incPoly->vertex_position(incIndex + 1)
+		};
 
-			if (collision_normal_a.length_squared() > collision_normal_b.length_squared()) {
-				normal *= (normal.dot(collision_normal_a) < 0) * 2.0f - 1.0f;
-			}
-			else {
-				normal *= (normal.dot(collision_normal_b) > 0) * 2.0f - 1.0f;
-			}
+		rynx::vec3f ref_v1 = refPoly->vertex_position(refIndex);
+		rynx::vec3f ref_v2 = refPoly->vertex_position(refIndex + 1);
+		
+		rynx::vec3f refEdgeDir = (ref_v2 - ref_v1).normalize();
 
-			create_collision_event(
-				collisions_accumulator,
-				poly1,
-				poly2,
-				// (collision_normal / float(collisions_detected)).normalize(),
-				normal.normalize(),
-				collision_point / float(collisions_detected),
-				pos_a,
-				pos_b,
-				penetration
-			);
+		// Clip incident edge against ref edge side planes
+		float offset1 = -refEdgeDir.dot(ref_v1);
+		std::array<rynx::vec3f, 2> clip1;
+		int numClip1 = clip_segment_to_line(clip1, incEdge, -refEdgeDir, offset1);
+		if (numClip1 < 2) return;
+
+		float offset2 = refEdgeDir.dot(ref_v2);
+		std::array<rynx::vec3f, 2> clip2;
+		int numClip2 = clip_segment_to_line(clip2, clip1, refEdgeDir, offset2);
+		if (numClip2 < 2) return;
+
+		// Now clip against ref edge front plane
+		rynx::vec3f collision_normal = flip ? normal : -normal; // Normal from B to A
+		
+		float refOffset = normal.dot(ref_v1);
+		
+		for (int i = 0; i < 2; ++i) {
+			float depth = normal.dot(clip2[i]) - refOffset;
+			if (depth <= 0.0f) { // Penetrating
+				create_collision_event(
+					collisions_accumulator,
+					poly1,
+					poly2,
+					collision_normal,
+					clip2[i],
+					pos_a,
+					pos_b,
+					-depth
+				);
+			}
 		}
 	}
 
@@ -476,8 +534,8 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						}
 
 						auto& extra = extras->operator[](index);
-						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
-						const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
+						const vec3<float> rel_pos_a = collision.c_pos - collision.a_pos;
+						const vec3<float> rel_pos_b = collision.c_pos - collision.b_pos;
 
 						const float rel_pos_len_a = rel_pos_a.length();
 						const float rel_pos_len_b = rel_pos_b.length();
@@ -493,7 +551,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 							e.normal = collision.normal;
 
 							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m) {
-								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+								return m.velocity + rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
 							};
 
 							const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
@@ -510,7 +568,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 							e.normal = -collision.normal;
 
 							auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m) {
-								return m.velocity - rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
+								return m.velocity + rel_pos_len * (m.angularVelocity) * rel_pos_tangent;
 							};
 
 							const vec3<float> rel_v_a = velocity_at_point(extra.relative_position_length_a, extra.relative_position_tangent_a, *collision.a_motion);
@@ -541,7 +599,7 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						components::transform::motion& motion_b = *collision.b_motion;
 
 						auto velocity_at_point = [](float rel_pos_len, vec3<float> rel_pos_tangent, const components::transform::motion& m, float dt) {
-							return m.velocity + m.acceleration * dt - rel_pos_len * (m.angularVelocity + m.angularAcceleration * dt) * rel_pos_tangent;
+							return m.velocity + m.acceleration * dt + rel_pos_len * (m.angularVelocity + m.angularAcceleration * dt) * rel_pos_tangent;
 						};
 
 						const auto& extra = extras->operator[](index);
@@ -557,11 +615,11 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						const float overlap_value = collision.penetration - bias_start;
 						rynx_assert(collision.normal.length_squared() < 1.1f, "normal should be unit length");
 
-						const vec3<float> rel_pos_a = collision.a_pos - collision.c_pos;
-						const vec3<float> rel_pos_b = collision.b_pos - collision.c_pos;
+						const vec3<float> rel_pos_a = collision.c_pos - collision.a_pos;
+						const vec3<float> rel_pos_b = collision.c_pos - collision.b_pos;
 
-						const float inertia1 = sqr(collision.normal.cross2d(rel_pos_a)) * collision.a_body.inv_moment_of_inertia;
-						const float inertia2 = sqr(collision.normal.cross2d(rel_pos_b)) * collision.b_body.inv_moment_of_inertia;
+						const float inertia1 = sqr(rel_pos_a.cross2d(collision.normal)) * collision.a_body.inv_moment_of_inertia;
+						const float inertia2 = sqr(rel_pos_b.cross2d(collision.normal)) * collision.b_body.inv_moment_of_inertia;
 						const float collision_elasticity = (collision.a_body.collision_elasticity + collision.b_body.collision_elasticity) * 0.5f; // combine some fun way
 
 						const float top = (1.0f + collision_elasticity) * impact_power;
@@ -595,22 +653,14 @@ void rynx::ruleset::physics_2d::onFrameProcess(rynx::scheduler::context& context
 						// proximity_force = bias (to keep the simulation stable, and prevent objects from sinking into each other over time)
 						// impact_linear_force = linear collision response along the collision normal
 						// friction_linear_force = friction response along the collision tangent
+						const vec3<float> total_force = proximity_force + impact_linear_force + friction_linear_force;
 						const float inv_dt = 1.0f / dt;
 						const vec3f force_mask_xy(1.0f, 1.0f, 0.0f);
-						motion_a.acceleration += force_mask_xy * (proximity_force + impact_linear_force + friction_linear_force) * collision.a_body.inv_mass * inv_dt;
-						motion_b.acceleration -= force_mask_xy * (proximity_force + impact_linear_force + friction_linear_force) * collision.b_body.inv_mass * inv_dt;
+						motion_a.acceleration += force_mask_xy * total_force * collision.a_body.inv_mass * inv_dt;
+						motion_b.acceleration -= force_mask_xy * total_force * collision.b_body.inv_mass * inv_dt;
 
-						{
-							const float rotation_force_friction = friction_linear_force.cross2d(rel_pos_a);
-							const float rotation_force_linear = impact_linear_force.cross2d(rel_pos_a);
-							motion_a.angularAcceleration += (rotation_force_linear + rotation_force_friction) * collision.a_body.inv_moment_of_inertia * inv_dt;
-						}
-
-						{
-							const float rotation_force_friction = friction_linear_force.cross2d(rel_pos_b);
-							const float rotation_force_linear = impact_linear_force.cross2d(rel_pos_b);
-							motion_b.angularAcceleration -= (rotation_force_linear + rotation_force_friction) * collision.b_body.inv_moment_of_inertia * inv_dt;
-						}
+						motion_a.angularAcceleration += rel_pos_a.cross2d(total_force) * collision.a_body.inv_moment_of_inertia * inv_dt;
+						motion_b.angularAcceleration -= rel_pos_b.cross2d(total_force) * collision.b_body.inv_moment_of_inertia * inv_dt;
 					});
 				}
 		});

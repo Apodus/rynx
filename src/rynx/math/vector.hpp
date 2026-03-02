@@ -19,6 +19,29 @@
 
 namespace rynx {
 
+	template<class T>
+	struct vec2 {
+		T x = 0;
+		T y = 0;
+
+		vec2() = default;
+		vec2(T a, T b) : x(a), y(b) {}
+		vec2 operator *(float scalar) const { return { x * scalar, y * scalar }; }
+		vec2& operator /=(float scalar) { x /= scalar; y /= scalar; return *this; }
+
+		vec2 operator -(vec2 other) const { return { x - other.x, y - other.y }; }
+		vec2 operator +(vec2 other) const { return { x + other.x, y + other.y }; }
+		vec2 operator /(vec2 other) const { return { x / other.x, y / other.y }; }
+		vec2& operator /=(vec2 other) { x /= other.x; y /= other.y; return *this; }
+
+		T dot(vec2 other) const { return x * other.x + y * other.y; }
+		T length() const { return math::sqrt_approx(length_squared()); }
+		T length_squared() const { return dot(*this); }
+
+		vec2 normal() { T l = length() + std::numeric_limits<float>::epsilon(); return *this / l; }
+		vec2& normalize() { T l = length() + std::numeric_limits<float>::epsilon(); *this /= l; return *this; }
+	};
+
 	// generic 3d vector template.
 	template <class T>
 	struct alignas(sizeof(T) * 4) vec3 {
@@ -456,5 +479,5 @@ namespace rynx {
 
 	using vec4f = vec4<float>;
 	using vec3f = vec3<float>;
-
+	using vec2f = vec2<float>;
 }

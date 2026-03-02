@@ -20,10 +20,10 @@ namespace rynx {
 	}
 
 	namespace application {
-		class ApplicationDLL logic {
+		class logic {
 		public:
 
-			class ApplicationDLL iruleset {
+			class iruleset {
 			public:
 				struct unique_name_setter {
 					void operator()(iruleset& ruleset, rynx::string name) {

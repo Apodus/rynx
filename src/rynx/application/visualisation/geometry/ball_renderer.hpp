@@ -1,167 +1,209 @@
 #pragma once
 
-#include <rynx/system/assert.hpp>
-#include <rynx/graphics/renderer/meshrenderer.hpp>
-#include <rynx/application/visualisation/renderer.hpp>
 #include <rynx/application/components.hpp>
+#include <rynx/application/visualisation/renderer.hpp>
+#include <rynx/graphics/renderer/meshrenderer.hpp>
+#include <rynx/system/assert.hpp>
 
-#include <rynx/profiling/profiling.hpp>
 #include <rynx/ecs/ecs.hpp>
+#include <rynx/profiling/profiling.hpp>
 #include <rynx/scheduler/context.hpp>
 
 namespace rynx {
-	namespace application {
-		namespace visualisation {
-			struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
-				
-				rynx::shared_ptr<rynx::binary_config::id> m_enabled;
+namespace application {
+namespace visualisation {
+struct ball_renderer : public rynx::application::graphics_step::igraphics_step {
 
-				ball_renderer(rynx::graphics::mesh* circleMesh, rynx::graphics::renderer* meshRenderer) {
-					m_circleMesh = circleMesh;
-					m_meshRenderer = meshRenderer;
-					m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
-				}
+  rynx::shared_ptr<rynx::binary_config::id> m_enabled;
 
-				struct buffer {
-					size_t num;
-					const rynx::graphics::mesh* mesh;
-					const rynx::components::transform::position* positions;
-					const rynx::components::transform::radius* radii;
-					const rynx::components::graphics::color* colors;
-					const rynx::components::transform::matrix* models;
-					const rynx::graphics::texture_id* tex_ids;
-				};
+  ball_renderer(rynx::graphics::mesh *circleMesh,
+                rynx::graphics::renderer *meshRenderer) {
+    m_circleMesh = circleMesh;
+    m_meshRenderer = meshRenderer;
+    m_ropes = rynx::make_accumulator_shared_ptr<matrix4, floats4>();
+  }
 
-				virtual ~ball_renderer() {}
-				
-				virtual void prepare(rynx::scheduler::context* ctx) override {
-					
-					m_bufs.clear();
-					m_ropes->clear();
+  struct buffer {
+    size_t num;
+    const rynx::graphics::mesh *mesh;
+    const rynx::components::transform::position *positions;
+    const rynx::components::transform::radius *radii;
+    const rynx::components::graphics::color *colors;
+    const rynx::components::transform::matrix *models;
+    const rynx::graphics::texture_id *tex_ids;
+    const rynx::components::graphics::opaqueness *opaqueness;
+  };
 
-					// only draw non-meshed objects when requested. debug feature.
-					if (m_enabled && !m_enabled->is_enabled()) {
-						return;
-					}
+  virtual ~ball_renderer() {}
 
-					ctx->add_task("model matrices", [this](rynx::ecs& ecs) mutable {
-						// rynx_profile("visualisation", "mesh matrices");
-						// m_bufs.clear();
+  virtual void prepare(rynx::scheduler::context *ctx) override {
 
-						// collect buffers for drawing
-						ecs.query()
-							.notIn<rynx::components::graphics::mesh, rynx::components::phys::boundary, rynx::components::graphics::translucent, rynx::components::graphics::frustum_culled, rynx::components::graphics::invisible>()
-							.for_each_buffer([this](
-								size_t num_entities,
-								const rynx::components::transform::position* positions,
-								const rynx::components::transform::radius* radii,
-								const rynx::components::graphics::color* colors,
-								const rynx::components::transform::matrix* models)
-								{
-									m_bufs.emplace_back(buffer{
-										num_entities,
-										m_circleMesh,
-										positions,
-										radii,
-										colors,
-										models
-									});
-								}
-						);
+    m_bufs.clear();
+    m_ropes->clear();
 
-						ecs.query()
-							.notIn<rynx::components::graphics::mesh, rynx::components::phys::boundary, rynx::components::graphics::frustum_culled, rynx::components::graphics::invisible>()
-							.in<rynx::components::graphics::translucent>()
-							.for_each_buffer([this](
-								size_t num_entities,
-								const rynx::components::transform::position* positions,
-								const rynx::components::transform::radius* radii,
-								const rynx::components::graphics::color* colors,
-								const rynx::components::transform::matrix* models)
-								{
-									m_bufs.emplace_back(buffer{
-										num_entities,
-										m_circleMesh,
-										positions,
-										radii,
-										colors,
-										models
-									});
-								}
-						);
-					});
+    // only draw non-meshed objects when requested. debug feature.
+    if (m_enabled && !m_enabled->is_enabled()) {
+      return;
+    }
 
-					ctx->add_task("rope matrices", [this](rynx::scheduler::task& task_context, const rynx::ecs& ecs) {
-						{
-							rynx_profile("visualisation", "model matrices");
-							// m_ropes->clear();
-							ecs.query().notIn<rynx::components::graphics::invisible>().for_each_parallel(task_context, [this, &ecs](const rynx::components::phys::joint& rope) {
-								if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id))) {
-									return;
-								}
+    ctx->add_task("model matrices", [this](rynx::ecs &ecs) mutable {
+      // rynx_profile("visualisation", "mesh matrices");
+      // m_bufs.clear();
 
-								auto entity_a = ecs[rope.a.id];
-								auto entity_b = ecs[rope.b.id];
+      // collect buffers for drawing
+      ecs.query()
+          .notIn<rynx::components::graphics::mesh,
+                 rynx::components::phys::boundary,
+                 rynx::components::graphics::translucent,
+                 rynx::components::graphics::frustum_culled,
+                 rynx::components::graphics::invisible,
+                 rynx::components::graphics::opaqueness>()
+          .for_each_buffer(
+              [this](size_t num_entities,
+                     const rynx::components::transform::position *positions,
+                     const rynx::components::transform::radius *radii,
+                     const rynx::components::graphics::color *colors,
+                     const rynx::components::transform::matrix *models) {
+                m_bufs.emplace_back(buffer{num_entities, m_circleMesh,
+                                           positions, radii, colors, models});
+              });
 
-								const auto& pos_a = entity_a.get<const components::transform::position>();
-								const auto& pos_b = entity_b.get<const components::transform::position>();
-								auto relative_pos_a = math::rotatedXY(rope.a.pos, pos_a.angle);
-								auto relative_pos_b = math::rotatedXY(rope.b.pos, pos_b.angle);
-								auto world_pos_a = pos_a.value + relative_pos_a;
-								auto world_pos_b = pos_b.value + relative_pos_b;
-								vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
+      ecs.query()
+          .notIn<rynx::components::graphics::mesh,
+                 rynx::components::phys::boundary,
+                 rynx::components::graphics::translucent,
+                 rynx::components::graphics::frustum_culled,
+                 rynx::components::graphics::invisible>()
+          .for_each_buffer(
+              [this](size_t num_entities,
+                     const rynx::components::transform::position *positions,
+                     const rynx::components::transform::radius *radii,
+                     const rynx::components::graphics::color *colors,
+                     const rynx::components::transform::matrix *models,
+                     const rynx::components::graphics::opaqueness *opaqueness) {
+                m_bufs.emplace_back(buffer{num_entities, m_circleMesh,
+                                           positions, radii, colors, models,
+                                           nullptr, opaqueness});
+              });
 
-								auto direction_vector = world_pos_a - world_pos_b;
-								float length = direction_vector.length() * 0.5f;
-								constexpr float width = 0.6f;
+      ecs.query()
+          .notIn<rynx::components::graphics::mesh,
+                 rynx::components::phys::boundary,
+                 rynx::components::graphics::frustum_culled,
+                 rynx::components::graphics::invisible,
+                 rynx::components::graphics::opaqueness>()
+          .in<rynx::components::graphics::translucent>()
+          .for_each_buffer(
+              [this](size_t num_entities,
+                     const rynx::components::transform::position *positions,
+                     const rynx::components::transform::radius *radii,
+                     const rynx::components::graphics::color *colors,
+                     const rynx::components::transform::matrix *models) {
+                m_bufs.emplace_back(buffer{num_entities, m_circleMesh,
+                                           positions, radii, colors, models,
+                                           nullptr, nullptr});
+              });
 
-								matrix4 model;
-								model.discardSetTranslate(mid.x, mid.y, 0.0f);
-								model.rotate_2d(math::atan_approx(direction_vector.y / direction_vector.x));
-								// model.rotate(math::atan_approx(direction_vector.y / direction_vector.x), 0, 0, 1);
-								model.scale(length, width, 1.0f);
-								
-								m_ropes->emplace_back(model);
+      ecs.query()
+          .notIn<rynx::components::graphics::mesh,
+                 rynx::components::phys::boundary,
+                 rynx::components::graphics::frustum_culled,
+                 rynx::components::graphics::invisible>()
+          .in<rynx::components::graphics::translucent>()
+          .for_each_buffer(
+              [this](size_t num_entities,
+                     const rynx::components::transform::position *positions,
+                     const rynx::components::transform::radius *radii,
+                     const rynx::components::graphics::color *colors,
+                     const rynx::components::transform::matrix *models,
+                     const rynx::components::graphics::opaqueness *opaqueness) {
+                m_bufs.emplace_back(buffer{num_entities, m_circleMesh,
+                                           positions, radii, colors, models,
+                                           nullptr, opaqueness});
+              });
+    });
 
-								float r = rope.cumulative_stress / (700.0f * rope.strength);
-								m_ropes->emplace_back(floats4(r, 0.2f, 1.0f - r, 1));
-							});
-						}
+    ctx->add_task("rope matrices", [this](rynx::scheduler::task &task_context,
+                                          const rynx::ecs &ecs) {
+      {
+        rynx_profile("visualisation", "model matrices");
+        // m_ropes->clear();
+        ecs.query()
+            .notIn<rynx::components::graphics::invisible>()
+            .for_each_parallel(
+                task_context,
+                [this, &ecs](const rynx::components::phys::joint &rope) {
+                  if (!(ecs.exists(rope.a.id) & ecs.exists(rope.b.id))) {
+                    return;
+                  }
 
-					});
-				}
-				
-				virtual void execute() override {
-					{
-						for (auto&& buf : m_bufs) {
-							std::vector<rynx::graphics::texture_id> tex;
-							tex.resize(buf.num);
-							m_meshRenderer->drawMeshInstancedDeferred(
-								*buf.mesh,
-								buf.num,
-								reinterpret_cast<const rynx::matrix4*>(buf.models),
-								reinterpret_cast<const floats4*>(buf.colors),
-								tex.data()
-							);
-						}
-					}
+                  auto entity_a = ecs[rope.a.id];
+                  auto entity_b = ecs[rope.b.id];
 
-					{
-						rynx_profile("visualisation", "ball draw ropes");
-						m_ropes->for_each([this](std::vector<matrix4>& matrices, std::vector<floats4>& colors) {
-							std::vector<rynx::graphics::texture_id> tex;
-							tex.resize(colors.size());
-							m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices, colors, tex);
-						});
-					}
-				}
+                  const auto &pos_a =
+                      entity_a.get<const components::transform::position>();
+                  const auto &pos_b =
+                      entity_b.get<const components::transform::position>();
+                  auto relative_pos_a =
+                      math::rotatedXY(rope.a.pos, pos_a.angle);
+                  auto relative_pos_b =
+                      math::rotatedXY(rope.b.pos, pos_b.angle);
+                  auto world_pos_a = pos_a.value + relative_pos_a;
+                  auto world_pos_b = pos_b.value + relative_pos_b;
+                  vec3<float> mid = (world_pos_a + world_pos_b) * 0.5f;
 
-				rynx::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
-				std::vector<buffer> m_bufs;
+                  auto direction_vector = world_pos_a - world_pos_b;
+                  float length = direction_vector.length() * 0.5f;
+                  constexpr float width = 0.6f;
 
-				rynx::graphics::renderer* m_meshRenderer;
-				rynx::graphics::mesh* m_circleMesh;
-			};
-		}
-	}
-}
+                  matrix4 model;
+                  model.discardSetTranslate(mid.x, mid.y, 0.0f);
+                  model.rotate_2d(math::atan_approx(direction_vector.y /
+                                                    direction_vector.x));
+                  // model.rotate(math::atan_approx(direction_vector.y /
+                  // direction_vector.x), 0, 0, 1);
+                  model.scale(length, width, 1.0f);
+
+                  m_ropes->emplace_back(model);
+
+                  float r = rope.cumulative_stress / (700.0f * rope.strength);
+                  m_ropes->emplace_back(floats4(r, 0.2f, 1.0f - r, 1));
+                });
+      }
+    });
+  }
+
+  virtual void execute() override {
+    {
+      for (auto &&buf : m_bufs) {
+        std::vector<rynx::graphics::texture_id> tex;
+        tex.resize(buf.num);
+        m_meshRenderer->drawMeshInstancedDeferred(
+            *buf.mesh, buf.num,
+            reinterpret_cast<const rynx::matrix4 *>(buf.models),
+            reinterpret_cast<const floats4 *>(buf.colors), tex.data(),
+            reinterpret_cast<const uint8_t *>(buf.opaqueness));
+      }
+    }
+
+    {
+      rynx_profile("visualisation", "ball draw ropes");
+      m_ropes->for_each(
+          [this](std::vector<matrix4> &matrices, std::vector<floats4> &colors) {
+            std::vector<rynx::graphics::texture_id> tex;
+            tex.resize(colors.size());
+            m_meshRenderer->drawMeshInstancedDeferred(*m_circleMesh, matrices,
+                                                      colors, tex);
+          });
+    }
+  }
+
+  rynx::shared_ptr<rynx::parallel_accumulator<matrix4, floats4>> m_ropes;
+  std::vector<buffer> m_bufs;
+
+  rynx::graphics::renderer *m_meshRenderer;
+  rynx::graphics::mesh *m_circleMesh;
+};
+} // namespace visualisation
+} // namespace application
+} // namespace rynx
