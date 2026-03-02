@@ -23,15 +23,34 @@ namespace rynx::compression {
 				node(int numSymbols);
 				void init(int numSymbols);
 				const std::vector<int>& predict();
-				void update(int symbol);
+				void update(int symbol, int rate);
 				bool has_sufficient_data();
+
+				void normalize() {
+					if (m_sum > 1000) {
+						m_sum = 0;
+						for (int& w : m_weights) {
+							w = std::max(1, w >> 1);
+							m_sum += w;
+						}
+					}
+				}
 
 				int m_sum = 0;
 				std::vector<int> m_weights;
 			};
 
 			std::pair<std::span<const int>, int> predict();
-			void update(int symbol);
+			std::pair<std::span<const int>, int> predict(int previous_symbol);
+			void update(int symbol, int rate);
+			void update_custom(int node, int symbol, int rate);
+
+			void normalize() {
+				m_layer0.normalize();
+				for (auto& layer : m_layer1) {
+					layer.normalize();
+				}
+			}
 
 			int prev_symbol = 0;
 			model::node m_layer0;
@@ -65,4 +84,19 @@ namespace rynx::compression {
 			std::vector<char>&& extract_result() { return std::move(stream.m_memory); }
 		};
 	}
+
+	struct image_coder {
+		static constexpr int lossRatio = 8;
+		static constexpr int learnRate = 16;
+
+		std::vector<int> combineStorage;
+		image_coder()
+			: combineStorage(256 / lossRatio + 1) { }
+
+		using WeightDistribution = std::pair<std::span<const int>, int>;
+		WeightDistribution combine(WeightDistribution p1, WeightDistribution p2);
+
+		std::vector<char> encode(int width, int height, unsigned char* data);
+		unsigned char* decode(int width, int height, std::vector<char>&& encoded);
+	};
 }
