@@ -391,10 +391,10 @@ unsigned char* rynx::compression::image_coder::decode(int width, int height, std
 			}
 
 			auto* pixel = get_pixel(x, y);
-			pixel[0] = r * lossRatio;
-			pixel[1] = g * lossRatio;
-			pixel[2] = b * lossRatio;
-			pixel[3] = a * lossRatio;
+			pixel[0] = unsigned char(r * lossRatio);
+			pixel[1] = unsigned char(g * lossRatio);
+			pixel[2] = unsigned char(b * lossRatio);
+			pixel[3] = unsigned char(a * lossRatio);
 
 			if (y > 0) {
 				m_a.update_custom(get_pixel(x, y - 1)[3] / lossRatio, a, learnRate);
@@ -440,13 +440,15 @@ unsigned char* rynx::compression::image_coder::decode(int width, int height, std
 
 				auto correct = [fillPoint, pixel, up, down, left, right](int channel) {
 					unsigned char v = pixel[channel] & ~(fillPoint - 1);
-					unsigned char u = up[channel] & ~(fillPoint - 1);
-					unsigned char d = down[channel] & ~(fillPoint - 1);
-					unsigned char l = left[channel] & ~(fillPoint - 1);
-					unsigned char r = right[channel] & ~(fillPoint - 1);
-					bool has_higher_neighbour = (u > v) | (d > v) | (l > v) | (r > v);
-					pixel[channel] = v + (fillPoint >> 1);
-					};
+					
+					// unsigned char u = up[channel] & ~(fillPoint - 1);
+					// unsigned char d = down[channel] & ~(fillPoint - 1);
+					// unsigned char l = left[channel] & ~(fillPoint - 1);
+					// unsigned char r = right[channel] & ~(fillPoint - 1);
+					// bool has_higher_neighbour = (u > v) | (d > v) | (l > v) | (r > v);
+					
+					pixel[channel] = static_cast<unsigned char>(v + (fillPoint >> 1));
+				};
 
 				correct(0);
 				correct(1);
@@ -462,10 +464,10 @@ unsigned char* rynx::compression::image_coder::decode(int width, int height, std
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
 			auto* pixel = get_pixel(x, y);
-			pixel[0] = std::min(255, pixel[0] + rand() % (lossRatio / 2));
-			pixel[1] = std::min(255, pixel[1] + rand() % (lossRatio / 2));
-			pixel[2] = std::min(255, pixel[2] + rand() % (lossRatio / 2));
-			pixel[3] = std::min(255, pixel[3] + rand() % (lossRatio / 2));
+			pixel[0] = unsigned char(std::min(255, pixel[0] + rand() % (lossRatio / 2)));
+			pixel[1] = unsigned char(std::min(255, pixel[1] + rand() % (lossRatio / 2)));
+			pixel[2] = unsigned char(std::min(255, pixel[2] + rand() % (lossRatio / 2)));
+			pixel[3] = unsigned char(std::min(255, pixel[3] + rand() % (lossRatio / 2)));
 		}
 	}
 

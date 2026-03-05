@@ -19,6 +19,7 @@ namespace rynx {
 				Category& add_category(rynx::string name) {
 					m_categories.emplace_back(rynx::make_unique<Category>());
 					m_categories.back()->m_parent = this;
+					m_categories.back()->m_name = std::move(name);
 					return *m_categories.back();
 				}
 

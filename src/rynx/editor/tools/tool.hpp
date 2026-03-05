@@ -195,9 +195,9 @@ namespace rynx {
 			virtual rynx::string get_button_texture() = 0;
 
 			virtual bool try_generate_menu(
-				rynx::reflection::field type,
-				rynx::editor::component_recursion_info_t info,
-				std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
+				rynx::reflection::field /* type */,
+				rynx::editor::component_recursion_info_t /* info */,
+				std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> /* reflection_stack */)
 			{
 				return false;
 			}

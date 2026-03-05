@@ -47,7 +47,7 @@ void moment_of_inertia(rynx::components::phys::body& b, rynx::polygon& p, float 
 	}
 }
 
-rynx::editor::tools::physics_tool::physics_tool(rynx::scheduler::context& ctx)
+rynx::editor::tools::physics_tool::physics_tool(rynx::scheduler::context& /* ctx */)
 {
 	define_action_no_tool_activate(
 		rynx::type_index::id<rynx::components::phys::body>(),
@@ -72,7 +72,7 @@ rynx::editor::tools::physics_tool::physics_tool(rynx::scheduler::context& ctx)
 bool rynx::editor::tools::physics_tool::try_generate_menu(
 	rynx::reflection::field field_type,
 	rynx::editor::component_recursion_info_t info,
-	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
+	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> /* reflection_stack */)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
 	if (info.component_type_id == rynx::type_index::id<rynx::components::phys::body>())

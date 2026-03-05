@@ -38,7 +38,6 @@ void rynx::ruleset::lifetime_updates::onFrameProcess(rynx::scheduler::context& c
 		});
 
 		ecs.query().for_each([&scenes_to_gen, dt](
-			rynx::id entity_id,
 			rynx::components::transform::position pos,
 			rynx::components::logic::generate_on_start generator)
 			{

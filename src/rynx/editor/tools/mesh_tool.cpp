@@ -68,7 +68,7 @@ rynx::editor::tools::mesh_tool::mesh_tool(rynx::scheduler::context& ctx)
 bool rynx::editor::tools::mesh_tool::try_generate_menu(
 	rynx::reflection::field field_type,
 	rynx::editor::component_recursion_info_t info,
-	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> reflection_stack)
+	std::vector<std::pair<rynx::reflection::type, rynx::reflection::field>> /* reflection_stack */)
 {
 	rynx::reflection::type type = info.reflections->get(field_type);
 	if (info.component_type_id == rynx::type_index::id<rynx::components::graphics::mesh>())

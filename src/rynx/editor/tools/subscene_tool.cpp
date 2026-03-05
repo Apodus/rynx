@@ -78,9 +78,8 @@ void rynx::editor::tools::subscene_tool::gen_menu_field_scenelink(
 			.text_input_disable();
 	}
 	else {
-		auto& scenes = info.ctx->get_resource<rynx::scenes>();
-		if (scenes.id_exists(value)) {
-			const auto& scene_info = scenes.id_to_info(value);
+		if (scenes->id_exists(value)) {
+			const auto& scene_info = scenes->id_to_info(value);
 			variable_value_field->text()
 				.text(scene_info.name)
 				.text_align_center()

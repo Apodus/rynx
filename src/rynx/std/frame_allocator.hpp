@@ -58,7 +58,7 @@ namespace rynx::memory {
 				do { (*ptr++).~T(); } while (--n);
 		}
 
-		static void* malloc(size_t bytes, size_t align) { return ::rynx::memory::frame_allocator::detail::allocate(bytes, align); } // no need to call free for frame_malloced memory.
+		inline void* malloc(size_t bytes, size_t align) { return ::rynx::memory::frame_allocator::detail::allocate(bytes, align); } // no need to call free for frame_malloced memory.
 	}
 }
 
